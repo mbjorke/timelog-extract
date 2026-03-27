@@ -1,0 +1,5 @@
+[project]
+name = "timelog-extract"
+version = "0.1.0"
+description = "Aggregate local work activity from Claude, Cursor, Chrome, Mail, worklog, and optional Screen Time."
+requires-python = ">=3.9"

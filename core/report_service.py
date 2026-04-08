@@ -154,9 +154,9 @@ def _estimate_hours_by_day(
 
 def estimate_hours_by_day(
     days: Dict[str, Any],
-    gap_minutes: int,
-    min_session_minutes: int,
-    min_session_passive_minutes: int,
+    gap_minutes: int = 15,
+    min_session_minutes: int = 15,
+    min_session_passive_minutes: int = 5,
 ):
     """Aggregate per-day hours using the same session rules as the CLI report."""
     return _estimate_hours_by_day(
@@ -379,7 +379,13 @@ def generate_invoice_pdf(
     output_path: Optional[Path] = None,
     options: Optional[Union[argparse.Namespace, TimelogRunOptions, Dict[str, Any]]] = None,
 ) -> Path:
-    args = options or report_payload.args
+    if options is None:
+        args = report_payload.args
+    elif isinstance(options, dict):
+        merged = {**vars(report_payload.args), **options}
+        args = argparse.Namespace(**vars(as_run_options(merged)))
+    else:
+        args = argparse.Namespace(**vars(as_run_options(options)))
     if output_path is None:
         output_path = (
             Path(args.invoice_pdf_file).expanduser()
@@ -428,7 +434,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
                 )
                 print(f"PDF created: {built}")
             except Exception as exc:
-                print(f"Could not create PDF: {exc}")
+                raise SystemExit(f"Could not create PDF: {exc}") from exc
         return
 
     if report.args.source_summary:
@@ -447,4 +453,4 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
             built = generate_invoice_pdf(report)
             print(f"PDF created: {built}")
         except Exception as exc:
-            print(f"Could not create PDF: {exc}")
+            raise SystemExit(f"Could not create PDF: {exc}") from exc

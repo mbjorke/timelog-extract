@@ -17,3 +17,6 @@ timelog-friend-trial = "scripts.friend_trial:main"
 
 [tool.setuptools.packages.find]
 include = ["collectors*", "core*", "scripts*"]
+
+[tool.setuptools]
+py-modules = ["timelog_extract"]

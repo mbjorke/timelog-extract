@@ -14,6 +14,13 @@
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
 
+## Git worktrees (parallel work)
+
+- Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.
+- Prefer sibling worktrees next to the main clone via `./scripts/git_worktree.sh add <branch> [dir-name]` from the primary repo; open the printed path in a separate Cursor window for that branch only.
+- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope.
+- Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
+
 ## Global Automatic Timelog Setup
 
 - Full setup guide for all local repositories: `GLOBAL_TIMELOG_AUTOMATION.md`.

@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 from dataclasses import dataclass
 from typing import Any, Optional
+
+
+def package_version() -> str:
+    try:
+        return importlib.metadata.version("timelog-extract")
+    except importlib.metadata.PackageNotFoundError:
+        return "0.1.0-dev"
 
 
 @dataclass
@@ -50,7 +58,14 @@ def as_run_options(options: Any) -> TimelogRunOptions:
 
 def parse_args(default_config: str, default_keywords: str, default_project: str, default_email: str, default_exclude: str):
     p = argparse.ArgumentParser(
-        description="Aggregate work time from multiple local sources and projects"
+        description="Aggregate work time from multiple local sources and projects",
+        prog="timelog-extract",
+    )
+    p.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {package_version()}",
     )
     p.add_argument("--from", dest="date_from", metavar="YYYY-MM-DD",
                    help="Start date in local time (default: 30 days ago)")

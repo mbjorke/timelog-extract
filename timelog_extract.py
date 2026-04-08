@@ -7,7 +7,7 @@ Summarizes daily activity from:
   1. Claude Code CLI (Claude for Mac, Code Agent — ~/.claude/projects/)
   2. Claude Desktop
   3. Claude.ai (specific chat URLs in Chrome history)
-  4. Google Gemini in browser (specific app URLs, similar to claude_urls)
+  4. Google Gemini in browser (specific app URLs)
   5. Chrome (project matching via terms)
   6. Gemini CLI (local JSON sessions under ~/.gemini/tmp)
   7. Cursor (IDE logs)
@@ -27,7 +27,6 @@ import os
 import shutil
 import sqlite3
 import tempfile
-from html import escape as html_escape
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -38,7 +37,11 @@ from collectors import chrome as chrome_collector
 from collectors import cursor as cursor_collector
 from collectors import mail as mail_collector
 from collectors import timelog as timelog_collector
+from core.collector_registry import build_collector_specs
 from core import domain as core_domain
+from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
+from outputs import pdf as pdf_output
+from outputs import terminal as terminal_output
 
 HOME = Path.home()
 SCRIPT_DIR = Path(__file__).parent
@@ -49,7 +52,6 @@ CHROME_EPOCH_DELTA_US = 11_644_473_600 * 1_000_000
 # Default settings
 DEFAULT_KEYWORDS = ""
 DEFAULT_PROJECT = "default-project"
-DEFAULT_CLAUDE_URLS = ""
 DEFAULT_EMAIL = ""
 DEFAULT_EXCLUDE = ""
 DEFAULT_CONFIG = str(SCRIPT_DIR / "timelog_projects.json")
@@ -97,37 +99,8 @@ CURSOR_CHECKPOINTS_DIR = (
     / "anysphere.cursor-commits"
     / "checkpoints"
 )
-CODEX_IDE_DIR = HOME / ".codex"
-CODEX_IDE_SESSION_INDEX = CODEX_IDE_DIR / "session_index.jsonl"
+CODEX_IDE_SESSION_INDEX = HOME / ".codex" / "session_index.jsonl"
 UNCATEGORIZED = "Uncategorized"
-# Cursor app agent checkpoints; separate from "Cursor" logs and OpenAI Codex IDE (~/.codex).
-CURSOR_CHECKPOINTS_SOURCE = "Cursor checkpoints"
-WORKLOG_SOURCE = "TIMELOG.md"
-
-SOURCE_ORDER = [
-    "Claude Code CLI",
-    "Claude Desktop",
-    "Claude.ai (web)",
-    "Gemini (web)",
-    "Cursor",
-    CURSOR_CHECKPOINTS_SOURCE,
-    "Codex IDE",
-    "Gemini CLI",
-    WORKLOG_SOURCE,
-    "Apple Mail",
-    "Chrome",
-]
-
-AI_SOURCES = {
-    "Claude Code CLI",
-    "Claude Desktop",
-    "Gemini CLI",
-    "Claude.ai (web)",
-    "Gemini (web)",
-    CURSOR_CHECKPOINTS_SOURCE,
-    "Codex IDE",
-    WORKLOG_SOURCE,
-}
 
 
 @dataclass
@@ -155,7 +128,6 @@ class TimelogRunOptions:
     projects_config: str = DEFAULT_CONFIG
     keywords: str = DEFAULT_KEYWORDS
     project: str = DEFAULT_PROJECT
-    claude_urls: str = DEFAULT_CLAUDE_URLS
     email: str = DEFAULT_EMAIL
     min_session: int = 15
     min_session_passive: int = 5
@@ -208,8 +180,6 @@ def parse_args():
                    help="Legacy fallback: comma-separated project keywords")
     p.add_argument("--project", default=DEFAULT_PROJECT,
                    help="Legacy fallback: project name for AI logs")
-    p.add_argument("--claude-urls", default=DEFAULT_CLAUDE_URLS,
-                   help="Legacy fallback: kommaseparerade Claude.ai chatt-URL:er")
     p.add_argument("--email", default=DEFAULT_EMAIL,
                    help=f"Legacy fallback: sender email for sent mail (default: {DEFAULT_EMAIL})")
     p.add_argument("--min-session", dest="min_session", type=int, default=15,
@@ -314,12 +284,8 @@ def normalize_profile(raw):
     name = str(raw.get("name", "")).strip()
     if not name:
         raise ValueError("Each project profile must have 'name'")
-    match_terms_input = as_list(raw.get("match_terms"))
-    keywords = as_list(raw.get("keywords"))
-    project_terms = as_list(raw.get("project_terms")) or [name]
+    match_terms_input = as_list(raw.get("match_terms")) or [name]
     tracked_urls = as_list(raw.get("tracked_urls"))
-    legacy_claude_urls = as_list(raw.get("claude_urls"))
-    legacy_gemini_urls = as_list(raw.get("gemini_urls"))
     email = str(raw.get("email", "")).strip()
     customer = str(raw.get("customer", "")).strip() or name
     invoice_title = str(raw.get("invoice_title", "")).strip()
@@ -328,23 +294,15 @@ def normalize_profile(raw):
     terms = sorted(
         {
             t.lower()
-            for t in (match_terms_input + keywords + project_terms + [name])
+            for t in (match_terms_input + [name])
             if t
         }
     )
-    merged_tracked_urls = []
-    seen_urls = set()
-    for url in tracked_urls + legacy_claude_urls + legacy_gemini_urls:
-        if not url or url in seen_urls:
-            continue
-        seen_urls.add(url)
-        merged_tracked_urls.append(url)
+    merged_tracked_urls = sorted({url for url in tracked_urls if url})
     return {
         "name": name,
         "enabled": enabled,
         "match_terms": terms,
-        "keywords": keywords,
-        "project_terms": project_terms,
         "tracked_urls": merged_tracked_urls,
         "email": email,
         "customer": customer,
@@ -374,14 +332,13 @@ def load_profiles(config_path, args):
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             print(f"[Warning] Could not read project config {cfg}: {exc}")
 
-    fallback = normalize_profile({
-        "name": args.project,
-        "keywords": as_list(args.keywords),
-        "project_terms": [args.project],
-        "claude_urls": as_list(args.claude_urls),
-        "gemini_urls": [],
-        "email": args.email,
-    })
+    fallback = normalize_profile(
+        {
+            "name": args.project,
+            "match_terms": as_list(args.keywords) + [args.project],
+            "email": args.email,
+        }
+    )
     return [fallback], None, {}
 
 
@@ -501,10 +458,6 @@ def collect_gemini_cli(profiles, dt_from, dt_to):
     return ai_logs_collector.collect_gemini_cli(
         profiles, dt_from, dt_to, HOME, classify_project, make_event
     )
-
-
-def load_cursor_workspaces():
-    return cursor_collector.load_cursor_workspaces(HOME)
 
 
 def collect_cursor(profiles, dt_from, dt_to):
@@ -673,177 +626,23 @@ def estimate_hours_by_day(
 
 
 def print_source_summary(events):
-    """Event count per source after dedupe/project filtering."""
-    counts = defaultdict(int)
-    for e in events:
-        counts[e["source"]] += 1
-    print("\n-- Source summary (after filtering & dedupe, before sessions) --")
-    for src in sorted(counts, key=lambda s: SOURCE_ORDER.index(s) if s in SOURCE_ORDER else 99):
-        print(f"  {src}: {counts[src]}")
-    print(f"  Total: {sum(counts.values())}")
-    print("--\n")
+    terminal_output.print_source_summary(events, SOURCE_ORDER)
 
 
 def print_report(overall_days, project_reports, screen_time_days, profiles, args, config_path):
-    sep = "─" * 64
-    print(f"\n{'═' * 64}")
-    print("  TIMELOGS — SUMMARY")
-    print(f"{'═' * 64}\n")
-
-    if config_path:
-        print(f"Project config: {config_path}")
-    else:
-        print("Project config: legacy fallback from CLI arguments")
-    print(f"Local timezone: {LOCAL_TZ}")
-    print(f"Projects: {', '.join(profile['name'] for profile in profiles)}")
-    print()
-
-    total_h = 0.0
-    for day in sorted(overall_days):
-        payload = overall_days[day]
-        total_h += payload["hours"]
-        entries = sorted(payload["entries"], key=lambda x: x["local_ts"])
-        sources = sorted(
-            {event["source"] for event in entries},
-            key=lambda source: SOURCE_ORDER.index(source) if source in SOURCE_ORDER else 99
-        )
-        project_names = sorted({event["project"] for event in entries if event["project"] != UNCATEGORIZED})
-        print(f"📅  {day}")
-        print(f"    Sessions: {len(payload['sessions'])}  -> estimated ~{payload['hours']:.1f}h")
-        print(f"    Sources:   {', '.join(sources)}")
-        print(f"    Projects:  {', '.join(project_names) if project_names else UNCATEGORIZED}")
-        if screen_time_days is not None:
-            screen_h = screen_time_days.get(day, 0.0) / 3600
-            delta = payload["hours"] - screen_h
-            print(f"    Screen Time: ~{screen_h:.1f}h  (delta {delta:+.1f}h)")
-
-        for idx, (start_ts, end_ts, session_events) in enumerate(payload["sessions"], 1):
-            raw_dur = session_duration_hours(
-                session_events, start_ts, end_ts,
-                args.min_session, args.min_session_passive
-            )
-            session_projects = sorted({event["project"] for event in session_events})
-            print(
-                f"    [{idx}] {start_ts.strftime('%H:%M')}–{end_ts.strftime('%H:%M')} "
-                f"({raw_dur:.1f}h, {len(session_events)} events, {', '.join(session_projects)})"
-            )
-            if args.all_events:
-                for event in session_events:
-                    print(
-                        f"        · {event['local_ts'].strftime('%H:%M:%S')}  "
-                        f"[{event['source']}] [{event['project']}]  {event['detail']}"
-                    )
-            else:
-                shown = []
-                for event in session_events:
-                    marker = f"{event['project']} | {event['detail']}"
-                    if marker in shown:
-                        continue
-                    print(
-                        f"        · {event['local_ts'].strftime('%H:%M')}  "
-                        f"[{event['source']}] [{event['project']}]  {event['detail']}"
-                    )
-                    shown.append(marker)
-                    if len(shown) >= 5:
-                        remaining = len(session_events) - len(shown)
-                        if remaining > 0:
-                            print(f"          … and {remaining} more")
-                        break
-        print()
-
-    print(sep)
-    print(f"  TOTAL ESTIMATED (raw time):  ~{total_h:.1f}h")
-    if args.billable_unit and args.billable_unit > 0:
-        grand_billable = sum(
-            billable_total_hours(
-                sum(day_payload["hours"] for day_payload in project_reports[pn].values()),
-                args.billable_unit,
-            )
-            for pn in project_reports
-        )
-        print(
-            f"  BILLABLE TOTAL (per project, rounded to {args.billable_unit:g} h):  ~{grand_billable:.2f}h"
-        )
-    if screen_time_days is not None:
-        screen_total_h = sum(screen_time_days.values()) / 3600
-        print(f"  SCREEN TIME TOTALT: ~{screen_total_h:.1f}h")
-        print(f"  DELTA:              {total_h - screen_total_h:+.1f}h")
-    print(sep)
-    print()
-
-    profile_by_name = {p["name"]: p for p in profiles}
-    projects_by_customer = defaultdict(list)
-    for project_name in sorted(project_reports):
-        customer = str(profile_by_name.get(project_name, {}).get("customer") or project_name)
-        projects_by_customer[customer].append(project_name)
-
-    print("Per customer:")
-    for customer_name in sorted(projects_by_customer, key=lambda name: name.lower()):
-        customer_projects = projects_by_customer[customer_name]
-        customer_hours = sum(
-            sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
-            for project_name in customer_projects
-        )
-        if args.billable_unit and args.billable_unit > 0:
-            cust_b = sum(
-                billable_total_hours(
-                    sum(day_payload["hours"] for day_payload in project_reports[pn].values()),
-                    args.billable_unit,
-                )
-                for pn in customer_projects
-            )
-            print(f"  - {customer_name}: ~{cust_b:.2f}h billable (raw ~{customer_hours:.1f}h)")
-        else:
-            print(f"  - {customer_name}: ~{customer_hours:.1f}h")
-        for project_name in customer_projects:
-            hours = sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
-            days = len(project_reports[project_name])
-            if args.billable_unit and args.billable_unit > 0:
-                hb = billable_total_hours(hours, args.billable_unit)
-                print(
-                    f"      · {project_name}: ~{hb:.2f}h billable (raw ~{hours:.1f}h) across {days} days"
-                )
-            else:
-                print(f"      · {project_name}: ~{hours:.1f}h across {days} days")
-    print()
-    print("  NOTE: Total above is the combined timeline across all sources.")
-    print(
-        "  [Cursor] = Cursor IDE logs. [Cursor checkpoints] = Cursor app metadata."
-        " [Codex IDE] = OpenAI Codex app (~/.codex) — separate program, not Cursor."
+    terminal_output.print_report(
+        overall_days=overall_days,
+        project_reports=project_reports,
+        screen_time_days=screen_time_days,
+        profiles=profiles,
+        args=args,
+        config_path=config_path,
+        local_tz=LOCAL_TZ,
+        source_order=SOURCE_ORDER,
+        uncategorized=UNCATEGORIZED,
+        session_duration_hours_fn=session_duration_hours,
+        billable_total_hours_fn=billable_total_hours,
     )
-    print("  Run with --source-summary to see exact event count per source after filters.")
-    print(
-        f"  Sessions: gaps shorter than {args.gap_minutes} min are merged; "
-        f"Chrome is deduplicated (--chrome-collapse-minutes={args.chrome_collapse_minutes}, 0=off)."
-    )
-    if args.billable_unit and args.billable_unit > 0:
-        print(
-            f"  Billable rounding: raw time is summed per project, then rounded up (ceil) "
-            f"to the nearest {args.billable_unit:g} h — not per session."
-        )
-    print("  Hours are based on discrete events (e.g. Chrome visits), not on per-click KnowledgeC usage.")
-    print("  Per-project totals use project-tagged events and may differ from the grand total.")
-    print("  Worklog is interpreted in local time instead of UTC.")
-    if not args.include_uncategorized:
-        print("  Uncategorized events are excluded from report by default.")
-    if screen_time_days is not None:
-        print("  Screen Time comes from KnowledgeC app usage and is a comparison signal, not ground truth.")
-    print()
-
-
-def _invoice_projects_line(profiles, project_reports, customer_name):
-    """PDF line text: with customer filter list active projects only, otherwise all profiles."""
-    if project_reports:
-        return ", ".join(sorted(project_reports.keys()))
-    if customer_name:
-        wanted = customer_name.strip().lower()
-        names = [
-            p["name"]
-            for p in profiles
-            if str(p.get("customer") or p["name"]).strip().lower() == wanted
-        ]
-        return ", ".join(sorted(names)) if names else "—"
-    return ", ".join(p["name"] for p in profiles)
 
 
 def build_invoice_pdf(
@@ -857,200 +656,19 @@ def build_invoice_pdf(
     customer_name=None,
     billable_unit=0.0,
 ):
-    try:
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-        from reportlab.lib.units import inch
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    except ImportError as exc:
-        raise RuntimeError(
-            "PDF generation requires reportlab. Install with: python3 -m pip install reportlab"
-        ) from exc
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "InvoiceTitle",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=16,
-        leading=20,
-        spaceAfter=12,
+    return pdf_output.build_invoice_pdf(
+        overall_days=overall_days,
+        project_reports=project_reports,
+        profiles=profiles,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        output_path=output_path,
+        local_tz=LOCAL_TZ,
+        billable_total_hours_fn=billable_total_hours,
+        empty_note=empty_note,
+        customer_name=customer_name,
+        billable_unit=billable_unit,
     )
-    body_style = ParagraphStyle(
-        "InvoiceBody",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=14,
-    )
-
-    doc = SimpleDocTemplate(
-        str(output_path),
-        pagesize=A4,
-        rightMargin=54,
-        leftMargin=54,
-        topMargin=54,
-        bottomMargin=54,
-    )
-
-    total_raw_hours = sum(day_payload["hours"] for day_payload in overall_days.values())
-    if billable_unit and billable_unit > 0:
-        invoice_total_billable = sum(
-            billable_total_hours(
-                sum(day_payload["hours"] for day_payload in project_reports[pn].values()),
-                billable_unit,
-            )
-            for pn in project_reports
-        )
-    else:
-        invoice_total_billable = total_raw_hours
-    profile_by_name = {profile["name"]: profile for profile in profiles}
-    period_text = f"{dt_from.astimezone(LOCAL_TZ).date()} to {dt_to.astimezone(LOCAL_TZ).date()}"
-    projects_text = _invoice_projects_line(profiles, project_reports, customer_name)
-
-    elements = [
-        Paragraph("Time report - invoice basis", title_style),
-        Paragraph(f"<b>Period:</b> {period_text}", body_style),
-    ]
-    if customer_name:
-        elements.append(
-            Paragraph(f"<b>Kund:</b> {html_escape(customer_name.strip())}", body_style)
-        )
-    if billable_unit and billable_unit > 0:
-        elements.extend(
-            [
-                Paragraph(f"<b>Projects:</b> {html_escape(projects_text)}", body_style),
-                Paragraph(
-                    f"<b>Total billable:</b> {invoice_total_billable:.2f} hours<br/>"
-                    f"<i>Raw time in period: {total_raw_hours:.2f} h</i>",
-                    body_style,
-                ),
-            ]
-        )
-    else:
-        elements.extend(
-            [
-                Paragraph(f"<b>Projects:</b> {html_escape(projects_text)}", body_style),
-                Paragraph(f"<b>Total estimated:</b> {total_raw_hours:.2f} hours", body_style),
-            ]
-        )
-    if empty_note:
-        elements.append(Paragraph(f"<i>{html_escape(empty_note)}</i>", body_style))
-    elements.append(Spacer(1, 16))
-
-    project_rows = [[
-        Paragraph("<b>Service description / Deliverable</b>", body_style),
-        Paragraph("<b>Omfattning</b>", body_style),
-    ]]
-    for project_name in sorted(project_reports):
-        day_payloads = project_reports[project_name]
-        hours = sum(day_payload["hours"] for day_payload in day_payloads.values())
-        if hours <= 0:
-            continue
-        display_hours = billable_total_hours(hours, billable_unit)
-
-        profile = profile_by_name.get(project_name, {})
-        invoice_title = str(profile.get("invoice_title", "")).strip()
-        invoice_description = str(profile.get("invoice_description", "")).strip()
-
-        if invoice_title or invoice_description:
-            safe_title = html_escape(invoice_title or project_name)
-            safe_description = html_escape(
-                invoice_description or "Ongoing implementation, analysis, and delivery within the project."
-            )
-            desc = f"<b>{safe_title}</b><br/>{safe_description}"
-            project_rows.append(
-                [Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)]
-            )
-            continue
-
-        source_counts = defaultdict(int)
-        sample_details = []
-        for day_payload in day_payloads.values():
-            for event in day_payload.get("entries", []):
-                source_counts[event.get("source", "")] += 1
-                detail = str(event.get("detail", "")).strip()
-                if detail and detail not in sample_details:
-                    sample_details.append(detail)
-                if len(sample_details) >= 2:
-                    break
-            if len(sample_details) >= 2:
-                break
-
-        top_sources = sorted(source_counts.items(), key=lambda item: item[1], reverse=True)[:3]
-        source_part = ", ".join(src for src, _ in top_sources if src) or "local work logs"
-        examples_part = "; ".join(sample_details) if sample_details else "Ongoing implementation, analysis, and iteration."
-        safe_project_name = html_escape(project_name)
-        safe_source_part = html_escape(source_part)
-        safe_examples_part = html_escape(examples_part)
-        desc = (
-            f"<b>{safe_project_name}</b><br/>"
-            f"Ongoing project work, aggregated from {safe_source_part}. "
-            f"Examples of delivered work: {safe_examples_part}"
-        )
-        project_rows.append(
-            [Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)]
-        )
-
-    sum_hours = invoice_total_billable
-    project_rows.append(
-        [
-            Paragraph("<b>Summa</b>", body_style),
-            Paragraph(f"<b>{sum_hours:.2f} h</b>", body_style),
-        ]
-    )
-    project_table = Table(project_rows, colWidths=[4.8 * inch, 1.3 * inch])
-    project_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F4F6")),
-                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LINEBELOW", (0, 0), (-1, -2), 0.4, colors.lightgrey),
-                ("LINEABOVE", (0, -1), (-1, -1), 0.9, colors.black),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ]
-        )
-    )
-    elements.append(project_table)
-    elements.append(Spacer(1, 18))
-
-    daily_rows = [[Paragraph("<b>Datum</b>", body_style), Paragraph("<b>Timmar</b>", body_style)]]
-    for day in sorted(overall_days):
-        daily_rows.append(
-            [Paragraph(day, body_style), Paragraph(f"{overall_days[day]['hours']:.2f} h", body_style)]
-        )
-    daily_table = Table(daily_rows, colWidths=[4.8 * inch, 1.3 * inch])
-    daily_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F9FAFB")),
-                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.lightgrey),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
-    elements.append(Paragraph("<b>Daglig specifikation</b>", body_style))
-    elements.append(Spacer(1, 8))
-    elements.append(daily_table)
-    if billable_unit and billable_unit > 0:
-        elements.append(Spacer(1, 6))
-        elements.append(
-            Paragraph(
-                "<i>Daily hours are raw time; billable values in the table above are rounded up per project.</i>",
-                body_style,
-            )
-        )
-
-    doc.build(elements)
-    return output_path
 
 
 def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
@@ -1058,59 +676,31 @@ def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
     collector_status = {}
     chrome_history_exists = chrome_collector.chrome_history_path(HOME).exists()
     mail_root, mail_msg = mail_collector.detect_mail_root(HOME)
-    chrome_enabled = getattr(args, "chrome_source", "on") == "on"
-    mail_mode = getattr(args, "mail_source", "auto")
-    mail_enabled = mail_mode in {"on", "auto"}
+    collectors = build_collector_specs(
+        args,
+        worklog_path,
+        chrome_history_exists=chrome_history_exists,
+        mail_root=mail_root,
+        mail_msg=mail_msg,
+        collect_claude_code=collect_claude_code,
+        collect_claude_desktop=collect_claude_desktop,
+        collect_claude_ai_urls=collect_claude_ai_urls,
+        collect_gemini_web_urls=collect_gemini_web_urls,
+        collect_chrome=collect_chrome,
+        collect_gemini_cli=collect_gemini_cli,
+        collect_cursor=collect_cursor,
+        collect_cursor_checkpoints=collect_cursor_checkpoints,
+        collect_codex_ide=collect_codex_ide,
+        collect_apple_mail=collect_apple_mail,
+        collect_worklog=collect_worklog,
+    )
 
-    collectors = [
-        ("Claude Code CLI", collect_claude_code, "events"),
-        ("Claude Desktop", collect_claude_desktop, "events"),
-        ("Claude.ai (specific URLs)", collect_claude_ai_urls, "visits"),
-        ("Gemini (web, specific URLs)", collect_gemini_web_urls, "visits"),
-        (
-            "Chrome",
-            lambda p, start, end: collect_chrome(
-                p, start, end, collapse_minutes=args.chrome_collapse_minutes
-            ),
-            "visits",
-            chrome_enabled,
-            "Consent/source setting disabled" if not chrome_enabled else (
-                None if chrome_history_exists else "Chrome history database not found"
-            ),
-        ),
-        ("Gemini CLI", collect_gemini_cli, "events"),
-        ("Cursor", collect_cursor, "events"),
-        ("Cursor checkpoints", collect_cursor_checkpoints, "events"),
-        ("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessions"),
-        (
-            "Apple Mail",
-            lambda p, start, end: collect_apple_mail(
-                p, start, end, default_email=args.email
-            ),
-            "mail",
-            mail_enabled,
-            "Consent/source setting disabled" if not mail_enabled else (
-                None if mail_root is not None else mail_msg
-            ),
-        ),
-        (
-            "TIMELOG.md",
-            lambda p, start, end: collect_worklog(str(worklog_path), start, end, p),
-            "timestamps",
-            True,
-            None,
-        ),
-    ]
-
-    normalized_collectors = []
-    for collector in collectors:
-        if len(collector) == 3:
-            name, fn, unit_label = collector
-            normalized_collectors.append((name, fn, unit_label, True, None))
-        else:
-            normalized_collectors.append(collector)
-
-    for index, (name, collector, unit_label, enabled, reason) in enumerate(normalized_collectors, 1):
+    for index, spec in enumerate(collectors, 1):
+        name = spec.name
+        collector = spec.collector
+        unit_label = spec.unit_label
+        enabled = spec.enabled
+        reason = spec.reason
         print(f"[{index}/12] {name} …")
         if not enabled:
             print(f"      disabled ({reason})\n")

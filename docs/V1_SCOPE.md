@@ -12,10 +12,10 @@
 
 ## Sources Included in v1
 
-- Claude Code CLI logs
-- Claude Desktop sessions
-- Claude.ai tracked URLs
-- Gemini tracked URLs + Gemini CLI sessions
+- AI coding assistant CLI logs
+- AI desktop assistant sessions
+- Tracked AI chat URLs (`tracked_urls`)
+- AI terminal/chat CLI session logs
 - Cursor logs + Cursor checkpoints
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
@@ -33,3 +33,4 @@
 - Run report action
 - Results summary view
 - Export/open PDF actions
+

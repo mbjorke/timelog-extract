@@ -32,7 +32,6 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 - Use `match_terms` as the single text-matching field for project classification.
 - Use `tracked_urls` for pinned AI chat URLs (Claude/Gemini and future providers).
-- Backward compatibility remains for old keys (`keywords`, `project_terms`, `claude_urls`, `gemini_urls`), but new configs should prefer the unified names.
 
 ## Cursor Extension (Scaffold)
 

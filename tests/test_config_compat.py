@@ -1,4 +1,4 @@
-"""Compatibility tests for config normalization and project matching."""
+"""Tests for strict config normalization and project matching."""
 
 import unittest
 
@@ -6,40 +6,28 @@ from timelog_extract import UNCATEGORIZED, classify_project, normalize_profile
 
 
 class ConfigCompatibilityTests(unittest.TestCase):
-    """Validates new and legacy config fields produce consistent behavior."""
+    """Validates current config fields produce consistent behavior."""
 
-    def test_normalize_profile_merges_new_and_legacy_terms(self):
-        """Merges match_terms, keywords, and project_terms into match_terms."""
+    def test_normalize_profile_uses_match_terms(self):
+        """Uses match_terms as canonical matching field."""
         profile = normalize_profile(
             {
                 "name": "Demo",
                 "match_terms": ["alpha"],
-                "keywords": ["beta"],
-                "project_terms": ["gamma"],
             }
         )
         self.assertIn("alpha", profile["match_terms"])
-        self.assertIn("beta", profile["match_terms"])
-        self.assertIn("gamma", profile["match_terms"])
+        self.assertNotIn("beta", profile["match_terms"])
 
-    def test_normalize_profile_merges_tracked_urls(self):
-        """Merges tracked_urls with legacy claude/gemini URL fields."""
+    def test_normalize_profile_uses_tracked_urls(self):
+        """Uses tracked_urls as canonical URL field."""
         profile = normalize_profile(
             {
                 "name": "Demo",
                 "tracked_urls": ["https://example.com/a"],
-                "claude_urls": ["https://claude.ai/chat/abc"],
-                "gemini_urls": ["https://gemini.google.com/app/xyz"],
             }
         )
-        self.assertEqual(
-            profile["tracked_urls"],
-            [
-                "https://example.com/a",
-                "https://claude.ai/chat/abc",
-                "https://gemini.google.com/app/xyz",
-            ],
-        )
+        self.assertEqual(profile["tracked_urls"], ["https://example.com/a"])
 
     def test_classify_project_works_with_match_terms(self):
         """Classifies text to the project whose match term appears in input."""

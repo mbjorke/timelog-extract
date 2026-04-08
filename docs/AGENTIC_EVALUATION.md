@@ -24,20 +24,20 @@ These changes reduce branching and repeated code in `main()`, making a plugin br
 
 ## Recommended Next Refactor Cuts
 
-1. `collectors/` module split by source family:
-  - `collectors/chrome.py`
-  - `collectors/cursor.py`
-  - `collectors/ai_logs.py`
-  - `collectors/mail.py`
-  - `collectors/worklog.py`
-2. `core/` domain module:
+1. `collectors/` module split by source family (partially done):
+  - `collectors/chrome.py` (done)
+  - `collectors/timelog.py` (done)
+  - `collectors/cursor.py` (done)
+  - `collectors/ai_logs.py` (done)
+  - `collectors/mail.py` (done)
+2. `core/` domain module (partially done):
   - event model and dedupe
-  - project classification
-  - sessionization and billing math
-3. `outputs/` module:
-  - terminal report rendering
-  - invoice PDF rendering
-4. thin CLI entrypoint:
+  - project classification (done)
+  - sessionization and billing math (done)
+3. `outputs/` module (done):
+  - terminal report rendering (done)
+  - invoice PDF rendering (done)
+4. thin CLI entrypoint (remaining):
   - parse args
   - call service boundary
   - print/exit
@@ -55,11 +55,11 @@ This avoids future plugin code depending on internal collector details.
 
 - Privacy-sensitive collectors (Mail, Chrome history, Screen Time DB) require explicit consent gating in GUI.
 - macOS path assumptions are widespread and should degrade gracefully on unsupported OSes.
-- `timelog_projects.example.json` still points to a legacy worklog filename; update suggested in onboarding.
+- Config model is now strict on `match_terms` and `tracked_urls`; docs and examples should stay aligned with this.
 
 ## Testability Gaps
 
-- No automated tests for classification, session gap behavior, or billable rounding.
+- Basic automated tests now exist for classification, session gap behavior, and billable rounding.
 - No fixture-based tests for source parsers (JSONL, SQLite, Mail headers).
 
 ## Suggested Test Seed (minimum)

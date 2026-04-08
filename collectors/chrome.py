@@ -5,7 +5,7 @@ import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Sequence, Tuple
+from typing import Callable, Dict
 from urllib.parse import urlparse
 
 

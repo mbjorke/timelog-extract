@@ -38,6 +38,13 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 See `cursor-extension/README.md` for build/run instructions.
 
+## Autotests
+
+- Run all Python autotests:
+  - `./scripts/run_autotests.sh`
+- Direct unittest run:
+  - `python3 -m unittest discover -s tests -p "test_*.py"`
+
 ## Release Readiness
 
 - Changelog: `CHANGELOG.md`

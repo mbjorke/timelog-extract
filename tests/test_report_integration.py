@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from timelog_extract import estimate_hours_by_day, group_by_day
+from timelog_extract import LOCAL_TZ, estimate_hours_by_day, group_by_day
 
 
 class ReportIntegrationTests(unittest.TestCase):
@@ -52,7 +52,7 @@ class ReportIntegrationTests(unittest.TestCase):
                 min_session_passive_minutes=5,
             )
 
-        day = base.astimezone().date().isoformat()
+        day = base.astimezone(LOCAL_TZ).date().isoformat()
         self.assertIn(day, overall_days)
         self.assertEqual(len(overall_days[day]["sessions"]), 2)
         self.assertAlmostEqual(overall_days[day]["hours"], (15 + 5) / 60, places=6)

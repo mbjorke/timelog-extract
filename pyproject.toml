@@ -1,5 +1,12 @@
 [project]
 name = "timelog-extract"
 version = "0.1.0"
-description = "Aggregate local work activity from Claude, Cursor, Chrome, Mail, worklog, and optional Screen Time."
+description = "Aggregate local work activity from Gemini, Claude, Cursor, OpenAI Codex IDE, Chrome, Mail, worklog, and optional Screen Time."
 requires-python = ">=3.9"
+dependencies = [
+  "reportlab>=4.0.0"
+]
+
+[project.scripts]
+timelog-extract = "timelog_extract:main"
+timelog-friend-trial = "scripts.friend_trial:main"

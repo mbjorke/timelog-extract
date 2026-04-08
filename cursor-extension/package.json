@@ -1,0 +1,79 @@
+{
+  "name": "timelog-extract-cursor",
+  "displayName": "Timelog Extract",
+  "description": "Automatic local timereporting setup and report runner.",
+  "version": "0.1.0",
+  "publisher": "mbjorke",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:timelogExtract.openWizard",
+    "onCommand:timelogExtract.runToday",
+    "onCommand:timelogExtract.runRange",
+    "onCommand:timelogExtract.openOutputFolder"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "timelogExtract.openWizard",
+        "title": "Timelog: Open Setup Wizard"
+      },
+      {
+        "command": "timelogExtract.runToday",
+        "title": "Timelog: Run Report (Today)"
+      },
+      {
+        "command": "timelogExtract.runRange",
+        "title": "Timelog: Run Report (Date Range)"
+      },
+      {
+        "command": "timelogExtract.openOutputFolder",
+        "title": "Timelog: Open Output Folder"
+      }
+    ],
+    "configuration": {
+      "title": "Timelog Extract",
+      "properties": {
+        "timelogExtract.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python executable used to run timelog_extract.py."
+        },
+        "timelogExtract.projectsConfig": {
+          "type": "string",
+          "default": "${workspaceFolder}/timelog_projects.json",
+          "description": "Path to project config JSON."
+        },
+        "timelogExtract.worklogPath": {
+          "type": "string",
+          "default": "${workspaceFolder}/TIMELOG.md",
+          "description": "Path to worklog file."
+        },
+        "timelogExtract.includeUncategorized": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include uncategorized events in report."
+        },
+        "timelogExtract.generatePdf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate PDF when running from extension commands."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -w -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.7.2"
+  }
+}

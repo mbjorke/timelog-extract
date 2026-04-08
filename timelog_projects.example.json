@@ -1,17 +1,22 @@
 {
+  "worklog": "TIMELOG.md",
   "projects": [
     {
       "name": "ass-membra",
-      "project_terms": ["ass-membra", "membra"],
-      "keywords": ["segel", "wordpress", "elementor", "snippets", "rib"],
-      "claude_urls": ["https://claude.ai/chat/5032e252-a033-4565-b1a7-c3693f69d7a6"],
+      "customer": "April",
+      "invoice_title": "Teknisk integration & webbplatsoptimering",
+      "invoice_description": "Fördjupad integration, löpande utveckling och förbättringar av struktur, funktion och användarflöden i projektets digitala lösning.",
+      "match_terms": ["ass-membra", "membra", "segel", "wordpress", "elementor", "snippets", "rib"],
+      "tracked_urls": ["https://claude.ai/chat/5032e252-a033-4565-b1a7-c3693f69d7a6"],
       "email": "marcus.bjorke@blueberry.ax"
     },
     {
       "name": "example-project",
-      "project_terms": ["example-project", "lovableproject"],
-      "keywords": ["offert", "kundnamn", "domännamn"],
-      "claude_urls": [],
+      "customer": "Example Customer AB",
+      "invoice_title": "Strategisk utveckling & leverans",
+      "invoice_description": "Analys, implementation och iterativa förbättringar inom projektets prioriterade områden med fokus på stabilitet och affärsnytta.",
+      "match_terms": ["example-project", "lovableproject", "offert", "kundnamn", "domännamn"],
+      "tracked_urls": [],
       "email": "marcus.bjorke@blueberry.ax"
     }
   ]

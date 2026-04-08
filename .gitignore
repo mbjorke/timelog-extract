@@ -10,5 +10,5 @@ build/
 timelog_projects.json
 
 # Lokala loggar
-worklog.txt
 .remote.env
+TIMELOG.md

@@ -42,19 +42,18 @@ def collect_screen_time(dt_from, dt_to, *, candidates, apple_epoch, local_tz):
     daily_seconds = defaultdict(float)
     try:
         shutil.copy2(db_path, tmp.name)
-        conn = sqlite3.connect(tmp.name)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT ZSTARTDATE, ZENDDATE, COALESCE(ZVALUESTRING, '')
-            FROM ZOBJECT
-            WHERE ZSTREAMNAME = '/app/usage'
-              AND ZSTARTDATE IS NOT NULL
-              AND ZENDDATE IS NOT NULL
-              AND ZENDDATE > ZSTARTDATE
-            ORDER BY ZSTARTDATE
-        """)
-        rows = cursor.fetchall()
-        conn.close()
+        with sqlite3.connect(tmp.name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT ZSTARTDATE, ZENDDATE, COALESCE(ZVALUESTRING, '')
+                FROM ZOBJECT
+                WHERE ZSTREAMNAME = '/app/usage'
+                  AND ZSTARTDATE IS NOT NULL
+                  AND ZENDDATE IS NOT NULL
+                  AND ZENDDATE > ZSTARTDATE
+                ORDER BY ZSTARTDATE
+            """)
+            rows = cursor.fetchall()
     except sqlite3.Error as exc:
         return None, f"could not read Screen Time database: {exc}"
     except PermissionError:

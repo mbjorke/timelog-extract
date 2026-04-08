@@ -83,7 +83,13 @@ def load_profiles(config_path, args):
                 raw_profiles = data
             else:
                 raise ValueError("JSON must be an object or a list")
-            profiles = [normalize_profile(p) for p in raw_profiles if bool(p.get("enabled", True))]
+            profiles = []
+            for raw_profile in raw_profiles:
+                if not isinstance(raw_profile, dict):
+                    raise ValueError("Each project profile must be a JSON object")
+                if not bool(raw_profile.get("enabled", True)):
+                    continue
+                profiles.append(normalize_profile(raw_profile))
             if profiles:
                 return profiles, cfg, workspace
         except (OSError, json.JSONDecodeError, ValueError) as exc:

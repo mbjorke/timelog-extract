@@ -68,7 +68,16 @@ def collect_all_events(
                 "events": 0,
             }
             continue
-        events = collector(profiles, dt_from, dt_to)
+        try:
+            events = collector(profiles, dt_from, dt_to)
+        except Exception as exc:  # defensive boundary: a source failure should not stop others
+            print(f"      failed ({exc})\n")
+            collector_status[name] = {
+                "enabled": False,
+                "reason": f"collector error: {exc}",
+                "events": 0,
+            }
+            continue
         print(f"      {len(events)} {unit_label}\n")
         all_events.extend(events)
         collector_status[name] = {

@@ -18,7 +18,7 @@ def get_date_range(date_from, date_to, local_tz):
 
     if date_to:
         end_local = datetime.strptime(date_to, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59, microsecond=0, tzinfo=local_tz
+            hour=23, minute=59, second=59, microsecond=999999, tzinfo=local_tz
         )
     else:
         end_local = now_local

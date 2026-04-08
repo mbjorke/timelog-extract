@@ -18,3 +18,15 @@
 
 - Full setup guide for all local repositories: `GLOBAL_TIMELOG_AUTOMATION.md`.
 
+## Review Cadence (CodeRabbit)
+
+- Keep PRs in Draft while actively iterating.
+- Push work in meaningful batches, not for every micro-change.
+- Trigger `@coderabbitai review` only when:
+  - the current scope is complete enough for review,
+  - CI is green (or expected to be green after the latest push),
+  - no immediate follow-up commit is expected.
+- Resolve review feedback in one consolidated commit when possible.
+- Aim for at most 1-2 CodeRabbit review cycles per PR.
+- Mark PR "Ready for review" after CI + review feedback are addressed.
+

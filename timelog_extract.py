@@ -23,9 +23,7 @@ ett bakåtkompatibelt defaultprojekt baserat på CLI-argumenten.
 
 import argparse
 import json
-import math
 import os
-import re
 import shutil
 import sqlite3
 import tempfile
@@ -33,13 +31,12 @@ from html import escape as html_escape
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from email import message_from_binary_file
-from email.header import decode_header as email_decode_header
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import unquote, urlparse
+from collectors import ai_logs as ai_logs_collector
 from collectors import chrome as chrome_collector
+from collectors import cursor as cursor_collector
+from collectors import mail as mail_collector
 from collectors import timelog as timelog_collector
 from core import domain as core_domain
 
@@ -149,7 +146,50 @@ class ReportPayload:
     overall_days: Dict[str, Any]
     project_reports: Dict[str, Any]
     screen_time_days: Optional[Dict[str, float]]
+    collector_status: Dict[str, Dict[str, Any]]
     args: argparse.Namespace
+
+
+@dataclass
+class TimelogRunOptions:
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    today: bool = False
+    projects_config: str = DEFAULT_CONFIG
+    keywords: str = DEFAULT_KEYWORDS
+    project: str = DEFAULT_PROJECT
+    claude_urls: str = DEFAULT_CLAUDE_URLS
+    email: str = DEFAULT_EMAIL
+    min_session: int = 15
+    min_session_passive: int = 5
+    gap_minutes: int = 15
+    chrome_collapse_minutes: int = 12
+    exclude: str = DEFAULT_EXCLUDE
+    worklog: Optional[str] = None
+    screen_time: str = "auto"
+    include_uncategorized: bool = False
+    only_project: Optional[str] = None
+    customer: Optional[str] = None
+    all_events: bool = False
+    source_summary: bool = False
+    invoice_pdf: bool = False
+    invoice_pdf_file: Optional[str] = None
+    billable_unit: float = 0.0
+    billable_round: str = "ceil"
+    chrome_source: str = "on"
+    mail_source: str = "auto"
+
+
+def as_run_options(options: Any) -> TimelogRunOptions:
+    allowed_fields = set(TimelogRunOptions.__dataclass_fields__.keys())
+    if isinstance(options, TimelogRunOptions):
+        return options
+    if isinstance(options, argparse.Namespace):
+        raw = vars(options)
+        return TimelogRunOptions(**{k: v for k, v in raw.items() if k in allowed_fields})
+    if isinstance(options, dict):
+        return TimelogRunOptions(**{k: v for k, v in options.items() if k in allowed_fields})
+    raise TypeError(f"Unsupported options type: {type(options)!r}")
 
 
 def default_invoice_pdf_path(dt_to):
@@ -183,6 +223,18 @@ def parse_args():
                    help="Luckor kortare än N minuter limmar ihop sessionen (default: 15)")
     p.add_argument("--chrome-collapse-minutes", type=int, default=12,
                    help="Hoppar över upprepade Chrome-besök till samma sida inom N min (0=av; minskar refresh-brus)")
+    p.add_argument(
+        "--chrome-source",
+        choices=["on", "off"],
+        default="on",
+        help="Aktivera/inaktivera Chrome-källan explicit (default: on).",
+    )
+    p.add_argument(
+        "--mail-source",
+        choices=["auto", "on", "off"],
+        default="auto",
+        help="Aktivera/inaktivera Apple Mail-källan (default: auto).",
+    )
     p.add_argument("--exclude", default=DEFAULT_EXCLUDE,
                    help="Kommaseparerade ord att filtrera bort")
     p.add_argument(
@@ -386,108 +438,16 @@ def make_event(source, ts, detail, project):
     }
 
 
-def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
-    results = []
-    try:
-        with open(jsonl_file, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                ts_raw = obj.get("timestamp") or obj.get("ts") or obj.get("created_at") or obj.get("time")
-                if ts_raw is None:
-                    continue
-                try:
-                    if isinstance(ts_raw, (int, float)):
-                        divisor = 1000 if ts_raw > 1e11 else 1
-                        ts = datetime.fromtimestamp(ts_raw / divisor, tz=timezone.utc)
-                    else:
-                        ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
-                except (ValueError, OSError):
-                    continue
-
-                if not (dt_from <= ts <= dt_to):
-                    continue
-
-                msg = obj.get("message", {})
-                if isinstance(msg, dict):
-                    content = msg.get("content", "")
-                    if isinstance(content, list):
-                        content = " ".join(
-                            c.get("text", "") for c in content if isinstance(c, dict)
-                        )
-                    detail = str(content)[:70].replace("\n", " ")
-                elif isinstance(msg, str):
-                    detail = msg[:70]
-                else:
-                    detail = str(obj.get("type", ""))[:70]
-
-                results.append((ts, detail or "log", obj))
-    except (OSError, PermissionError):
-        pass
-    return results
-
-
 def collect_claude_code(profiles, dt_from, dt_to):
-    results = []
-    projects_dir = HOME / ".claude" / "projects"
-    if not projects_dir.exists():
-        return results
-
-    for proj_dir in projects_dir.iterdir():
-        if not proj_dir.is_dir():
-            continue
-        dir_name = proj_dir.name.lower()
-        for jsonl_file in proj_dir.glob("*.jsonl"):
-            for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
-                match_text = f"{dir_name} {detail}"
-                project = classify_project(match_text, profiles)
-                results.append(make_event("Claude Code CLI", ts, detail, project))
-    return results
+    return ai_logs_collector.collect_claude_code(
+        profiles, dt_from, dt_to, HOME, classify_project, make_event
+    )
 
 
 def collect_claude_desktop(profiles, dt_from, dt_to):
-    results = []
-    sessions_dir = HOME / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
-    if not sessions_dir.exists():
-        return results
-
-    for jsonl_file in sessions_dir.glob("**/*.jsonl"):
-        for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
-            # Endast synligt innehåll — hela JSON-raden innehåller ofta base64/id där
-            # korta nyckelord (t.ex. "nud") träffar av misstag.
-            match_text = detail
-            project = classify_project(match_text, profiles)
-            results.append(make_event("Claude Desktop", ts, detail, project))
-    return results
-
-
-def _query_chrome(where_clause, dt_from_cu, dt_to_cu):
-    history_path = (
-        HOME / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
+    return ai_logs_collector.collect_claude_desktop(
+        profiles, dt_from, dt_to, HOME, classify_project, make_event
     )
-    return chrome_collector.query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu)
-
-
-def _chrome_time_range(dt_from, dt_to):
-    return chrome_collector.chrome_time_range(dt_from, dt_to, CHROME_EPOCH_DELTA_US)
-
-
-def _chrome_ts(visit_time_cu):
-    return chrome_collector.chrome_ts(visit_time_cu, CHROME_EPOCH_DELTA_US)
-
-
-def _normalize_chrome_url(url):
-    return chrome_collector.normalize_chrome_url(url)
-
-
-def _thin_chrome_visit_rows(rows, collapse_minutes):
-    return chrome_collector.thin_chrome_visit_rows(rows, collapse_minutes, CHROME_EPOCH_DELTA_US)
 
 
 def collect_claude_ai_urls(profiles, dt_from, dt_to):
@@ -528,308 +488,56 @@ def collect_chrome(profiles, dt_from, dt_to, collapse_minutes=0):
 
 
 def collect_apple_mail(profiles, dt_from, dt_to, default_email=None):
-    results = []
-    mail_base = HOME / "Library" / "Mail"
-    if not mail_base.exists():
-        print("  [Varning] ~/Library/Mail hittades inte.")
-        return results
-
-    try:
-        versions = sorted(mail_base.glob("V[0-9]*"), reverse=True)
-    except PermissionError:
-        print("  [Varning] Åtkomst nekad till ~/Library/Mail.")
-        return results
-
-    if not versions:
-        return results
-    mail_dir = versions[0]
-
-    sent_patterns = [
-        "**/Sent Messages.mbox/Messages/*.emlx",
-        "**/Sent.mbox/Messages/*.emlx",
-        "**/Skickade meddelanden.mbox/Messages/*.emlx",
-        "**/Skickade.mbox/Messages/*.emlx",
-        "**/[Ss]ent*/**/*.emlx",
-    ]
-
-    emlx_files = []
-    try:
-        for pat in sent_patterns:
-            emlx_files.extend(mail_dir.glob(pat))
-    except PermissionError:
-        print("  [Varning] Åtkomst nekad till Mail-mappar.")
-        return results
-
-    def _decode_header(value):
-        if not value:
-            return ""
-        parts = []
-        for raw, charset in email_decode_header(value):
-            if isinstance(raw, bytes):
-                parts.append(raw.decode(charset or "utf-8", errors="replace"))
-            else:
-                parts.append(raw)
-        return "".join(parts)
-
-    senders = {p["email"].lower() for p in profiles if p["email"]}
-    if default_email:
-        senders.add(default_email.lower())
-
-    for emlx_path in emlx_files:
-        try:
-            with open(emlx_path, "rb") as f:
-                f.readline()
-                msg = message_from_binary_file(f)
-
-            date_str = msg.get("Date", "")
-            if not date_str:
-                continue
-            try:
-                ts = parsedate_to_datetime(date_str)
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-            except Exception:
-                continue
-
-            if not (dt_from <= ts <= dt_to):
-                continue
-
-            from_addr = (msg.get("From", "") or "").lower()
-            if senders and not any(sender in from_addr for sender in senders):
-                continue
-
-            to_addr = (msg.get("To", "") or "").lower()
-            subject_raw = msg.get("Subject", "") or ""
-            subject = _decode_header(subject_raw)
-            project = classify_project(f"{to_addr} {subject}", profiles)
-            if project == UNCATEGORIZED:
-                continue
-
-            detail = f"-> {msg.get('To', '')[:35]}  \"{subject[:45]}\""
-            results.append(make_event("Apple Mail", ts, detail, project))
-        except PermissionError:
-            print("  [Varning] Kan inte läsa enskilt mail — kontrollera Full Disk Access.")
-            break
-        except Exception:
-            continue
-
-    return results
+    return mail_collector.collect_apple_mail(
+        profiles,
+        dt_from,
+        dt_to,
+        HOME,
+        default_email,
+        classify_project,
+        make_event,
+        UNCATEGORIZED,
+    )
 
 
 def collect_gemini_cli(profiles, dt_from, dt_to):
-    results = []
-    base_dir = HOME / ".gemini" / "tmp"
-    if not base_dir.exists():
-        return results
-
-    for chat_file in base_dir.glob("*/chats/session-*.json"):
-        proj_name = chat_file.parent.parent.name.lower()
-        try:
-            data = json.loads(chat_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-
-        for msg in data.get("messages", []):
-            ts_raw = msg.get("timestamp")
-            if not ts_raw:
-                continue
-            try:
-                ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
-            except ValueError:
-                continue
-            if not (dt_from <= ts <= dt_to):
-                continue
-
-            content = msg.get("content", "")
-            if isinstance(content, list):
-                content = " ".join(c.get("text", "") for c in content if isinstance(c, dict))
-            detail = str(content)[:70].replace("\n", " ")
-            role = msg.get("type", "")
-            project = classify_project(f"{proj_name} {detail}", profiles)
-            results.append(make_event("Gemini CLI", ts, f"[{role}] {detail}" if detail else "Gemini CLI", project))
-    return results
+    return ai_logs_collector.collect_gemini_cli(
+        profiles, dt_from, dt_to, HOME, classify_project, make_event
+    )
 
 
 def load_cursor_workspaces():
-    storage_dir = HOME / "Library" / "Application Support" / "Cursor" / "User" / "workspaceStorage"
-    workspace_map = {}
-    if not storage_dir.exists():
-        return workspace_map
-
-    for workspace_json in storage_dir.glob("*/workspace.json"):
-        workspace_id = workspace_json.parent.name
-        try:
-            data = json.loads(workspace_json.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-
-        raw_uri = data.get("folder") or data.get("workspace")
-        if not raw_uri:
-            continue
-        parsed = urlparse(raw_uri)
-        path = unquote(parsed.path) if parsed.scheme == "file" else raw_uri
-        workspace_map[workspace_id] = path
-
-    return workspace_map
+    return cursor_collector.load_cursor_workspaces(HOME)
 
 
 def collect_cursor(profiles, dt_from, dt_to):
-    workspace_map = load_cursor_workspaces()
-    logs_dir = HOME / "Library" / "Application Support" / "Cursor" / "logs"
-    if not logs_dir.exists():
-        return []
-
-    results = []
-    # Cursor 3 har börjat logga fler "workspacePath"/"cwd" direkt och inte alltid workspaceStorage/<id>.
-    # Vi stödjer både det gamla id-mönstret (via workspaceStorage-map) och direkt path-extraktion.
-    ts_pattern = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
-    ts_iso_bracket_pattern = re.compile(r"^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)(Z|[+-]\d{2}:\d{2})?\]")
-    workspace_id_pattern = re.compile(r"workspaceStorage/([0-9a-f]{32})|old id ([0-9a-f]{32})-")
-    # Plocka absolut sökväg från typiska Cursor 3-loggrader:
-    # - ..."cwd":"/Users/.../some-repo"...
-    # - ..."workspacePaths":["/Users/.../some-repo"]...
-    # - "Project config path (...): /Users/.../some-repo/.cursor/hooks.json"
-    # Vi matchar brett men filtrerar senare via classify_project().
-    workspace_path_pattern = re.compile(r"(/Users/[^\"'\s]+)")
-
-    def _parse_cursor_log_ts(line: str):
-        m = ts_pattern.match(line)
-        if m:
-            try:
-                return datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=LOCAL_TZ)
-            except ValueError:
-                return None
-        m = ts_iso_bracket_pattern.match(line)
-        if m:
-            iso = m.group(1) + (m.group(2) or "")
-            # fromisoformat kräver +00:00 istället för Z
-            iso = iso.replace("Z", "+00:00")
-            try:
-                return datetime.fromisoformat(iso)
-            except ValueError:
-                return None
-        return None
-
-    for log_file in logs_dir.glob("**/*.log"):
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    ts = _parse_cursor_log_ts(line)
-                    if not ts:
-                        continue
-                    if not (dt_from <= ts <= dt_to):
-                        continue
-
-                    workspace_path = None
-                    m_id = workspace_id_pattern.search(line)
-                    if m_id and workspace_map:
-                        workspace_id = m_id.group(1) or m_id.group(2)
-                        workspace_path = workspace_map.get(workspace_id)
-
-                    if not workspace_path:
-                        # Välj första rimliga absoluta path på raden.
-                        m_path = workspace_path_pattern.search(line)
-                        if m_path:
-                            workspace_path = m_path.group(1)
-
-                    if not workspace_path:
-                        continue
-
-                    project = classify_project(f"{workspace_path} {line}", profiles)
-                    detail = f"{Path(workspace_path).name} — {line.strip()[:90]}"
-                    results.append(make_event("Cursor", ts, detail, project))
-        except OSError:
-            continue
-
-    return results
+    return cursor_collector.collect_cursor(
+        profiles, dt_from, dt_to, HOME, LOCAL_TZ, classify_project, make_event
+    )
 
 
 def collect_cursor_checkpoints(profiles, dt_from, dt_to):
-    """
-    Checkpoints under Cursor → globalStorage → anysphere.cursor-commits (Cursor som app).
-    Källnamnet CURSOR_CHECKPOINTS_SOURCE skiljer från OpenAI Codex IDE (collect_codex_ide).
-    """
-    if not CURSOR_CHECKPOINTS_DIR.is_dir():
-        return []
-
-    workspace_map = load_cursor_workspaces()
-    results = []
-    for meta_path in CURSOR_CHECKPOINTS_DIR.glob("*/metadata.json"):
-        try:
-            data = json.loads(meta_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-
-        ms = data.get("startTrackingDateUnixMilliseconds")
-        if ms is None:
-            continue
-        try:
-            ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
-        except (OSError, ValueError, OverflowError):
-            continue
-        if not (dt_from <= ts <= dt_to):
-            continue
-
-        paths = []
-        for rf in data.get("requestFiles") or []:
-            p = rf.get("fsPath")
-            if p:
-                paths.append(str(p))
-        wid = data.get("workspaceId")
-        if wid:
-            mapped = workspace_map.get(wid)
-            if mapped:
-                paths.append(str(mapped))
-
-        hay = " ".join(paths)
-        if not hay:
-            continue
-
-        project = classify_project(hay, profiles)
-        agent_id = str(data.get("agentRequestId", "")).split("-")[0][:8]
-        label = Path(paths[0]).name if paths else "checkpoint"
-        detail = f"checkpoint {agent_id}… — {label}"
-        results.append(make_event(CURSOR_CHECKPOINTS_SOURCE, ts, detail, project))
-
-    return results
+    return cursor_collector.collect_cursor_checkpoints(
+        profiles,
+        dt_from,
+        dt_to,
+        CURSOR_CHECKPOINTS_DIR,
+        HOME,
+        classify_project,
+        make_event,
+        CURSOR_CHECKPOINTS_SOURCE,
+    )
 
 
 def collect_codex_ide(profiles, dt_from, dt_to):
-    """
-    OpenAI Codex IDE (fristående app): session_index.jsonl under ~/.codex/.
-    En rad per tråd (thread_name, updated_at). Tidsstämpeln är senaste uppdatering — inte varje meddelande.
-    Skilt från Cursor (logs + Cursor checkpoints).
-    """
-    if not CODEX_IDE_SESSION_INDEX.is_file():
-        return []
-    results = []
-    try:
-        text = CODEX_IDE_SESSION_INDEX.read_text(encoding="utf-8")
-    except OSError:
-        return []
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        ts_raw = obj.get("updated_at")
-        if not ts_raw:
-            continue
-        try:
-            ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        if not (dt_from <= ts <= dt_to):
-            continue
-        thread = str(obj.get("thread_name") or "").strip() or "session"
-        sid = str(obj.get("id") or "").replace("-", "")[:10]
-        detail = f"{thread[:65]} — id {sid}…" if sid else thread[:70]
-        project = classify_project(thread, profiles)
-        results.append(make_event("Codex IDE", ts, detail, project))
-    return results
+    return ai_logs_collector.collect_codex_ide(
+        profiles,
+        dt_from,
+        dt_to,
+        CODEX_IDE_SESSION_INDEX,
+        classify_project,
+        make_event,
+    )
 
 
 def collect_worklog(worklog_path, dt_from, dt_to, profiles):
@@ -1350,6 +1058,13 @@ def build_invoice_pdf(
 
 def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
     all_events = []
+    collector_status = {}
+    chrome_history_exists = chrome_collector.chrome_history_path(HOME).exists()
+    mail_root, mail_msg = mail_collector.detect_mail_root(HOME)
+    chrome_enabled = getattr(args, "chrome_source", "on") == "on"
+    mail_mode = getattr(args, "mail_source", "auto")
+    mail_enabled = mail_mode in {"on", "auto"}
+
     collectors = [
         ("Claude Code CLI", collect_claude_code, "händelser"),
         ("Claude Desktop", collect_claude_desktop, "händelser"),
@@ -1361,6 +1076,10 @@ def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
                 p, start, end, collapse_minutes=args.chrome_collapse_minutes
             ),
             "besök",
+            chrome_enabled,
+            "Consent/source setting disabled" if not chrome_enabled else (
+                None if chrome_history_exists else "Chrome history database not found"
+            ),
         ),
         ("Gemini CLI", collect_gemini_cli, "händelser"),
         ("Cursor", collect_cursor, "händelser"),
@@ -1372,20 +1091,47 @@ def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
                 p, start, end, default_email=args.email
             ),
             "mail",
+            mail_enabled,
+            "Consent/source setting disabled" if not mail_enabled else (
+                None if mail_root is not None else mail_msg
+            ),
         ),
         (
             "TIMELOG.md",
             lambda p, start, end: collect_worklog(str(worklog_path), start, end, p),
             "timestamps",
+            True,
+            None,
         ),
     ]
 
-    for index, (name, collector, unit_label) in enumerate(collectors, 1):
+    normalized_collectors = []
+    for collector in collectors:
+        if len(collector) == 3:
+            name, fn, unit_label = collector
+            normalized_collectors.append((name, fn, unit_label, True, None))
+        else:
+            normalized_collectors.append(collector)
+
+    for index, (name, collector, unit_label, enabled, reason) in enumerate(normalized_collectors, 1):
         print(f"[{index}/12] {name} …")
+        if not enabled:
+            print(f"      avstängt ({reason})\n")
+            collector_status[name] = {
+                "enabled": False,
+                "reason": reason,
+                "events": 0,
+            }
+            continue
         events = collector(profiles, dt_from, dt_to)
         print(f"      {len(events)} {unit_label}\n")
         all_events.extend(events)
-    return all_events
+        collector_status[name] = {
+            "enabled": True,
+            "reason": reason or "",
+            "events": len(events),
+        }
+    return all_events, collector_status
 
 
 def filter_included_events(all_events, args, profiles):
@@ -1411,7 +1157,8 @@ def filter_included_events(all_events, args, profiles):
 
 
 def run_timelog_report(config_path, date_from, date_to, options):
-    args = argparse.Namespace(**vars(options))
+    run_options = as_run_options(options)
+    args = argparse.Namespace(**vars(run_options))
     args.projects_config = config_path
     args.date_from = date_from
     args.date_to = date_to
@@ -1436,12 +1183,17 @@ def run_timelog_report(config_path, date_from, date_to, options):
     print(f"Worklog: {worklog_path}")
     print()
 
-    all_events = collect_all_events(profiles, dt_from, dt_to, args, worklog_path)
+    all_events, collector_status = collect_all_events(profiles, dt_from, dt_to, args, worklog_path)
 
     screen_time_days = None
     print("[12/12] Screen Time …")
     if args.screen_time == "off":
         print("      avstängt via --screen-time off\n")
+        collector_status["Screen Time"] = {
+            "enabled": False,
+            "reason": "disabled via --screen-time off",
+            "days": 0,
+        }
     else:
         screen_time_days, screen_msg = collect_screen_time(dt_from, dt_to)
         if screen_time_days is None:
@@ -1449,8 +1201,18 @@ def run_timelog_report(config_path, date_from, date_to, options):
                 print(f"      kunde inte läsa Screen Time: {screen_msg}\n")
             else:
                 print(f"      hoppar över: {screen_msg}\n")
+            collector_status["Screen Time"] = {
+                "enabled": args.screen_time == "on",
+                "reason": screen_msg,
+                "days": 0,
+            }
         else:
             print(f"      {len(screen_time_days)} dagar lästa från {screen_msg}\n")
+            collector_status["Screen Time"] = {
+                "enabled": True,
+                "reason": "",
+                "days": len(screen_time_days),
+            }
 
     all_events = dedupe_events(all_events)
     included_events = filter_included_events(all_events, args, profiles)
@@ -1487,6 +1249,7 @@ def run_timelog_report(config_path, date_from, date_to, options):
         overall_days=overall_days,
         project_reports=project_reports,
         screen_time_days=screen_time_days,
+        collector_status=collector_status,
         args=args,
     )
 

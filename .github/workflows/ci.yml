@@ -19,6 +19,9 @@ jobs:
       - name: Smoke run
         run: |
           python timelog_extract.py --today --screen-time off --source-summary || true
+      - name: Run unit tests
+        run: |
+          bash scripts/run_autotests.sh
 
   extension:
     runs-on: ubuntu-latest

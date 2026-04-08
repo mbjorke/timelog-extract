@@ -3,7 +3,7 @@
   "displayName": "Timelog Extract",
   "description": "Automatic local timereporting setup and report runner.",
   "version": "0.1.0",
-  "publisher": "mbjorke",
+  "publisher": "timelog-extract",
   "engines": {
     "vscode": "^1.95.0"
   },

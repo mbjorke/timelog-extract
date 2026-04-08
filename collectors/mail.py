@@ -11,13 +11,13 @@ from typing import Callable, List, Sequence, Tuple
 def detect_mail_root(home: Path) -> Tuple[Path | None, str]:
     mail_base = home / "Library" / "Mail"
     if not mail_base.exists():
-        return None, "~/Library/Mail hittades inte."
+        return None, "~/Library/Mail not found."
     try:
         versions = sorted(mail_base.glob("V[0-9]*"), reverse=True)
     except PermissionError:
-        return None, "Åtkomst nekad till ~/Library/Mail."
+        return None, "Access denied to ~/Library/Mail."
     if not versions:
-        return None, "Ingen versionerad Mail-katalog hittades."
+        return None, "No versioned Mail directory found."
     return versions[0], "ok"
 
 
@@ -34,7 +34,7 @@ def collect_apple_mail(
     results = []
     mail_dir, status = detect_mail_root(home)
     if mail_dir is None:
-        print(f"  [Varning] {status}")
+        print(f"  [Warning] {status}")
         return results
 
     sent_patterns: Sequence[str] = [
@@ -50,7 +50,7 @@ def collect_apple_mail(
         for pat in sent_patterns:
             emlx_files.extend(mail_dir.glob(pat))
     except PermissionError:
-        print("  [Varning] Åtkomst nekad till Mail-mappar.")
+        print("  [Warning] Access denied to Mail folders.")
         return results
 
     def _decode_header(value):
@@ -101,7 +101,7 @@ def collect_apple_mail(
             detail = f"-> {msg.get('To', '')[:35]}  \"{subject[:45]}\""
             results.append(make_event("Apple Mail", ts, detail, project))
         except PermissionError:
-            print("  [Varning] Kan inte läsa enskilt mail — kontrollera Full Disk Access.")
+            print("  [Warning] Cannot read individual message — check Full Disk Access.")
             break
         except Exception:
             continue

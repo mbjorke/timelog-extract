@@ -6,10 +6,10 @@ dist/
 build/
 *.egg-info/
 
-# Lokal projektkonfig (kopiera från timelog_projects.example.json)
+# Local project config (copy from timelog_projects.example.json)
 timelog_projects.json
 
-# Lokala loggar
+# Local logs
 .remote.env
 TIMELOG.md
 

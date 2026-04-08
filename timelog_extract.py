@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """
-timelog_extract.py — Flerprojekts-aggregator för lokala arbetsloggar
-====================================================================
+timelog_extract.py — Multi-project aggregator for local work logs
+=================================================================
 
-Summerar aktivitet per dag från:
-  1. Claude Code CLI (Claude för Mac, Code Agent — ~/.claude/projects/)
+Summarizes daily activity from:
+  1. Claude Code CLI (Claude for Mac, Code Agent — ~/.claude/projects/)
   2. Claude Desktop
-  3. Claude.ai (specifika chatt-URL:er i Chrome-historiken)
-  4. Google Gemini i webbläsaren (specifika app-URL:er, som claude_urls)
-  5. Chrome (projektmatchning via nyckelord)
-  6. Gemini CLI (lokala JSON-sessioner under ~/.gemini/tmp)
-  7. Cursor (IDE-loggar — workspace-lås, m.m.)
-  8. Cursor checkpoints (Cursor-appen → …/cursor-commits/checkpoints)
-  9. Codex IDE (OpenAI:s egen app — ~/.codex/session_index.jsonl)
+  3. Claude.ai (specific chat URLs in Chrome history)
+  4. Google Gemini in browser (specific app URLs, similar to claude_urls)
+  5. Chrome (project matching via terms)
+  6. Gemini CLI (local JSON sessions under ~/.gemini/tmp)
+  7. Cursor (IDE logs)
+  8. Cursor checkpoints (Cursor app -> .../cursor-commits/checkpoints)
+  9. Codex IDE (OpenAI app — ~/.codex/session_index.jsonl)
   10. Apple Mail
   11. TIMELOG.md
-  12. Screen Time / KnowledgeC (valfri jämförelse)
+  12. Screen Time / KnowledgeC (optional comparison)
 
-Projekt definieras via en JSON-konfigurationsfil. Om ingen konfig finns används
-ett bakåtkompatibelt defaultprojekt baserat på CLI-argumenten.
+Projects are defined through a JSON config file. If no config is available,
+a backward-compatible default project from CLI arguments is used.
 """
 
 import argparse
@@ -46,20 +46,17 @@ LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 APPLE_EPOCH = 978307200
 CHROME_EPOCH_DELTA_US = 11_644_473_600 * 1_000_000
 
-# Standardinställningar
-DEFAULT_KEYWORDS = "membra,segel,pernilla,snippets,wordpress,ass-membra,elementor,rib"
-DEFAULT_PROJECT = "ass-membra"
-DEFAULT_CLAUDE_URLS = "https://claude.ai/chat/5032e252-a033-4565-b1a7-c3693f69d7a6"
-DEFAULT_EMAIL = "marcus.bjorke@blueberry.ax"
-DEFAULT_EXCLUDE = (
-    "facebook,instagram,etsy,snack och fika,manage wordpress site in natural language,"
-    "youtube,twitter,linkedin"
-)
+# Default settings
+DEFAULT_KEYWORDS = ""
+DEFAULT_PROJECT = "default-project"
+DEFAULT_CLAUDE_URLS = ""
+DEFAULT_EMAIL = ""
+DEFAULT_EXCLUDE = ""
 DEFAULT_CONFIG = str(SCRIPT_DIR / "timelog_projects.json")
 
 
 def default_worklog_path() -> Path:
-    """Standardfil för timelog i projektet: TIMELOG.md."""
+    """Default timelog file in the project: TIMELOG.md."""
     cwd = Path.cwd() / "TIMELOG.md"
     if cwd.is_file():
         return cwd
@@ -71,9 +68,9 @@ def default_worklog_path() -> Path:
 
 def resolve_worklog_path(cli_worklog, config_path, workspace_worklog):
     """
-    cli_worklog: None om --worklog inte angavs (då används ev. worklog i JSON, sedan default).
-    workspace_worklog: valfritt strängvärde från rotobjektet i timelog_projects.json.
-    Relativa sökvägar i JSON löses mot konfigfilens katalog.
+    cli_worklog: None when --worklog is not provided (uses JSON worklog first, then default).
+    workspace_worklog: optional string value from the root object in timelog_projects.json.
+    Relative paths in JSON are resolved against the config file directory.
     """
     if cli_worklog is not None:
         return Path(cli_worklog).expanduser()
@@ -102,16 +99,16 @@ CURSOR_CHECKPOINTS_DIR = (
 )
 CODEX_IDE_DIR = HOME / ".codex"
 CODEX_IDE_SESSION_INDEX = CODEX_IDE_DIR / "session_index.jsonl"
-UNCATEGORIZED = "Okategoriserat"
-# Cursor-appens agent-checkpoints; skild från "Cursor"-loggar och från OpenAI Codex IDE (~/.codex).
+UNCATEGORIZED = "Uncategorized"
+# Cursor app agent checkpoints; separate from "Cursor" logs and OpenAI Codex IDE (~/.codex).
 CURSOR_CHECKPOINTS_SOURCE = "Cursor checkpoints"
 WORKLOG_SOURCE = "TIMELOG.md"
 
 SOURCE_ORDER = [
     "Claude Code CLI",
     "Claude Desktop",
-    "Claude.ai (webb)",
-    "Gemini (webb)",
+    "Claude.ai (web)",
+    "Gemini (web)",
     "Cursor",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
@@ -125,8 +122,8 @@ AI_SOURCES = {
     "Claude Code CLI",
     "Claude Desktop",
     "Gemini CLI",
-    "Claude.ai (webb)",
-    "Gemini (webb)",
+    "Claude.ai (web)",
+    "Gemini (web)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
     WORKLOG_SOURCE,
@@ -199,41 +196,41 @@ def default_invoice_pdf_path(dt_to):
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Aggregera arbetstid från flera lokala källor och flera projekt"
+        description="Aggregate work time from multiple local sources and projects"
     )
     p.add_argument("--from", dest="date_from", metavar="YYYY-MM-DD",
-                   help="Startdatum i lokal tid (default: 30 dagar sedan)")
+                   help="Start date in local time (default: 30 days ago)")
     p.add_argument("--to", dest="date_to", metavar="YYYY-MM-DD",
-                   help="Slutdatum i lokal tid (default: idag)")
+                   help="End date in local time (default: today)")
     p.add_argument("--projects-config", default=DEFAULT_CONFIG,
-                   help=f"JSON-konfig med projektprofiler (default: {DEFAULT_CONFIG})")
+                   help=f"JSON config with project profiles (default: {DEFAULT_CONFIG})")
     p.add_argument("--keywords", default=DEFAULT_KEYWORDS,
-                   help="Legacy fallback: kommaseparerade projektnyckelord")
+                   help="Legacy fallback: comma-separated project keywords")
     p.add_argument("--project", default=DEFAULT_PROJECT,
-                   help="Legacy fallback: projektnamn för AI-loggar")
+                   help="Legacy fallback: project name for AI logs")
     p.add_argument("--claude-urls", default=DEFAULT_CLAUDE_URLS,
                    help="Legacy fallback: kommaseparerade Claude.ai chatt-URL:er")
     p.add_argument("--email", default=DEFAULT_EMAIL,
-                   help=f"Legacy fallback: mailadress för skickade mail (default: {DEFAULT_EMAIL})")
+                   help=f"Legacy fallback: sender email for sent mail (default: {DEFAULT_EMAIL})")
     p.add_argument("--min-session", dest="min_session", type=int, default=15,
                    help="Minimitid i minuter per AI-session (default: 15)")
     p.add_argument("--min-session-passive", dest="min_session_passive", type=int, default=5,
-                   help="Minimitid i minuter för Chrome/Mail-only sessioner (default: 5)")
+                   help="Minimum duration in minutes for Chrome/Mail-only sessions (default: 5)")
     p.add_argument("--gap-minutes", type=int, default=15,
-                   help="Luckor kortare än N minuter limmar ihop sessionen (default: 15)")
+                   help="Gaps shorter than N minutes are merged into one session (default: 15)")
     p.add_argument("--chrome-collapse-minutes", type=int, default=12,
-                   help="Hoppar över upprepade Chrome-besök till samma sida inom N min (0=av; minskar refresh-brus)")
+                   help="Skip repeated Chrome visits to the same page within N minutes (0=off; reduces refresh noise)")
     p.add_argument(
         "--chrome-source",
         choices=["on", "off"],
         default="on",
-        help="Aktivera/inaktivera Chrome-källan explicit (default: on).",
+        help="Explicitly enable/disable Chrome source (default: on).",
     )
     p.add_argument(
         "--mail-source",
         choices=["auto", "on", "off"],
         default="auto",
-        help="Aktivera/inaktivera Apple Mail-källan (default: auto).",
+        help="Enable/disable Apple Mail source (default: auto).",
     )
     p.add_argument("--exclude", default=DEFAULT_EXCLUDE,
                    help="Kommaseparerade ord att filtrera bort")
@@ -241,48 +238,48 @@ def parse_args():
         "--worklog",
         default=None,
         metavar="PATH",
-        help="Sökväg till timelogfil (default: TIMELOG.md i projektroten)",
+        help="Path to timelog file (default: TIMELOG.md in repo root)",
     )
     p.add_argument("--screen-time", choices=["auto", "on", "off"], default="auto",
-                   help="Jämför mot Screen Time om möjligt (default: auto)")
+                   help="Compare with Screen Time when possible (default: auto)")
     p.add_argument("--include-uncategorized", action="store_true",
-                   help="Ta med oklassade händelser i rapporten")
+                   help="Include uncategorized events in the report")
     p.add_argument(
         "--only-project",
         metavar="NAMN",
         default=None,
-        help="Visa endast händelser för detta projekt (exakt samma sträng som 'name' i JSON)",
+        help="Show only events for this project (exact string as 'name' in JSON)",
     )
     p.add_argument(
         "--customer",
         metavar="NAMN",
         default=None,
-        help="Visa endast händelser för denna kund (matchar 'customer' i JSON, annars projektnamn)",
+        help="Show only events for this customer (matches 'customer' in JSON, otherwise project name)",
     )
     p.add_argument(
         "--today",
         action="store_true",
-        help="Begränsa till dagens datum i lokal tidszon (--from och --to sätts båda till idag)",
+        help="Limit to today in local timezone (--from and --to both set to today)",
     )
     p.add_argument(
         "--all-events",
         action="store_true",
-        help="Skriv ut varje händelse per session (annars max 5 olika rader per session)",
+        help="Print every event per session (otherwise max 5 distinct lines per session)",
     )
     p.add_argument(
         "--source-summary",
         action="store_true",
-        help="Skriv antal händelser per källa efter filter (IDE-loggar vs checkpoints m.m.)",
+        help="Print event counts per source after filtering (IDE logs vs checkpoints, etc.)",
     )
     p.add_argument(
         "--invoice-pdf",
         action="store_true",
-        help="Skapa en fakturavanlig PDF-sammanfattning av timmarna",
+        help="Create an invoice-friendly PDF summary of hours",
     )
     p.add_argument(
         "--invoice-pdf-file",
         default=None,
-        help="Valfri filvag for PDF (default: output/pdf/timelog-invoice-<datum>.pdf)",
+        help="Optional file path for PDF (default: output/pdf/timelog-invoice-<date>.pdf)",
     )
     p.add_argument(
         "--billable-unit",
@@ -290,8 +287,8 @@ def parse_args():
         default=0.0,
         metavar="TIMMAR",
         help=(
-            "Fakturerbar granularitet (0=av, t.ex. 0.25): råtid summeras per projekt/kund forst, "
-            "sedan avrundas slutsumman uppåt till närmaste N h — inte per session."
+            "Billable granularity (0=off, e.g. 0.25): raw time is summed per project/customer first, "
+            "then rounded up to the nearest N hours — not per session."
         ),
     )
     p.add_argument(
@@ -299,7 +296,7 @@ def parse_args():
         choices=["ceil", "nearest", "floor"],
         default="ceil",
         help=(
-            "Bakåtkompatibilitet: ignoreras. Avrundning sker alltid uppåt (ceil) på aggregerad tid per projekt."
+            "Backward compatibility: ignored. Rounding is always upward (ceil) on aggregated project time."
         ),
     )
     return p.parse_args()
@@ -316,7 +313,7 @@ def as_list(value):
 def normalize_profile(raw):
     name = str(raw.get("name", "")).strip()
     if not name:
-        raise ValueError("Varje projektprofil måste ha 'name'")
+        raise ValueError("Each project profile must have 'name'")
     match_terms_input = as_list(raw.get("match_terms"))
     keywords = as_list(raw.get("keywords"))
     project_terms = as_list(raw.get("project_terms")) or [name]
@@ -370,12 +367,12 @@ def load_profiles(config_path, args):
             elif isinstance(data, list):
                 raw_profiles = data
             else:
-                raise ValueError("JSON måste vara ett objekt eller en lista")
+                raise ValueError("JSON must be an object or a list")
             profiles = [normalize_profile(p) for p in raw_profiles if bool(p.get("enabled", True))]
             if profiles:
                 return profiles, cfg, workspace
         except (OSError, json.JSONDecodeError, ValueError) as exc:
-            print(f"[Varning] Kunde inte läsa projektkonfig {cfg}: {exc}")
+            print(f"[Warning] Could not read project config {cfg}: {exc}")
 
     fallback = normalize_profile({
         "name": args.project,
@@ -577,7 +574,7 @@ def detect_screen_time_db():
 def collect_screen_time(dt_from, dt_to):
     db_path = detect_screen_time_db()
     if not db_path:
-        return None, "knowledgeC.db hittades inte"
+        return None, "knowledgeC.db not found"
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
@@ -599,11 +596,11 @@ def collect_screen_time(dt_from, dt_to):
         rows = cursor.fetchall()
         conn.close()
     except sqlite3.Error as exc:
-        return None, f"kunde inte läsa Screen Time-databasen: {exc}"
+        return None, f"could not read Screen Time database: {exc}"
     except PermissionError:
-        return None, "ingen åtkomst till knowledgeC.db"
+        return None, "no access to knowledgeC.db"
     except Exception as exc:
-        return None, f"Screen Time-läsning misslyckades: {exc}"
+        return None, f"Screen Time read failed: {exc}"
     finally:
         try:
             os.unlink(tmp.name)
@@ -652,7 +649,7 @@ def session_duration_hours(session_events, start_ts, end_ts, min_session_minutes
 
 
 def billable_total_hours(raw_hours, unit):
-    """Avrunda aggregerad tid uppåt till närmaste multipel av unit (t.ex. 0.25 h). unit<=0 = ingen avrundning."""
+    """Round aggregated time up to nearest unit multiple (e.g. 0.25 h). unit<=0 means no rounding."""
     return core_domain.billable_total_hours(raw_hours, unit)
 
 
@@ -676,29 +673,29 @@ def estimate_hours_by_day(
 
 
 def print_source_summary(events):
-    """Antal händelser per källa efter dedupe/projektfilter — bra för att skilja IDE-loggar från checkpoints."""
+    """Event count per source after dedupe/project filtering."""
     counts = defaultdict(int)
     for e in events:
         counts[e["source"]] += 1
-    print("\n── Källsammanfattning (efter filter & dedupe, före sessioner) ──")
+    print("\n-- Source summary (after filtering & dedupe, before sessions) --")
     for src in sorted(counts, key=lambda s: SOURCE_ORDER.index(s) if s in SOURCE_ORDER else 99):
         print(f"  {src}: {counts[src]}")
-    print(f"  Summa: {sum(counts.values())}")
-    print("──\n")
+    print(f"  Total: {sum(counts.values())}")
+    print("--\n")
 
 
 def print_report(overall_days, project_reports, screen_time_days, profiles, args, config_path):
     sep = "─" * 64
     print(f"\n{'═' * 64}")
-    print("  TIDLOGGAR — SAMMANSTÄLLNING")
+    print("  TIMELOGS — SUMMARY")
     print(f"{'═' * 64}\n")
 
     if config_path:
-        print(f"Projektkonfig: {config_path}")
+        print(f"Project config: {config_path}")
     else:
-        print("Projektkonfig: legacy fallback från CLI-argument")
-    print(f"Lokal tidszon: {LOCAL_TZ}")
-    print(f"Projekt: {', '.join(profile['name'] for profile in profiles)}")
+        print("Project config: legacy fallback from CLI arguments")
+    print(f"Local timezone: {LOCAL_TZ}")
+    print(f"Projects: {', '.join(profile['name'] for profile in profiles)}")
     print()
 
     total_h = 0.0
@@ -712,9 +709,9 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
         )
         project_names = sorted({event["project"] for event in entries if event["project"] != UNCATEGORIZED})
         print(f"📅  {day}")
-        print(f"    Sessioner: {len(payload['sessions'])}  →  estimerat ~{payload['hours']:.1f}h")
-        print(f"    Källor:    {', '.join(sources)}")
-        print(f"    Projekt:   {', '.join(project_names) if project_names else UNCATEGORIZED}")
+        print(f"    Sessions: {len(payload['sessions'])}  -> estimated ~{payload['hours']:.1f}h")
+        print(f"    Sources:   {', '.join(sources)}")
+        print(f"    Projects:  {', '.join(project_names) if project_names else UNCATEGORIZED}")
         if screen_time_days is not None:
             screen_h = screen_time_days.get(day, 0.0) / 3600
             delta = payload["hours"] - screen_h
@@ -728,7 +725,7 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
             session_projects = sorted({event["project"] for event in session_events})
             print(
                 f"    [{idx}] {start_ts.strftime('%H:%M')}–{end_ts.strftime('%H:%M')} "
-                f"({raw_dur:.1f}h, {len(session_events)} händelser, {', '.join(session_projects)})"
+                f"({raw_dur:.1f}h, {len(session_events)} events, {', '.join(session_projects)})"
             )
             if args.all_events:
                 for event in session_events:
@@ -750,12 +747,12 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
                     if len(shown) >= 5:
                         remaining = len(session_events) - len(shown)
                         if remaining > 0:
-                            print(f"          … och {remaining} till")
+                            print(f"          … and {remaining} more")
                         break
         print()
 
     print(sep)
-    print(f"  TOTALT ESTIMERAT (råtid):  ~{total_h:.1f}h")
+    print(f"  TOTAL ESTIMATED (raw time):  ~{total_h:.1f}h")
     if args.billable_unit and args.billable_unit > 0:
         grand_billable = sum(
             billable_total_hours(
@@ -765,7 +762,7 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
             for pn in project_reports
         )
         print(
-            f"  FAKTURERBAR SUMMA (per projekt, upp till {args.billable_unit:g} h):  ~{grand_billable:.2f}h"
+            f"  BILLABLE TOTAL (per project, rounded to {args.billable_unit:g} h):  ~{grand_billable:.2f}h"
         )
     if screen_time_days is not None:
         screen_total_h = sum(screen_time_days.values()) / 3600
@@ -780,7 +777,7 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
         customer = str(profile_by_name.get(project_name, {}).get("customer") or project_name)
         projects_by_customer[customer].append(project_name)
 
-    print("Per kund:")
+    print("Per customer:")
     for customer_name in sorted(projects_by_customer, key=lambda name: name.lower()):
         customer_projects = projects_by_customer[customer_name]
         customer_hours = sum(
@@ -795,7 +792,7 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
                 )
                 for pn in customer_projects
             )
-            print(f"  - {customer_name}: ~{cust_b:.2f}h fakturerbart (råtid ~{customer_hours:.1f}h)")
+            print(f"  - {customer_name}: ~{cust_b:.2f}h billable (raw ~{customer_hours:.1f}h)")
         else:
             print(f"  - {customer_name}: ~{customer_hours:.1f}h")
         for project_name in customer_projects:
@@ -804,38 +801,38 @@ def print_report(overall_days, project_reports, screen_time_days, profiles, args
             if args.billable_unit and args.billable_unit > 0:
                 hb = billable_total_hours(hours, args.billable_unit)
                 print(
-                    f"      · {project_name}: ~{hb:.2f}h fakturerbart (råtid ~{hours:.1f}h) över {days} dagar"
+                    f"      · {project_name}: ~{hb:.2f}h billable (raw ~{hours:.1f}h) across {days} days"
                 )
             else:
-                print(f"      · {project_name}: ~{hours:.1f}h över {days} dagar")
+                print(f"      · {project_name}: ~{hours:.1f}h across {days} days")
     print()
-    print("  OBS: Totalen ovan är den sammanlagda tidslinjen över alla källor.")
+    print("  NOTE: Total above is the combined timeline across all sources.")
     print(
-        "  [Cursor] = Cursor IDE-loggar. [Cursor checkpoints] = Cursor-appens metadata."
-        " [Codex IDE] = OpenAI:s Codex-app (~/.codex) — eget program, inte Cursor."
+        "  [Cursor] = Cursor IDE logs. [Cursor checkpoints] = Cursor app metadata."
+        " [Codex IDE] = OpenAI Codex app (~/.codex) — separate program, not Cursor."
     )
-    print("  Kör med --source-summary om du vill se exakt antal händelser per källa efter filter.")
+    print("  Run with --source-summary to see exact event count per source after filters.")
     print(
-        f"  Sessioner: luckor kortare än {args.gap_minutes} min räknas som samma pass; "
-        f"Chrome tunnas (--chrome-collapse-minutes={args.chrome_collapse_minutes}, 0=av)."
+        f"  Sessions: gaps shorter than {args.gap_minutes} min are merged; "
+        f"Chrome is deduplicated (--chrome-collapse-minutes={args.chrome_collapse_minutes}, 0=off)."
     )
     if args.billable_unit and args.billable_unit > 0:
         print(
-            f"  Fakturerbar avrundning: råtid summeras per projekt, sedan avrundas uppat (ceil) "
-            f"till närmaste {args.billable_unit:g} h — inte per session."
+            f"  Billable rounding: raw time is summed per project, then rounded up (ceil) "
+            f"to the nearest {args.billable_unit:g} h — not per session."
         )
-    print("  Timmar bygger på diskreta händelser (t.ex. Chrome-besök), inte på KnowledgeC per klick.")
-    print("  Per projekt räknas på projektmärkta händelser och kan avvika från totalen.")
-    print("  Worklog tolkas nu i lokal tid i stället för UTC.")
+    print("  Hours are based on discrete events (e.g. Chrome visits), not on per-click KnowledgeC usage.")
+    print("  Per-project totals use project-tagged events and may differ from the grand total.")
+    print("  Worklog is interpreted in local time instead of UTC.")
     if not args.include_uncategorized:
-        print("  Oklassade händelser exkluderas från rapporten som standard.")
+        print("  Uncategorized events are excluded from report by default.")
     if screen_time_days is not None:
-        print("  Screen Time kommer från KnowledgeC app-usage och är en jämförelsesignal, inte facit.")
+        print("  Screen Time comes from KnowledgeC app usage and is a comparison signal, not ground truth.")
     print()
 
 
 def _invoice_projects_line(profiles, project_reports, customer_name):
-    """Textrad för PDF: vid kundfilter lista bara aktuella projekt, annars alla profiler."""
+    """PDF line text: with customer filter list active projects only, otherwise all profiles."""
     if project_reports:
         return ", ".join(sorted(project_reports.keys()))
     if customer_name:
@@ -868,7 +865,7 @@ def build_invoice_pdf(
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except ImportError as exc:
         raise RuntimeError(
-            "PDF-generering kraver reportlab. Installera med: python3 -m pip install reportlab"
+            "PDF generation requires reportlab. Install with: python3 -m pip install reportlab"
         ) from exc
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -911,11 +908,11 @@ def build_invoice_pdf(
     else:
         invoice_total_billable = total_raw_hours
     profile_by_name = {profile["name"]: profile for profile in profiles}
-    period_text = f"{dt_from.astimezone(LOCAL_TZ).date()} till {dt_to.astimezone(LOCAL_TZ).date()}"
+    period_text = f"{dt_from.astimezone(LOCAL_TZ).date()} to {dt_to.astimezone(LOCAL_TZ).date()}"
     projects_text = _invoice_projects_line(profiles, project_reports, customer_name)
 
     elements = [
-        Paragraph("Tidrapport - fakturaunderlag", title_style),
+        Paragraph("Time report - invoice basis", title_style),
         Paragraph(f"<b>Period:</b> {period_text}", body_style),
     ]
     if customer_name:
@@ -925,10 +922,10 @@ def build_invoice_pdf(
     if billable_unit and billable_unit > 0:
         elements.extend(
             [
-                Paragraph(f"<b>Projekt:</b> {html_escape(projects_text)}", body_style),
+                Paragraph(f"<b>Projects:</b> {html_escape(projects_text)}", body_style),
                 Paragraph(
-                    f"<b>Totalt fakturerbart:</b> {invoice_total_billable:.2f} timmar<br/>"
-                    f"<i>Råtid under perioden: {total_raw_hours:.2f} h</i>",
+                    f"<b>Total billable:</b> {invoice_total_billable:.2f} hours<br/>"
+                    f"<i>Raw time in period: {total_raw_hours:.2f} h</i>",
                     body_style,
                 ),
             ]
@@ -936,8 +933,8 @@ def build_invoice_pdf(
     else:
         elements.extend(
             [
-                Paragraph(f"<b>Projekt:</b> {html_escape(projects_text)}", body_style),
-                Paragraph(f"<b>Totalt estimerat:</b> {total_raw_hours:.2f} timmar", body_style),
+                Paragraph(f"<b>Projects:</b> {html_escape(projects_text)}", body_style),
+                Paragraph(f"<b>Total estimated:</b> {total_raw_hours:.2f} hours", body_style),
             ]
         )
     if empty_note:
@@ -945,7 +942,7 @@ def build_invoice_pdf(
     elements.append(Spacer(1, 16))
 
     project_rows = [[
-        Paragraph("<b>Beskrivning av tjänst / Leverabel</b>", body_style),
+        Paragraph("<b>Service description / Deliverable</b>", body_style),
         Paragraph("<b>Omfattning</b>", body_style),
     ]]
     for project_name in sorted(project_reports):
@@ -962,7 +959,7 @@ def build_invoice_pdf(
         if invoice_title or invoice_description:
             safe_title = html_escape(invoice_title or project_name)
             safe_description = html_escape(
-                invoice_description or "Löpande implementation, analys och leverans inom projektet."
+                invoice_description or "Ongoing implementation, analysis, and delivery within the project."
             )
             desc = f"<b>{safe_title}</b><br/>{safe_description}"
             project_rows.append(
@@ -984,15 +981,15 @@ def build_invoice_pdf(
                 break
 
         top_sources = sorted(source_counts.items(), key=lambda item: item[1], reverse=True)[:3]
-        source_part = ", ".join(src for src, _ in top_sources if src) or "lokala arbetsloggar"
-        examples_part = "; ".join(sample_details) if sample_details else "Löpande implementation, analys och iteration."
+        source_part = ", ".join(src for src, _ in top_sources if src) or "local work logs"
+        examples_part = "; ".join(sample_details) if sample_details else "Ongoing implementation, analysis, and iteration."
         safe_project_name = html_escape(project_name)
         safe_source_part = html_escape(source_part)
         safe_examples_part = html_escape(examples_part)
         desc = (
             f"<b>{safe_project_name}</b><br/>"
-            f"Löpande arbete inom projektet, sammanställt från {safe_source_part}. "
-            f"Exempel på utförda insatser: {safe_examples_part}"
+            f"Ongoing project work, aggregated from {safe_source_part}. "
+            f"Examples of delivered work: {safe_examples_part}"
         )
         project_rows.append(
             [Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)]
@@ -1047,7 +1044,7 @@ def build_invoice_pdf(
         elements.append(Spacer(1, 6))
         elements.append(
             Paragraph(
-                "<i>Dagliga timmar är råtid; fakturerbara belopp i tabellen ovan avrundas uppåt per projekt.</i>",
+                "<i>Daily hours are raw time; billable values in the table above are rounded up per project.</i>",
                 body_style,
             )
         )
@@ -1066,25 +1063,25 @@ def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
     mail_enabled = mail_mode in {"on", "auto"}
 
     collectors = [
-        ("Claude Code CLI", collect_claude_code, "händelser"),
-        ("Claude Desktop", collect_claude_desktop, "händelser"),
-        ("Claude.ai (specifika URL:er)", collect_claude_ai_urls, "besök"),
-        ("Gemini (webb, specifika URL:er)", collect_gemini_web_urls, "besök"),
+        ("Claude Code CLI", collect_claude_code, "events"),
+        ("Claude Desktop", collect_claude_desktop, "events"),
+        ("Claude.ai (specific URLs)", collect_claude_ai_urls, "visits"),
+        ("Gemini (web, specific URLs)", collect_gemini_web_urls, "visits"),
         (
             "Chrome",
             lambda p, start, end: collect_chrome(
                 p, start, end, collapse_minutes=args.chrome_collapse_minutes
             ),
-            "besök",
+            "visits",
             chrome_enabled,
             "Consent/source setting disabled" if not chrome_enabled else (
                 None if chrome_history_exists else "Chrome history database not found"
             ),
         ),
-        ("Gemini CLI", collect_gemini_cli, "händelser"),
-        ("Cursor", collect_cursor, "händelser"),
-        ("Cursor checkpoints", collect_cursor_checkpoints, "händelser"),
-        ("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessioner"),
+        ("Gemini CLI", collect_gemini_cli, "events"),
+        ("Cursor", collect_cursor, "events"),
+        ("Cursor checkpoints", collect_cursor_checkpoints, "events"),
+        ("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessions"),
         (
             "Apple Mail",
             lambda p, start, end: collect_apple_mail(
@@ -1116,7 +1113,7 @@ def collect_all_events(profiles, dt_from, dt_to, args, worklog_path):
     for index, (name, collector, unit_label, enabled, reason) in enumerate(normalized_collectors, 1):
         print(f"[{index}/12] {name} …")
         if not enabled:
-            print(f"      avstängt ({reason})\n")
+            print(f"      disabled ({reason})\n")
             collector_status[name] = {
                 "enabled": False,
                 "reason": reason,
@@ -1173,13 +1170,13 @@ def run_timelog_report(config_path, date_from, date_to, options):
         args.worklog, loaded_config_path, workspace.get("worklog")
     )
 
-    print(f"\nSöker: {dt_from.date()} → {dt_to.date()}")
+    print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
     if args.only_project:
-        print(f"Endast projekt: {args.only_project!r}")
+        print(f"Only project: {args.only_project!r}")
     if args.customer:
-        print(f"Endast kund: {args.customer!r}")
-    print(f"Lokal tidszon: {LOCAL_TZ}")
-    print(f"Projektprofiler: {len(profiles)}")
+        print(f"Only customer: {args.customer!r}")
+    print(f"Local timezone: {LOCAL_TZ}")
+    print(f"Project profiles: {len(profiles)}")
     print(f"Worklog: {worklog_path}")
     print()
 
@@ -1188,7 +1185,7 @@ def run_timelog_report(config_path, date_from, date_to, options):
     screen_time_days = None
     print("[12/12] Screen Time …")
     if args.screen_time == "off":
-        print("      avstängt via --screen-time off\n")
+        print("      disabled via --screen-time off\n")
         collector_status["Screen Time"] = {
             "enabled": False,
             "reason": "disabled via --screen-time off",
@@ -1198,16 +1195,16 @@ def run_timelog_report(config_path, date_from, date_to, options):
         screen_time_days, screen_msg = collect_screen_time(dt_from, dt_to)
         if screen_time_days is None:
             if args.screen_time == "on":
-                print(f"      kunde inte läsa Screen Time: {screen_msg}\n")
+                print(f"      could not read Screen Time: {screen_msg}\n")
             else:
-                print(f"      hoppar över: {screen_msg}\n")
+                print(f"      skipping: {screen_msg}\n")
             collector_status["Screen Time"] = {
                 "enabled": args.screen_time == "on",
                 "reason": screen_msg,
                 "days": 0,
             }
         else:
-            print(f"      {len(screen_time_days)} dagar lästa från {screen_msg}\n")
+            print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
             collector_status["Screen Time"] = {
                 "enabled": True,
                 "reason": "",
@@ -1281,9 +1278,9 @@ def main():
 
     if not included_events:
         if report.args.only_project:
-            print(f"Inga händelser för projekt {report.args.only_project!r} i intervallet.")
+            print(f"No events for project {report.args.only_project!r} in selected range.")
         else:
-            print("Inga händelser hittades.")
+            print("No events found.")
         if report.args.invoice_pdf:
             try:
                 built = build_invoice_pdf(
@@ -1296,14 +1293,14 @@ def main():
                     if report.args.invoice_pdf_file
                     else default_invoice_pdf_path(report.dt_to),
                     empty_note=(
-                        "Inga klassade händelser i valt intervall/filter — rapporten är tom (0 timmar)."
+                        "No classified events for selected range/filter — report is empty (0 hours)."
                     ),
                     customer_name=report.args.customer,
                     billable_unit=report.args.billable_unit,
                 )
-                print(f"PDF skapad: {built}")
+                print(f"PDF created: {built}")
             except Exception as exc:
-                print(f"Kunde inte skapa PDF: {exc}")
+                print(f"Could not create PDF: {exc}")
         return
 
     if report.args.source_summary:
@@ -1320,9 +1317,9 @@ def main():
     if report.args.invoice_pdf:
         try:
             built = generate_invoice_pdf(report)
-            print(f"PDF skapad: {built}")
+            print(f"PDF created: {built}")
         except Exception as exc:
-            print(f"Kunde inte skapa PDF: {exc}")
+            print(f"Could not create PDF: {exc}")
 
 
 if __name__ == "__main__":

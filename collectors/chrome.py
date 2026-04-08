@@ -38,7 +38,7 @@ def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu):
         rows = cursor.fetchall()
         conn.close()
     except Exception as exc:
-        print(f"  [Varning] Chrome history: {exc}")
+        print(f"  [Warning] Chrome history: {exc}")
     finally:
         try:
             os.unlink(tmp.name)
@@ -125,7 +125,7 @@ def collect_claude_ai_urls(
             uncategorized,
         )
         detail = f"chat/{chat_id}… — {(title or '')[:40]}"
-        results.append(make_event("Claude.ai (webb)", ts, detail, project))
+        results.append(make_event("Claude.ai (web)", ts, detail, project))
     return results
 
 
@@ -166,7 +166,7 @@ def collect_gemini_web_urls(
         project = match or uncategorized
         chat_id = url.split("/app/")[-1].split("?")[0][:20] if "/app/" in url else url[-24:]
         detail = f"gemini/app/{chat_id}… — {(title or '')[:40]}"
-        results.append(make_event("Gemini (webb)", ts, detail, project))
+        results.append(make_event("Gemini (web)", ts, detail, project))
     return results
 
 

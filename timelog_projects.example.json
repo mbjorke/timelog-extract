@@ -2,22 +2,22 @@
   "worklog": "TIMELOG.md",
   "projects": [
     {
-      "name": "ass-membra",
-      "customer": "April",
-      "invoice_title": "Teknisk integration & webbplatsoptimering",
-      "invoice_description": "Fördjupad integration, löpande utveckling och förbättringar av struktur, funktion och användarflöden i projektets digitala lösning.",
-      "match_terms": ["ass-membra", "membra", "segel", "wordpress", "elementor", "snippets", "rib"],
-      "tracked_urls": ["https://claude.ai/chat/5032e252-a033-4565-b1a7-c3693f69d7a6"],
-      "email": "marcus.bjorke@blueberry.ax"
+      "name": "example-project-alpha",
+      "customer": "Example Customer A",
+      "invoice_title": "Technical integration and optimization",
+      "invoice_description": "Ongoing implementation and iterative improvements for the project's core workflows.",
+      "match_terms": ["example-project-alpha", "alpha", "wordpress", "elementor", "snippets"],
+      "tracked_urls": ["https://claude.ai/chat/example-chat-id"],
+      "email": "user@example.com"
     },
     {
       "name": "example-project",
-      "customer": "Example Customer AB",
-      "invoice_title": "Strategisk utveckling & leverans",
-      "invoice_description": "Analys, implementation och iterativa förbättringar inom projektets prioriterade områden med fokus på stabilitet och affärsnytta.",
-      "match_terms": ["example-project", "lovableproject", "offert", "kundnamn", "domännamn"],
+      "customer": "Example Customer B",
+      "invoice_title": "Strategic development & delivery",
+      "invoice_description": "Analysis, implementation, and iterative improvements in priority project areas with focus on stability and business value.",
+      "match_terms": ["example-project", "lovableproject", "proposal", "customer-name", "domain-name"],
       "tracked_urls": [],
-      "email": "marcus.bjorke@blueberry.ax"
+      "email": "user@example.com"
     }
   ]
 }

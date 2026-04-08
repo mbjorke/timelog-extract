@@ -45,6 +45,12 @@ See `cursor-extension/README.md` for build/run instructions.
 - Direct unittest run:
   - `python3 -m unittest discover -s tests -p "test_*.py"`
 
+## Accuracy Evaluation
+
+- Plan and KPI targets: `docs/ACCURACY_PLAN.md`
+- Run evaluation (requires your own prediction + golden JSON arrays):
+  - `python3 scripts/eval_accuracy.py --predictions docs/evals/predictions.json --golden tests/fixtures/golden_dataset.json --output docs/evals/latest.md`
+
 ## Release Readiness
 
 - Changelog: `CHANGELOG.md`

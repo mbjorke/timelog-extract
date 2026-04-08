@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "timelog-extract"
 version = "0.1.0"
@@ -10,3 +14,6 @@ dependencies = [
 [project.scripts]
 timelog-extract = "timelog_extract:main"
 timelog-friend-trial = "scripts.friend_trial:main"
+
+[tool.setuptools.packages.find]
+include = ["collectors*", "core*", "scripts*"]

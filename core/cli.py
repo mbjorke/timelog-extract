@@ -36,6 +36,7 @@ class TimelogRunOptions:
     customer: Optional[str] = None
     all_events: bool = False
     source_summary: bool = False
+    narrative: bool = False
     invoice_pdf: bool = False
     invoice_pdf_file: Optional[str] = None
     billable_unit: float = 0.0
@@ -137,6 +138,11 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
         "--source-summary",
         action="store_true",
         help="Print event counts per source after filtering (IDE logs vs checkpoints, etc.)",
+    )
+    p.add_argument(
+        "--narrative",
+        action="store_true",
+        help="After the report, print a rule-based executive summary in plain English (local, no LLM)",
     )
     p.add_argument(
         "--invoice-pdf",

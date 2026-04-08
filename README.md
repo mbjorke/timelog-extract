@@ -25,6 +25,8 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 - Today:
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
+- Same with a plain-English executive blurb after the tables (rule-based, offline):
+  - `python3 timelog_extract.py --today --narrative`
 - Custom range:
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --source-summary`
 

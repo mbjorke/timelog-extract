@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CLI: `--narrative` prints a rule-based executive summary in English after the report (local, no LLM).
 - CLI: `-V` / `--version` prints `timelog-extract` and the package version from metadata (fallback `0.1.0-dev` when not installed).
 
 ## 0.1.0 - 2026-04-08

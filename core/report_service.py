@@ -32,6 +32,7 @@ from core.pipeline import collect_all_events
 from core.runtime_collectors import RuntimeCollectors
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
+from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
 
@@ -201,6 +202,25 @@ def _print_report(
         session_duration_hours_fn=_session_duration_hours,
         billable_total_hours_fn=_billable_total_hours,
     )
+
+
+def _print_narrative(
+    overall_days: Dict[str, Any],
+    project_reports: Dict[str, Any],
+    included_events: List[Dict[str, Any]],
+    dt_from: datetime,
+    dt_to: datetime,
+) -> None:
+    lines = narrative_output.build_narrative_lines(
+        overall_days,
+        project_reports,
+        included_events,
+        UNCATEGORIZED,
+        SOURCE_ORDER,
+        dt_from,
+        dt_to,
+    )
+    narrative_output.print_executive_narrative(lines)
 
 
 def _build_invoice_pdf(
@@ -448,6 +468,14 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.args,
         report.config_path,
     )
+    if report.args.narrative:
+        _print_narrative(
+            report.overall_days,
+            report.project_reports,
+            report.included_events,
+            report.dt_from,
+            report.dt_to,
+        )
     if report.args.invoice_pdf:
         try:
             built = generate_invoice_pdf(report)

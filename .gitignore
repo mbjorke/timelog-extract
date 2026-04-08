@@ -12,3 +12,12 @@ timelog_projects.json
 # Lokala loggar
 .remote.env
 TIMELOG.md
+
+# macOS metadata
+.DS_Store
+
+# Generated reports/artifacts
+output/
+
+# Extension dependencies
+cursor-extension/node_modules/

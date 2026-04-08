@@ -9,6 +9,20 @@ from outputs.narrative import build_narrative_lines
 class NarrativeTests(unittest.TestCase):
     """Builds plain-English summary lines from aggregated report data."""
 
+    def test_no_activity_fallback(self):
+        dt0 = datetime(2026, 4, 8, 0, 0, tzinfo=timezone.utc)
+        dt1 = datetime(2026, 4, 8, 23, 59, tzinfo=timezone.utc)
+        lines = build_narrative_lines(
+            overall_days={},
+            project_reports={},
+            included_events=[],
+            uncategorized="Uncategorized",
+            source_order=[],
+            dt_from=dt0,
+            dt_to=dt1,
+        )
+        self.assertTrue(any("nothing to summarize" in ln.lower() for ln in lines))
+
     def test_single_day_includes_totals_and_projects(self):
         day = "2026-04-08"
         overall_days = {

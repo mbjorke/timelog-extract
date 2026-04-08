@@ -432,6 +432,14 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
             print(f"No events for project {report.args.only_project!r} in selected range.")
         else:
             print("No events found.")
+        if report.args.narrative:
+            _print_narrative(
+                report.overall_days,
+                report.project_reports,
+                report.included_events,
+                report.dt_from,
+                report.dt_to,
+            )
         if report.args.invoice_pdf:
             try:
                 out = (

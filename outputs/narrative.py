@@ -71,7 +71,7 @@ def build_narrative_lines(
     if window_start == window_end == d0 == d1:
         window_note = ""
     elif window_start != window_end:
-        window_note = f" (report window {window_start}–{window_end})"
+        window_note = f" (report window {window_start}-{window_end})"
     else:
         window_note = f" (report window {window_start})"
 

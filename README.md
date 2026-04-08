@@ -43,6 +43,14 @@ See `cursor-extension/README.md` for build/run instructions.
   - `./scripts/run_autotests.sh`
 - Direct unittest run:
   - `python3 -m unittest discover -s tests -p "test_*.py"`
+- Enforce Python source file size policy:
+  - `python3 scripts/check_file_lengths.py --max-lines 500`
+
+## File Size Policy
+
+- Python source files should stay at or below 500 lines.
+- The limit is enforced in CI via `scripts/check_file_lengths.py`.
+- If a module grows too large, split by responsibility (for example: cli/config/events/analytics/pipeline).
 
 ## Accuracy Evaluation
 

@@ -5,8 +5,12 @@ import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Sequence, Tuple
+from typing import Callable, Dict
 from urllib.parse import urlparse
+
+
+def chrome_history_path(home):
+    return home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
 
 
 def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu):
@@ -34,7 +38,7 @@ def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu):
         rows = cursor.fetchall()
         conn.close()
     except Exception as exc:
-        print(f"  [Varning] Chrome history: {exc}")
+        print(f"  [Warning] Chrome history: {exc}")
     finally:
         try:
             os.unlink(tmp.name)
@@ -109,9 +113,7 @@ def collect_claude_ai_urls(
 
     clauses = " OR ".join([f"u.url LIKE '%{url}%'" for url in url_map])
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
-    history_path = (
-        home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-    )
+    history_path = chrome_history_path(home)
     rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu)
 
     results = []
@@ -123,7 +125,7 @@ def collect_claude_ai_urls(
             uncategorized,
         )
         detail = f"chat/{chat_id}… — {(title or '')[:40]}"
-        results.append(make_event("Claude.ai (webb)", ts, detail, project))
+        results.append(make_event("Claude.ai (web)", ts, detail, project))
     return results
 
 
@@ -149,9 +151,7 @@ def collect_gemini_web_urls(
         [f"u.url LIKE '%{url.replace(chr(39), chr(39) * 2)}%'" for url in url_map]
     )
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
-    history_path = (
-        home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-    )
+    history_path = chrome_history_path(home)
     rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu)
 
     results = []
@@ -166,7 +166,7 @@ def collect_gemini_web_urls(
         project = match or uncategorized
         chat_id = url.split("/app/")[-1].split("?")[0][:20] if "/app/" in url else url[-24:]
         detail = f"gemini/app/{chat_id}… — {(title or '')[:40]}"
-        results.append(make_event("Gemini (webb)", ts, detail, project))
+        results.append(make_event("Gemini (web)", ts, detail, project))
     return results
 
 
@@ -199,9 +199,7 @@ def collect_chrome(
         f"({kw_clauses}) AND u.url NOT LIKE '%claude.ai%' "
         "AND u.url NOT LIKE '%gemini.google.com%'"
     )
-    history_path = (
-        home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-    )
+    history_path = chrome_history_path(home)
     rows = query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu)
     rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
     results = []

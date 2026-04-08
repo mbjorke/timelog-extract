@@ -32,7 +32,6 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 - Use `match_terms` as the single text-matching field for project classification.
 - Use `tracked_urls` for pinned AI chat URLs (Claude/Gemini and future providers).
-- Backward compatibility remains for old keys (`keywords`, `project_terms`, `claude_urls`, `gemini_urls`), but new configs should prefer the unified names.
 
 ## Cursor Extension (Scaffold)
 
@@ -44,6 +43,20 @@ See `cursor-extension/README.md` for build/run instructions.
   - `./scripts/run_autotests.sh`
 - Direct unittest run:
   - `python3 -m unittest discover -s tests -p "test_*.py"`
+- Enforce Python source file size policy:
+  - `python3 scripts/check_file_lengths.py --max-lines 500`
+
+## File Size Policy
+
+- Python source files should stay at or below 500 lines.
+- The limit is enforced in CI via `scripts/check_file_lengths.py`.
+- If a module grows too large, split by responsibility (for example: cli/config/events/analytics/pipeline).
+
+## Accuracy Evaluation
+
+- Plan and KPI targets: `docs/ACCURACY_PLAN.md`
+- Run evaluation (requires your own prediction + golden JSON arrays):
+  - `python3 scripts/eval_accuracy.py --predictions docs/evals/predictions.json --golden tests/fixtures/golden_dataset.json --output docs/evals/latest.md`
 
 ## Release Readiness
 

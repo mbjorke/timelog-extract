@@ -296,7 +296,9 @@ def run_timelog_report(config_path, date_from, date_to, options):
     )
 
     screen_time_days = None
-    print("[12/12] Screen Time …")
+    screen_step_index = len(collector_status) + 1
+    total_steps = screen_step_index
+    print(f"[{screen_step_index}/{total_steps}] Screen Time …")
     if args.screen_time == "off":
         print("      disabled via --screen-time off\n")
         collector_status["Screen Time"] = {

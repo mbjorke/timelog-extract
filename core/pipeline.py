@@ -51,6 +51,7 @@ def collect_all_events(
         collect_apple_mail=collect_apple_mail,
         collect_worklog=collect_worklog,
     )
+    total_collectors = len(collectors)
 
     for index, spec in enumerate(collectors, 1):
         name = spec.name
@@ -58,7 +59,7 @@ def collect_all_events(
         unit_label = spec.unit_label
         enabled = spec.enabled
         reason = spec.reason
-        print(f"[{index}/12] {name} …")
+        print(f"[{index}/{total_collectors}] {name} …")
         if not enabled:
             print(f"      disabled ({reason})\n")
             collector_status[name] = {

@@ -7,6 +7,7 @@ class RuntimeCollectors:
     def __init__(
         self,
         *,
+        cli_args=None,
         home,
         local_tz,
         chrome_epoch_delta_us,
@@ -38,6 +39,7 @@ class RuntimeCollectors:
         self.cursor = cursor_collector
         self.mail = mail_collector
         self.timelog = timelog_collector
+        self.cli_args = cli_args
 
     def collect_claude_code(self, profiles, dt_from, dt_to):
         return self.ai_logs.collect_claude_code(
@@ -128,6 +130,19 @@ class RuntimeCollectors:
         )
 
     def collect_worklog(self, worklog_path, dt_from, dt_to, profiles):
+        worklog_format = getattr(self.cli_args, "worklog_format", "auto") if self.cli_args is not None else "auto"
+        if hasattr(self.timelog, "collect_worklog"):
+            return self.timelog.collect_worklog(
+                worklog_path,
+                dt_from,
+                dt_to,
+                profiles,
+                self.local_tz,
+                self.classify_project,
+                self.make_event,
+                self.worklog_source,
+                worklog_format=worklog_format,
+            )
         return self.timelog.collect_timelog(
             worklog_path,
             dt_from,

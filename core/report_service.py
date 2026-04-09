@@ -289,6 +289,7 @@ def run_timelog_report(
         print()
 
     runtime_collectors = RuntimeCollectors(
+        cli_args=args,
         home=HOME,
         local_tz=LOCAL_TZ,
         chrome_epoch_delta_us=CHROME_EPOCH_DELTA_US,

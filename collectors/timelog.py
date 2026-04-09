@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def collect_timelog(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name):
+def _collect_worklog_md(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name):
     results = []
     wl = Path(worklog_path)
     if not wl.exists():
@@ -47,3 +47,89 @@ def collect_timelog(worklog_path, dt_from, dt_to, profiles, local_tz, classify_p
     except OSError:
         pass
     return results
+
+
+def _collect_worklog_gtimelog(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name):
+    results = []
+    wl = Path(worklog_path)
+    if not wl.exists():
+        return results
+
+    # gtimelog timelog.txt grammar: "YYYY-MM-DD HH:MM: title"
+    # https://github.com/gtimelog/gtimelog/blob/master/docs/formats.rst
+    line_pattern = re.compile(r"^\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}):\s+(.*?)\s*$")
+    try:
+        for raw in wl.read_text(encoding="utf-8").splitlines():
+            s = raw.strip()
+            if not s or s.startswith("#"):
+                continue
+            m = line_pattern.match(raw)
+            if not m:
+                continue
+            date_s, time_s, title = m.group(1), m.group(2), m.group(3)
+            try:
+                ts = datetime.strptime(f"{date_s} {time_s}", "%Y-%m-%d %H:%M").replace(tzinfo=local_tz)
+            except ValueError:
+                continue
+            if not (dt_from <= ts <= dt_to):
+                continue
+            snippet = (title or "worklog").strip()[:120]
+            project = classify_project(snippet, profiles)
+            results.append(make_event(source_name, ts, snippet, project))
+    except OSError:
+        pass
+    return results
+
+
+def collect_worklog(
+    worklog_path,
+    dt_from,
+    dt_to,
+    profiles,
+    local_tz,
+    classify_project,
+    make_event,
+    source_name,
+    *,
+    worklog_format: str = "auto",
+):
+    fmt = (worklog_format or "auto").lower()
+    if fmt not in {"auto", "md", "gtimelog"}:
+        fmt = "auto"
+
+    wl = Path(worklog_path)
+    suffix = wl.suffix.lower()
+
+    if fmt == "auto":
+        if suffix in {".md", ".markdown"}:
+            fmt = "md"
+        elif suffix in {".txt", ".log"}:
+            fmt = "gtimelog"
+        else:
+            try:
+                head = wl.read_text(encoding="utf-8")[:5000]
+            except OSError:
+                head = ""
+            if re.search(r"(?m)^\s*\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\s+\S", head):
+                fmt = "gtimelog"
+            else:
+                fmt = "md"
+
+    if fmt == "gtimelog":
+        return _collect_worklog_gtimelog(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name)
+    return _collect_worklog_md(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name)
+
+
+def collect_timelog(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name):
+    # Backwards-compatible entrypoint; format auto-detected.
+    return collect_worklog(
+        worklog_path,
+        dt_from,
+        dt_to,
+        profiles,
+        local_tz,
+        classify_project,
+        make_event,
+        source_name,
+        worklog_format="auto",
+    )

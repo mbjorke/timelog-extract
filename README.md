@@ -28,6 +28,10 @@ Timelog Extract aggregates local activity signals into project/customer time rep
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
 - Same with a plain-English executive blurb after the tables (rule-based, offline):
   - `python3 timelog_extract.py --today --narrative`
+- Worklog formats:
+  - Default is `TIMELOG.md` in the repo root (Markdown headings like `## YYYY-MM-DD HH:MM`).
+  - Also supports gtimelog-style text logs with lines like `YYYY-MM-DD HH:MM: summary`.
+  - Use `--worklog PATH` to point at the file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`

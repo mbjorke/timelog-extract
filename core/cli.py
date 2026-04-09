@@ -30,6 +30,7 @@ class TimelogRunOptions:
     chrome_collapse_minutes: int = 12
     exclude: str = ""
     worklog: Optional[str] = None
+    worklog_format: str = "auto"
     screen_time: str = "auto"
     include_uncategorized: bool = False
     only_project: Optional[str] = None
@@ -111,6 +112,15 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
         default=None,
         metavar="PATH",
         help="Path to timelog file (default: TIMELOG.md in repo root)",
+    )
+    p.add_argument(
+        "--worklog-format",
+        choices=["auto", "md", "gtimelog"],
+        default="auto",
+        help=(
+            "Worklog format: auto-detect by extension/content (default), "
+            "Markdown headings (md), or gtimelog timelog.txt-style lines (gtimelog)."
+        ),
     )
     p.add_argument("--screen-time", choices=["auto", "on", "off"], default="auto",
                    help="Compare with Screen Time when possible (default: auto)")

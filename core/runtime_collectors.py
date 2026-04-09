@@ -128,6 +128,19 @@ class RuntimeCollectors:
         )
 
     def collect_worklog(self, worklog_path, dt_from, dt_to, profiles):
+        worklog_format = getattr(self.cli_args, "worklog_format", "auto") if self.cli_args is not None else "auto"
+        if hasattr(self.timelog, "collect_worklog"):
+            return self.timelog.collect_worklog(
+                worklog_path,
+                dt_from,
+                dt_to,
+                profiles,
+                self.local_tz,
+                self.classify_project,
+                self.make_event,
+                self.worklog_source,
+                worklog_format=worklog_format,
+            )
         return self.timelog.collect_timelog(
             worklog_path,
             dt_from,

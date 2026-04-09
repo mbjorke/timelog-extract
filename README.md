@@ -12,6 +12,7 @@ Timelog Extract aggregates local activity signals into project/customer time rep
   - `V1_SCOPE.md`
   - `PRIVACY_SECURITY.md`
   - `SIMILAR_REPOS_CHECKLIST.md`
+  - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
 
 ## Quick Start (Friend Trial)
 
@@ -35,6 +36,7 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`
+- GitHub public activity (optional): set `--github-user YOUR_LOGIN` or `GITHUB_USER`, optionally `GITHUB_TOKEN` for API rate limits; use `--github-source on` to require it, or `auto` (default) to enable when a username is set.
 - Custom range:
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --source-summary`
 

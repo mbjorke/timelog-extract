@@ -44,6 +44,8 @@ class TimelogRunOptions:
     billable_round: str = "ceil"
     chrome_source: str = "on"
     mail_source: str = "auto"
+    github_source: str = "auto"
+    github_user: Optional[str] = None
     output_format: str = "terminal"
     quiet: bool = False
     json_file: Optional[str] = None
@@ -86,7 +88,7 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
     p.add_argument("--email", default=default_email,
                    help=f"Legacy fallback: sender email for sent mail (default: {default_email})")
     p.add_argument("--min-session", dest="min_session", type=int, default=15,
-                   help="Minimitid i minuter per AI-session (default: 15)")
+                   help="Minimum minutes per AI-heavy session (default: 15)")
     p.add_argument("--min-session-passive", dest="min_session_passive", type=int, default=5,
                    help="Minimum duration in minutes for Chrome/Mail-only sessions (default: 5)")
     p.add_argument("--gap-minutes", type=int, default=15,
@@ -105,8 +107,23 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
         default="auto",
         help="Enable/disable Apple Mail source (default: auto).",
     )
+    p.add_argument(
+        "--github-source",
+        choices=["auto", "on", "off"],
+        default="auto",
+        help=(
+            "GitHub public activity via API (default: auto — on if --github-user or GITHUB_USER is set). "
+            "Optional auth: GITHUB_TOKEN (higher rate limits)."
+        ),
+    )
+    p.add_argument(
+        "--github-user",
+        default=None,
+        metavar="LOGIN",
+        help="GitHub username for public events API (overrides GITHUB_USER / GITHUB_LOGIN).",
+    )
     p.add_argument("--exclude", default=default_exclude,
-                   help="Kommaseparerade ord att filtrera bort")
+                   help="Comma-separated keywords to filter out of event details")
     p.add_argument(
         "--worklog",
         default=None,
@@ -128,13 +145,13 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
                    help="Include uncategorized events in the report")
     p.add_argument(
         "--only-project",
-        metavar="NAMN",
+        metavar="NAME",
         default=None,
         help="Show only events for this project (exact string as 'name' in JSON)",
     )
     p.add_argument(
         "--customer",
-        metavar="NAMN",
+        metavar="NAME",
         default=None,
         help="Show only events for this customer (matches 'customer' in JSON, otherwise project name)",
     )

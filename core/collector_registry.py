@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from collectors.github import github_source_enabled
+
 
 @dataclass
 class CollectorSpec:
@@ -34,10 +36,12 @@ def build_collector_specs(
     collect_codex_ide: Callable,
     collect_apple_mail: Callable,
     collect_worklog: Callable,
+    collect_github: Callable,
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
     mail_mode = getattr(args, "mail_source", "auto")
     mail_enabled = mail_mode in {"on", "auto"}
+    gh_enabled, gh_reason = github_source_enabled(args)
 
     return [
         CollectorSpec("Claude Code CLI", collect_claude_code, "events"),
@@ -74,5 +78,12 @@ def build_collector_specs(
             "TIMELOG.md",
             lambda profiles, start, end: collect_worklog(str(worklog_path), start, end, profiles),
             "timestamps",
+        ),
+        CollectorSpec(
+            "GitHub",
+            collect_github,
+            "events",
+            enabled=gh_enabled,
+            reason=gh_reason,
         ),
     ]

@@ -48,3 +48,23 @@ Use this when evaluating GitHub (or other) projects that might overlap with **Ti
 1. **Tier A** cuts the long list down.
 2. **Tier B** answers fork vs learn-from vs ignore.
 3. **Tier C** only if you might build **on** the project, not just borrow ideas.
+
+## Tier A scan log
+
+Dated snapshots of a Tier A pass against public GitHub repos. Use the same criteria as **Tier A — Quick filter** above. **Next step:** pick candidates for Tier B after each scan.
+
+### 2026-04-09
+
+**Method:** GitHub repository search (multiple queries: local / developer time tracking, `gtimelog`, ActivityWatch, Kimai, self-hosted WakaTime-compatible servers, AI CLI usage). Results that were clearly unrelated (wrong domain) were discarded.
+
+| Repository | Local-first default? | License | Maintenance (signal) | Scope vs Timelog Extract |
+|------------|----------------------|---------|------------------------|---------------------------|
+| [ActivityWatch/activitywatch](https://github.com/ActivityWatch/activitywatch) | Yes — local stack; sync optional | MPL-2.0 | Strong — active, large community | Partial — window/app/AFK-style automation; not AI-session + Cursor + `TIMELOG.md` fusion; invoicing not in core |
+| [gtimelog/gtimelog](https://github.com/gtimelog/gtimelog) | Yes — file-based | GPL-2.0 | Moderate — commits into 2025 | Partial — worklog-style manual time; no multi-source AI ingestion or invoice PDF |
+| [kimai/kimai](https://github.com/kimai/kimai) | No — self-hosted web app (on-prem OK, not “no server”) | AGPL-3.0 | Strong | Partial — timesheets + invoicing; different stack and UX; not local log aggregation |
+| [Hitheshkaranth/OpenTokenMonitor](https://github.com/Hitheshkaranth/OpenTokenMonitor) | Mostly — optional live API advertised | MIT | Early — small repo, recent activity | Narrow — AI CLI token/cost monitoring; not customer time reports |
+| [mujx/hakatime](https://github.com/mujx/hakatime) | No — self-hosted WakaTime-compatible server | Unlicense | Moderate — last push 2024 | Partial — IDE time via WakaTime protocol; not Cursor/Codex log fusion or invoices |
+| [Waishnav/Watcher](https://github.com/Waishnav/Watcher) | Yes — Linux screen-time | MIT | Some activity | Weak — Linux screen time; different OS focus |
+
+**Summary:** No single public repo in this pass matched the full Timelog Extract v1 combo (local-only core, multi-source AI/dev logs, Cursor path, optional invoice PDF). Closest *clusters*: local automated activity (ActivityWatch), worklog discipline (gtimelog), web invoicing (Kimai), WakaTime-server ecosystem (hakatime), AI usage widgets (OpenTokenMonitor).
+

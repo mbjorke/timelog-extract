@@ -8,6 +8,7 @@ from pathlib import Path
 from core import domain as core_domain
 from core.cli import TimelogRunOptions, as_run_options, parse_args as core_parse_args
 from core.config import default_worklog_path as core_default_worklog_path, normalize_profile
+from core.report_cli import run_timelog_cli
 from core.report_service import (
     LOCAL_TZ,
     ReportPayload,
@@ -15,7 +16,6 @@ from core.report_service import (
     estimate_hours_by_day,
     generate_invoice_pdf,
     group_by_day,
-    run_timelog_cli,
     run_timelog_report,
 )
 

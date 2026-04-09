@@ -43,6 +43,11 @@ APPLE_EPOCH = 978307200
 CHROME_EPOCH_DELTA_US = 11_644_473_600 * 1_000_000
 UNCATEGORIZED = "Uncategorized"
 
+
+def _want_log(args: argparse.Namespace) -> bool:
+    return not getattr(args, "quiet", False)
+
+
 SCREEN_TIME_DB_CANDIDATES = [
     HOME / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db",
     HOME / "Library" / "Application Support" / "KnowledgeC" / "knowledgeC.db",
@@ -272,15 +277,16 @@ def run_timelog_report(
         args.worklog, loaded_config_path, workspace.get("worklog"), REPO_ROOT
     )
 
-    print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
-    if args.only_project:
-        print(f"Only project: {args.only_project!r}")
-    if args.customer:
-        print(f"Only customer: {args.customer!r}")
-    print(f"Local timezone: {LOCAL_TZ}")
-    print(f"Project profiles: {len(profiles)}")
-    print(f"Worklog: {worklog_path}")
-    print()
+    if _want_log(args):
+        print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
+        if args.only_project:
+            print(f"Only project: {args.only_project!r}")
+        if args.customer:
+            print(f"Only customer: {args.customer!r}")
+        print(f"Local timezone: {LOCAL_TZ}")
+        print(f"Project profiles: {len(profiles)}")
+        print(f"Worklog: {worklog_path}")
+        print()
 
     runtime_collectors = RuntimeCollectors(
         home=HOME,
@@ -326,9 +332,11 @@ def run_timelog_report(
     screen_time_days = None
     screen_step_index = len(collector_status) + 1
     total_steps = screen_step_index
-    print(f"[{screen_step_index}/{total_steps}] Screen Time …")
+    if _want_log(args):
+        print(f"[{screen_step_index}/{total_steps}] Screen Time …")
     if args.screen_time == "off":
-        print("      disabled via --screen-time off\n")
+        if _want_log(args):
+            print("      disabled via --screen-time off\n")
         collector_status["Screen Time"] = {
             "enabled": False,
             "reason": "disabled via --screen-time off",
@@ -337,17 +345,19 @@ def run_timelog_report(
     else:
         screen_time_days, screen_msg = _collect_screen_time(dt_from, dt_to)
         if screen_time_days is None:
-            if args.screen_time == "on":
-                print(f"      could not read Screen Time: {screen_msg}\n")
-            else:
-                print(f"      skipping: {screen_msg}\n")
+            if _want_log(args):
+                if args.screen_time == "on":
+                    print(f"      could not read Screen Time: {screen_msg}\n")
+                else:
+                    print(f"      skipping: {screen_msg}\n")
             collector_status["Screen Time"] = {
                 "enabled": args.screen_time == "on",
                 "reason": screen_msg,
                 "days": 0,
             }
         else:
-            print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
+            if _want_log(args):
+                print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
             collector_status["Screen Time"] = {
                 "enabled": True,
                 "reason": "",
@@ -422,71 +432,3 @@ def generate_invoice_pdf(
         customer_name=args.customer,
         billable_unit=args.billable_unit,
     )
-
-
-def run_timelog_cli(args: argparse.Namespace) -> None:
-    """Run a full report for parsed CLI args and print or write outputs."""
-    report = run_timelog_report(args.projects_config, args.date_from, args.date_to, args)
-    if not report.included_events:
-        if report.args.only_project:
-            print(f"No events for project {report.args.only_project!r} in selected range.")
-        else:
-            print("No events found.")
-        if report.args.narrative:
-            _print_narrative(
-                report.overall_days,
-                report.project_reports,
-                report.included_events,
-                report.dt_from,
-                report.dt_to,
-            )
-        if report.args.invoice_pdf:
-            try:
-                out = (
-                    Path(report.args.invoice_pdf_file).expanduser()
-                    if report.args.invoice_pdf_file
-                    else default_invoice_pdf_path(report.dt_to)
-                )
-                built = _build_invoice_pdf(
-                    {},
-                    {},
-                    report.profiles,
-                    report.dt_from,
-                    report.dt_to,
-                    out,
-                    empty_note=(
-                        "No classified events for selected range/filter — report is empty (0 hours)."
-                    ),
-                    customer_name=report.args.customer,
-                    billable_unit=report.args.billable_unit,
-                )
-                print(f"PDF created: {built}")
-            except Exception as exc:
-                raise SystemExit(f"Could not create PDF: {exc}") from exc
-        return
-
-    if report.args.source_summary:
-        _print_source_summary(report.included_events)
-
-    _print_report(
-        report.overall_days,
-        report.project_reports,
-        report.screen_time_days,
-        report.profiles,
-        report.args,
-        report.config_path,
-    )
-    if report.args.narrative:
-        _print_narrative(
-            report.overall_days,
-            report.project_reports,
-            report.included_events,
-            report.dt_from,
-            report.dt_to,
-        )
-    if report.args.invoice_pdf:
-        try:
-            built = generate_invoice_pdf(report)
-            print(f"PDF created: {built}")
-        except Exception as exc:
-            raise SystemExit(f"Could not create PDF: {exc}") from exc

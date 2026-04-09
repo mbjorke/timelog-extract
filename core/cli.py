@@ -43,6 +43,10 @@ class TimelogRunOptions:
     billable_round: str = "ceil"
     chrome_source: str = "on"
     mail_source: str = "auto"
+    output_format: str = "terminal"
+    quiet: bool = False
+    json_file: Optional[str] = None
+    report_html: Optional[str] = None
 
 
 def as_run_options(options: Any) -> TimelogRunOptions:
@@ -171,5 +175,29 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
         help=(
             "Backward compatibility: ignored. Rounding is always upward (ceil) on aggregated project time."
         ),
+    )
+    p.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["terminal", "json"],
+        default="terminal",
+        help="Output: terminal report (default) or machine-readable JSON (suppresses progress text).",
+    )
+    p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress scanning progress (useful when piping). Implied by --format json.",
+    )
+    p.add_argument(
+        "--json-file",
+        default=None,
+        metavar="PATH",
+        help="With --format json, also write the JSON payload to this path.",
+    )
+    p.add_argument(
+        "--report-html",
+        default=None,
+        metavar="PATH",
+        help="Write a single-file HTML timeline report (uses the same payload as JSON).",
     )
     return p.parse_args()

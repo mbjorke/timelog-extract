@@ -7,6 +7,7 @@ class RuntimeCollectors:
     def __init__(
         self,
         *,
+        cli_args=None,
         home,
         local_tz,
         chrome_epoch_delta_us,
@@ -38,6 +39,7 @@ class RuntimeCollectors:
         self.cursor = cursor_collector
         self.mail = mail_collector
         self.timelog = timelog_collector
+        self.cli_args = cli_args
 
     def collect_claude_code(self, profiles, dt_from, dt_to):
         return self.ai_logs.collect_claude_code(

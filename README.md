@@ -9,6 +9,7 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - GUI-first Cursor extension scaffold in `cursor-extension/`.
 - Productization docs in `docs/`:
   - `AGENTIC_EVALUATION.md`
+  - `CASE_STUDY.md`
   - `V1_SCOPE.md`
   - `PRIVACY_SECURITY.md`
   - `SIMILAR_REPOS_CHECKLIST.md`
@@ -30,9 +31,23 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - Same with a plain-English executive blurb after the tables (rule-based, offline):
   - `python3 timelog_extract.py --today --narrative`
 - Worklog formats:
-  - Default is `TIMELOG.md` in the repo root (Markdown headings like `## YYYY-MM-DD HH:MM`).
+  - Default path is `<current_repo_root>/TIMELOG.md` — i.e. the root of the repository where you run the command (Markdown headings like `## YYYY-MM-DD HH:MM`).
   - Also supports gtimelog-style text logs with lines like `YYYY-MM-DD HH:MM: summary`.
-  - Use `--worklog PATH` to point at the file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
+  - Use `--worklog PATH` to point at a different file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
+  - **Path precedence (important):**
+    1. If `--worklog PATH` is provided, that path is used.
+    2. Else if `worklog` is set in workspace config (`timelog_projects.json`), that path is used.
+    3. Otherwise, `<current_repo_root>/TIMELOG.md` is used.
+  - Human examples:
+    - Repo default: `python3 timelog_extract.py --today`
+    - Custom file in repo: `python3 timelog_extract.py --today --worklog ./.private/my-worklog.md --worklog-format md`
+    - Centralized personal log: `python3 timelog_extract.py --today --worklog ~/timelogs/all-repos.md --worklog-format md`
+    - gtimelog text file: `python3 timelog_extract.py --today --worklog ~/timelogs/timelog.txt --worklog-format gtimelog`
+  - Agent resolution algorithm:
+    1. If user/command provides `--worklog`, use it.
+    2. Else if workspace config contains `worklog`, use it.
+    3. Else use `<current_repo_root>/TIMELOG.md`.
+    4. If chosen file is missing, create it.
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`

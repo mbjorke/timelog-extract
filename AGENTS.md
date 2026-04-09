@@ -7,6 +7,8 @@
 - Add entries during/after meaningful work using this format:
   - `## YYYY-MM-DD HH:MM`
   - `- <short summary of what was done>`
+- **Clock time must be real local wall time** when the entry is written. Do not invent, round to a “nice” hour, or default to placeholder times (for example `18:00`). Wrong timestamps defeat the purpose of the log.
+- **How to get the time:** run `date '+%Y-%m-%d %H:%M'` in the repo environment and use that for `YYYY-MM-DD HH:MM`, or use a time the user explicitly stated in the thread. If neither is available, ask the user before appending an entry.
 
 ## Git Safety
 

@@ -2,13 +2,18 @@
 
 ## Standard Timelog Policy
 
-- Use exactly one local timelog file: `TIMELOG.md` in repo root.
+- Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).
+- If CLI option `--worklog PATH` is provided, that path overrides the default for that run.
 - If `TIMELOG.md` does not exist, create it before logging work.
 - Add entries during/after meaningful work using this format:
   - `## YYYY-MM-DD HH:MM`
   - `- <short summary of what was done>`
 - **Clock time must be real local wall time** when the entry is written. Do not invent, round to a “nice” hour, or default to placeholder times (for example `18:00`). Wrong timestamps defeat the purpose of the log.
 - **How to get the time:** run `date '+%Y-%m-%d %H:%M'` in the repo environment and use that for `YYYY-MM-DD HH:MM`, or use a time the user explicitly stated in the thread. If neither is available, ask the user before appending an entry.
+- **Resolution order (for agents):**
+  1. If user/command includes `--worklog PATH`, use that path.
+  2. Else use `<repo_root>/TIMELOG.md`.
+  3. If the chosen file does not exist, create it before appending.
 
 ## Git Safety
 

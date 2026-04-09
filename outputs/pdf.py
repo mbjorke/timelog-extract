@@ -3,6 +3,29 @@ from __future__ import annotations
 from collections import defaultdict
 from html import escape as html_escape
 
+PDF_IMPORT_ERROR = (
+    "PDF generation requires reportlab. Install with: python3 -m pip install reportlab"
+)
+PDF_TITLE = "Time report - invoice basis"
+PDF_LABEL_PERIOD = "Period"
+PDF_LABEL_CUSTOMER = "Customer"
+PDF_LABEL_PROJECTS = "Projects"
+PDF_LABEL_TOTAL_BILLABLE = "Total billable"
+PDF_LABEL_RAW_TIME = "Raw time in period"
+PDF_LABEL_TOTAL_ESTIMATED = "Total estimated"
+PDF_TABLE_HEADER_SERVICE = "Description of service / deliverable"
+PDF_TABLE_HEADER_SCOPE = "Scope"
+PDF_FALLBACK_DESCRIPTION = "Ongoing implementation, analysis, and delivery within the project."
+PDF_FALLBACK_SOURCE = "local work logs"
+PDF_FALLBACK_EXAMPLES = "Ongoing implementation, analysis, and iteration."
+PDF_SUMMARY_ROW = "Total"
+PDF_DAILY_DATE = "Date"
+PDF_DAILY_HOURS = "Hours"
+PDF_DAILY_SPEC = "Daily breakdown"
+PDF_DAILY_BILLABLE_NOTE = (
+    "Daily hours are raw time; billable amounts in the table above are rounded up per project."
+)
+
 
 def invoice_projects_line(profiles, project_reports, customer_name):
     if project_reports:
@@ -38,9 +61,7 @@ def build_invoice_pdf(
         from reportlab.lib.units import inch
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except ImportError as exc:
-        raise RuntimeError(
-            "PDF-generering kraver reportlab. Installera med: python3 -m pip install reportlab"
-        ) from exc
+        raise RuntimeError(PDF_IMPORT_ERROR) from exc
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -82,22 +103,24 @@ def build_invoice_pdf(
     else:
         invoice_total_billable = total_raw_hours
     profile_by_name = {profile["name"]: profile for profile in profiles}
-    period_text = f"{dt_from.astimezone(local_tz).date()} till {dt_to.astimezone(local_tz).date()}"
+    period_text = f"{dt_from.astimezone(local_tz).date()} to {dt_to.astimezone(local_tz).date()}"
     projects_text = invoice_projects_line(profiles, project_reports, customer_name)
 
     elements = [
-        Paragraph("Tidrapport - fakturaunderlag", title_style),
-        Paragraph(f"<b>Period:</b> {period_text}", body_style),
+        Paragraph(PDF_TITLE, title_style),
+        Paragraph(f"<b>{PDF_LABEL_PERIOD}:</b> {period_text}", body_style),
     ]
     if customer_name:
-        elements.append(Paragraph(f"<b>Kund:</b> {html_escape(customer_name.strip())}", body_style))
+        elements.append(
+            Paragraph(f"<b>{PDF_LABEL_CUSTOMER}:</b> {html_escape(customer_name.strip())}", body_style)
+        )
     if billable_unit and billable_unit > 0:
         elements.extend(
             [
-                Paragraph(f"<b>Projekt:</b> {html_escape(projects_text)}", body_style),
+                Paragraph(f"<b>{PDF_LABEL_PROJECTS}:</b> {html_escape(projects_text)}", body_style),
                 Paragraph(
-                    f"<b>Totalt fakturerbart:</b> {invoice_total_billable:.2f} timmar<br/>"
-                    f"<i>Råtid under perioden: {total_raw_hours:.2f} h</i>",
+                    f"<b>{PDF_LABEL_TOTAL_BILLABLE}:</b> {invoice_total_billable:.2f} hours<br/>"
+                    f"<i>{PDF_LABEL_RAW_TIME}: {total_raw_hours:.2f} h</i>",
                     body_style,
                 ),
             ]
@@ -105,8 +128,8 @@ def build_invoice_pdf(
     else:
         elements.extend(
             [
-                Paragraph(f"<b>Projekt:</b> {html_escape(projects_text)}", body_style),
-                Paragraph(f"<b>Totalt estimerat:</b> {total_raw_hours:.2f} timmar", body_style),
+                Paragraph(f"<b>{PDF_LABEL_PROJECTS}:</b> {html_escape(projects_text)}", body_style),
+                Paragraph(f"<b>{PDF_LABEL_TOTAL_ESTIMATED}:</b> {total_raw_hours:.2f} hours", body_style),
             ]
         )
     if empty_note:
@@ -114,8 +137,8 @@ def build_invoice_pdf(
     elements.append(Spacer(1, 16))
 
     project_rows = [[
-        Paragraph("<b>Beskrivning av tjänst / Leverabel</b>", body_style),
-        Paragraph("<b>Omfattning</b>", body_style),
+        Paragraph(f"<b>{PDF_TABLE_HEADER_SERVICE}</b>", body_style),
+        Paragraph(f"<b>{PDF_TABLE_HEADER_SCOPE}</b>", body_style),
     ]]
     for project_name in sorted(project_reports):
         day_payloads = project_reports[project_name]
@@ -130,7 +153,7 @@ def build_invoice_pdf(
         if invoice_title or invoice_description:
             safe_title = html_escape(invoice_title or project_name)
             safe_description = html_escape(
-                invoice_description or "Löpande implementation, analys och leverans inom projektet."
+                invoice_description or PDF_FALLBACK_DESCRIPTION
             )
             desc = f"<b>{safe_title}</b><br/>{safe_description}"
             project_rows.append([Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)])
@@ -150,21 +173,21 @@ def build_invoice_pdf(
                 break
 
         top_sources = sorted(source_counts.items(), key=lambda item: item[1], reverse=True)[:3]
-        source_part = ", ".join(src for src, _ in top_sources if src) or "lokala arbetsloggar"
-        examples_part = "; ".join(sample_details) if sample_details else "Löpande implementation, analys och iteration."
+        source_part = ", ".join(src for src, _ in top_sources if src) or PDF_FALLBACK_SOURCE
+        examples_part = "; ".join(sample_details) if sample_details else PDF_FALLBACK_EXAMPLES
         safe_project_name = html_escape(project_name)
         safe_source_part = html_escape(source_part)
         safe_examples_part = html_escape(examples_part)
         desc = (
             f"<b>{safe_project_name}</b><br/>"
-            f"Löpande arbete inom projektet, sammanställt från {safe_source_part}. "
-            f"Exempel på utförda insatser: {safe_examples_part}"
+            f"Ongoing work in the project, summarized from {safe_source_part}. "
+            f"Examples of delivered effort: {safe_examples_part}"
         )
         project_rows.append([Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)])
 
     project_rows.append(
         [
-            Paragraph("<b>Summa</b>", body_style),
+            Paragraph(f"<b>{PDF_SUMMARY_ROW}</b>", body_style),
             Paragraph(f"<b>{invoice_total_billable:.2f} h</b>", body_style),
         ]
     )
@@ -185,7 +208,7 @@ def build_invoice_pdf(
     elements.append(project_table)
     elements.append(Spacer(1, 18))
 
-    daily_rows = [[Paragraph("<b>Datum</b>", body_style), Paragraph("<b>Timmar</b>", body_style)]]
+    daily_rows = [[Paragraph(f"<b>{PDF_DAILY_DATE}</b>", body_style), Paragraph(f"<b>{PDF_DAILY_HOURS}</b>", body_style)]]
     for day in sorted(overall_days):
         daily_rows.append([Paragraph(day, body_style), Paragraph(f"{overall_days[day]['hours']:.2f} h", body_style)])
     daily_table = Table(daily_rows, colWidths=[4.8 * inch, 1.3 * inch])
@@ -201,14 +224,14 @@ def build_invoice_pdf(
             ]
         )
     )
-    elements.append(Paragraph("<b>Daglig specifikation</b>", body_style))
+    elements.append(Paragraph(f"<b>{PDF_DAILY_SPEC}</b>", body_style))
     elements.append(Spacer(1, 8))
     elements.append(daily_table)
     if billable_unit and billable_unit > 0:
         elements.append(Spacer(1, 6))
         elements.append(
             Paragraph(
-                "<i>Dagliga timmar är råtid; fakturerbara belopp i tabellen ovan avrundas uppåt per projekt.</i>",
+                f"<i>{PDF_DAILY_BILLABLE_NOTE}</i>",
                 body_style,
             )
         )

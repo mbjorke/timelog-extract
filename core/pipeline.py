@@ -52,6 +52,7 @@ def collect_all_events(
         collect_worklog=collect_worklog,
     )
     total_collectors = len(collectors)
+    quiet = getattr(args, "quiet", False)
 
     for index, spec in enumerate(collectors, 1):
         name = spec.name
@@ -59,9 +60,11 @@ def collect_all_events(
         unit_label = spec.unit_label
         enabled = spec.enabled
         reason = spec.reason
-        print(f"[{index}/{total_collectors}] {name} …")
+        if not quiet:
+            print(f"[{index}/{total_collectors}] {name} …")
         if not enabled:
-            print(f"      disabled ({reason})\n")
+            if not quiet:
+                print(f"      disabled ({reason})\n")
             collector_status[name] = {
                 "enabled": False,
                 "reason": reason,
@@ -71,14 +74,16 @@ def collect_all_events(
         try:
             events = collector(profiles, dt_from, dt_to)
         except Exception as exc:  # defensive boundary: a source failure should not stop others
-            print(f"      failed ({exc})\n")
+            if not quiet:
+                print(f"      failed ({exc})\n")
             collector_status[name] = {
                 "enabled": False,
                 "reason": f"collector error: {exc}",
                 "events": 0,
             }
             continue
-        print(f"      {len(events)} {unit_label}\n")
+        if not quiet:
+            print(f"      {len(events)} {unit_label}\n")
         all_events.extend(events)
         collector_status[name] = {
             "enabled": True,

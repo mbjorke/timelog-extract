@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: incident write-up `docs/incidents/2026-04-09-timelog-timestamp.md`; regression test `tests/test_agents_timelog_policy.py` locks TIMELOG clock-time rules in `AGENTS.md`.
+- CLI: `--format json` emits a versioned truth payload (sessions + events + metadata) to stdout; `--json-file`, `--report-html`, and `--quiet` supported. HTML report is a single self-contained file with an embedded payload.
+- CLI: `--narrative` prints a rule-based executive summary in English after the report (local, no LLM).
 - CLI: `-V` / `--version` prints `timelog-extract` and the package version from metadata (fallback `0.1.0-dev` when not installed).
 
 ## 0.1.0 - 2026-04-08

@@ -11,6 +11,7 @@ Timelog Extract aggregates local activity signals into project/customer time rep
   - `AGENTIC_EVALUATION.md`
   - `V1_SCOPE.md`
   - `PRIVACY_SECURITY.md`
+  - `SIMILAR_REPOS_CHECKLIST.md`
 
 ## Quick Start (Friend Trial)
 
@@ -25,6 +26,11 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 - Today:
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
+- Same with a plain-English executive blurb after the tables (rule-based, offline):
+  - `python3 timelog_extract.py --today --narrative`
+- Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
+  - `python3 timelog_extract.py --today --format json`
+  - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`
 - Custom range:
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --source-summary`
 

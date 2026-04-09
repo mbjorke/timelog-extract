@@ -189,7 +189,7 @@ def parse_args(default_config: str, default_keywords: str, default_project: str,
         "--billable-unit",
         type=float,
         default=0.0,
-        metavar="TIMMAR",
+        metavar="HOURS",
         help=(
             "Billable granularity (0=off, e.g. 0.25): raw time is summed per project/customer first, "
             "then rounded up to the nearest N hours - not per session."

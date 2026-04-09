@@ -18,6 +18,10 @@ PDF_TABLE_HEADER_SCOPE = "Scope"
 PDF_FALLBACK_DESCRIPTION = "Ongoing implementation, analysis, and delivery within the project."
 PDF_FALLBACK_SOURCE = "local work logs"
 PDF_FALLBACK_EXAMPLES = "Ongoing implementation, analysis, and iteration."
+PDF_FALLBACK_PROJECT_SUMMARY_TEMPLATE = (
+    "Ongoing work in the project, summarized from {source}. "
+    "Examples of delivered effort: {examples}"
+)
 PDF_SUMMARY_ROW = "Total"
 PDF_DAILY_DATE = "Date"
 PDF_DAILY_HOURS = "Hours"
@@ -178,11 +182,11 @@ def build_invoice_pdf(
         safe_project_name = html_escape(project_name)
         safe_source_part = html_escape(source_part)
         safe_examples_part = html_escape(examples_part)
-        desc = (
-            f"<b>{safe_project_name}</b><br/>"
-            f"Ongoing work in the project, summarized from {safe_source_part}. "
-            f"Examples of delivered effort: {safe_examples_part}"
+        summary_text = PDF_FALLBACK_PROJECT_SUMMARY_TEMPLATE.format(
+            source=safe_source_part,
+            examples=safe_examples_part,
         )
+        desc = f"<b>{safe_project_name}</b><br/>{summary_text}"
         project_rows.append([Paragraph(desc, body_style), Paragraph(f"{display_hours:.2f} h", body_style)])
 
     project_rows.append(

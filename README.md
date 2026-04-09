@@ -36,7 +36,8 @@ Timelog Extract aggregates local activity signals into project/customer time rep
   - Use `--worklog PATH` to point at a different file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
   - **Path precedence (important):**
     1. If `--worklog PATH` is provided, that path is used.
-    2. Otherwise, repo-root `TIMELOG.md` is used.
+    2. Else if `worklog` is set in workspace config (`timelog_projects.json`), that path is used.
+    3. Otherwise, `<current_repo_root>/TIMELOG.md` is used.
   - Human examples:
     - Repo default: `python3 timelog_extract.py --today`
     - Custom file in repo: `python3 timelog_extract.py --today --worklog ./.private/my-worklog.md --worklog-format md`
@@ -44,8 +45,9 @@ Timelog Extract aggregates local activity signals into project/customer time rep
     - gtimelog text file: `python3 timelog_extract.py --today --worklog ~/timelogs/timelog.txt --worklog-format gtimelog`
   - Agent resolution algorithm:
     1. If user/command provides `--worklog`, use it.
-    2. Else use `<repo_root>/TIMELOG.md`.
-    3. If chosen file is missing, create it.
+    2. Else if workspace config contains `worklog`, use it.
+    3. Else use `<current_repo_root>/TIMELOG.md`.
+    4. If chosen file is missing, create it.
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`

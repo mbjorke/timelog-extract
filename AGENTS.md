@@ -12,7 +12,7 @@
 - **How to get the time:** run `date '+%Y-%m-%d %H:%M'` in the repo environment and use that for `YYYY-MM-DD HH:MM`, or use a time the user explicitly stated in the thread. If neither is available, ask the user before appending an entry.
 - **Resolution order (for agents):**
   1. If user/command includes `--worklog PATH`, use that path.
-  2. Else use `<repo_root>/TIMELOG.md`.
+  2. Else use `<current_repo_root>/TIMELOG.md`.
   3. If the chosen file does not exist, create it before appending.
 
 ## Git Safety

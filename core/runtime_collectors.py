@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 
 class RuntimeCollectors:
     def __init__(
@@ -23,6 +25,8 @@ class RuntimeCollectors:
         cursor_collector,
         mail_collector,
         timelog_collector,
+        github_collector,
+        github_token: Optional[str] = None,
     ):
         self.home = home
         self.local_tz = local_tz
@@ -39,7 +43,9 @@ class RuntimeCollectors:
         self.cursor = cursor_collector
         self.mail = mail_collector
         self.timelog = timelog_collector
+        self.github = github_collector
         self.cli_args = cli_args
+        self.github_token = github_token
 
     def collect_claude_code(self, profiles, dt_from, dt_to):
         return self.ai_logs.collect_claude_code(
@@ -152,4 +158,20 @@ class RuntimeCollectors:
             self.classify_project,
             self.make_event,
             self.worklog_source,
+        )
+
+    def collect_github(self, profiles, dt_from, dt_to):
+        from collectors.github import resolve_github_username
+
+        user = resolve_github_username(self.cli_args) if self.cli_args is not None else ""
+        if not user:
+            return []
+        return self.github.collect_public_events(
+            profiles,
+            dt_from,
+            dt_to,
+            username=user,
+            token=self.github_token,
+            classify_project=self.classify_project,
+            make_event=self.make_event,
         )

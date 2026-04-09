@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Optional, Union
 from collectors import ai_logs as ai_logs_collector
 from collectors import chrome as chrome_collector
 from collectors import cursor as cursor_collector
+from collectors import github as github_collector
 from collectors import mail as mail_collector
 from collectors import timelog as timelog_collector
 from core import domain as core_domain
@@ -305,6 +307,8 @@ def run_timelog_report(
         cursor_collector=cursor_collector,
         mail_collector=mail_collector,
         timelog_collector=timelog_collector,
+        github_collector=github_collector,
+        github_token=os.environ.get("GITHUB_TOKEN"),
     )
 
     all_events, collector_status = collect_all_events(
@@ -328,6 +332,7 @@ def run_timelog_report(
         collect_codex_ide=runtime_collectors.collect_codex_ide,
         collect_apple_mail=runtime_collectors.collect_apple_mail,
         collect_worklog=runtime_collectors.collect_worklog,
+        collect_github=runtime_collectors.collect_github,
     )
 
     screen_time_days = None

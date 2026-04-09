@@ -2,6 +2,7 @@
 
 CURSOR_CHECKPOINTS_SOURCE = "Cursor checkpoints"
 WORKLOG_SOURCE = "TIMELOG.md"
+GITHUB_SOURCE = "GitHub"
 
 SOURCE_ORDER = [
     "Claude Code CLI",
@@ -15,6 +16,7 @@ SOURCE_ORDER = [
     WORKLOG_SOURCE,
     "Apple Mail",
     "Chrome",
+    GITHUB_SOURCE,
 ]
 
 AI_SOURCES = {

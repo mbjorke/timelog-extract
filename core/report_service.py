@@ -308,7 +308,6 @@ def run_timelog_report(
         mail_collector=mail_collector,
         timelog_collector=timelog_collector,
         github_collector=github_collector,
-        cli_args=args,
         github_token=os.environ.get("GITHUB_TOKEN"),
     )
 

@@ -1,4 +1,4 @@
-"""Regression: AGENTS.md must keep TIMELOG clock-time policy (see docs/incidents/)."""
+"""Regression: AGENTS.md must keep TIMELOG path/time policy."""
 
 from pathlib import Path
 import unittest
@@ -11,11 +11,26 @@ def _agents_text() -> str:
 
 
 class AgentsTimelogPolicyTests(unittest.TestCase):
-    """Ensures TIMELOG timestamp rules are not accidentally removed from AGENTS.md."""
+    """Ensures TIMELOG path and timestamp rules stay explicit in AGENTS.md."""
 
     def test_agents_md_exists(self):
         root = Path(__file__).resolve().parent.parent
         self.assertTrue((root / "AGENTS.md").is_file())
+
+    def test_requires_default_repo_root_timelog(self):
+        text = _agents_text()
+        self.assertIn("<current_repo_root>/TIMELOG.md", text)
+        self.assertIn("by default", text.lower())
+
+    def test_requires_worklog_override_precedence(self):
+        text = _agents_text()
+        self.assertIn("--worklog PATH", text)
+        self.assertIn("overrides the default", text)
+        self.assertIn("Resolution order (for agents)", text)
+
+    def test_requires_entry_header_format(self):
+        text = _agents_text()
+        self.assertIn("## YYYY-MM-DD HH:MM", text)
 
     def test_requires_real_wall_clock_language(self):
         text = _agents_text()

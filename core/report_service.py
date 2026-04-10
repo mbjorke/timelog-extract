@@ -3,18 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from collectors import ai_logs as ai_logs_collector
-from collectors import chrome as chrome_collector
-from collectors import cursor as cursor_collector
-from collectors import github as github_collector
-from collectors import mail as mail_collector
-from collectors import timelog as timelog_collector
 from core import domain as core_domain
 from core.analytics import (
     estimate_hours_by_day as core_estimate_hours_by_day,
@@ -22,7 +15,6 @@ from core.analytics import (
     group_by_day as core_group_by_day,
 )
 from core.cli import TimelogRunOptions, as_run_options
-from core.collector_registry import build_collector_specs
 from core.config import load_profiles, resolve_worklog_path as core_resolve_worklog_path
 from core.events import (
     dedupe_events as core_dedupe_events,
@@ -30,8 +22,12 @@ from core.events import (
     filter_included_events,
     make_event as core_make_event,
 )
-from core.pipeline import collect_all_events
-from core.runtime_collectors import RuntimeCollectors
+from core.report_runtime import (
+    build_run_context,
+    collect_runtime_events,
+    collect_screen_time_status,
+)
+from core.report_aggregate import aggregate_report
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from outputs import narrative as narrative_output
@@ -263,35 +259,28 @@ def run_timelog_report(
     date_to: Optional[str],
     options: Union[argparse.Namespace, TimelogRunOptions, Dict[str, Any]],
 ) -> ReportPayload:
-    run_options = as_run_options(options)
-    args = argparse.Namespace(**vars(run_options))
-    args.projects_config = config_path
-    args.date_from = date_from
-    args.date_to = date_to
-
-    if args.today:
-        today_s = datetime.now(LOCAL_TZ).strftime("%Y-%m-%d")
-        args.date_from = today_s
-        args.date_to = today_s
-    dt_from, dt_to = _get_date_range(args.date_from, args.date_to)
-    profiles, loaded_config_path, workspace = load_profiles(args.projects_config, args)
-    worklog_path = core_resolve_worklog_path(
-        args.worklog, loaded_config_path, workspace.get("worklog"), REPO_ROOT
+    context = build_run_context(
+        config_path=config_path,
+        date_from=date_from,
+        date_to=date_to,
+        options=options,
+        local_tz=LOCAL_TZ,
+        repo_root=REPO_ROOT,
+        as_run_options_fn=as_run_options,
+        get_date_range_fn=_get_date_range,
+        load_profiles_fn=load_profiles,
+        resolve_worklog_path_fn=core_resolve_worklog_path,
+        want_log_fn=_want_log,
     )
+    args = context.args
+    dt_from = context.dt_from
+    dt_to = context.dt_to
+    profiles = context.profiles
+    loaded_config_path = context.loaded_config_path
+    worklog_path = context.worklog_path
 
-    if _want_log(args):
-        print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
-        if args.only_project:
-            print(f"Only project: {args.only_project!r}")
-        if args.customer:
-            print(f"Only customer: {args.customer!r}")
-        print(f"Local timezone: {LOCAL_TZ}")
-        print(f"Project profiles: {len(profiles)}")
-        print(f"Worklog: {worklog_path}")
-        print()
-
-    runtime_collectors = RuntimeCollectors(
-        cli_args=args,
+    all_events, collector_status = collect_runtime_events(
+        context=context,
         home=HOME,
         local_tz=LOCAL_TZ,
         chrome_epoch_delta_us=CHROME_EPOCH_DELTA_US,
@@ -302,96 +291,32 @@ def run_timelog_report(
         cursor_checkpoints_source=CURSOR_CHECKPOINTS_SOURCE,
         classify_project_fn=_classify_project,
         make_event_fn=_make_event,
-        ai_logs_collector=ai_logs_collector,
-        chrome_collector=chrome_collector,
-        cursor_collector=cursor_collector,
-        mail_collector=mail_collector,
-        timelog_collector=timelog_collector,
-        github_collector=github_collector,
-        github_token=os.environ.get("GITHUB_TOKEN"),
     )
 
-    all_events, collector_status = collect_all_events(
-        profiles,
-        dt_from,
-        dt_to,
-        args,
-        worklog_path,
-        home=HOME,
-        chrome_history_path_fn=chrome_collector.chrome_history_path,
-        detect_mail_root_fn=mail_collector.detect_mail_root,
-        build_collector_specs_fn=build_collector_specs,
-        collect_claude_code=runtime_collectors.collect_claude_code,
-        collect_claude_desktop=runtime_collectors.collect_claude_desktop,
-        collect_claude_ai_urls=runtime_collectors.collect_claude_ai_urls,
-        collect_gemini_web_urls=runtime_collectors.collect_gemini_web_urls,
-        collect_chrome=runtime_collectors.collect_chrome,
-        collect_gemini_cli=runtime_collectors.collect_gemini_cli,
-        collect_cursor=runtime_collectors.collect_cursor,
-        collect_cursor_checkpoints=runtime_collectors.collect_cursor_checkpoints,
-        collect_codex_ide=runtime_collectors.collect_codex_ide,
-        collect_apple_mail=runtime_collectors.collect_apple_mail,
-        collect_worklog=runtime_collectors.collect_worklog,
-        collect_github=runtime_collectors.collect_github,
+    screen_time_days = collect_screen_time_status(
+        args=args,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        collector_status=collector_status,
+        collect_screen_time_fn=_collect_screen_time,
+        want_log_fn=_want_log,
     )
 
-    screen_time_days = None
-    screen_step_index = len(collector_status) + 1
-    total_steps = screen_step_index
-    if _want_log(args):
-        print(f"[{screen_step_index}/{total_steps}] Screen Time …")
-    if args.screen_time == "off":
-        if _want_log(args):
-            print("      disabled via --screen-time off\n")
-        collector_status["Screen Time"] = {
-            "enabled": False,
-            "reason": "disabled via --screen-time off",
-            "days": 0,
-        }
-    else:
-        screen_time_days, screen_msg = _collect_screen_time(dt_from, dt_to)
-        if screen_time_days is None:
-            if _want_log(args):
-                if args.screen_time == "on":
-                    print(f"      could not read Screen Time: {screen_msg}\n")
-                else:
-                    print(f"      skipping: {screen_msg}\n")
-            collector_status["Screen Time"] = {
-                "enabled": args.screen_time == "on",
-                "reason": screen_msg,
-                "days": 0,
-            }
-        else:
-            if _want_log(args):
-                print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
-            collector_status["Screen Time"] = {
-                "enabled": True,
-                "reason": "",
-                "days": len(screen_time_days),
-            }
-
-    all_events = _dedupe_events(all_events)
-    included_events = filter_included_events(all_events, args, profiles, UNCATEGORIZED)
-
-    exclude_list = [k.strip() for k in args.exclude.split(",") if k.strip()]
-    grouped = _group_by_day(included_events, exclude_keywords=exclude_list)
-    overall_days = estimate_hours_by_day(
-        grouped,
-        gap_minutes=args.gap_minutes,
-        min_session_minutes=args.min_session,
-        min_session_passive_minutes=args.min_session_passive,
+    agg = aggregate_report(
+        all_events=all_events,
+        args=args,
+        profiles=profiles,
+        uncategorized=UNCATEGORIZED,
+        dedupe_events_fn=_dedupe_events,
+        filter_included_events_fn=filter_included_events,
+        group_by_day_fn=lambda events, exclude: _group_by_day(events, exclude_keywords=exclude),
+        estimate_hours_by_day_fn=lambda days, gap, min_s, min_p: estimate_hours_by_day(
+            days,
+            gap_minutes=gap,
+            min_session_minutes=min_s,
+            min_session_passive_minutes=min_p,
+        ),
     )
-
-    project_reports = {}
-    for project_name in sorted({event["project"] for event in included_events}):
-        project_events = [event for event in included_events if event["project"] == project_name]
-        project_grouped = _group_by_day(project_events, exclude_keywords=exclude_list)
-        project_reports[project_name] = estimate_hours_by_day(
-            project_grouped,
-            gap_minutes=args.gap_minutes,
-            min_session_minutes=args.min_session,
-            min_session_passive_minutes=args.min_session_passive,
-        )
 
     return ReportPayload(
         dt_from=dt_from,
@@ -399,11 +324,11 @@ def run_timelog_report(
         profiles=profiles,
         config_path=loaded_config_path,
         worklog_path=worklog_path,
-        all_events=all_events,
-        included_events=included_events,
-        grouped=grouped,
-        overall_days=overall_days,
-        project_reports=project_reports,
+        all_events=agg.all_events,
+        included_events=agg.included_events,
+        grouped=agg.grouped,
+        overall_days=agg.overall_days,
+        project_reports=agg.project_reports,
         screen_time_days=screen_time_days,
         collector_status=collector_status,
         args=args,

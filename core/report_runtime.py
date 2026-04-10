@@ -1,0 +1,190 @@
+"""Runtime orchestration helpers for report service boundaries."""
+
+from __future__ import annotations
+
+import argparse
+import os
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from collectors import ai_logs as ai_logs_collector
+from collectors import chrome as chrome_collector
+from collectors import cursor as cursor_collector
+from collectors import github as github_collector
+from collectors import mail as mail_collector
+from collectors import timelog as timelog_collector
+from core.collector_registry import build_collector_specs
+from core.pipeline import collect_all_events
+from core.runtime_collectors import RuntimeCollectors
+
+
+@dataclass
+class RunContext:
+    args: argparse.Namespace
+    dt_from: datetime
+    dt_to: datetime
+    profiles: List[Dict[str, Any]]
+    loaded_config_path: Optional[Path]
+    worklog_path: Path
+
+
+def build_run_context(
+    *,
+    config_path: str,
+    date_from: Optional[str],
+    date_to: Optional[str],
+    options: Any,
+    local_tz,
+    repo_root: Path,
+    as_run_options_fn: Callable[[Any], Any],
+    get_date_range_fn: Callable[[Optional[str], Optional[str]], Tuple[datetime, datetime]],
+    load_profiles_fn: Callable[[str, argparse.Namespace], Any],
+    resolve_worklog_path_fn: Callable[[Optional[str], Optional[Path], Any, Path], Path],
+    want_log_fn: Callable[[argparse.Namespace], bool],
+) -> RunContext:
+    run_options = as_run_options_fn(options)
+    args = argparse.Namespace(**vars(run_options))
+    args.projects_config = config_path
+    args.date_from = date_from
+    args.date_to = date_to
+
+    if args.today:
+        today_s = datetime.now(local_tz).strftime("%Y-%m-%d")
+        args.date_from = today_s
+        args.date_to = today_s
+
+    dt_from, dt_to = get_date_range_fn(args.date_from, args.date_to)
+    profiles, loaded_config_path, workspace = load_profiles_fn(args.projects_config, args)
+    worklog_path = resolve_worklog_path_fn(
+        args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
+    )
+
+    if want_log_fn(args):
+        print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
+        if args.only_project:
+            print(f"Only project: {args.only_project!r}")
+        if args.customer:
+            print(f"Only customer: {args.customer!r}")
+        print(f"Local timezone: {local_tz}")
+        print(f"Project profiles: {len(profiles)}")
+        print(f"Worklog: {worklog_path}")
+        print()
+
+    return RunContext(
+        args=args,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        profiles=profiles,
+        loaded_config_path=loaded_config_path,
+        worklog_path=worklog_path,
+    )
+
+
+def collect_runtime_events(
+    *,
+    context: RunContext,
+    home: Path,
+    local_tz,
+    chrome_epoch_delta_us: int,
+    uncategorized: str,
+    cursor_checkpoints_dir: Path,
+    codex_ide_session_index: Path,
+    worklog_source: str,
+    cursor_checkpoints_source: str,
+    classify_project_fn: Callable[[str, List[Dict[str, Any]]], str],
+    make_event_fn: Callable[[str, Any, str, str], Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    runtime_collectors = RuntimeCollectors(
+        cli_args=context.args,
+        home=home,
+        local_tz=local_tz,
+        chrome_epoch_delta_us=chrome_epoch_delta_us,
+        uncategorized=uncategorized,
+        cursor_checkpoints_dir=cursor_checkpoints_dir,
+        codex_ide_session_index=codex_ide_session_index,
+        worklog_source=worklog_source,
+        cursor_checkpoints_source=cursor_checkpoints_source,
+        classify_project_fn=classify_project_fn,
+        make_event_fn=make_event_fn,
+        ai_logs_collector=ai_logs_collector,
+        chrome_collector=chrome_collector,
+        cursor_collector=cursor_collector,
+        mail_collector=mail_collector,
+        timelog_collector=timelog_collector,
+        github_collector=github_collector,
+        github_token=os.environ.get("GITHUB_TOKEN"),
+    )
+    return collect_all_events(
+        context.profiles,
+        context.dt_from,
+        context.dt_to,
+        context.args,
+        context.worklog_path,
+        home=home,
+        chrome_history_path_fn=chrome_collector.chrome_history_path,
+        detect_mail_root_fn=mail_collector.detect_mail_root,
+        build_collector_specs_fn=build_collector_specs,
+        collect_claude_code=runtime_collectors.collect_claude_code,
+        collect_claude_desktop=runtime_collectors.collect_claude_desktop,
+        collect_claude_ai_urls=runtime_collectors.collect_claude_ai_urls,
+        collect_gemini_web_urls=runtime_collectors.collect_gemini_web_urls,
+        collect_chrome=runtime_collectors.collect_chrome,
+        collect_gemini_cli=runtime_collectors.collect_gemini_cli,
+        collect_cursor=runtime_collectors.collect_cursor,
+        collect_cursor_checkpoints=runtime_collectors.collect_cursor_checkpoints,
+        collect_codex_ide=runtime_collectors.collect_codex_ide,
+        collect_apple_mail=runtime_collectors.collect_apple_mail,
+        collect_worklog=runtime_collectors.collect_worklog,
+        collect_github=runtime_collectors.collect_github,
+    )
+
+
+def collect_screen_time_status(
+    *,
+    args: argparse.Namespace,
+    dt_from: datetime,
+    dt_to: datetime,
+    collector_status: Dict[str, Dict[str, Any]],
+    collect_screen_time_fn: Callable[[datetime, datetime], Any],
+    want_log_fn: Callable[[argparse.Namespace], bool],
+) -> Optional[Dict[str, float]]:
+    screen_time_days = None
+    screen_step_index = len(collector_status) + 1
+    total_steps = screen_step_index
+    if want_log_fn(args):
+        print(f"[{screen_step_index}/{total_steps}] Screen Time ...")
+    if args.screen_time == "off":
+        if want_log_fn(args):
+            print("      disabled via --screen-time off\n")
+        collector_status["Screen Time"] = {
+            "enabled": False,
+            "reason": "disabled via --screen-time off",
+            "days": 0,
+        }
+        return screen_time_days
+
+    screen_time_days, screen_msg = collect_screen_time_fn(dt_from, dt_to)
+    if screen_time_days is None:
+        if want_log_fn(args):
+            if args.screen_time == "on":
+                print(f"      could not read Screen Time: {screen_msg}\n")
+            else:
+                print(f"      skipping: {screen_msg}\n")
+        collector_status["Screen Time"] = {
+            "enabled": args.screen_time == "on",
+            "reason": screen_msg,
+            "days": 0,
+        }
+        return screen_time_days
+
+    if want_log_fn(args):
+        print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
+    collector_status["Screen Time"] = {
+        "enabled": True,
+        "reason": "",
+        "days": len(screen_time_days),
+    }
+    return screen_time_days
+

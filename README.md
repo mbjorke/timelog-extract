@@ -8,9 +8,14 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - Phase 0 friend-trial runner: `scripts/friend_trial.py`.
 - GUI-first Cursor extension scaffold in `cursor-extension/`.
 - Productization docs in `docs/`:
+  - `GITTAN_VISION.md`
+  - `GITTAN_VISION_EN.md`
+  - `GITTAN_NORTHSTAR_METRICS.md`
   - `AGENTIC_EVALUATION.md`
   - `CASE_STUDY.md`
+  - `CASE_STUDY_TECH.md`
   - `V1_SCOPE.md`
+  - `V1_FINISH_PLAN.md`
   - `PRIVACY_SECURITY.md`
   - `SIMILAR_REPOS_CHECKLIST.md`
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
@@ -26,28 +31,19 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 
 ## CLI Usage
 
+- **Use it now (recommended, no Cursor debug setup needed):**
+  - `python3 scripts/run_engine_report.py --today --pdf --json-file output/latest-payload.json`
+  - This uses the same `core.engine_api` boundary as the extension.
+  - You should see `schema`, `version`, `totals`, plus `pdf_path` when `--pdf` is enabled.
+
 - Today:
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
 - Same with a plain-English executive blurb after the tables (rule-based, offline):
   - `python3 timelog_extract.py --today --narrative`
 - Worklog formats:
-  - Default path is `<current_repo_root>/TIMELOG.md` — i.e. the root of the repository where you run the command (Markdown headings like `## YYYY-MM-DD HH:MM`).
+  - Default is `TIMELOG.md` in the repo root (Markdown headings like `## YYYY-MM-DD HH:MM`).
   - Also supports gtimelog-style text logs with lines like `YYYY-MM-DD HH:MM: summary`.
-  - Use `--worklog PATH` to point at a different file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
-  - **Path precedence (important):**
-    1. If `--worklog PATH` is provided, that path is used.
-    2. Else if `worklog` is set in workspace config (`timelog_projects.json`), that path is used.
-    3. Otherwise, `<current_repo_root>/TIMELOG.md` is used.
-  - Human examples:
-    - Repo default: `python3 timelog_extract.py --today`
-    - Custom file in repo: `python3 timelog_extract.py --today --worklog ./.private/my-worklog.md --worklog-format md`
-    - Centralized personal log: `python3 timelog_extract.py --today --worklog ~/timelogs/all-repos.md --worklog-format md`
-    - gtimelog text file: `python3 timelog_extract.py --today --worklog ~/timelogs/timelog.txt --worklog-format gtimelog`
-  - Agent resolution algorithm:
-    1. If user/command provides `--worklog`, use it.
-    2. Else if workspace config contains `worklog`, use it.
-    3. Else use `<current_repo_root>/TIMELOG.md`.
-    4. If chosen file is missing, create it.
+  - Use `--worklog PATH` to point at the file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`

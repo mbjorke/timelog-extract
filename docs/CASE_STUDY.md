@@ -1,108 +1,96 @@
 # Case Study: Timelog Extract
 
-## One-line Summary
+## In One Sentence
 
-Timelog Extract turns fragmented local work signals into a clear, auditable time report and optional invoice-ready output, helping solo consultants and small teams bill faster with more confidence.
+Timelog Extract helps you answer one simple question: **"What did I actually work on this week?"**
 
-## The Problem
+## The Everyday Problem
 
-Knowledge work now happens across many tools in parallel:
+Most work happens in many places:
 
-- AI coding sessions
-- editor activity and checkpoints
-- terminal commands
-- browser and chat interactions
-- handwritten or markdown worklogs
+- messages
+- browser tabs
+- terminal windows
+- editor files
+- notes
 
-At invoicing time, this creates three recurring issues:
+When it is time to bill a client, it is easy to forget small tasks.  
+That means:
 
-1. **Lost billable time**  
-   Small sessions are forgotten because they are spread across tools.
-2. **Weak evidence for clients**  
-   Manual summaries are often too vague to justify hours.
-3. **High admin overhead**  
-   Reconstructing a week or month of work manually is slow and mentally expensive.
+- lost income,
+- stress,
+- and messy invoices.
 
-## Who It Helps
+## What This Tool Does
 
-- Independent consultants and freelancers billing by hour or project
-- Small agencies working across multiple clients
-- Product or engineering leads who need transparent effort summaries
+Timelog Extract gathers your work traces and turns them into one clear report.
 
-## Why Existing Workflow Breaks
+Think of it like this:
 
-Typical workflows rely on either:
+- You do the work.
+- The tool helps collect proof of that work.
+- You get a clear summary you can trust.
 
-- manually maintained worklogs, or
-- a single-source tracker that misses real activity.
+## Who This Is For
 
-Modern development includes AI-assisted workflows and multi-tool context switching, so single-source reporting misses meaningful work. Timelog Extract is built for this new reality.
+- freelancers
+- consultants
+- small agencies
+- anyone who sends invoices based on time
 
-## Solution Overview
+## Before and After
 
-Timelog Extract is a local-first Python/CLI tool (with GUI extension scaffolding) that:
+**Before**
 
-1. Collects events from configured local and optional external sources.
-2. Classifies activity into project/customer buckets using matching rules.
-3. Builds session-level summaries and source breakdowns.
-4. Outputs reports for human review and downstream automation.
+- You try to remember what happened last Tuesday.
+- You jump between tools and old notes.
+- You guess your hours.
 
-## What It Produces
+**After**
 
-- Terminal summary report (`--source-summary`)
-- Rule-based executive narrative (`--narrative`, no LLM required)
-- Versioned JSON truth payload (`--format json`, optional `--json-file`)
-- Single-file HTML timeline (`--report-html`)
-- Optional invoice PDF output (`--invoice-pdf`)
+- You run one command.
+- You see a timeline of what was done.
+- You write invoices with better confidence.
 
-## Key Product Decisions
+## What You Get
 
-- **Local-first by default**: core flow is designed to run without cloud upload.
-- **Transparent output**: structured JSON payload enables auditability and integrations.
-- **Pragmatic source coverage**: supports modern AI/dev workflows, not only classic timers.
-- **Incremental trust**: narrative output is deterministic and rule-based.
+Timelog Extract can create:
 
-## What Changed Recently (Current Momentum)
+- a simple text summary
+- a timeline report
+- a shareable HTML report
+- a PDF invoice-ready output
 
-Recent updates strengthened the core value proposition:
+In short: from scattered activity to a clean overview.
 
-- Added versioned JSON truth payload and HTML timeline export.
-- Added deterministic executive narrative for stakeholder-friendly summaries.
-- Added optional GitHub activity source for broader signal coverage.
-- Improved English output across terminal and PDF labels.
-- Added worklog format flexibility (`TIMELOG.md` and gtimelog-style text).
+## Why It Matters
 
-Together, these changes moved the project from "raw extraction utility" to "client-ready reporting pipeline."
+Today, people work faster and switch tools all the time, especially with AI helpers.  
+Old time tracking methods miss a lot of real work.
 
-## Business Outcome
+Timelog Extract is built for this modern way of working.
 
-Timelog Extract reduces the gap between "work done" and "work billed" by producing:
+## Real Progress in This Project
 
-- faster end-of-day and end-of-week reporting,
-- clearer client-facing evidence,
-- lower risk of under-billing,
-- reusable structured data for future automation.
+Recently, the project improved with:
 
-## Why This Matters Now
+- clearer English output
+- better timeline reports
+- easier export options
+- improved support for different worklog styles
 
-As AI-assisted development accelerates delivery, more work happens in rapid, fragmented micro-sessions. Teams need reporting that matches how they actually work, not how legacy tracking tools assume they work.
+This means the tool is becoming easier to use, not just more powerful.
 
-Timelog Extract addresses this shift directly by turning fragmented activity into coherent, invoice-adjacent outputs.
+## How To Try It
 
-## How to Try It
-
-Quick run for today:
+Run for today's work:
 
 `python3 timelog_extract.py --today --source-summary --narrative --invoice-pdf`
 
-JSON + HTML timeline export:
+Run for a date range:
 
 `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`
 
-## Next Step
+## Final Takeaway
 
-Publish this case study in the repository and reuse it as the source narrative for:
-
-- a longer blog post (build story + lessons),
-- a LinkedIn article/post (business value + call to action),
-- product page copy (problem, proof, and outcomes).
+Timelog Extract helps you spend less time remembering work and more time getting paid for it.

@@ -1,6 +1,6 @@
 # V1 Finish Plan
 
-This plan closes the final productization gap from "late beta" to a stable v1 release.
+This plan closes the final productization gap from "late-beta" to a stable v1 release.
 
 ## Release Gate (must pass)
 

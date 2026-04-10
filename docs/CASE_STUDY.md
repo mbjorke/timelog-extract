@@ -95,6 +95,10 @@ Quick run for today:
 
 `python3 timelog_extract.py --today --source-summary --narrative --invoice-pdf`
 
+Engine-boundary run (same contract used by the extension):
+
+`python3 scripts/run_engine_report.py --today --pdf --json-file output/latest-payload.json`
+
 JSON + HTML timeline export:
 
 `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`

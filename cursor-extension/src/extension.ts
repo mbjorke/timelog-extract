@@ -8,6 +8,35 @@ type RunOptions = {
   today?: boolean;
 };
 
+type EngineRunRequest = {
+  config_path: string;
+  date_from: string | null;
+  date_to: string | null;
+  options: {
+    today: boolean;
+    worklog: string;
+    include_uncategorized: boolean;
+    quiet: boolean;
+    source_summary?: boolean;
+  };
+};
+
+type TruthPayload = {
+  schema: string;
+  version: string;
+  totals: {
+    hours_estimated: number;
+    days_with_activity: number;
+    event_count: number;
+  };
+  days: Record<string, unknown>;
+};
+
+type EngineRunWithPdfResponse = {
+  payload: TruthPayload;
+  pdf_path: string | null;
+};
+
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("timelogExtract.openWizard", () =>
@@ -63,34 +92,9 @@ async function runTimelog(options: RunOptions): Promise<void> {
   const includeUncategorized = cfg.get<boolean>("includeUncategorized", false);
   const generatePdf = cfg.get<boolean>("generatePdf", true);
 
-  const args = [
-    "timelog_extract.py",
-    "--projects-config",
-    projectsConfig,
-    "--worklog",
-    worklogPath,
-    "--source-summary",
-  ];
-
-  if (options.today) {
-    args.push("--today");
-  }
-  if (options.dateFrom) {
-    args.push("--from", options.dateFrom);
-  }
-  if (options.dateTo) {
-    args.push("--to", options.dateTo);
-  }
-  if (includeUncategorized) {
-    args.push("--include-uncategorized");
-  }
-  if (generatePdf) {
-    args.push("--invoice-pdf");
-  }
-
   const output = vscode.window.createOutputChannel("Timelog Extract");
   output.show(true);
-  output.appendLine(`Running: ${pythonPath} ${args.join(" ")}`);
+  output.appendLine("Running timelog engine API...");
 
   await vscode.window.withProgress(
     {
@@ -98,25 +102,186 @@ async function runTimelog(options: RunOptions): Promise<void> {
       title: "Timelog report in progress",
       cancellable: false,
     },
-    async () =>
-      new Promise<void>((resolve) => {
-        const child = spawn(pythonPath, args, { cwd: root });
-        child.stdout.on("data", (d: Buffer) => output.append(d.toString()));
-        child.stderr.on("data", (d: Buffer) => output.append(d.toString()));
-        child.on("close", (code) => {
-          if (code === 0) {
-            void vscode.window.showInformationMessage(
-              "Timelog run completed. See 'Timelog Extract' output channel."
-            );
-          } else {
-            void vscode.window.showErrorMessage(
-              `Timelog run failed with exit code ${code}.`
-            );
-          }
-          resolve();
-        });
-      })
+    async () => {
+      try {
+        const result = await runEngineExtract(
+          root,
+          pythonPath,
+          projectsConfig,
+          worklogPath,
+          options,
+          includeUncategorized,
+          generatePdf
+        );
+        const payload = result.payload;
+        output.appendLine(
+          `Done. Estimated hours: ${payload?.totals?.hours_estimated ?? 0}, days: ${payload?.totals?.days_with_activity ?? 0}, events: ${payload?.totals?.event_count ?? 0}`
+        );
+        output.appendLine(JSON.stringify(payload, null, 2));
+
+        if (result.pdf_path) {
+          output.appendLine(`PDF created: ${result.pdf_path}`);
+        }
+
+        void vscode.window.showInformationMessage(
+          "Timelog run completed. See 'Timelog Extract' output channel."
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        output.appendLine(`Error: ${msg}`);
+        void vscode.window.showErrorMessage(`Timelog run failed: ${msg}`);
+      }
+    }
   );
+}
+
+async function runEngineExtract(
+  root: string,
+  pythonPath: string,
+  projectsConfig: string,
+  worklogPath: string,
+  options: RunOptions,
+  includeUncategorized: boolean,
+  generatePdf: boolean
+): Promise<EngineRunWithPdfResponse> {
+  const request: EngineRunRequest & { generate_pdf: boolean } = {
+    config_path: projectsConfig,
+    date_from: options.dateFrom ?? null,
+    date_to: options.dateTo ?? null,
+    options: {
+      today: Boolean(options.today),
+      worklog: worklogPath,
+      include_uncategorized: includeUncategorized,
+      quiet: true,
+      source_summary: true,
+    },
+    generate_pdf: generatePdf,
+  };
+  const code = [
+    "import json,sys",
+    "from core.engine_api import run_report_with_optional_pdf",
+    "req=json.load(sys.stdin)",
+    "out=run_report_with_optional_pdf(req['config_path'], req.get('date_from'), req.get('date_to'), req.get('options', {}), generate_pdf=bool(req.get('generate_pdf', False)))",
+    "print(json.dumps(out, ensure_ascii=False))",
+  ].join(";");
+  const { stdout, stderr, exitCode } = await spawnCollect(
+    pythonPath,
+    ["-c", code],
+    root,
+    JSON.stringify(request)
+  );
+  if (exitCode !== 0) {
+    throw new Error(stderr || `Engine API failed with exit code ${exitCode}`);
+  }
+  return parsePdfResponseOrThrow(stdout);
+}
+
+function parseTruthPayloadOrThrow(stdout: string): TruthPayload {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Engine output is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  if (!isTruthPayload(parsed)) {
+    throw new Error("Engine payload failed schema/version validation.");
+  }
+  return parsed;
+}
+
+function parsePdfResponseOrThrow(stdout: string): EngineRunWithPdfResponse {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Engine PDF output is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  if (!isEngineRunWithPdfResponse(parsed)) {
+    throw new Error("Engine PDF response failed payload validation.");
+  }
+  return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isTruthPayload(value: unknown): value is TruthPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.schema !== "timelog_extract.truth_payload") {
+    return false;
+  }
+  if (value.version !== "1") {
+    return false;
+  }
+  if (!isRecord(value.totals)) {
+    return false;
+  }
+  if (!isRecord(value.days)) {
+    return false;
+  }
+  return (
+    typeof value.totals.hours_estimated === "number" &&
+    typeof value.totals.days_with_activity === "number" &&
+    typeof value.totals.event_count === "number"
+  );
+}
+
+function isEngineRunWithPdfResponse(value: unknown): value is EngineRunWithPdfResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!("pdf_path" in value)) {
+    return false;
+  }
+  if (!(value.pdf_path === null || typeof value.pdf_path === "string")) {
+    return false;
+  }
+  return isTruthPayload(value.payload);
+}
+
+function spawnCollect(
+  command: string,
+  args: string[],
+  cwd: string,
+  stdinData?: string
+): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    child.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.stderr.on("data", (d: Buffer) => {
+      stderr += d.toString();
+    });
+    child.on("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+    child.on("close", (code) => {
+      if (!settled) {
+        settled = true;
+        resolve({ stdout, stderr, exitCode: code });
+      }
+    });
+    if (stdinData !== undefined && child.stdin) {
+      child.stdin.write(stdinData);
+    }
+    if (child.stdin) {
+      child.stdin.end();
+    }
+  });
 }
 
 function openWizard(context: vscode.ExtensionContext): void {

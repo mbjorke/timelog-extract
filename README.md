@@ -8,9 +8,14 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - Phase 0 friend-trial runner: `scripts/friend_trial.py`.
 - GUI-first Cursor extension scaffold in `cursor-extension/`.
 - Productization docs in `docs/`:
+  - `GITTAN_VISION.md`
+  - `GITTAN_VISION_EN.md`
+  - `GITTAN_NORTHSTAR_METRICS.md`
   - `AGENTIC_EVALUATION.md`
   - `CASE_STUDY.md`
+  - `CASE_STUDY_TECH.md`
   - `V1_SCOPE.md`
+  - `V1_FINISH_PLAN.md`
   - `PRIVACY_SECURITY.md`
   - `SIMILAR_REPOS_CHECKLIST.md`
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
@@ -25,6 +30,11 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 4. Share feedback in `friend_trial/FEEDBACK_TEMPLATE.md`.
 
 ## CLI Usage
+
+- **Use it now (recommended, no Cursor debug setup needed):**
+  - `python3 scripts/run_engine_report.py --today --pdf --json-file output/latest-payload.json`
+  - This uses the same `core.engine_api` boundary as the extension.
+  - You should see `schema`, `version`, `totals`, plus `pdf_path` when `--pdf` is enabled.
 
 - Today:
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`

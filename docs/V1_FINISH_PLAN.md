@@ -64,8 +64,8 @@ Exit criteria:
 Goal: keep CLI and extension calling a narrow, stable engine surface.
 
 - Keep public engine API as:
-  - `run_timelog_report(config_path, date_from, date_to, options)`
-  - `generate_invoice_pdf(report_payload, output_path, options)`
+  - `run_report_payload(config_path, date_from, date_to, options)`
+  - `run_report_with_optional_pdf(config_path, date_from, date_to, options, generate_pdf, pdf_output_path)`
 - Move orchestration helpers out of monolithic service code into focused modules:
   - run context/setup
   - runtime collection

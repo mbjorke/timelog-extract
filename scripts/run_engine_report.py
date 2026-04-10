@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
         description="Run timelog through core.engine_api and print a concise summary."
     )
     p.add_argument("--projects-config", default="timelog_projects.json")
-    p.add_argument("--worklog", default="TIMELOG.md")
+    p.add_argument("--worklog", default=None)
     p.add_argument("--from", dest="date_from", default=None, metavar="YYYY-MM-DD")
     p.add_argument("--to", dest="date_to", default=None, metavar="YYYY-MM-DD")
     p.add_argument("--today", action="store_true")
@@ -39,9 +39,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    worklog_path = args.worklog if args.worklog else str(REPO_ROOT / "TIMELOG.md")
     options: Dict[str, Any] = {
         "today": args.today,
-        "worklog": args.worklog,
+        "worklog": worklog_path,
         "include_uncategorized": args.include_uncategorized,
         "quiet": True,
         "screen_time": "off",

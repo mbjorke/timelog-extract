@@ -41,9 +41,14 @@ def aggregate_report(
         args.min_session_passive,
     )
 
+    project_buckets: Dict[str, List[Dict[str, Any]]] = {}
+    for event in included_events:
+        project_name = event["project"]
+        project_buckets.setdefault(project_name, []).append(event)
+
     project_reports: Dict[str, Any] = {}
-    for project_name in sorted({event["project"] for event in included_events}):
-        project_events = [event for event in included_events if event["project"] == project_name]
+    for project_name in sorted(project_buckets.keys()):
+        project_events = project_buckets[project_name]
         project_grouped = group_by_day_fn(project_events, exclude_list)
         project_reports[project_name] = estimate_hours_by_day_fn(
             project_grouped,

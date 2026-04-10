@@ -35,7 +35,18 @@ class I18nOnlyEnglishTests(unittest.TestCase):
                     # Allow punctuation symbols (em dash, box drawing, etc.),
                     # but reject non-ASCII letters from other languages.
                     if ord(ch) > 127 and unicodedata.category(ch).startswith("L"):
-                        offenders.append((file_path.relative_to(REPO_ROOT), idx, ch))
+                        line = text.count("\n", 0, idx) + 1
+                        last_nl = text.rfind("\n", 0, idx)
+                        col = idx + 1 if last_nl == -1 else idx - last_nl
+                        offenders.append(
+                            (
+                                file_path.relative_to(REPO_ROOT),
+                                line,
+                                col,
+                                f"U+{ord(ch):04X}",
+                                ch,
+                            )
+                        )
                         break
 
         self.assertEqual([], offenders, f"Found non-ASCII letters in user-facing surfaces: {offenders}")

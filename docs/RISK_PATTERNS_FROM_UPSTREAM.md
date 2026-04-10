@@ -24,7 +24,7 @@ This note maps Timelog Extract v1 risks to concrete patterns observed in upstrea
 | Scope creep into "everything tracker" | gtimelog remains intentionally narrow; ActivityWatch's breadth increases operational complexity. | **Adopt** | Keep v1 source scope constrained to `docs/V1_SCOPE.md`. Gate any additional source behind explicit ROI and accuracy impact, not "possible to collect". |
 | Time semantics edge cases (timezone/day boundaries) | gtimelog explicitly documents timezone limitations and virtual-midnight caveats. | **Adapt** | Document known boundary behavior for worklog formats and add focused tests around local timezone and day transitions before broadening formats further. |
 
-## Immediate next actions (low effort, high risk reduction)
+## Immediate next actions (low-effort, high-risk reduction)
 
 1. Add a collector-status warning when `--worklog-format` is forced and parse result is zero entries.
 2. Add one regression test each for:

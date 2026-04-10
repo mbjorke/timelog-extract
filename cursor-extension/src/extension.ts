@@ -104,32 +104,23 @@ async function runTimelog(options: RunOptions): Promise<void> {
     },
     async () => {
       try {
-        const payload = await runEnginePayload(
+        const result = await runEngineExtract(
           root,
           pythonPath,
           projectsConfig,
           worklogPath,
           options,
-          includeUncategorized
+          includeUncategorized,
+          generatePdf
         );
+        const payload = result.payload;
         output.appendLine(
           `Done. Estimated hours: ${payload?.totals?.hours_estimated ?? 0}, days: ${payload?.totals?.days_with_activity ?? 0}, events: ${payload?.totals?.event_count ?? 0}`
         );
         output.appendLine(JSON.stringify(payload, null, 2));
 
-        if (generatePdf) {
-          output.appendLine("Generating invoice PDF via engine API...");
-          const pdfPath = await runEnginePdf(
-            root,
-            pythonPath,
-            projectsConfig,
-            worklogPath,
-            options,
-            includeUncategorized
-          );
-          if (pdfPath) {
-            output.appendLine(`PDF created: ${pdfPath}`);
-          }
+        if (result.pdf_path) {
+          output.appendLine(`PDF created: ${result.pdf_path}`);
         }
 
         void vscode.window.showInformationMessage(
@@ -144,15 +135,16 @@ async function runTimelog(options: RunOptions): Promise<void> {
   );
 }
 
-async function runEnginePayload(
+async function runEngineExtract(
   root: string,
   pythonPath: string,
   projectsConfig: string,
   worklogPath: string,
   options: RunOptions,
-  includeUncategorized: boolean
-): Promise<TruthPayload> {
-  const request: EngineRunRequest = {
+  includeUncategorized: boolean,
+  generatePdf: boolean
+): Promise<EngineRunWithPdfResponse> {
+  const request: EngineRunRequest & { generate_pdf: boolean } = {
     config_path: projectsConfig,
     date_from: options.dateFrom ?? null,
     date_to: options.dateTo ?? null,
@@ -163,45 +155,7 @@ async function runEnginePayload(
       quiet: true,
       source_summary: true,
     },
-  };
-  const code = [
-    "import json,sys",
-    "from core.engine_api import run_report_payload",
-    "req=json.load(sys.stdin)",
-    "payload=run_report_payload(req['config_path'], req.get('date_from'), req.get('date_to'), req.get('options', {}))",
-    "print(json.dumps(payload, ensure_ascii=False))",
-  ].join(";");
-  const { stdout, stderr, exitCode } = await spawnCollect(
-    pythonPath,
-    ["-c", code],
-    root,
-    JSON.stringify(request)
-  );
-  if (exitCode !== 0) {
-    throw new Error(stderr || `Engine API failed with exit code ${exitCode}`);
-  }
-  return parseTruthPayloadOrThrow(stdout);
-}
-
-async function runEnginePdf(
-  root: string,
-  pythonPath: string,
-  projectsConfig: string,
-  worklogPath: string,
-  options: RunOptions,
-  includeUncategorized: boolean
-): Promise<string | null> {
-  const request: EngineRunRequest & { generate_pdf: boolean } = {
-    config_path: projectsConfig,
-    date_from: options.dateFrom ?? null,
-    date_to: options.dateTo ?? null,
-    options: {
-      today: Boolean(options.today),
-      worklog: worklogPath,
-      include_uncategorized: includeUncategorized,
-      quiet: true,
-    },
-    generate_pdf: true,
+    generate_pdf: generatePdf,
   };
   const code = [
     "import json,sys",
@@ -217,10 +171,9 @@ async function runEnginePdf(
     JSON.stringify(request)
   );
   if (exitCode !== 0) {
-    throw new Error(stderr || `PDF generation failed with exit code ${exitCode}`);
+    throw new Error(stderr || `Engine API failed with exit code ${exitCode}`);
   }
-  const out = parsePdfResponseOrThrow(stdout);
-  return out?.pdf_path ?? null;
+  return parsePdfResponseOrThrow(stdout);
 }
 
 function parseTruthPayloadOrThrow(stdout: string): TruthPayload {
@@ -299,21 +252,35 @@ function spawnCollect(
   cwd: string,
   stdinData?: string
 ): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd });
     let stdout = "";
     let stderr = "";
+    let settled = false;
     child.stdout.on("data", (d: Buffer) => {
       stdout += d.toString();
     });
     child.stderr.on("data", (d: Buffer) => {
       stderr += d.toString();
     });
-    child.on("close", (code) => resolve({ stdout, stderr, exitCode: code }));
-    if (stdinData !== undefined) {
+    child.on("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+    child.on("close", (code) => {
+      if (!settled) {
+        settled = true;
+        resolve({ stdout, stderr, exitCode: code });
+      }
+    });
+    if (stdinData !== undefined && child.stdin) {
       child.stdin.write(stdinData);
     }
-    child.stdin.end();
+    if (child.stdin) {
+      child.stdin.end();
+    }
   });
 }
 

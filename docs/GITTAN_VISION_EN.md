@@ -18,14 +18,14 @@ A typical day is fragmented:
 - frequent commits,
 - interruptions and quick pivots.
 
-Even disciplined builders who commit often still end up rebuilding their day manually when it is time to report.
+Even disciplined builders who commit often still end up reconstructing their day manually when it's time to report.
 
 ## What Gittan does differently
 
 Gittan builds reporting from real computer activity signals.
 
 Users choose which sources should represent a specific day, for example:
-- browser-tab level activity,
+- browser-tab-level activity,
 - git history,
 - or a combined source view.
 

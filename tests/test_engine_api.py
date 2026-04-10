@@ -38,6 +38,8 @@ class EngineApiTests(unittest.TestCase):
         self.assertIn("payload", out)
         self.assertIn("pdf_path", out)
         self.assertIsNone(out["pdf_path"])
+        self.assertIn("schema", out["payload"])
+        self.assertIn("version", out["payload"])
 
 
 if __name__ == "__main__":

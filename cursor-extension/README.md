@@ -18,3 +18,4 @@ GUI-first extension scaffold for running local timelog extraction.
 
 The extension calls `core.engine_api` from the workspace root using the configured
 Python executable and treats that API as the primary report and PDF contract.
+For quick validation without extension-host tooling, use `scripts/run_engine_report.py` from the repo root.

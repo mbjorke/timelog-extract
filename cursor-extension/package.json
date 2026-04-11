@@ -12,6 +12,8 @@
   ],
   "activationEvents": [
     "onCommand:timelogExtract.openWizard",
+    "onCommand:timelogExtract.openWizardBrowserPreview",
+    "onCommand:timelogExtract.quickStart",
     "onCommand:timelogExtract.runToday",
     "onCommand:timelogExtract.runRange",
     "onCommand:timelogExtract.openOutputFolder"
@@ -22,6 +24,14 @@
       {
         "command": "timelogExtract.openWizard",
         "title": "Timelog: Open Setup Wizard"
+      },
+      {
+        "command": "timelogExtract.openWizardBrowserPreview",
+        "title": "Timelog: Open Setup Wizard (Browser Preview)"
+      },
+      {
+        "command": "timelogExtract.quickStart",
+        "title": "Timelog: Quick Start"
       },
       {
         "command": "timelogExtract.runToday",
@@ -63,6 +73,40 @@
           "type": "boolean",
           "default": true,
           "description": "Generate PDF when running from extension commands."
+        },
+        "timelogExtract.chromeSource": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "default": "on",
+          "description": "Enable/disable Chrome source."
+        },
+        "timelogExtract.mailSource": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Apple Mail source mode."
+        },
+        "timelogExtract.githubSource": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "GitHub source mode."
+        },
+        "timelogExtract.screenTime": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Screen Time source mode."
+        },
+        "timelogExtract.githubUser": {
+          "type": "string",
+          "default": "",
+          "description": "Optional GitHub login for public activity source."
+        },
+        "timelogExtract.consentAccepted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether consent for local source scanning has been accepted for this workspace."
         }
       }
     }

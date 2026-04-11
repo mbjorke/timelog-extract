@@ -32,6 +32,10 @@
 
 - Full setup guide for all local repositories: `GLOBAL_TIMELOG_AUTOMATION.md`.
 
+## Pull requests (language)
+
+- **PR title and PR description must be written in English.** That includes the initial post on GitHub and any edits before merge. Code comments may follow normal project language, but anything reviewers and bots read in the PR thread should be English-only.
+
 ## Review Cadence (CodeRabbit)
 
 - Keep PRs in Draft while actively iterating.

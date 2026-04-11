@@ -42,6 +42,14 @@ Gittan is designed to be:
 It is not meant to force a single tracking model on everyone.
 It is meant to let users select the evidence quality that fits each day and workflow.
 
+## Local-first vs cloud agents
+
+**Local-first** means the default reporting story does not depend on uploading raw activity to *our* servers. It does **not** mean pretending cloud work does not exist.
+
+When developers delegate work to **cloud agents**, important evidence often lives with the provider (runs, spend, artifacts). Gittan’s direction is to support **optional, consent-based connectors** that pull **job-level metadata** from those platforms so reporting can reflect **human + agent** outcomes—not only local file churn.
+
+Privacy expectations stay the same: **explicit scope**, **minimal data**, and **no Gittan-operated data lake** as the default path.
+
 ## User promise
 
 Less manual reconstruction.
@@ -54,5 +62,8 @@ This document is a narrative companion to:
 - `docs/GITTAN_VISION.md`
 - `docs/GITTAN_NORTHSTAR_METRICS.md`
 - `docs/V1_SCOPE.md`
+- `VISION.md` (repository root) — short public one-pager; not authoritative on scope
 
-If there is wording conflict, product behavior and guardrails in those docs take precedence.
+See `docs/VISION_DOCUMENTS.md` for the full hierarchy.
+
+If there is wording conflict, product behavior and guardrails in `GITTAN_VISION.md`, `GITTAN_NORTHSTAR_METRICS.md`, and `V1_SCOPE.md` take precedence over this file and over root `VISION.md`.

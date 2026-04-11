@@ -1,5 +1,7 @@
 # Gittan Vision and Soul
 
+**Companion docs:** Root `VISION.md` is a short external manifesto (e.g. Patreon) and must stay aligned with this file. See **`VISION_DOCUMENTS.md`** for precedence when multiple vision docs exist.
+
 ## Why this exists
 
 Gittan exists to solve one practical problem:
@@ -17,7 +19,7 @@ Gittan turns scattered work traces into a clear, local-first, review-ready pictu
 ## Product soul (what must always be true)
 
 1. **Local first, user in control**  
-   Core reporting works without cloud upload as a requirement.
+   Core reporting works without uploading raw traces to *our* infrastructure. Optional connectors may read **from third-party services you choose** (for example cloud agent APIs) using **your** credentials, under explicit consent—still aligned with privacy-by-default in `PRIVACY_SECURITY.md`.
 
 2. **Proof over performance theater**  
    Output should be understandable, reviewable, and tied to concrete traces.
@@ -51,6 +53,19 @@ Gittan turns scattered work traces into a clear, local-first, review-ready pictu
 - A cloud-first telemetry platform
 - A payroll/compliance timesheet system
 - "Track everything" software with unlimited source sprawl
+
+## Local-first and cloud-native work (including agents)
+
+**Local-first** does not mean “ignore the cloud.” It means: **default processing and sensitive traces stay on the user’s side**, and **no cloud backend is required** for Gittan’s core story.
+
+A growing share of developer work is **delegated to cloud agents**. If Gittan only ingested purely local files, it would **under-report** the same work that customers pay for—because runs, tokens, artifacts, and sometimes outcomes live **with the provider**.
+
+The product direction is therefore:
+
+- **Keep** the reporting engine and primary evidence **local-first** and **reviewable**.
+- **Add** optional, **consent-based** “remote signals” that summarize **what agents did**—typically **metadata** (job IDs, timestamps, cost, links to outputs, PRs) rather than full prompt dumps—so the user can defend **human + agent** value in one narrative.
+
+This must remain compatible with trust: **explicit scope**, **minimal collection**, and **no surprise exfiltration** to Gittan-operated servers. Where cloud visibility is needed, it should be **user-directed API access** to **their** vendor relationships, not a generic telemetry pipeline.
 
 ## Core promises
 
@@ -156,7 +171,7 @@ Before shipping a new source, output, or workflow step, ask:
 
 1. Does this improve trusted reporting quality?
 2. Does this reduce or increase user admin burden?
-3. Can this stay local-first (or at least optional for cloud)?
+3. Can this stay local-first by default, with any cloud/agent access **optional**, **explicit**, and **minimal**?
 4. Does it preserve explicit consent and privacy expectations?
 5. Is this in-scope for v1/v1.1, or just technically possible?
 

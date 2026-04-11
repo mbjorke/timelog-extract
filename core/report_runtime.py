@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -54,6 +54,31 @@ def build_run_context(
         today_s = datetime.now(local_tz).strftime("%Y-%m-%d")
         args.date_from = today_s
         args.date_to = today_s
+    elif args.yesterday:
+        yest_s = (datetime.now(local_tz) - timedelta(days=1)).strftime("%Y-%m-%d")
+        args.date_from = yest_s
+        args.date_to = yest_s
+    elif args.last_3_days:
+        # Inclusive calendar days: "last 3 days" = today and the two prior days.
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=2)).isoformat()
+        args.date_to = end_d.isoformat()
+    elif args.last_week:
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=6)).isoformat()
+        args.date_to = end_d.isoformat()
+    elif args.last_14_days:
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=13)).isoformat()
+        args.date_to = end_d.isoformat()
+    elif args.last_month:
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=29)).isoformat()
+        args.date_to = end_d.isoformat()
 
     dt_from, dt_to = get_date_range_fn(args.date_from, args.date_to)
     profiles, loaded_config_path, workspace = load_profiles_fn(args.projects_config, args)
@@ -151,13 +176,10 @@ def collect_screen_time_status(
     want_log_fn: Callable[[argparse.Namespace], bool],
 ) -> Optional[Dict[str, float]]:
     screen_time_days = None
-    screen_step_index = len(collector_status) + 1
-    total_steps = screen_step_index
     if want_log_fn(args):
-        print(f"[{screen_step_index}/{total_steps}] Screen Time ...")
+        print("Scanning Screen Time...")
+
     if args.screen_time == "off":
-        if want_log_fn(args):
-            print("      disabled via --screen-time off\n")
         collector_status["Screen Time"] = {
             "enabled": False,
             "reason": "disabled via --screen-time off",
@@ -167,11 +189,6 @@ def collect_screen_time_status(
 
     screen_time_days, screen_msg = collect_screen_time_fn(dt_from, dt_to)
     if screen_time_days is None:
-        if want_log_fn(args):
-            if args.screen_time == "on":
-                print(f"      could not read Screen Time: {screen_msg}\n")
-            else:
-                print(f"      skipping: {screen_msg}\n")
         collector_status["Screen Time"] = {
             "enabled": args.screen_time == "on",
             "reason": screen_msg,
@@ -179,8 +196,6 @@ def collect_screen_time_status(
         }
         return screen_time_days
 
-    if want_log_fn(args):
-        print(f"      {len(screen_time_days)} days loaded from {screen_msg}\n")
     collector_status["Screen Time"] = {
         "enabled": True,
         "reason": "",

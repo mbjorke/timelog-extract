@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
 
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+
 def collect_all_events(
     profiles,
     dt_from,
@@ -56,40 +58,72 @@ def collect_all_events(
     total_collectors = len(collectors)
     quiet = getattr(args, "quiet", False)
 
-    for index, spec in enumerate(collectors, 1):
-        name = spec.name
-        collector = spec.collector
-        unit_label = spec.unit_label
-        enabled = spec.enabled
-        reason = spec.reason
-        if not quiet:
-            print(f"[{index}/{total_collectors}] {name} …")
-        if not enabled:
-            if not quiet:
-                print(f"      disabled ({reason})\n")
-            collector_status[name] = {
-                "enabled": False,
-                "reason": reason,
-                "events": 0,
-            }
-            continue
-        try:
-            events = collector(profiles, dt_from, dt_to)
-        except Exception as exc:  # defensive boundary: a source failure should not stop others
-            if not quiet:
-                print(f"      failed ({exc})\n")
-            collector_status[name] = {
-                "enabled": False,
-                "reason": f"collector error: {exc}",
-                "events": 0,
-            }
-            continue
-        if not quiet:
-            print(f"      {len(events)} {unit_label}\n")
-        all_events.extend(events)
-        collector_status[name] = {
-            "enabled": True,
-            "reason": reason or "",
-            "events": len(events),
-        }
+    if quiet:
+        for spec in collectors:
+            name = spec.name
+            if not spec.enabled:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": spec.reason,
+                    "events": 0,
+                }
+                continue
+            try:
+                events = spec.collector(profiles, dt_from, dt_to)
+                all_events.extend(events)
+                collector_status[name] = {
+                    "enabled": True,
+                    "reason": spec.reason or "",
+                    "events": len(events),
+                }
+            except Exception as exc:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": f"collector error: {exc}",
+                    "events": 0,
+                }
+        return all_events, collector_status
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("[cyan]Scanning sources...", total=total_collectors)
+        for spec in collectors:
+            name = spec.name
+            collector = spec.collector
+            enabled = spec.enabled
+            reason = spec.reason
+            
+            progress.update(task, description=f"[cyan]Scanning {name}...")
+            
+            if not enabled:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": reason,
+                    "events": 0,
+                }
+                progress.advance(task)
+                continue
+            
+            try:
+                events = collector(profiles, dt_from, dt_to)
+                all_events.extend(events)
+                collector_status[name] = {
+                    "enabled": True,
+                    "reason": reason or "",
+                    "events": len(events),
+                }
+            except Exception as exc:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": f"collector error: {exc}",
+                    "events": 0,
+                }
+            
+            progress.advance(task)
+            
     return all_events, collector_status

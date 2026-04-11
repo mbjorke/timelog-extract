@@ -1,6 +1,6 @@
 # Branching and `main`
 
-The default branch **`main`** is often **protected** on GitHub: **direct pushes are blocked**; changes land via **pull request** (and usually squash merge). Treat **`main` as read-only** in day-to-day work unless you are explicitly performing a maintainer merge.
+The default branch **`main`** is **branch-protected** on GitHub: **direct pushes are blocked**; changes land via **pull request** (usually squash merge). **CI** runs on PRs (see **`docs/CI.md`**). Treat **`main` as read-only** unless you are explicitly performing an allowed maintainer merge.
 
 ## Recommended workflow
 
@@ -13,5 +13,5 @@ For **parallel work** (stable PR branch + spike), prefer **git worktrees** — s
 
 ## Agents
 
-- **Do not push to `main`** unless the user clearly states that branch protection is waived for that operation.
+- **Do not push to `main`** — it is protected; use a branch and PR (or the user must explicitly confirm a different process).
 - For documentation-only or small fixes, still use a **named branch** and a PR unless told otherwise.

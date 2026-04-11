@@ -115,12 +115,12 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
 ## Contributing
 
 - See [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs: **English** title and description; tests and line-limit policy).
-- **`main` is often branch-protected:** use a feature branch and PR — see [`BRANCH.md`](BRANCH.md).
+- **`main` is branch-protected:** no direct pushes — use a feature branch and PR — see [`BRANCH.md`](BRANCH.md) and [`docs/CI.md`](docs/CI.md).
 
 ## Release Readiness
 
 - Changelog: `CHANGELOG.md`
 - License: `LICENSE` (Gittan / Timelog Extract — source-available; **use by more than two professional users per organization/engagement** may require Patreon — see `docs/SPONSORSHIP_TERMS.md`)
-- CI workflow: `.github/workflows/ci.yml`
+- CI: [`docs/CI.md`](docs/CI.md) (workflow: `.github/workflows/ci.yml`)
 - CLI-first release gate: `docs/CLI_FIRST_V1_RELEASE_CHECKLIST.md`
 - RC test script for second tester: `docs/RC_TEST_SCRIPT_CLI_FIRST.md`

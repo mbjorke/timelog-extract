@@ -23,8 +23,8 @@
 
 ## Branch policy (`main`)
 
-- **`main` may be protected** (no direct push). Use a **feature branch**, push to `origin`, and merge via **pull request** unless the user explicitly allows pushing to `main`.
-- See **`BRANCH.md`** for the full workflow.
+- **`main` is branch-protected** (no direct push). Use a **feature branch**, push to `origin`, and merge via **pull request**.
+- See **`BRANCH.md`** for the git workflow and **`docs/CI.md`** for what CI runs on PRs.
 
 ## Git worktrees (parallel work)
 

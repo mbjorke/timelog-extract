@@ -6,7 +6,8 @@
 - Docs: manual QA matrix for **0.2.x** (`docs/MANUAL_TEST_MATRIX_0_2_x.md`); indexed in `VISION_DOCUMENTS.md`.
 - Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `VISION_DOCUMENTS.md`.
 - Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `VISION_DOCUMENTS.md` and `README.md`.
-- Docs: **`BRANCH.md`** — `main` may be protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
+- Docs: **`BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
+- Docs: **`docs/CI.md`** — CI overview, branch protection, and workflow; `README` / `AGENTS` / `CONTRIBUTING` / `VISION_DOCUMENTS` updated for definitive wording.
 
 ## 0.2.0 - 2026-04-11
 

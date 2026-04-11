@@ -15,7 +15,7 @@ GITTAN_FEEDING_RABBIT = r"""
     "\n"
 )
 
-TAGLINE = "Feeds the review rabbit — context beats guessing."
+TAGLINE = "Feeds the review rabbit - context beats guessing."
 
 
 def banner_panel_lines() -> list[str]:

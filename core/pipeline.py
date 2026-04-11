@@ -60,11 +60,28 @@ def collect_all_events(
 
     if quiet:
         for spec in collectors:
-            if spec.enabled:
-                try:
-                    all_events.extend(spec.collector(profiles, dt_from, dt_to))
-                except Exception:
-                    pass
+            name = spec.name
+            if not spec.enabled:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": spec.reason,
+                    "events": 0,
+                }
+                continue
+            try:
+                events = spec.collector(profiles, dt_from, dt_to)
+                all_events.extend(events)
+                collector_status[name] = {
+                    "enabled": True,
+                    "reason": spec.reason or "",
+                    "events": len(events),
+                }
+            except Exception as exc:
+                collector_status[name] = {
+                    "enabled": False,
+                    "reason": f"collector error: {exc}",
+                    "events": 0,
+                }
         return all_events, collector_status
 
     with Progress(

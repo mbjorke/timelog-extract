@@ -84,13 +84,20 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
 
 def get_source_color(source: str) -> str:
     source_lower = source.lower()
-    if "claude" in source_lower: return "orange3"
-    if "gemini" in source_lower: return "blue"
-    if "cursor" in source_lower: return "cyan"
-    if "chrome" in source_lower: return "red"
-    if "mail" in source_lower: return "yellow"
-    if "timelog" in source_lower: return "magenta"
-    if "github" in source_lower: return "green"
+    if "claude" in source_lower:
+        return "orange3"
+    if "gemini" in source_lower:
+        return "blue"
+    if "cursor" in source_lower:
+        return "cyan"
+    if "chrome" in source_lower:
+        return "red"
+    if "mail" in source_lower:
+        return "yellow"
+    if "timelog" in source_lower:
+        return "magenta"
+    if "github" in source_lower:
+        return "green"
     return "white"
 
 

@@ -1,8 +1,8 @@
-"""Unit tests for core.cli.split_comma_separated_list (project wizard / safe CSV)."""
+"""Unit tests for core.cli_options.split_comma_separated_list (project wizard / safe CSV)."""
 
 import unittest
 
-from core.cli import split_comma_separated_list
+from core.cli_options import split_comma_separated_list
 
 
 class SplitCommaSeparatedTests(unittest.TestCase):

@@ -1,6 +1,6 @@
 # Gittan: The Privacy-First Auditor for the AI Age
 
-This file is a **short public manifesto** (e.g. Patreon, landing snippets). The full product vision, boundaries, and metrics live under `docs/` — see `**docs/VISION_DOCUMENTS.md`** for hierarchy and precedence. Draft Patreon tiers, taglines, and positioning notes live in `**docs/PATREON_POSITIONING.md**`. If anything here disagrees with `docs/GITTAN_VISION.md` or `docs/V1_SCOPE.md`, **update this file** to match those (they are authoritative).
+This file is a **short public manifesto** (e.g. Patreon, landing snippets). The full product vision, boundaries, and metrics live under `docs/` — see `docs/VISION_DOCUMENTS.md` for hierarchy and precedence. Draft Patreon tiers, taglines, and positioning notes live in `docs/PATREON_POSITIONING.md`. If anything here disagrees with `docs/GITTAN_VISION.md` or `docs/V1_SCOPE.md`, **update this file** to match those (they are authoritative).
 
 ## The Problem
 
@@ -33,7 +33,8 @@ Gittan aggregates "signals" from your local system:
 - **Web Activity:** Specific chat URLs (Claude.ai, Gemini) and documentation visits.
 - **Communication:** Apple Mail headers (sender/receiver) to catch that "quick 10-minute email" that turned into an hour.
 - **System Truth:** Cross-references everything with macOS Screen Time to help the timeline stay coherent.
-- **Cloud agents (directional):** Optional source adapters that attach **job-level** evidence from agent platforms (runs, spend, deliverables) where APIs allow—without replacing local-first defaults.
+
+**Roadmap (post-v1 — not current collectors):** Optional **cloud-agent platform** source adapters (job-level metadata from provider APIs) are **out of scope for v1**; see `docs/V1_SCOPE.md`. Directionally, Gittan aims to combine local signals with **consent-based** remote metadata so human + agent work stays billable—without replacing local-first defaults.
 
 ## Why Support Gittan on Patreon?
 

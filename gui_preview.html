@@ -53,9 +53,9 @@
     <p class="muted">Privacy-sensitive sources: Apple Mail, browser history, and Screen Time. Keep them off/auto unless needed.</p>
   </div>
   <div class="card">
-    <label>Projects config path</label>
+    <label for="projectsConfig">Projects config path</label>
     <input id="projectsConfig" type="text" value="${workspaceFolder}/timelog_projects.json" />
-    <label>Worklog path</label>
+    <label for="worklogPath">Worklog path</label>
     <input id="worklogPath" type="text" value="${workspaceFolder}/TIMELOG.md" />
     
     <div style="margin-top: 15px; display: flex; gap: 20px;">
@@ -65,14 +65,14 @@
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
       <div>
-        <label>Chrome source</label>
+        <label for="chromeSource">Chrome source</label>
         <select id="chromeSource">
           <option value="on">on</option>
           <option value="off">off</option>
         </select>
       </div>
       <div>
-        <label>Apple Mail source</label>
+        <label for="mailSource">Apple Mail source</label>
         <select id="mailSource">
           <option value="auto">auto</option>
           <option value="on">on</option>
@@ -80,7 +80,7 @@
         </select>
       </div>
       <div>
-        <label>GitHub source</label>
+        <label for="githubSource">GitHub source</label>
         <select id="githubSource">
           <option value="auto">auto</option>
           <option value="on">on</option>
@@ -88,7 +88,7 @@
         </select>
       </div>
       <div>
-        <label>Screen Time source</label>
+        <label for="screenTime">Screen Time source</label>
         <select id="screenTime">
           <option value="auto">auto</option>
           <option value="on">on</option>
@@ -97,7 +97,7 @@
       </div>
     </div>
 
-    <label>GitHub user (optional)</label>
+    <label for="githubUser">GitHub user (optional)</label>
     <input id="githubUser" type="text" placeholder="your-login" />
     
     <p id="scanSummary" class="muted" style="border-top: 1px solid #444; padding-top: 10px; margin-top: 15px;">

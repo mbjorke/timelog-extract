@@ -59,22 +59,26 @@ def build_run_context(
         args.date_from = yest_s
         args.date_to = yest_s
     elif args.last_3_days:
-        start_s = (datetime.now(local_tz) - timedelta(days=3)).strftime("%Y-%m-%d")
-        args.date_from = start_s
-        args.date_to = datetime.now(local_tz).strftime("%Y-%m-%d")
+        # Inclusive calendar days: "last 3 days" = today and the two prior days.
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=2)).isoformat()
+        args.date_to = end_d.isoformat()
     elif args.last_week:
-        end_s = datetime.now(local_tz).strftime("%Y-%m-%d")
-        start_s = (datetime.now(local_tz) - timedelta(days=7)).strftime("%Y-%m-%d")
-        args.date_from = start_s
-        args.date_to = end_s
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=6)).isoformat()
+        args.date_to = end_d.isoformat()
     elif args.last_14_days:
-        start_s = (datetime.now(local_tz) - timedelta(days=14)).strftime("%Y-%m-%d")
-        args.date_from = start_s
-        args.date_to = datetime.now(local_tz).strftime("%Y-%m-%d")
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=13)).isoformat()
+        args.date_to = end_d.isoformat()
     elif args.last_month:
-        start_s = (datetime.now(local_tz) - timedelta(days=30)).strftime("%Y-%m-%d")
-        args.date_from = start_s
-        args.date_to = datetime.now(local_tz).strftime("%Y-%m-%d")
+        now = datetime.now(local_tz)
+        end_d = now.date()
+        args.date_from = (end_d - timedelta(days=29)).isoformat()
+        args.date_to = end_d.isoformat()
 
     dt_from, dt_to = get_date_range_fn(args.date_from, args.date_to)
     profiles, loaded_config_path, workspace = load_profiles_fn(args.projects_config, args)

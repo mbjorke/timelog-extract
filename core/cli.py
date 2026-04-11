@@ -28,10 +28,10 @@ def main() -> None:
 
 
 __all__ = [
-    "app",
-    "main",
     "TimelogRunOptions",
+    "app",
     "as_run_options",
-    "split_comma_separated_list",
+    "main",
     "package_version",
+    "split_comma_separated_list",
 ]

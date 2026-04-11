@@ -29,23 +29,25 @@ def prompt_for_timeframe() -> dict:
         raise typer.Exit()
 
     now = datetime.now()
+    end_d = now.date()
+    end_s = end_d.isoformat()
     if choice == "Today":
-        return {"today": True, "date_from": now.strftime("%Y-%m-%d"), "date_to": now.strftime("%Y-%m-%d")}
+        return {"today": True, "date_from": end_s, "date_to": end_s}
     if choice == "Yesterday":
-        yest = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        yest = (end_d - timedelta(days=1)).isoformat()
         return {"yesterday": True, "date_from": yest, "date_to": yest}
     if choice == "Last 3 days":
-        start = (now - timedelta(days=3)).strftime("%Y-%m-%d")
-        return {"last_3_days": True, "date_from": start, "date_to": now.strftime("%Y-%m-%d")}
+        start = (end_d - timedelta(days=2)).isoformat()
+        return {"last_3_days": True, "date_from": start, "date_to": end_s}
     if choice == "Last 7 days":
-        start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-        return {"last_week": True, "date_from": start, "date_to": now.strftime("%Y-%m-%d")}
+        start = (end_d - timedelta(days=6)).isoformat()
+        return {"last_week": True, "date_from": start, "date_to": end_s}
     if choice == "Last 14 days":
-        start = (now - timedelta(days=14)).strftime("%Y-%m-%d")
-        return {"last_14_days": True, "date_from": start, "date_to": now.strftime("%Y-%m-%d")}
+        start = (end_d - timedelta(days=13)).isoformat()
+        return {"last_14_days": True, "date_from": start, "date_to": end_s}
     if choice == "Last month (30 days)":
-        start = (now - timedelta(days=30)).strftime("%Y-%m-%d")
-        return {"last_month": True, "date_from": start, "date_to": now.strftime("%Y-%m-%d")}
+        start = (end_d - timedelta(days=29)).isoformat()
+        return {"last_month": True, "date_from": start, "date_to": end_s}
 
     if choice == "Custom date...":
         date_str = questionary.text("Enter date (YYYY-MM-DD):", default=now.strftime("%Y-%m-%d")).ask()

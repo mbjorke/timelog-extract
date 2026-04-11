@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Core: inclusive preset ranges for last 3/7/14/30 days (`report_runtime`, `cli_prompts`, `status`); `--quiet` collection now fills `collector_status` like non-quiet runs; `gittan status` exits non-zero on report errors and guards missing date range.
+- Code review follow-up: Ruff-safe `get_source_color`, canonical PyPI classifier `License :: Other/Proprietary License`, sorted `core.cli.__all__`, `VISION.md` roadmap wording for cloud agents, `V1_TAG_ANNOTATION_DRAFT.md` payload version label, `gui_preview.html` label `for=` attributes, test import from `cli_options`, ASCII hyphen in banner tagline, `SPONSORSHIP_TERMS` Patreon URL note.
 - License: **Sponsorship Terms** in `LICENSE` now pin to the **same repo revision** you received (commit/tag/archive), not a moving branch tip — addresses review feedback about deterministic terms; `SPONSORSHIP_TERMS.md` version header + `LICENSE_GOALS.md` note on reviewability.
 - Terminal: ASCII **Gittan** banner (`outputs/gittan_banner.py`) — playful “feeds the review rabbit” header above the report panel.
 - CI: use `typing.Annotated` from the stdlib in CLI modules (Python 3.9+) instead of `typing_extensions`, which is not a declared dependency.
@@ -19,6 +21,7 @@
 ## 1.0.0 - Draft (CLI-first)
 
 Why this release matters:
+
 - makes local-first AI-era time reconstruction practical via one reliable CLI/script flow,
 - provides a stable engine API payload contract (`schema: timelog_extract.truth_payload`, `version: 1`),
 - keeps optional extension UX separate from core v1 reporting reliability.
@@ -36,3 +39,4 @@ Why this release matters:
 - Added baseline CI workflow and repository README/license/changelog.
 - Added dedicated CI unittest step running `scripts/run_autotests.sh` after smoke run.
 - Added module/class/test-method docstrings in compatibility tests for clearer coverage.
+

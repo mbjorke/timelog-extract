@@ -9,9 +9,9 @@ This file is referenced by the **`LICENSE`** in the repository root. It defines 
 
 ## Where to subscribe
 
-- **Patreon (replace when live):** `https://www.patreon.com/` *(add your creator URL)*
+- **Patreon:** Publish the public creator URL here before the first release that expects paid sponsorship at scale. Until then, this row may read **TBD**; the **tier table below** still defines which tier applies once the URL exists. *(Normative compliance uses this file at the repo revision you received — see `LICENSE`.)*
 
-## Tier mapping (draft — align with `docs/PATREON_POSITIONING.md`)
+## Tier mapping (normative for this document version; align marketing with `docs/PATREON_POSITIONING.md`)
 
 | Professional users per org / engagement (rolling 30 days) | Required tier |
 |-------------------------------------------------------------|---------------|

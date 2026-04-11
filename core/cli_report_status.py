@@ -150,25 +150,25 @@ def status(
         dt_s = picked.get("date_to")
     else:
         now = datetime.now()
+        end_d = now.date()
+        end_s = end_d.isoformat()
         if today:
-            df_s = dt_s = now.strftime("%Y-%m-%d")
+            df_s = dt_s = end_s
         elif yesterday:
-            yest = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+            yest = (end_d - timedelta(days=1)).isoformat()
             df_s = dt_s = yest
         elif last_3_days:
-            start = (now - timedelta(days=3)).strftime("%Y-%m-%d")
-            df_s, dt_s = start, now.strftime("%Y-%m-%d")
+            df_s, dt_s = (end_d - timedelta(days=2)).isoformat(), end_s
         elif last_week:
-            start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-            df_s, dt_s = start, now.strftime("%Y-%m-%d")
+            df_s, dt_s = (end_d - timedelta(days=6)).isoformat(), end_s
         elif last_14_days:
-            start = (now - timedelta(days=14)).strftime("%Y-%m-%d")
-            df_s, dt_s = start, now.strftime("%Y-%m-%d")
+            df_s, dt_s = (end_d - timedelta(days=13)).isoformat(), end_s
         elif last_month:
-            start = (now - timedelta(days=30)).strftime("%Y-%m-%d")
-            df_s, dt_s = start, now.strftime("%Y-%m-%d")
+            df_s, dt_s = (end_d - timedelta(days=29)).isoformat(), end_s
 
     console = Console()
+    if df_s is None or dt_s is None:
+        raise typer.BadParameter("Could not resolve date range for status.")
     title_date = f"{df_s} to {dt_s}" if df_s != dt_s else str(df_s)
 
     options = TimelogRunOptions(
@@ -217,3 +217,4 @@ def status(
 
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")
+        raise typer.Exit(code=1) from e

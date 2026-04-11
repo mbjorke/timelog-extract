@@ -9,6 +9,15 @@ from typing import Callable, Dict
 from urllib.parse import urlparse
 
 
+def _like_escape(value: str) -> str:
+    """Escape SQLite LIKE wildcard characters so values match literally.
+
+    Uses backslash as the escape character; callers must append ESCAPE '\\\\' to
+    the predicate string.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def chrome_history_path(home):
     return home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
 
@@ -111,8 +120,8 @@ def collect_claude_ai_urls(
     if not url_map:
         return []
 
-    clauses = " OR ".join(["u.url LIKE ?" for _ in url_map])
-    clause_params = tuple(f"%{url}%" for url in url_map)
+    clauses = " OR ".join(["u.url LIKE ? ESCAPE '\\'" for _ in url_map])
+    clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     history_path = chrome_history_path(home)
     rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
@@ -148,8 +157,8 @@ def collect_gemini_web_urls(
     if not url_map:
         return []
 
-    clauses = " OR ".join(["u.url LIKE ?" for _ in url_map])
-    clause_params = tuple(f"%{url}%" for url in url_map)
+    clauses = " OR ".join(["u.url LIKE ? ESCAPE '\\'" for _ in url_map])
+    clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     history_path = chrome_history_path(home)
     rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
@@ -193,9 +202,9 @@ def collect_chrome(
 
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     kw_clauses = " OR ".join(
-        ["(LOWER(u.url) LIKE ? OR LOWER(u.title) LIKE ?)" for _ in all_keywords]
+        ["(LOWER(u.url) LIKE ? ESCAPE '\\' OR LOWER(u.title) LIKE ? ESCAPE '\\')" for _ in all_keywords]
     )
-    kw_params = tuple(p for kw in all_keywords for p in (f"%{kw}%", f"%{kw}%"))
+    kw_params = tuple(p for kw in all_keywords for p in (f"%{_like_escape(kw)}%", f"%{_like_escape(kw)}%"))
     where_clause = f"({kw_clauses}) AND u.url NOT LIKE ? AND u.url NOT LIKE ?"
     clause_params = (*kw_params, "%claude.ai%", "%gemini.google.com%")
     history_path = chrome_history_path(home)

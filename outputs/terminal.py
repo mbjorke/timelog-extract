@@ -117,7 +117,7 @@ def print_report(
     art = Text("\n".join(banner_panel_lines()), style="cyan")
     headline = Text.assemble(
         ("GITTAN", "bold blue"),
-        " — Local Activity & Time Report\n",
+        " - Local Activity & Time Report\n",
         (TAGLINE, "dim"),
     )
     console.print(
@@ -142,10 +142,15 @@ def print_report(
         day_payload = overall_days[day]
         total_h += day_payload["hours"]
         
-        # Day Header Panel
-        day_title = Text.assemble(("📅  ", "bold"), (day, "bold yellow"))
-        day_stats = f" [cyan]{day_payload['hours']:.1f}h[/cyan] | [magenta]{len(day_payload['sessions'])} sessions[/magenta]"
-        
+        # Day header: date plus hours and session count on the tree root label
+        day_title = Text.assemble(
+            ("📅  ", "bold"),
+            (day, "bold yellow"),
+            ("  ", ""),
+            (f"{day_payload['hours']:.1f}h", "cyan"),
+            (" | ", "dim"),
+            (f"{len(day_payload['sessions'])} sessions", "magenta"),
+        )
         day_tree = Tree(day_title)
         
         for idx, (start_ts, end_ts, session_events) in enumerate(day_payload["sessions"], 1):
@@ -156,7 +161,7 @@ def print_report(
             
             session_text = Text.assemble(
                 (f"[{idx}] ", "dim"),
-                (f"{start_ts.strftime('%H:%M')}–{end_ts.strftime('%H:%M')} ", "bold green"),
+                (f"{start_ts.strftime('%H:%M')}-{end_ts.strftime('%H:%M')} ", "bold green"),
                 (f"({raw_dur:.1f}h) ", "cyan"),
                 (", ".join(session_projects), "italic blue")
             )

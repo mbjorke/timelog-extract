@@ -95,7 +95,6 @@ def collect_all_events(
         for spec in collectors:
             name = spec.name
             collector = spec.collector
-            unit_label = spec.unit_label
             enabled = spec.enabled
             reason = spec.reason
             

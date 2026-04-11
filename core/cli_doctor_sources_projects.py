@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -12,18 +13,27 @@ from pathlib import Path
 
 import questionary
 import typer
-from typing import Annotated
+from typing import Annotated, Optional
 
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
+from core.config import load_profiles, resolve_worklog_path
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @app.command()
-def doctor():
+def doctor(
+    worklog: Annotated[
+        Optional[str],
+        typer.Option(
+            "--worklog",
+            help="Path to TIMELOG.md (overrides config; default matches report: config worklog, else project default).",
+        ),
+    ] = None,
+):
     """Check health and permissions of all local data sources."""
     from rich.console import Console
     from rich.table import Table
@@ -31,6 +41,17 @@ def doctor():
 
     console = Console()
     home = Path.home()
+    projects_cfg = REPO_ROOT / "timelog_projects.json"
+    _profiles, loaded_config_path, workspace = load_profiles(
+        str(projects_cfg),
+        argparse.Namespace(project="default-project", keywords="", email=""),
+    )
+    worklog_path = resolve_worklog_path(
+        worklog,
+        loaded_config_path,
+        workspace.get("worklog"),
+        REPO_ROOT,
+    )
 
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
     table.add_column("Source / Path", style="cyan")
@@ -78,7 +99,7 @@ def doctor():
 
     with console.status("[bold blue]Running diagnostics..."):
         check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
-        check_file(REPO_ROOT / "TIMELOG.md", "Worklog (Local)")
+        check_file(worklog_path, "Worklog (Local)")
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")

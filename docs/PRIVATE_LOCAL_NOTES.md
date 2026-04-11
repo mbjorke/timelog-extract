@@ -10,8 +10,26 @@ Some material is **too sensitive or premature** for the public repository (pitch
 
 ## What stays in the repo instead
 
-- **`docs/OPPORTUNITIES.md`** — shareable, English, product-level opportunities and risks.
+- **`docs/OPPORTUNITIES.md`** — shareable, English, **strategic** opportunities and risks (audience, bets, differentiation). Not the place for channel-by-channel marketing execution.
 - **`LICENSE`** and **`docs/SPONSORSHIP_TERMS.md`** — binding terms for distribution and team-scale use.
+
+## Public `OPPORTUNITIES.md` vs local `private/` (how to split)
+
+| Topic | Prefer **public** (`OPPORTUNITIES.md` or other committed docs) | Prefer **`private/`** (never commit) |
+|-------|------------------------------------------------------------------|----------------------------------------|
+| Who the product serves; CLI-first bet; backlog priorities | Yes — aligns reviewers and contributors | — |
+| Risks that affect **trust** (scope creep, overclaim) | Yes | — |
+| **LICENSE / sponsorship** consistency with public copy | Summaries in repo; legal text stays in `LICENSE` | Personal “what we’d *like* to charge” before legal review |
+| **LinkedIn / social** post drafts, hooks, posting calendar | Only high-level notes if needed for context | **Full drafts**, dates, A/B variants |
+| **Test rabbit** / beta recruitment wording | One honest line in `OPPORTUNITIES` is enough | Concrete DMs, names, commitments |
+| Revenue targets, runway, investor-only narrative | — | **Always private** until you choose to publish |
+| Competitor notes, pricing experiments, Patreon tier experiments | Illustrative drafts may live in `docs/PATREON_POSITIONING.md` (already marked draft) | **Numbers and promises** you are not ready to stand behind |
+
+**Later**, when you “move business to private,” you can **shorten** `OPPORTUNITIES.md` to thesis + risks + pointers, and keep **richer** business notes only under `private/`.
+
+## What automated reviewers (e.g. CodeRabbit) should emphasize
+
+Ask for a **business / product** pass on **strategy, scope honesty, and doc consistency**—not **marketing execution** (headlines, campaigns). Tie comments to **files changed in the PR** and to **`OPPORTUNITIES.md`** when it is touched.
 
 ## Agents
 

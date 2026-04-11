@@ -2,6 +2,8 @@
 
 **Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE`, `docs/SPONSORSHIP_TERMS.md`, and `docs/VISION_DOCUMENTS.md`.
 
+**Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see **`docs/PRIVATE_LOCAL_NOTES.md`**.
+
 **Language:** English-only for documentation in this repository (see `CONTRIBUTING.md` and PR language rules).
 
 ---

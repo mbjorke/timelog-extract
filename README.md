@@ -23,6 +23,8 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
   - `LICENSE_GOALS.md` (why the license is shaped this way — not legal advice)
   - `SIMILAR_REPOS_CHECKLIST.md`
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
+  - `SOURCES_AND_FLAGS.md` (how source toggles and `--exclude` relate to collection — **not** a filter on one shared dataset)
+  - `AI_ASSISTED_CONFIG.md` (vision: future in-product assistant for project JSON — names first, optional LLM, privacy notes)
 
 ## Quick Start (Friend Trial)
 
@@ -81,6 +83,7 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
 
 ## Troubleshooting
 
+- **Sources look empty or “0 events”:** see `docs/SOURCES_AND_FLAGS.md` (collectors vs `--exclude`, and `collector_status` in `--format json`).
 - Missing Python dependencies:
   - `python3 -m pip install -e .`
 - Missing project config:
@@ -112,6 +115,7 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
 ## Contributing
 
 - See [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs: **English** title and description; tests and line-limit policy).
+- **`main` is often branch-protected:** use a feature branch and PR — see [`BRANCH.md`](BRANCH.md).
 
 ## Release Readiness
 

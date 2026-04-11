@@ -21,6 +21,11 @@
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
 
+## Branch policy (`main`)
+
+- **`main` may be protected** (no direct push). Use a **feature branch**, push to `origin`, and merge via **pull request** unless the user explicitly allows pushing to `main`.
+- See **`BRANCH.md`** for the full workflow.
+
 ## Git worktrees (parallel work)
 
 - Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.

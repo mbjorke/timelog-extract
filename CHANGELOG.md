@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-(nothing yet)
+- Docs: optional **ActivityWatch** integration backlog (`docs/ACTIVITYWATCH_INTEGRATION.md`); linked from `VISION_DOCUMENTS.md` and deferred list in `V1_SCOPE.md`.
+- Docs: manual QA matrix for **0.2.x** (`docs/MANUAL_TEST_MATRIX_0_2_x.md`); indexed in `VISION_DOCUMENTS.md`.
+- Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `VISION_DOCUMENTS.md`.
+- Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `VISION_DOCUMENTS.md` and `README.md`.
+- Docs: **`BRANCH.md`** — `main` may be protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
 
 ## 0.2.0 - 2026-04-11
 

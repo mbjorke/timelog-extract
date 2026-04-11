@@ -20,6 +20,7 @@
 - Never commit `TIMELOG.md`.
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
+- Do not commit a **`private/`** directory or other gitignored local business notes (see **`docs/PRIVATE_LOCAL_NOTES.md`**).
 
 ## Branch policy (`main`)
 

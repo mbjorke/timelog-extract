@@ -16,6 +16,9 @@ TIMELOG.md
 # macOS metadata
 .DS_Store
 
+# Local business / pitch notes (never commit)
+private/
+
 # Generated reports/artifacts
 output/
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import typer
-from typing_extensions import Annotated
+from typing import Annotated
 
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions

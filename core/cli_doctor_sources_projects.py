@@ -12,7 +12,7 @@ from pathlib import Path
 
 import questionary
 import typer
-from typing_extensions import Annotated
+from typing import Annotated
 
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list

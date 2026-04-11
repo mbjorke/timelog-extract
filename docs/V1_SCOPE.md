@@ -3,7 +3,7 @@
 ## Product Shape
 
 - Delivery target: Cursor Marketplace plugin (GUI-first), backed by local Python engine.
-- Processing mode: local-only for v1 (no cloud upload path).
+- Processing mode: local-only for v1 (no cloud upload path to Gittan-operated services; no **cloud-agent platform** connectors in v1 — see **Sources Deferred**).
 
 ## Supported OS (v1)
 
@@ -22,6 +22,7 @@
 
 ## Sources Deferred
 
+- **Cloud-agent platforms** (optional connectors that pull job-level metadata—runs, cost, links to outputs—from third-party agent APIs using the user’s credentials): **not in v1**; treated as **post-v1 / backlog**. Root `VISION.md` and `docs/GITTAN_VISION.md` describe this direction so marketing stays honest; **shipped v1** remains the **local trace** sources listed above until explicitly added here.
 - Apple Mail and Screen Time as default-enabled sources are deferred behind explicit opt-in.
 - Full Briox invoice push flow deferred to v1.1+ (keep read/test integration outside core plugin path).
 

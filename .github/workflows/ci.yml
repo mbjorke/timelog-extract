@@ -1,3 +1,5 @@
+# CI for timelog-extract. PR titles and descriptions must be in English (see AGENTS.md
+# and .github/pull_request_template.md); this workflow does not auto-detect language.
 name: CI
 
 on:

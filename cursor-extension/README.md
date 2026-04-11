@@ -5,9 +5,16 @@ GUI-first extension scaffold for running local timelog extraction.
 ## Commands
 
 - `Timelog: Open Setup Wizard`
+- `Timelog: Open Setup Wizard (Browser Preview)`
+- `Timelog: Quick Start`
 - `Timelog: Run Report (Today)`
 - `Timelog: Run Report (Date Range)`
 - `Timelog: Open Output Folder`
+
+The setup wizard now includes:
+- explicit local-data consent acknowledgement,
+- per-source controls for Chrome, Apple Mail, GitHub, and Screen Time,
+- a quick "what will be scanned" summary before running.
 
 ## Development
 

@@ -1,6 +1,7 @@
 # Timelog Extract
 
 Timelog Extract aggregates local activity signals into project/customer time reports and optional invoice PDFs.
+All processing is local-only in the core v1 CLI flow (no cloud upload path).
 
 ## Current Deliverables
 
@@ -8,6 +9,7 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 - Phase 0 friend-trial runner: `scripts/friend_trial.py`.
 - GUI-first Cursor extension scaffold in `cursor-extension/`.
 - Productization docs in `docs/`:
+  - `VISION_DOCUMENTS.md` (how `VISION.md` relates to the GITTAN_* docs — **read this when editing vision copy**)
   - `GITTAN_VISION.md`
   - `GITTAN_VISION_EN.md`
   - `GITTAN_NORTHSTAR_METRICS.md`
@@ -17,6 +19,8 @@ Timelog Extract aggregates local activity signals into project/customer time rep
   - `V1_SCOPE.md`
   - `V1_FINISH_PLAN.md`
   - `PRIVACY_SECURITY.md`
+  - `SPONSORSHIP_TERMS.md` (Patreon tier mapping referenced by `LICENSE`)
+  - `LICENSE_GOALS.md` (why the license is shaped this way — not legal advice)
   - `SIMILAR_REPOS_CHECKLIST.md`
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
 
@@ -73,6 +77,16 @@ Timelog Extract aggregates local activity signals into project/customer time rep
 ## Cursor Extension (Scaffold)
 
 See `cursor-extension/README.md` for build/run instructions.
+The extension is a beta companion; CLI/script workflows are the primary v1 path.
+
+## Troubleshooting
+
+- Missing Python dependencies:
+  - `python3 -m pip install -e .`
+- Missing project config:
+  - verify `timelog_projects.json` exists, or pass `--projects-config PATH`
+- File permission/path issues:
+  - check read access for `--worklog`, browser history DBs, and optional Mail/Screen Time sources
 
 ## Autotests
 
@@ -95,8 +109,14 @@ See `cursor-extension/README.md` for build/run instructions.
 - Run evaluation (requires your own prediction + golden JSON arrays):
   - `python3 scripts/eval_accuracy.py --predictions docs/evals/predictions.json --golden tests/fixtures/golden_dataset.json --output docs/evals/latest.md`
 
+## Contributing
+
+- See [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs: **English** title and description; tests and line-limit policy).
+
 ## Release Readiness
 
 - Changelog: `CHANGELOG.md`
-- License: `LICENSE`
+- License: `LICENSE` (Gittan / Timelog Extract — source-available; **use by more than two professional users per organization/engagement** may require Patreon — see `docs/SPONSORSHIP_TERMS.md`)
 - CI workflow: `.github/workflows/ci.yml`
+- CLI-first release gate: `docs/CLI_FIRST_V1_RELEASE_CHECKLIST.md`
+- RC test script for second tester: `docs/RC_TEST_SCRIPT_CLI_FIRST.md`

@@ -10,6 +10,8 @@ This document operationalizes:
 - `docs/ACCURACY_PLAN.md`
 - Blueberry strategic context in `blueberry/private/northstar.md` and `blueberry/private/metrics.md`
 
+**Index:** How this file relates to root `VISION.md` and other vision docs — see `docs/VISION_DOCUMENTS.md`.
+
 ## North Star Outcome
 
 **Trusted reporting with low admin overhead.**

@@ -13,7 +13,7 @@ def chrome_history_path(home):
     return home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
 
 
-def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu):
+def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params=()):
     if not history_path.exists():
         return []
 
@@ -33,7 +33,7 @@ def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu):
               AND ({where_clause})
             ORDER BY v.visit_time
             """,
-            (dt_from_cu, dt_to_cu),
+            (dt_from_cu, dt_to_cu, *params),
         )
         rows = cursor.fetchall()
         conn.close()
@@ -111,10 +111,11 @@ def collect_claude_ai_urls(
     if not url_map:
         return []
 
-    clauses = " OR ".join([f"u.url LIKE '%{url}%'" for url in url_map])
+    clauses = " OR ".join(["u.url LIKE ?" for _ in url_map])
+    clause_params = tuple(f"%{url}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu)
+    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -147,12 +148,11 @@ def collect_gemini_web_urls(
     if not url_map:
         return []
 
-    clauses = " OR ".join(
-        [f"u.url LIKE '%{url.replace(chr(39), chr(39) * 2)}%'" for url in url_map]
-    )
+    clauses = " OR ".join(["u.url LIKE ?" for _ in url_map])
+    clause_params = tuple(f"%{url}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu)
+    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -193,14 +193,13 @@ def collect_chrome(
 
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     kw_clauses = " OR ".join(
-        [f"(LOWER(u.url) LIKE '%{kw}%' OR LOWER(u.title) LIKE '%{kw}%')" for kw in all_keywords]
+        ["(LOWER(u.url) LIKE ? OR LOWER(u.title) LIKE ?)" for _ in all_keywords]
     )
-    where_clause = (
-        f"({kw_clauses}) AND u.url NOT LIKE '%claude.ai%' "
-        "AND u.url NOT LIKE '%gemini.google.com%'"
-    )
+    kw_params = tuple(p for kw in all_keywords for p in (f"%{kw}%", f"%{kw}%"))
+    where_clause = f"({kw_clauses}) AND u.url NOT LIKE ? AND u.url NOT LIKE ?"
+    clause_params = (*kw_params, "%claude.ai%", "%gemini.google.com%")
     history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu)
+    rows = query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, clause_params)
     rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
     results = []
     for visit_time_cu, url, title in rows:

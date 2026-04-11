@@ -2,6 +2,8 @@
 
 Thanks for helping improve Timelog Extract / Gittan. This document is the single entry point for contributors; agent-specific habits (timelog files, worktrees) live in [`AGENTS.md`](AGENTS.md).
 
+**`main` is branch-protected** — no direct pushes; use a branch and PR. See [`BRANCH.md`](BRANCH.md) and [`docs/CI.md`](docs/CI.md) for workflow and what CI runs.
+
 ## Pull requests
 
 - **Write the PR title and PR description in English.** That is required for reviewers and tools (e.g. CodeRabbit). See [`AGENTS.md`](AGENTS.md).

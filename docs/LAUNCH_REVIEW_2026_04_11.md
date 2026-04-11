@@ -40,7 +40,8 @@ Issues that exist are real but not launch-blocking:
 | `config.py` silently swallows `JSONDecodeError` | LOW | Returns fallback; caller can't distinguish |
 | Collectors skip malformed entries without logging count | LOW | Makes debugging collection gaps harder |
 
-The SQL injection (`chrome.py` lines 114, 150–151, 195–196) used f-string interpolation
+The SQL injection (in `chrome.py` functions `collect_claude_ai_urls()`,
+`collect_gemini_web_urls()`, and `collect_chrome()`) used f-string interpolation
 of user-controlled project names and keywords into LIKE clauses. Since this is a
 local-only tool reading the user's own browser database, the practical exploitability is
 low — but the bug could cause silent SQL errors when project names contain `%` or `'`,

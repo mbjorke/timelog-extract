@@ -2,12 +2,13 @@
 
 ## Unreleased
 
-- Docs: optional **ActivityWatch** integration backlog (`docs/ACTIVITYWATCH_INTEGRATION.md`); linked from `VISION_DOCUMENTS.md` and deferred list in `V1_SCOPE.md`.
-- Docs: manual QA matrix for **0.2.x** (`docs/MANUAL_TEST_MATRIX_0_2_x.md`); indexed in `VISION_DOCUMENTS.md`.
-- Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `VISION_DOCUMENTS.md`.
-- Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `VISION_DOCUMENTS.md` and `README.md`.
+- Docs: optional **ActivityWatch** integration backlog (`docs/ACTIVITYWATCH_INTEGRATION.md`); linked from `docs/VISION_DOCUMENTS.md` and deferred list in `docs/V1_SCOPE.md`.
+- Docs: manual QA matrix for **0.2.x** (`docs/MANUAL_TEST_MATRIX_0_2_x.md`); indexed in `docs/VISION_DOCUMENTS.md`.
+- Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `docs/VISION_DOCUMENTS.md`.
+- Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `docs/VISION_DOCUMENTS.md` and `README.md`.
 - Docs: **`BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
-- Docs: **`docs/CI.md`** — CI overview, branch protection, and workflow; `README` / `AGENTS` / `CONTRIBUTING` / `VISION_DOCUMENTS` updated for definitive wording.
+- Docs: **`docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
+- Docs: **`docs/OPPORTUNITIES.md`** (product/GTM working notes) and **`docs/PRIVATE_LOCAL_NOTES.md`**; gitignore **`private/`** for local business-only files.
 
 ## 0.2.0 - 2026-04-11
 

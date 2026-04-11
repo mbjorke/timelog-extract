@@ -25,6 +25,8 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
   - `SOURCES_AND_FLAGS.md` (how source toggles and `--exclude` relate to collection — **not** a filter on one shared dataset)
   - `AI_ASSISTED_CONFIG.md` (vision: future in-product assistant for project JSON — names first, optional LLM, privacy notes)
+  - `OPPORTUNITIES.md` (product / go-to-market working notes — for business-style review)
+  - `PRIVATE_LOCAL_NOTES.md` (how to keep **gitignored** `private/` business notes outside commits)
 
 ## Quick Start (Friend Trial)
 

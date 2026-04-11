@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- License: **Sponsorship Terms** in `LICENSE` now pin to the **same repo revision** you received (commit/tag/archive), not a moving branch tip — addresses review feedback about deterministic terms; `SPONSORSHIP_TERMS.md` version header + `LICENSE_GOALS.md` note on reviewability.
+- Terminal: ASCII **Gittan** banner (`outputs/gittan_banner.py`) — playful “feeds the review rabbit” header above the report panel.
 - CI: use `typing.Annotated` from the stdlib in CLI modules (Python 3.9+) instead of `typing_extensions`, which is not a declared dependency.
 - Docs: `LICENSE_GOALS.md` (license intent); vision updates — **local-first** reframed to allow optional **cloud-agent** metadata via user-approved connectors; **10× / one-year** sustainability bar noted in `PATREON_POSITIONING.md`.
 - Docs: `LICENSE_DECISION_MATRIX.md` (MIT / Apache / AGPL / Elastic vs Gittan).

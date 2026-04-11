@@ -1,9 +1,11 @@
 # Sponsorship terms (Patreon tier mapping)
 
-This file is referenced by the **`LICENSE`** in the repository root. It defines which **Patreon tier** (or successor sponsorship product) is required when use of the Software exceeds **small-team** use (see `LICENSE` section 2).
+**Document version:** 1.0 (paired with **Gittan / Timelog Extract License** version 1.0 in `LICENSE`.)
+
+This file is referenced by the **`LICENSE`** in the repository root. It defines which **Patreon tier** (or successor sponsorship product) is required when use of the Software exceeds **small-team** use (see `LICENSE` section 2). **Which copy of this file applies** is determined by the **same revision of the repo** you received (commit/tag/archive), not by an unpinned “main” pointer — see the **Sponsorship Terms** definition in `LICENSE`.
 
 **Licensor:** Blueberry Maybe Ab Ltd  
-**Not legal advice.** Update this file when Patreon tiers or URLs change; tag releases so users know which version applies.
+**Not legal advice.** Update this file when Patreon tiers or URLs change; **tag releases** so users and automated checks can pin terms to a revision.
 
 ## Where to subscribe
 

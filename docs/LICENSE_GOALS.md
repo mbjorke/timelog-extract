@@ -12,6 +12,8 @@ This document explains **why** the repository uses the **Gittan / Timelog Extrac
 
 4. **Alignment with privacy positioning** — Obligations are about **who may use the Software at what scale**, not about harvesting user content on our servers. Default product design remains **local-first**; see `docs/PRIVACY_SECURITY.md`.
 
+5. **Deterministic terms for humans and tools** — Sponsorship Terms are tied to the **revision of the repo you actually have** (commit, tag, or archive), not to a floating branch tip. That keeps obligations **reviewable**: whether the reviewer is a person, CI, or a third-party code-review bot, everyone can open `docs/SPONSORSHIP_TERMS.md` **at that revision** and see the same text. (This is “review-rabbit-friendly”: clear scope, no mystery “latest main” rule.)
+
 ## Not legal advice
 
 For binding interpretation, read `LICENSE` and consult qualified counsel.

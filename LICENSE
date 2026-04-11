@@ -12,11 +12,13 @@ in source or object form.
 platform) account designated by Licensor for this project, at the tier required for
 your use under the Sponsorship Terms (see below).
 
-“Sponsorship Terms” means the file `docs/SPONSORSHIP_TERMS.md` in this repository,
-which maps team size and use cases to the required Patreon tier. If that file is
-updated, the version that applies is the one included in the **release tag** you
-are running; if you run from an unreleased branch, the latest `docs/SPONSORSHIP_TERMS.md`
-on that branch applies.
+“Sponsorship Terms” means the file `docs/SPONSORSHIP_TERMS.md` **as it exists in the
+same revision of the Software you received** — for example the **git commit**, **release
+tag**, **source archive**, or **fork snapshot** you obtained. The applicable Sponsorship
+Terms are always the copy of `docs/SPONSORSHIP_TERMS.md` **in that tree**, not an
+unspecified “latest” file from a moving default branch. If you update your checkout to a
+newer revision, the Sponsorship Terms file in that revision may differ; the **license text**
+itself may also change for future releases (see section 5).
 
 ---
 

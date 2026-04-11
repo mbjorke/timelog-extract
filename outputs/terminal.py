@@ -5,13 +5,15 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Dict, List, Sequence, Optional
 from datetime import datetime
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.text import Text
 from rich.tree import Tree
 from rich import box
+
+from outputs.gittan_banner import TAGLINE, banner_panel_lines
 
 console = Console()
 
@@ -105,11 +107,19 @@ def print_report(
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
 ):
-    console.print(Panel.fit(
-        "[bold blue]GITTAN[/bold blue] — Local Activity & Time Report",
-        border_style="blue",
-        box=box.DOUBLE
-    ))
+    art = Text("\n".join(banner_panel_lines()), style="cyan")
+    headline = Text.assemble(
+        ("GITTAN", "bold blue"),
+        " — Local Activity & Time Report\n",
+        (TAGLINE, "dim"),
+    )
+    console.print(
+        Panel.fit(
+            Group(art, Text(""), headline),
+            border_style="blue",
+            box=box.DOUBLE,
+        )
+    )
 
     # Header Info
     header_table = Table.grid(padding=(0, 2))

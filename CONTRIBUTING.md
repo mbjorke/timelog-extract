@@ -41,6 +41,10 @@ Thanks for helping improve Timelog Extract / Gittan. This document is the single
 
 If you change `cursor-extension/`, run `npm install` and `npm run build` there (mirrors the `extension` job in CI).
 
+## Releases and versioning
+
+The installable **package version** lives in `pyproject.toml` and is shown by `gittan -V` / `timelog-extract -V`. When you cut a release or bump that number, follow the checklist in **[`docs/VERSIONING.md`](docs/VERSIONING.md)** (including `CHANGELOG.md` and the dev fallback in `core/cli_options.py`).
+
 ## License
 
 Copyright © Blueberry Maybe Ab Ltd. The project is distributed under the **[Gittan / Timelog Extract License](LICENSE)** (a **source-available** license: full source, but **use beyond small teams** may require Patreon as described in **`docs/SPONSORSHIP_TERMS.md`**). Non-binding **intent** behind that choice is summarized in **`docs/LICENSE_GOALS.md`**.

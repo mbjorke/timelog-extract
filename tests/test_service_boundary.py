@@ -24,10 +24,11 @@ class ServiceBoundaryTests(unittest.TestCase):
         self.assertEqual(options.mail_source, "off")
         self.assertEqual(options.chrome_source, "off")
 
-    def test_as_run_options_ignores_unknown_fields(self):
-        """Ignores unknown caller fields for forward-compatible boundaries."""
-        options = as_run_options({"mail_source": "off", "unknown_field": "x"})
-        self.assertEqual(options.mail_source, "off")
+    def test_as_run_options_rejects_unknown_fields(self):
+        """Unknown keys fail fast to surface typos in callers."""
+        with self.assertRaises(ValueError) as ctx:
+            as_run_options({"mail_source": "off", "unknown_field": "x"})
+        self.assertIn("unknown_field", str(ctx.exception))
 
     def test_as_run_options_preserves_dataclass(self):
         """Returns the same TimelogRunOptions instance when already normalized."""

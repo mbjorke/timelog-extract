@@ -12,7 +12,7 @@ def package_version() -> str:
     try:
         return importlib.metadata.version("timelog-extract")
     except importlib.metadata.PackageNotFoundError:
-        return "0.1.0-dev"
+        return "0.2.0-dev"
 
 
 @dataclass
@@ -69,8 +69,16 @@ def as_run_options(options: Any) -> TimelogRunOptions:
     if isinstance(options, TimelogRunOptions):
         return options
     if isinstance(options, dict):
-        return TimelogRunOptions(**{k: v for k, v in options.items() if k in allowed_fields})
+        unknown = set(options.keys()) - allowed_fields
+        if unknown:
+            raise ValueError(f"Unknown run option(s): {sorted(unknown)}")
+        return TimelogRunOptions(
+            **{k: v for k, v in options.items() if k in allowed_fields}
+        )
     if isinstance(options, argparse.Namespace):
         d = vars(options)
+        unknown = set(d.keys()) - allowed_fields
+        if unknown:
+            raise ValueError(f"Unknown run option(s): {sorted(unknown)}")
         return TimelogRunOptions(**{k: v for k, v in d.items() if k in allowed_fields})
     raise TypeError(f"Unsupported options type: {type(options)!r}")

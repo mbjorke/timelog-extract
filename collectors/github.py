@@ -9,9 +9,13 @@ from typing import Any, Callable, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from core.cli_options import package_version
 from core.sources import GITHUB_SOURCE
 
-USER_AGENT = "timelog-extract/0.1.0 (+https://github.com/mbjorke/timelog-extract)"
+USER_AGENT = (
+    f"timelog-extract/{package_version()} "
+    "(+https://github.com/mbjorke/timelog-extract)"
+)
 PER_PAGE = 100
 MAX_PAGES = 10
 

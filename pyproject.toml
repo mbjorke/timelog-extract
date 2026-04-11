@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "timelog-extract"
-version = "0.1.0"
+version = "0.2.0"
 description = "Aggregate local work activity from Gemini, Claude, Cursor, OpenAI Codex IDE, Chrome, Mail, worklog, optional GitHub public activity, and optional Screen Time."
 readme = "README.md"
 license = { file = "LICENSE" }

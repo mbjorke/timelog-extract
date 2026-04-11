@@ -18,6 +18,9 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
 
+# Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 @app.command()
 def doctor():
@@ -74,8 +77,8 @@ def doctor():
                 os.unlink(tmp.name)
 
     with console.status("[bold blue]Running diagnostics..."):
-        check_file(Path("timelog_projects.json"), "Project Config")
-        check_file(Path("TIMELOG.md"), "Worklog (Local)")
+        check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
+        check_file(REPO_ROOT / "TIMELOG.md", "Worklog (Local)")
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
@@ -146,7 +149,10 @@ def sources():
         date_to=picked.get("date_to"),
         today=picked.get("today", False),
         yesterday=picked.get("yesterday", False),
+        last_3_days=picked.get("last_3_days", False),
         last_week=picked.get("last_week", False),
+        last_14_days=picked.get("last_14_days", False),
+        last_month=picked.get("last_month", False),
         projects_config="timelog_projects.json",
         quiet=True,
     )
@@ -248,7 +254,7 @@ def projects(
                 data = {"projects": data}
         except Exception as e:
             console.print(f"[red]Error reading config: {e}[/red]")
-            data = {"projects": []}
+            raise typer.Exit(code=1) from e
     else:
         data = {"projects": [], "worklog": "TIMELOG.md"}
 

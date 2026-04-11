@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+(nothing yet)
+
+## 0.2.0 - 2026-04-11
+
+- **Package version 0.2.0** — merge to `main` with large CLI-first and licensing changes; maintainer checklist for future bumps: `docs/VERSIONING.md`.
 - Core: inclusive preset ranges for last 3/7/14/30 days (`report_runtime`, `cli_prompts`, `status`); `--quiet` collection now fills `collector_status` like non-quiet runs; `gittan status` exits non-zero on report errors and guards missing date range.
+- CLI: `gittan doctor` checks default config/worklog under **repo root** (not CWD); `sources` passes all timeframe presets into `TimelogRunOptions`; `projects` exits on JSON read/parse errors; `as_run_options` rejects unknown keys (fail fast).
 - Code review follow-up: Ruff-safe `get_source_color`, canonical PyPI classifier `License :: Other/Proprietary License`, sorted `core.cli.__all__`, `VISION.md` roadmap wording for cloud agents, `V1_TAG_ANNOTATION_DRAFT.md` payload version label, `gui_preview.html` label `for=` attributes, test import from `cli_options`, ASCII hyphen in banner tagline, `SPONSORSHIP_TERMS` Patreon URL note.
 - License: **Sponsorship Terms** in `LICENSE` now pin to the **same repo revision** you received (commit/tag/archive), not a moving branch tip — addresses review feedback about deterministic terms; `SPONSORSHIP_TERMS.md` version header + `LICENSE_GOALS.md` note on reviewability.
 - Terminal: ASCII **Gittan** banner (`outputs/gittan_banner.py`) — playful “feeds the review rabbit” header above the report panel.
@@ -12,11 +18,11 @@
 - Docs: `V1_SCOPE.md` — **cloud-agent platform connectors** explicitly **post-v1 / backlog** so vision copy does not imply shipped scope.
 - **License:** Replaced MIT with the **Gittan / Timelog Extract License** (copyright Blueberry Maybe Ab Ltd): source-available terms; professional use by **more than two persons** per organization/engagement (rolling 30 days) requires **Patreon** at the tier in `docs/SPONSORSHIP_TERMS.md`. Future releases may use different terms (`LICENSE` section 5).
 - Terminal/PDF: English report output across terminal summary and invoice PDF labels; session preview shows **at least one line per source** when possible (then fills to 5 lines). See `docs/TERMINAL_I18N.md` for remaining i18n backlog.
-- CLI: optional **GitHub** source — public user events (`/users/{login}/events/public`) when `--github-source on` or `auto` with `--github-user` / `GITHUB_USER`; optional `GITHUB_TOKEN` for rate limits. Sparse for old ranges (API keeps ~300 recent events).
+- CLI: optional **GitHub** source — public user events (`/users/{login}/events/public`) when `--github-source on` or `auto` with `--github-user` / `GITHUB_USER`; optional `GITHUB_TOKEN` for rate limits. Sparse for old ranges (API keeps ~300 recent events). HTTP `User-Agent` uses the installed package version.
 - Docs: incident write-up `docs/incidents/2026-04-09-timelog-timestamp.md`; regression test `tests/test_agents_timelog_policy.py` locks TIMELOG clock-time rules in `AGENTS.md`.
 - CLI: `--format json` emits a versioned truth payload (sessions + events + metadata) to stdout; `--json-file`, `--report-html`, and `--quiet` supported. HTML report is a single self-contained file with an embedded payload.
 - CLI: `--narrative` prints a rule-based executive summary in English after the report (local, no LLM).
-- CLI: `-V` / `--version` prints `timelog-extract` and the package version from metadata (fallback `0.1.0-dev` when not installed).
+- CLI: `-V` / `--version` prints `timelog-extract` and the package version from metadata (fallback `0.2.0-dev` when not installed).
 
 ## 1.0.0 - Draft (CLI-first)
 

@@ -35,7 +35,7 @@
 
 1. **CLI-first is the long-term “wow.”** Rich output, `gittan`, JSON truth payload, automation—this is the core experience worth amplifying.
 2. **Cursor / IDE extension** is **not** the hero path; companion GUI work may be **deprioritized or dropped** in favor of engine + terminal story.
-3. **Project configuration** remains central; **AI-assisted authoring** of `timelog_projects.json` is a **vision** (optional cloud LLM with user API key **and/or** local LLM for fork-friendly power users)—implementation TBD.
+3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in **`docs/AI_ASSISTED_CONFIG.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
 
@@ -51,7 +51,7 @@
 
 ## Risks (product)
 
-- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/SOURCES_AND_FLAGS.md`, `docs/MANUAL_TEST_MATRIX_0_2_x.md`).
+- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/SOURCES_AND_FLAGS.md`, `docs/MANUAL_TEST_MATRIX_0_2_x.md`). Mitigation is tied to the **simplify project configuration** bet above and to **`docs/AI_ASSISTED_CONFIG.md`** over time.
 - **Collector maintenance:** App vendors change log paths and formats; quality depends on **fixtures** and **clear disable reasons** in reports.
 - **Expectation gap:** “Automatic” is **reconstruction + rules**, not mind-reading; calendar and chat integrations would **change** the story when shipped.
 
@@ -82,7 +82,7 @@ Use these in PR comments or advisor sessions when you want a **second brain** on
 2. Who **benefits most**—solo consultant, small team, or internal champion in a larger org?
 3. Any **messaging risk** in README / VISION / new docs (overclaim, scope creep, competitor comparison)?
 4. Does the **LICENSE / sponsorship** story still match how we describe the product publicly?
-5. What is the **single next bet** (calendar, config UX, integrations) that best matches “market with pride”?
+5. What is the **single next bet** (calendar, **simplified project config**, integrations) that best matches “market with pride”?
 
 ---
 

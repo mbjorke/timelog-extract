@@ -22,7 +22,7 @@ from typing import Any
 
 def _ensure_utc_tz() -> None:
     """Match CI/local day boundaries; must run before importing report_service."""
-    os.environ.setdefault("TZ", "UTC")
+    os.environ["TZ"] = "UTC"
     if hasattr(time, "tzset"):
         time.tzset()
 
@@ -50,6 +50,10 @@ def compare_expectations(
     actual = actual_hours_table(report)
     errors: list[str] = []
     exp = dataset["expectations"]
+    expected_keys = {(row["date"], row["project"]) for row in exp}
+    unexpected = sorted(set(actual.keys()) - expected_keys)
+    if unexpected:
+        errors.append(f"unexpected keys present: {unexpected}")
     for row in exp:
         key = (row["date"], row["project"])
         want = float(row["hours"])
@@ -152,13 +156,16 @@ def run_check(write_md: bool = True) -> int:
     return 0
 
 
-def print_expectations() -> None:
+def print_expectations() -> int:
     _ensure_utc_tz()
     root = _ensure_repo_on_path()
     from core.report_service import run_timelog_report
     ds_path = root / "tests" / "fixtures" / "golden_dataset.json"
     dataset = load_dataset(ds_path)
     cfg = root / dataset["config_path"]
+    if not cfg.is_file():
+        print(f"missing config: {cfg}", file=sys.stderr)
+        return 2
     opts = dict(dataset.get("run_options") or {})
     report = run_timelog_report(
         str(cfg),
@@ -168,6 +175,7 @@ def print_expectations() -> None:
     )
     actual = actual_hours_table(report)
     print(json.dumps([{"date": k[0], "project": k[1], "hours": v} for k, v in sorted(actual.items())], indent=2))
+    return 0
 
 
 def main() -> int:
@@ -180,8 +188,7 @@ def main() -> int:
     )
     args = p.parse_args()
     if args.print_expectations:
-        print_expectations()
-        return 0
+        return print_expectations()
     if args.check:
         return run_check()
     p.error("specify --check or --print-expectations")

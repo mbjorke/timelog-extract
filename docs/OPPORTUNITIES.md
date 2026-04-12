@@ -62,6 +62,7 @@
 - The repo ships under the **Gittan / Timelog Extract License** (see `LICENSE`)—professional-scale use may map to **sponsorship tiers** described in **`docs/SPONSORSHIP_TERMS.md`**.
 - **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/PATREON_POSITIONING.md` is **non-binding** until aligned with legal docs.
 - **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with **`docs/SPONSORSHIP_TERMS.md`** and your live Patreon (or other) pages before merging.
+- **Planned — GitHub Discussions (announcements):** Turn on **Discussions** for the repo if needed; use the **Announcements** category for rare, high-signal posts. Composer with welcome helper: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
 
 ---
 

@@ -32,7 +32,8 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
 
 1. Create/activate Python 3.9+ environment.
 2. Install dependencies:
-  - `python3 -m pip install -e .`
+  - `python3 -m pip install -e .` (from a clone of this repository).
+  - **PyPI:** not published yet; `pip install timelog-extract` is planned for a near release (around **0.2.3**). See `docs/VERSIONING.md`.
 3. Run:
   - `python3 scripts/friend_trial.py --today --invoice-pdf`
 4. Share feedback in `friend_trial/FEEDBACK_TEMPLATE.md`.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Distribution: **PyPI publication** planned for a near release (target **0.2.3**) so end users can run `pip install timelog-extract` instead of cloning and using `pip install -e .` only. Details: `docs/VERSIONING.md`.
 - Docs: optional **ActivityWatch** integration backlog (`docs/ACTIVITYWATCH_INTEGRATION.md`); linked from `docs/VISION_DOCUMENTS.md` and deferred list in `docs/V1_SCOPE.md`.
 - Docs: manual QA matrix for **0.2.x** (`docs/MANUAL_TEST_MATRIX_0_2_x.md`); indexed in `docs/VISION_DOCUMENTS.md`.
 - Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `docs/VISION_DOCUMENTS.md`.

@@ -21,6 +21,27 @@ Use this when validating **Gittan / timelog-extract** after install or before a 
 
 ---
 
+## Automation (partial)
+
+A script automates the **deterministic** block below (seeded worklog, fixed dates) and an optional **previous calendar month** smoke run against your real tree.
+
+```bash
+# Same checks as matrix D1 + D2/D4 thresholds (temp dir, no repo config required)
+python3 scripts/manual_matrix_automation.py --deterministic
+```
+
+```bash
+# Previous calendar month, real sources + timelog_projects.json under --repo-root
+# (default min event count = 1; raise with QA_MATRIX_MIN_EVENTS when you have plenty of data)
+QA_MATRIX_MIN_EVENTS=5 python3 scripts/manual_matrix_automation.py --last-month --repo-root .
+```
+
+What stays **manual:** subjective plausibility, permissions prompts, HTML/PDF eyeballing, GitHub API windows, and anything not encoded in JSON thresholds.
+
+**CLI flags:** the Typer CLI exposes `--date-from` / `--date-to` and `--output-format json` (see `gittan report --help`). Older docs may say `--from` / `--format`; use the names your installed CLI prints.
+
+---
+
 ## Deterministic spot-check (seeded worklog, optional)
 
 Use this when you want **repeatable pass/fail signals** independent of Chrome/Mail. It relies only on **`TIMELOG.md`-style** parsing and a **fixed local date range**.
@@ -52,9 +73,9 @@ Use this when you want **repeatable pass/fail signals** independent of Chrome/Ma
 | Step | Command | Pass criteria (check JSON with `--format json` where noted) |
 |------|---------|---------------------------------------------------------------|
 | D1 | `gittan doctor` | Process exits 0; table renders (paths may show missing files on a clean machine — note in Pass / notes). |
-| D2 | `gittan report --from 2024-01-01 --to 2024-01-02 --worklog ./manual_qa_worklog.md --worklog-format md --keywords "test,example,foo"` | **≥ 5** events counted toward the report (terminal summary or JSON); TIMELOG source appears in **Source Summary** when using `--source-summary`. |
+| D2 | `gittan report --date-from 2024-01-01 --date-to 2024-01-02 --worklog ./manual_qa_worklog.md --worklog-format md --keywords "test,example,foo"` | **≥ 5** events counted toward the report (terminal summary or JSON); TIMELOG source appears in **Source Summary** when using `--source-summary`. |
 | D3 | Same as D2 plus `--include-uncategorized` (optional cross-check) | **≥ 1** session across days in the JSON/tables when gap/min-session rules allow grouping (if zero sessions, increase `gap_minutes` temporarily or confirm events are in range). |
-| D4 | Same as D2 + `--format json` | Payload `schema` is `timelog_extract.truth_payload`; `version` key present; **`totals.event_count` ≥ 5**; at least one serialized event has **`detail`** containing **`example.com/foo`** OR **`Test Project`** (search in `days[].sessions[].events` or equivalent). |
+| D4 | Same as D2 + `--output-format json` | Payload `schema` is `timelog_extract.truth_payload`; `version` key present; **`totals.event_count` ≥ 5**; at least one serialized event has **`detail`** containing **`example.com/foo`** OR **`Test Project`** (search under `days` → `sessions` → `events`). |
 
 **3. Note on “UTC”:** CLI dates are **local calendar days**; the JSON payload’s `range` uses **ISO timestamps** (see output). Match the **same calendar dates** you put in the worklog file.
 

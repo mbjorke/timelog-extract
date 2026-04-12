@@ -54,3 +54,10 @@
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - Mark PR "Ready for review" after CI + review feedback are addressed.
 
+### CodeRabbit CLI (optional local pre-check)
+
+- The **CodeRabbit CLI** (`coderabbit`, alias `cr`) reviews changes **in your repo** without using GitHub PR review quota. Install and auth: [CodeRabbit CLI docs](https://docs.coderabbit.ai/cli).
+- **When:** before pushing a meaningful batch or before `@coderabbitai review`, if you want fast feedback on the current branch without waiting on the GitHub app (still subject to [CLI rate limits](https://docs.coderabbit.ai/cli) for your plan).
+- **Typical commands** (from repo root): `coderabbit --base origin/main --type committed` to compare your branch to `main`; `coderabbit --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
+- **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
+

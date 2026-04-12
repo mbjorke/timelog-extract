@@ -180,8 +180,9 @@ def print_expectations() -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Golden dataset evaluation")
-    p.add_argument("--check", action="store_true", help="Run comparison and write docs/evals/latest.md")
-    p.add_argument(
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--check", action="store_true", help="Run comparison and write docs/evals/latest.md")
+    group.add_argument(
         "--print-expectations",
         action="store_true",
         help="Print actual hours JSON from engine (use to refresh golden_dataset.json)",
@@ -189,10 +190,7 @@ def main() -> int:
     args = p.parse_args()
     if args.print_expectations:
         return print_expectations()
-    if args.check:
-        return run_check()
-    p.error("specify --check or --print-expectations")
-    return 2
+    return run_check()
 
 
 if __name__ == "__main__":

@@ -53,7 +53,8 @@
   - no immediate follow-up commit is expected.
 - Resolve review feedback in one consolidated commit when possible.
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
-- Mark PR "Ready for review" after CI + review feedback are addressed.
+- If you use **Draft** PRs, click **Ready for review** once CI and feedback look good. **Open** (non-draft) PRs do not show that button—they are already reviewable; merging without it is fine.
+- `@coderabbitai` commands run a review only; they do **not** change Draft or ready state on GitHub.
 
 ### CodeRabbit CLI (optional local pre-check)
 

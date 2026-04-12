@@ -85,7 +85,8 @@ class CollectClaudeAiUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["claude.ai/chat/50%25encoded"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Claude.ai (web)")
 
     def test_url_with_underscore_is_escaped(self):
         """A tracked_url containing _ is escaped so it doesn't act as a wildcard."""
@@ -98,7 +99,8 @@ class CollectClaudeAiUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["claude.ai/project_name"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Claude.ai (web)")
 
     def test_single_quote_in_url_does_not_error(self):
         """A project URL containing a single-quote is safely parameterized."""
@@ -111,7 +113,8 @@ class CollectClaudeAiUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["claude.ai/chat/it's-fine"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Claude.ai (web)")
 
     def test_non_matching_url_not_in_results(self):
         """Visits outside the tracked URL list are not returned."""
@@ -191,7 +194,8 @@ class CollectGeminiWebUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["gemini.google.com/app/q%3Dhello"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Gemini (web)")
 
     def test_single_quote_in_url_does_not_cause_sql_error(self):
         """The old code used chr(39)*2 escaping; now parameterized — must not raise."""
@@ -204,7 +208,8 @@ class CollectGeminiWebUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["gemini.google.com/app/it's-here"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Gemini (web)")
 
     def test_underscore_in_tracked_url_is_literal(self):
         """Underscore in a tracked URL is escaped so it matches literally."""
@@ -223,7 +228,6 @@ class CollectGeminiWebUrlsTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "tracked_urls": ["gemini.google.com/app/my_chat"]}]
         results = self._call(profiles)
-        urls = [r["detail"] for r in results]
         self.assertEqual(len(results), 1)
         self.assertIn("my_chat", results[0]["detail"])
 
@@ -293,7 +297,9 @@ class CollectChromeTests(unittest.TestCase):
         )
         profiles = [{"name": "Proj", "match_terms": ["100%25complete"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Chrome")
+        self.assertEqual(results[0]["detail"], "Done")
 
     def test_keyword_with_underscore_does_not_match_any_char(self):
         """Keyword underscore is escaped; 'foo_bar' doesn't match 'fooXbar'."""
@@ -346,13 +352,15 @@ class CollectChromeTests(unittest.TestCase):
         ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
         insert_visit(
             self.db_path,
-            "https://site.com/it-is-fine",
+            "https://site.com/it's-fine",
             "Fine",
             ts,
         )
         profiles = [{"name": "Proj", "match_terms": ["it's-fine"]}]
         results = self._call(profiles)
-        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Chrome")
+        self.assertEqual(results[0]["detail"], "Fine")
 
     def test_multiple_keywords_each_generate_two_params(self):
         """Each keyword produces params for both LOWER(u.url) and LOWER(u.title)."""

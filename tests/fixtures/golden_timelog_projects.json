@@ -1,0 +1,13 @@
+{
+  "worklog": "golden_TIMELOG.md",
+  "projects": [
+    {
+      "name": "GoldenA",
+      "match_terms": ["golden-a", "client-a"]
+    },
+    {
+      "name": "GoldenB",
+      "match_terms": ["golden-b"]
+    }
+  ]
+}

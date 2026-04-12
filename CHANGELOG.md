@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Tooling: **golden dataset** baseline (`tests/fixtures/golden_*.json`, `golden_TIMELOG.md`) and `scripts/run_golden_eval.py` — compares expected per-(date, project) hours; writes `docs/evals/latest.md`. See `docs/ACCURACY_PLAN.md`. Test: `tests/test_golden_eval.py`.
+
 ## 0.2.1 - 2026-04-12
 
 - **Package version 0.2.1** — documentation and GTM housekeeping; maintainer checklist: `docs/VERSIONING.md`.

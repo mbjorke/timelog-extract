@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Tooling: `scripts/manual_matrix_automation.py` — partial automation for `docs/MANUAL_TEST_MATRIX_0_2_x.md` (`--deterministic` seeded worklog; `--last-month` + `QA_MATRIX_MIN_EVENTS` for calendar-month smoke against a repo root). Docs and `docs/VISION_DOCUMENTS.md` updated.
+- Tooling: **golden dataset** baseline (`tests/fixtures/golden_*.json`, `tests/fixtures/golden_TIMELOG.md`) and `scripts/run_golden_eval.py` — compares expected per-(date, project) hours; writes `docs/evals/latest.md`. See `docs/ACCURACY_PLAN.md`. Test: `tests/test_golden_eval.py`.
 
 ## 0.2.1 - 2026-04-12
 

@@ -46,11 +46,19 @@
 
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.
-- Trigger `@coderabbitai review` only when:
+- Trigger **`@coderabbitai full review`** when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use **`@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
+- Trigger that review only when:
   - the current scope is complete enough for review,
   - CI is green (or expected to be green after the latest push),
   - no immediate follow-up commit is expected.
 - Resolve review feedback in one consolidated commit when possible.
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - Mark PR "Ready for review" after CI + review feedback are addressed.
+
+### CodeRabbit CLI (optional local pre-check)
+
+- The **CodeRabbit CLI** (`coderabbit`, alias `cr`) reviews changes **in your repo** without using GitHub PR review quota. Install and auth: [CodeRabbit CLI docs](https://docs.coderabbit.ai/cli).
+- **When:** before pushing a meaningful batch or before `@coderabbitai full review` / `@coderabbitai review` on GitHub, if you want fast feedback on the current branch without waiting on the GitHub app (still subject to [CLI rate limits](https://docs.coderabbit.ai/cli) for your plan).
+- **Typical commands** (from repo root): `coderabbit --base origin/main --type committed` to compare your branch to `main`; `coderabbit --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
+- **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
 

@@ -1,0 +1,19 @@
+{
+  "description": "Baseline golden expectations for worklog-only fixture (see golden_TIMELOG.md). Hours come from default session rules (15 min minimum per isolated TIMELOG line). Regenerate expectations with scripts/run_golden_eval.py --print-expectations after intentional engine changes.",
+  "timezone_note": "Eval sets TZ=UTC before importing the report stack so day keys and parsing match CI and local runs.",
+  "config_path": "tests/fixtures/golden_timelog_projects.json",
+  "date_from": "2024-01-01",
+  "date_to": "2024-01-02",
+  "run_options": {
+    "quiet": true,
+    "screen_time": "off",
+    "chrome_source": "off",
+    "mail_source": "off",
+    "github_source": "off"
+  },
+  "expectations": [
+    { "date": "2024-01-01", "project": "GoldenA", "hours": 0.25 },
+    { "date": "2024-01-02", "project": "GoldenA", "hours": 0.25 },
+    { "date": "2024-01-01", "project": "GoldenB", "hours": 0.25 }
+  ]
+}

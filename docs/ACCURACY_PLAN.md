@@ -22,6 +22,8 @@ Be the most accurate local-first timereporting tool for technical work.
 - Eval script output at `docs/evals/latest.md`
 - Baseline KPI snapshot committed in docs
 
+**How to run:** `python3 scripts/run_golden_eval.py --check` (sets `TZ=UTC` before loading the engine; compares `golden_dataset.json` expectations to `run_timelog_report`). Refresh expected hours after intentional pipeline changes: `python3 scripts/run_golden_eval.py --print-expectations`. Covered by `tests/test_golden_eval.py` (invoked from `scripts/run_autotests.sh`).
+
 ### Dataset shape
 
 For each expected item:

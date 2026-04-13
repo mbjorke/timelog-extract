@@ -53,24 +53,34 @@ def doctor(
         REPO_ROOT,
     )
 
+    STYLE_LABEL = "#cfc8e8"
+    STYLE_MUTED = "#8f86ad"
+    STYLE_BORDER = "#4a4660"
+    OK_ICON = "[#47cfa8]✓[/#47cfa8]"
+    WARN_ICON = "[#d6b06a]![/#d6b06a]"
+    FAIL_ICON = "[#e26d85]✗[/#e26d85]"
+    NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"
+
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
-    table.add_column("Source / Path", style="cyan")
+    table.border_style = "#4a4660"
+    table.header_style = "bold #b7aed3"
+    table.add_column("Source / Path", style=STYLE_LABEL)
     table.add_column("Status", justify="center")
-    table.add_column("Details", style="dim")
+    table.add_column("Details", style=STYLE_MUTED)
 
     def check_file(path: Path, label: str):
         if not path.exists():
-            table.add_row(label, "[red]✘[/red]", f"Not found: {path}")
+            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Not found: {path}[/{STYLE_MUTED}]")
             return False
         if not os.access(path, os.R_OK):
-            table.add_row(label, "[yellow]![/yellow]", f"No read permission: {path}")
+            table.add_row(label, WARN_ICON, f"[{STYLE_MUTED}]No read permission: {path}[/{STYLE_MUTED}]")
             return False
-        table.add_row(label, "[green]✔[/green]", "Accessible")
+        table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
         return True
 
     def check_db(path: Path, label: str, table_name: str):
         if not path.exists():
-            table.add_row(label, "[red]✘[/red]", "DB not found")
+            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]DB not found[/{STYLE_MUTED}]")
             return False
 
         tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
@@ -82,22 +92,22 @@ def doctor(
             c.execute(f"SELECT count(*) FROM {table_name} LIMIT 1")
             c.fetchone()
             conn.close()
-            table.add_row(label, "[green]✔[/green]", "DB query successful")
+            table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]DB query successful[/{STYLE_MUTED}]")
             return True
         except sqlite3.OperationalError as e:
             if "database is locked" in str(e):
-                table.add_row(label, "[yellow]![/yellow]", "DB locked (try closing app)")
+                table.add_row(label, WARN_ICON, f"[{STYLE_MUTED}]DB locked (try closing app)[/{STYLE_MUTED}]")
             else:
-                table.add_row(label, "[red]✘[/red]", f"Query failed: {e}")
+                table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Query failed: {e}[/{STYLE_MUTED}]")
             return False
         except PermissionError:
-            table.add_row(label, "[red]✘[/red]", "Full Disk Access required")
+            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Full Disk Access required[/{STYLE_MUTED}]")
             return False
         finally:
             if os.path.exists(tmp.name):
                 os.unlink(tmp.name)
 
-    with console.status("[bold blue]Running diagnostics..."):
+    with console.status("[bold #b7aed3]Running diagnostics..."):
         check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
         check_file(worklog_path, "Worklog (Local)")
 
@@ -108,11 +118,11 @@ def doctor(
         if mail_path.exists():
             try:
                 list(mail_path.glob("V[0-9]*"))
-                table.add_row("Apple Mail", "[green]✔[/green]", "Folder accessible")
+                table.add_row("Apple Mail", OK_ICON, f"[{STYLE_MUTED}]Folder accessible[/{STYLE_MUTED}]")
             except PermissionError:
-                table.add_row("Apple Mail", "[red]✘[/red]", "Permission denied (Full Disk Access?)")
+                table.add_row("Apple Mail", FAIL_ICON, f"[{STYLE_MUTED}]Permission denied (Full Disk Access?)[/{STYLE_MUTED}]")
         else:
-            table.add_row("Apple Mail", "[dim]N/A[/dim]", "Path not found")
+            table.add_row("Apple Mail", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
 
         cursor_log_path = (
             home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
@@ -130,9 +140,9 @@ def doctor(
             / "checkpoints"
         )
         if cursor_checkpoints.exists():
-            table.add_row("Cursor Checkpoints", "[green]✔[/green]", "Folder accessible")
+            table.add_row("Cursor Checkpoints", OK_ICON, f"[{STYLE_MUTED}]Folder accessible[/{STYLE_MUTED}]")
         else:
-            table.add_row("Cursor Checkpoints", "[dim]N/A[/dim]", "Not found")
+            table.add_row("Cursor Checkpoints", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
 
         st_path = home / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db"
         if not st_path.exists():
@@ -141,14 +151,14 @@ def doctor(
 
         claude_path = home / ".claude" / "projects"
         if claude_path.exists():
-            table.add_row("Claude Code CLI", "[green]✔[/green]", "Found projects")
+            table.add_row("Claude Code CLI", OK_ICON, f"[{STYLE_MUTED}]Found projects[/{STYLE_MUTED}]")
         else:
-            table.add_row("Claude Code CLI", "[dim]N/A[/dim]", "Path not found")
+            table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
 
     console.print(table)
     console.print(
-        "\n[dim]Note: Red ✘ or Yellow ! for Mail/Chrome/Screen Time usually mean you need to grant "
-        "[bold]Full Disk Access[/bold] to your Terminal in System Settings > Privacy & Security.[/dim]\n"
+        "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
+        "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"
     )
 
 

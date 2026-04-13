@@ -31,6 +31,7 @@ If wording conflicts, use this order:
 | `docs/evals/latest.md` | **Golden eval output** from `scripts/run_golden_eval.py` (see `docs/ACCURACY_PLAN.md`). |
 | `tests/fixtures/golden_dataset.json` | **Expected hours** per (date, project) for the bundled worklog fixture; used by golden eval. |
 | `docs/SOURCES_AND_FLAGS.md` | **Behavior:** how collectors merge, source toggles vs `--exclude`, `collector_status` in JSON. |
+| `docs/TERMINAL_STYLE_GUIDE.md` | **UX semantics:** terminal typography, color roles, and low-noise output conventions for CLI commands. |
 | `docs/AI_ASSISTED_CONFIG.md` | **Vision:** built-in assistant for `timelog_projects.json`; project names first; opt-in LLM; Jira-native vs solo workflows. |
 | `docs/CI.md` | **CI:** branch-protected `main`, workflow jobs, link to `.github/workflows/ci.yml`. |
 | `docs/OPPORTUNITIES.md` | **Product / GTM:** opportunities, risks, audience, differentiation—English; for business-style review. |

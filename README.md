@@ -64,6 +64,8 @@ gittan --help
 gittan -V
 ```
 
+A successful **PyPI** install (`pip` / `pipx` / venv `pip` above) puts **`gittan`** and **`timelog-extract`** on your PATH.
+
 Publishing checklist: [`docs/VERSIONING.md`](docs/VERSIONING.md).
 
 </div>

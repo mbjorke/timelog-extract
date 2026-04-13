@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Placeholder for post-0.2.3 changes.
+
 ## 0.2.3 - 2026-04-13
 
 - **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.

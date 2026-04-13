@@ -36,6 +36,7 @@ class TimelogRunOptions:
     exclude: str = ""
     worklog: Optional[str] = None
     worklog_format: str = "auto"
+    source_strategy: str = "auto"
     screen_time: str = "auto"
     include_uncategorized: bool = False
     only_project: Optional[str] = None

@@ -87,6 +87,9 @@ def build_truth_payload(
     gap_minutes: int,
     min_session_minutes: int,
     min_session_passive_minutes: int,
+    source_strategy_requested: str = "auto",
+    source_strategy_effective: str = "balanced",
+    primary_source: str = "balanced",
     session_duration_hours_fn,
 ) -> Dict[str, Any]:
     """Build a JSON-serializable dict aligned with existing session rules."""
@@ -145,6 +148,12 @@ def build_truth_payload(
             "gap_minutes": gap_minutes,
             "min_session_minutes": min_session_minutes,
             "min_session_passive_minutes": min_session_passive_minutes,
+            "source_strategy_requested": source_strategy_requested,
+            "source_strategy_effective": source_strategy_effective,
+        },
+        "source_roles": {
+            "primary_source": primary_source,
+            "mode": source_strategy_effective,
         },
         "paths": {
             "worklog": worklog_path,

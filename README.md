@@ -37,6 +37,8 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
 3. Run:
   - `python3 scripts/friend_trial.py --today --invoice-pdf`
 4. Share feedback in `friend_trial/FEEDBACK_TEMPLATE.md`.
+5. Optional but recommended before first real usage:
+  - `gittan setup-global-timelog` (interactive machine-wide setup for automatic `TIMELOG.md` entries after commits)
 
 ## CLI Usage
 
@@ -44,6 +46,11 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
   - `python3 scripts/run_engine_report.py --today --pdf --json-file output/latest-payload.json`
   - This uses the same `core.engine_api` boundary as the extension.
   - You should see `schema`, `version`, `totals`, plus `pdf_path` when `--pdf` is enabled.
+- Guided setup wizard:
+  - `gittan setup` (or `python3 timelog_extract.py setup`)
+  - Runs environment checks, global timelog automation, project-config bootstrap, doctor, and optional smoke report.
+  - Lets you choose timelog file path inside repos (default `TIMELOG.md`) and optionally restrict logging to selected repositories.
+  - Start safely with `--dry-run`; use `--yes` for non-interactive onboarding.
 
 - Today:
   - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
@@ -67,6 +74,9 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
     2. Else if workspace config contains `worklog`, use it.
     3. Else use `<current_repo_root>/TIMELOG.md`.
     4. If chosen file is missing, create it.
+  - Source strategy:
+    - `--source-strategy auto|worklog-first|balanced` (default `auto`)
+    - `auto` prefers worklog-first when a readable worklog exists, otherwise falls back to balanced mode.
 - Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
   - `python3 timelog_extract.py --today --format json`
   - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`
@@ -93,6 +103,10 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
   - verify `timelog_projects.json` exists, or pass `--projects-config PATH`
 - File permission/path issues:
   - check read access for `--worklog`, browser history DBs, and optional Mail/Screen Time sources
+- Global timelog automation setup:
+  - run `gittan setup-global-timelog` (or `python3 timelog_extract.py setup-global-timelog`)
+  - use `--dry-run` first if you want to preview changes
+  - full manual fallback guide: `GLOBAL_TIMELOG_AUTOMATION.md`
 
 ## Autotests
 

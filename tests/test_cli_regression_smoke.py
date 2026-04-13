@@ -49,6 +49,38 @@ class CliRegressionSmokeTests(unittest.TestCase):
         path = ROOT / "core" / "cli.py"
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
+    def test_setup_global_timelog_dry_run(self):
+        """New onboarding command should run without mutating machine state in dry-run mode."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup-global-timelog", "--yes", "--dry-run"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=completed.stderr or completed.stdout,
+        )
+        self.assertIn("Dry run completed.", completed.stdout)
+
+    def test_setup_wizard_dry_run(self):
+        """Full setup wizard should support non-interactive dry-run execution."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--yes", "--dry-run", "--skip-smoke"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=completed.stderr or completed.stdout,
+        )
+        self.assertIn("Setup wizard completed.", completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

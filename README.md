@@ -1,152 +1,127 @@
-# Timelog Extract
+# Timelog Extract (Gittan)
 
-Timelog Extract aggregates local activity signals into project/customer time reports and optional invoice PDFs.
-All processing is local-only in the core v1 CLI flow (no cloud upload path).
+**Gittan** turns local signals—IDE time, browsers, mail, worklogs, optional GitHub activity—into **project time reports** and optional **invoice PDFs**.  
+Core reporting runs **on your machine**; there is no built-in cloud upload path.
 
-## Current Deliverables
+---
 
-- Refactored CLI core in `timelog_extract.py` with cleaner orchestration.
-- Phase 0 friend-trial runner: `scripts/friend_trial.py`.
-- GUI-first Cursor extension scaffold in `cursor-extension/`.
-- Productization docs in `docs/`:
-  - `VISION_DOCUMENTS.md` (how `VISION.md` relates to the GITTAN_* docs — **read this when editing vision copy**)
-  - `GITTAN_VISION.md`
-  - `GITTAN_VISION_EN.md`
-  - `GITTAN_NORTHSTAR_METRICS.md`
-  - `AGENTIC_EVALUATION.md`
-  - `CASE_STUDY.md`
-  - `CASE_STUDY_TECH.md`
-  - `V1_SCOPE.md`
-  - `V1_FINISH_PLAN.md`
-  - `PRIVACY_SECURITY.md`
-  - `SPONSORSHIP_TERMS.md` (legacy sponsorship notes; not a license gate under GPL)
-  - `LICENSE_GOALS.md` (why GPL-3.0 fits the project strategy)
-  - `SIMILAR_REPOS_CHECKLIST.md`
-  - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
-  - `TERMINAL_STYLE_GUIDE.md` (CLI visual semantics: typography, color roles, and low-noise layout rules)
-  - `SOURCES_AND_FLAGS.md` (how source toggles and `--exclude` relate to collection — **not** a filter on one shared dataset)
-  - `AI_ASSISTED_CONFIG.md` (vision: future in-product assistant for project JSON — names first, optional LLM, privacy notes)
-  - `OPPORTUNITIES.md` (product / go-to-market working notes — for business-style review)
-  - `GITHUB_SPONSORS_PROFILE.md` (canonical bio/introduction copy for `github.com/sponsors/blueberry-maybe`)
-  - `PRIVATE_LOCAL_NOTES.md` (how to keep **gitignored** `private/` business notes outside commits)
+## Install
 
-## Quick Start (Friend Trial)
+**Requirements:** Python **3.9+**.
 
-1. Create/activate Python 3.9+ environment.
-2. Install dependencies:
-  - `python3 -m pip install -e .` (from a clone of this repository).
-  - **PyPI:** not published yet; package version is **0.2.2** and is tracking toward first upload. See `docs/VERSIONING.md` for publish checklist.
-3. Run:
-  - `python3 scripts/friend_trial.py --today --invoice-pdf`
-4. Share feedback in `friend_trial/FEEDBACK_TEMPLATE.md`.
-5. Optional but recommended before first real usage:
-  - `gittan setup-global-timelog` (interactive machine-wide setup for automatic `TIMELOG.md` entries after commits)
+### From PyPI (recommended)
 
-## CLI Usage
+When the package is live on PyPI:
 
-- **Use it now (recommended, no Cursor debug setup needed):**
-  - `python3 scripts/run_engine_report.py --today --pdf --json-file output/latest-payload.json`
-  - This uses the same `core.engine_api` boundary as the extension.
-  - You should see `schema`, `version`, `totals`, plus `pdf_path` when `--pdf` is enabled.
-- Guided setup wizard:
-  - `gittan setup` (or `python3 timelog_extract.py setup`)
-  - Runs environment checks, global timelog automation, project-config bootstrap, doctor, and optional smoke report.
-  - Lets you choose timelog file path inside repos (default `TIMELOG.md`) and optionally restrict logging to selected repositories.
-  - Start safely with `--dry-run`; use `--yes` for non-interactive onboarding.
+```bash
+pipx install timelog-extract
+```
 
-- Today:
-  - `python3 timelog_extract.py --today --source-summary --invoice-pdf`
-- Same with a plain-English executive blurb after the tables (rule-based, offline):
-  - `python3 timelog_extract.py --today --narrative`
-- Worklog formats:
-  - Default path is `<current_repo_root>/TIMELOG.md` — i.e. the root of the repository where you run the command (Markdown headings like `## YYYY-MM-DD HH:MM`).
-  - Also supports gtimelog-style text logs with lines like `YYYY-MM-DD HH:MM: summary`.
-  - Use `--worklog PATH` to point at a different file and `--worklog-format {auto,md,gtimelog}` to force a format (default: `auto`).
-  - **Path precedence (important):**
-    1. If `--worklog PATH` is provided, that path is used.
-    2. Else if `worklog` is set in workspace config (`timelog_projects.json`), that path is used.
-    3. Otherwise, `<current_repo_root>/TIMELOG.md` is used.
-  - Human examples:
-    - Repo default: `python3 timelog_extract.py --today`
-    - Custom file in repo: `python3 timelog_extract.py --today --worklog ./.private/my-worklog.md --worklog-format md`
-    - Centralized personal log: `python3 timelog_extract.py --today --worklog ~/timelogs/all-repos.md --worklog-format md`
-    - gtimelog text file: `python3 timelog_extract.py --today --worklog ~/timelogs/timelog.txt --worklog-format gtimelog`
-  - Agent resolution algorithm:
-    1. If user/command provides `--worklog`, use it.
-    2. Else if workspace config contains `worklog`, use it.
-    3. Else use `<current_repo_root>/TIMELOG.md`.
-    4. If chosen file is missing, create it.
-  - Source strategy:
-    - `--source-strategy auto|worklog-first|balanced` (default `auto`)
-    - `auto` prefers worklog-first when a readable worklog exists, otherwise falls back to balanced mode.
-- Machine-readable JSON (quiet scan progress; pipe-friendly) and optional HTML timeline:
-  - `python3 timelog_extract.py --today --format json`
-  - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html`
-- GitHub public activity (optional): set `--github-user YOUR_LOGIN` or `GITHUB_USER`, optionally `GITHUB_TOKEN` for API rate limits; use `--github-source on` to require it, or `auto` (default) to enable when a username is set.
-- Custom range:
-  - `python3 timelog_extract.py --from 2026-04-01 --to 2026-04-30 --source-summary`
+or:
 
-## Config Naming (recommended)
+```bash
+python3 -m pip install timelog-extract
+```
 
-- Use `match_terms` as the single text-matching field for project classification.
-- Use `tracked_urls` for pinned AI chat URLs (Claude/Gemini and future providers).
+That installs the **`gittan`** and **`timelog-extract`** commands on your PATH.
 
-## Timelog vs Config Policy
+> **Note:** Publishing to PyPI is automated from this repo (see `docs/VERSIONING.md`). Until the first upload completes, use **from source** below.
 
-- `TIMELOG.md` is intentionally kept as a human-readable working journal and commit trace aid.
-- `timelog_projects.json` is system configuration; treat it as critical data and keep an external backup copy (for example under `~/.gittan/`).
-- The current setup flow creates timestamped backup files before recreating malformed config files.
+### From source (clone)
 
-## Cursor Extension (Scaffold)
+```bash
+git clone https://github.com/mbjorke/timelog-extract.git
+cd timelog-extract
+python3 -m pip install -e .
+```
 
-See `cursor-extension/README.md` for build/run instructions.
-The extension is a beta companion; CLI/script workflows are the primary v1 path.
+Check the install:
+
+```bash
+gittan --help
+gittan -V
+```
+
+---
+
+## Get started
+
+1. **Health check** — from a git repo that should have (or will have) a worklog:
+   ```bash
+   gittan doctor
+   ```
+2. **First-time setup** — wizard for environment, optional global `TIMELOG.md` hooks, and `timelog_projects.json`:
+   ```bash
+   gittan setup --dry-run    # preview
+   gittan setup              # interactive
+   ```
+3. **First report** — today’s activity:
+   ```bash
+   gittan report --today --source-summary
+   ```
+
+`TIMELOG.md` in the **repository root** (where you run the command) is the default worklog unless you pass `--worklog` or set a path in config. See **Timelog vs config** below.
+
+---
+
+## Everyday commands
+
+| Goal | Command |
+|------|---------|
+| Full report (prompts for range if you omit dates) | `gittan report` |
+| Today / last week / custom range | `gittan report --today` · `--last-week` · `--from 2026-04-01 --to 2026-04-30` |
+| Quick hours overview | `gittan status --today` |
+| Source mix / empty collectors | `gittan sources` (and `docs/SOURCES_AND_FLAGS.md`) |
+| Edit projects JSON | `gittan projects` |
+| Machine-wide commit → `TIMELOG.md` hooks | `gittan setup-global-timelog` |
+
+**JSON or HTML export** (quiet, script-friendly):
+
+```bash
+gittan report --today --format json
+gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html
+```
+
+**Optional GitHub activity:** set `GITHUB_USER` or `--github-user`; optional `GITHUB_TOKEN` for rate limits. Details: `docs/SOURCES_AND_FLAGS.md`.
+
+---
+
+## What else is in the repo
+
+- **Friend trial** — `python3 scripts/friend_trial.py --today --invoice-pdf` and `friend_trial/FEEDBACK_TEMPLATE.md`.
+- **Cursor extension** (companion, beta) — `cursor-extension/README.md`.
+- **Engine script** (same API as the extension): `python3 scripts/run_engine_report.py --today --pdf`.
+
+---
+
+## Timelog vs config
+
+- **`TIMELOG.md`** — human-readable work journal; safe to treat as a diary.
+- **`timelog_projects.json`** — machine config; **back it up** (e.g. under `~/.gittan/`). Setup creates timestamped backups before replacing invalid JSON.
+
+---
 
 ## Troubleshooting
 
-- **Sources look empty or “0 events”:** see `docs/SOURCES_AND_FLAGS.md` (collectors vs `--exclude`, and `collector_status` in `--format json`).
-- Missing Python dependencies:
-  - `python3 -m pip install -e .`
-- Missing project config:
-  - verify `timelog_projects.json` exists, or pass `--projects-config PATH`
-  - if `gittan setup` reports invalid config, it now creates a timestamped backup (`timelog_projects.backup-YYYYMMDD-HHMMSS.json`) before recreating a minimal file
-- File permission/path issues:
-  - check read access for `--worklog`, browser history DBs, and optional Mail/Screen Time sources
-- Global timelog automation setup:
-  - run `gittan setup-global-timelog` (or `python3 timelog_extract.py setup-global-timelog`)
-  - use `--dry-run` first if you want to preview changes
-  - full manual fallback guide: `GLOBAL_TIMELOG_AUTOMATION.md`
+| Issue | Where to look |
+|--------|----------------|
+| “0 events” / sources empty | `docs/SOURCES_AND_FLAGS.md` |
+| Missing deps / editable install | `python3 -m pip install -e .` from clone |
+| Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |
+| Paths / permissions | `--worklog`, browser DBs, Mail / Screen Time access |
+| Global timelog automation | `gittan setup-global-timelog`, `GLOBAL_TIMELOG_AUTOMATION.md` |
 
-## Autotests
+---
 
-- Run all Python autotests:
-  - `./scripts/run_autotests.sh`
-- Direct unittest run:
-  - `python3 -m unittest discover -s tests -p "test_*.py"`
-- Enforce Python source file size policy:
-  - `python3 scripts/check_file_lengths.py --max-lines 500`
+## Documentation map
 
-## File Size Policy
+Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/VISION_DOCUMENTS.md`](docs/VISION_DOCUMENTS.md)** for an index (e.g. `SOURCES_AND_FLAGS.md`, `PRIVACY_SECURITY.md`, `TERMINAL_STYLE_GUIDE.md`, `CLI_FIRST_V1_RELEASE_CHECKLIST.md`).
 
-- Python source files should stay at or below 500 lines.
-- The limit is enforced in CI via `scripts/check_file_lengths.py`.
-- If a module grows too large, split by responsibility (for example: cli/config/events/analytics/pipeline).
+---
 
-## Accuracy Evaluation
+## Contributing · tests · license
 
-- Plan and KPI targets: `docs/ACCURACY_PLAN.md`
-- Run evaluation (requires your own prediction + golden JSON arrays):
-  - `python3 scripts/eval_accuracy.py --predictions docs/evals/predictions.json --golden tests/fixtures/golden_dataset.json --output docs/evals/latest.md`
-
-## Contributing
-
-- See [`CONTRIBUTING.md`](CONTRIBUTING.md) (PRs: **English** title and description; tests and line-limit policy).
-- **`main` is branch-protected:** no direct pushes — use a feature branch and PR — see [`BRANCH.md`](BRANCH.md) and [`docs/CI.md`](docs/CI.md).
-
-## Release Readiness
-
-- Changelog: `CHANGELOG.md`
-- License: `LICENSE` (**GNU GPL-3.0-or-later**)
-- CI: [`docs/CI.md`](docs/CI.md) (workflow: `.github/workflows/ci.yml`)
-- CLI-first release gate: `docs/CLI_FIRST_V1_RELEASE_CHECKLIST.md`
-- RC test script for second tester: `docs/RC_TEST_SCRIPT_CLI_FIRST.md`
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — PR titles/descriptions in **English**; run tests before pushing.
+- **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/CI.md`](docs/CI.md)**.
+- Tests: `./scripts/run_autotests.sh` (also enforced in CI).
+- **License:** GNU **GPL-3.0-or-later** — [`LICENSE`](LICENSE). Changelog: [`CHANGELOG.md`](CHANGELOG.md).

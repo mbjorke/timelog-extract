@@ -11,11 +11,14 @@ Treat **`main` as read-only** from local clones unless a maintainer performs an 
 - **File:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - **Triggers:** `push` and `pull_request` (so PRs and the merge target both run checks).
 
+- **PyPI publish:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — builds sdist + wheel and publishes on **version tags** `v*.*.*` or **workflow_dispatch** (requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI). See **`docs/VERSIONING.md`**.
+
 ## Jobs
 
 | Job | What it does |
 |-----|----------------|
 | **python** | Editable install, smoke `timelog_extract.py --today` (non-fatal), **500-line** cap per Python file (`scripts/check_file_lengths.py`), **`scripts/run_autotests.sh`**. |
+| **package** | `python -m build` (sdist + wheel), then `pip install` the wheel and run `timelog-extract -V` / `gittan -V`. |
 | **extension** | In `cursor-extension/`: `npm install`, `npm run build`. |
 
 ## PR expectations (not auto-enforced in YAML)

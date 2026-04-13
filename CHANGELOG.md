@@ -2,7 +2,15 @@
 
 ## Unreleased
 
-- Placeholder for post-0.2.2 changes.
+- Placeholder for post-0.2.3 changes.
+
+## 0.2.3 - 2026-04-13
+
+- **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.
+- CI: new **package** job builds sdist/wheel with `python -m build` and smoke-installs the wheel (`timelog-extract -V`, `gittan -V`).
+- Packaging: include the **`outputs`** package in the wheel/sdist (`setuptools` `packages.find`) so installed CLIs import `outputs.terminal_theme` and related modules.
+- Docs: `docs/VERSIONING.md` and `docs/CI.md` updated for the publish workflow.
+- README: reorganized — **install** (`pipx` / `pip` / editable clone) at the top, short **get started**, command cheat sheet, compact troubleshooting; removed the long inline doc inventory (see `docs/VISION_DOCUMENTS.md`).
 
 ## 0.2.2 - 2026-04-13
 

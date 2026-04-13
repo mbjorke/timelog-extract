@@ -1,13 +1,13 @@
 # Release 0.2.3 — planned scope
 
-**Intent:** first **PyPI** distribution milestone so installers can run `pip install timelog-extract` / `gittan` without cloning. Patch **0.2.2** is the current line for incident fixes, setup safety, Pages assets, and docs; **0.2.3** is the next numbered cut aimed at publish + smoke.
+**Intent:** first **PyPI** distribution milestone so installers can run `pip install timelog-extract` / `gittan` without cloning. **0.2.2** shipped setup safety, Pages assets, and related docs; **0.2.3** is the numbered cut for packaging automation + initial upload.
 
 ## Must ship (0.2.3)
 
-- Bump `[project] version` in `pyproject.toml` to **0.2.3** and `package_version()` fallback in `core/cli_options.py` to `0.2.3-dev`.
-- **Build and upload** sdist + wheel per [Package versioning / PyPI](VERSIONING.md#pypi-distribution-planned) (build, twine or trusted publishing, credentials).
-- **Smoke** in a clean virtualenv: `pip install timelog-extract`, `timelog-extract -V`, `gittan -V`, and one minimal `gittan doctor` / `gittan report` path.
-- **`CHANGELOG.md`**: section `## 0.2.3 - YYYY-MM-DD` with publish notes and any last-minute fixes.
+- Bump `[project] version` in `pyproject.toml` to **0.2.3** and `package_version()` fallback in `core/cli_options.py` to `0.2.3-dev`. **Done** in `release/0.2.3`.
+- **Build and upload** sdist + wheel: workflow [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) (trusted publishing). Maintainer must register the PyPI project + trusted publisher, then tag **`v0.2.3`** or run the workflow manually.
+- **Smoke** after upload: `pip install timelog-extract`, `timelog-extract -V`, `gittan -V`; CI **package** job approximates install-from-wheel on every PR.
+- **`CHANGELOG.md`**: section `## 0.2.3 - YYYY-MM-DD` with publish notes. **Done** in `release/0.2.3`.
 
 ## Should (same release if feasible)
 

@@ -20,23 +20,26 @@ A large merge to `main` with many CLI and licensing changes may warrant **0.2.0*
 4. Add a **`CHANGELOG.md`** section `## X.Y.Z - YYYY-MM-DD` and move items out of **Unreleased** as appropriate.
 5. Tagging on Git (optional): `git tag -a vX.Y.Z -m "Release X.Y.Z"` after the version commit is on the branch you intend to release.
 
-## PyPI distribution (planned)
+## PyPI distribution
 
-**Planned first-upload milestone:** see [`docs/RELEASE_SCOPE_0.2.3.md`](RELEASE_SCOPE_0.2.3.md) for the explicit **0.2.3** scope (must/should/nice).
+**Scope and backlog:** [`docs/RELEASE_SCOPE_0.2.3.md`](RELEASE_SCOPE_0.2.3.md).
 
-The project is already a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`), but it is **not** published to [PyPI](https://pypi.org/) yet. Package version **0.2.2** is the current release line while we prepare the first upload target so installers can use:
+The project is a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`). **0.2.3** adds automated **build + publish** via [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) using [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC). Until the project is registered on PyPI and the publisher is linked to this GitHub repo, uploads will not succeed.
+
+**Maintainer steps for the first upload**
+
+1. On [PyPI](https://pypi.org/), create the project (or claim the name) and add a **trusted publisher** for this repository pointing at workflow **`pypi.yml`** (see PyPI’s form for exact fields).
+2. Tag the release commit: `git tag -a v0.2.3 -m "Release 0.2.3"` and push tags, **or** run the workflow manually via **Actions → Publish to PyPI → Run workflow** (still requires a trusted publisher configured for that workflow).
+3. **Smoke-test** in a clean virtualenv after upload: `pip install timelog-extract` and `timelog-extract -V` / `gittan -V`.
+
+Local dry-run (no upload):
 
 ```bash
-pip install timelog-extract
+python -m pip install build
+python -m build
 ```
 
-without cloning the repository.
-
-When cutting that release, extend the checklist above with:
-
-1. **Build** sdist and wheel (e.g. `python -m build`).
-2. **Upload** with `twine` or **trusted publishing** from CI, using project PyPI credentials.
-3. **Smoke-test** in a clean virtualenv: `pip install timelog-extract` and `timelog-extract -V` / `gittan -V`.
+**Manual upload** (token-based) remains possible with `twine` if you do not use the GitHub workflow.
 
 ## Not the same: JSON truth payload `version`
 

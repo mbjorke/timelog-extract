@@ -1413,14 +1413,14 @@
 <section id="how">
   <div class="section-eyebrow">Quick start</div>
   <h2>Install, set up,<br><em>see your day</em></h2>
-  <p class="section-sub">Three steps. No account. PyPI install is one command; the setup wizard is interactive (~2 min). See the README for pipx and clone installs.</p>
+  <p class="section-sub">Three steps. No account. On macOS, <strong>pipx</strong> avoids PATH headaches; the setup wizard is ~2 min. Full detail in the README.</p>
 
   <div class="steps">
     <div class="step">
       <h3>Install</h3>
-      <p>Python 3.9+. From PyPI (recommended):</p>
-      <code class="code-inline">python3 -m pip install --user timelog-extract</code>
-      <p class="step-note">Also: <code>pipx install timelog-extract</code>. If <code>pip</code> is not found, always use <code>python3 -m pip</code> (macOS). Until PyPI has the package for you, clone the repo and run <code>python3 -m pip install -e .</code> — same as the README.</p>
+      <p>Python 3.9+. Easiest on Mac: <strong>pipx</strong> (then open a new terminal or <code>source ~/.zshrc</code>):</p>
+      <code class="code-inline">pipx install timelog-extract</code>
+      <p class="step-note">Or: <code>python3 -m pip install --user timelog-extract</code> — you may need to add the user <code>bin</code> folder to PATH; <code>gittan doctor</code> hints if so. If <code>pip</code> is missing, use <code>python3 -m pip</code>. Clone + <code>python3 -m pip install -e .</code> if PyPI isn’t an option yet.</p>
     </div>
     <div class="step">
       <h3>Run setup</h3>

@@ -6,7 +6,9 @@ import argparse
 import json
 import os
 import shutil
+import site
 import sqlite3
+import sys
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -23,6 +25,62 @@ from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, ST
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _dir_on_path(bin_dir: Path) -> bool:
+    """True if bin_dir is a PATH entry (normalized)."""
+    try:
+        resolved = os.path.normcase(os.path.normpath(str(bin_dir.expanduser().resolve())))
+    except OSError:
+        resolved = os.path.normcase(os.path.normpath(str(bin_dir.expanduser())))
+    for p in os.environ.get("PATH", "").split(os.pathsep):
+        if not p.strip():
+            continue
+        try:
+            if os.path.normcase(os.path.normpath(p)) == resolved:
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _add_cli_path_rows(table: Table, *, home: Path) -> None:
+    """Warn when gittan exists but user script dirs are not on PATH (pip --user / pipx)."""
+    gittan_exe = shutil.which("gittan")
+    if gittan_exe:
+        table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
+        return
+    if sys.platform == "win32":
+        table.add_row(
+            "CLI (gittan on PATH)",
+            WARN_ICON,
+            f"[{STYLE_MUTED}]Not on PATH. Add Python [bold]Scripts[/bold] to PATH or use [bold]py -m pip install --user[/bold]; see README.[/{STYLE_MUTED}]",
+        )
+        return
+    hints: list[str] = []
+    try:
+        user_bin = Path(site.getuserbase()) / "bin"
+        if (user_bin / "gittan").is_file() and not _dir_on_path(user_bin):
+            hints.append(
+                f"[{STYLE_MUTED}]pip --user: run [bold]export PATH=\"{user_bin}:$PATH\"[/bold] "
+                f"(add that line to [bold]~/.zshrc[/bold] so new terminals work).[/{STYLE_MUTED}]"
+            )
+    except Exception:
+        pass
+    pipx_bin = home / ".local" / "bin"
+    if (pipx_bin / "gittan").is_file() and not _dir_on_path(pipx_bin):
+        hints.append(
+            f"[{STYLE_MUTED}]pipx: run [bold]pipx ensurepath[/bold], then [bold]source ~/.zshrc[/bold] "
+            f"or open a [bold]new[/bold] terminal ([bold]{pipx_bin}[/bold] must be on PATH).[/{STYLE_MUTED}]"
+        )
+    if hints:
+        detail = " ".join(hints)
+    else:
+        detail = (
+            f"[{STYLE_MUTED}]`gittan` not on PATH and no known script in user/bin or pipx. "
+            f"Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
+        )
+    table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
 
 
 @app.command()
@@ -101,6 +159,7 @@ def doctor(
                 os.unlink(tmp.name)
 
     with console.status("[bold #b7aed3]Running diagnostics..."):
+        _add_cli_path_rows(table, home=home)
         check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
         check_file(worklog_path, "Worklog (Local)")
 

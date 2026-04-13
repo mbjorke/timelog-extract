@@ -22,13 +22,37 @@ Core reporting is **local-first**; there is no built-in cloud upload path.
 **Requirements:** Python **3.9+**. You do **not** need a PyPI account to install—only maintainers need PyPI access to publish.  
 If the shell says `command not found: pip`, use **`python3 -m pip`** instead of a bare `pip` command (common on macOS).
 
-**Default (pip):**
+### Recommended: **pipx** (macOS / Linux — keeps `gittan` on your PATH)
+
+`pip install --user` puts scripts under `~/Library/Python/…/bin` (macOS), which is **often not on PATH**, so `gittan` can look “missing” until you edit shell config. **pipx** installs CLI tools into `~/.local/bin` and is easier to get right:
+
+```bash
+brew install pipx
+pipx ensurepath
+```
+
+**Important:** open a **new terminal tab**, or run `source ~/.zshrc`, so `PATH` picks up `pipx ensurepath`. Then:
+
+```bash
+pipx install timelog-extract
+gittan -V
+```
+
+### Alternative: **pip install --user** (PyPI)
 
 ```bash
 python3 -m pip install --user timelog-extract
 ```
 
-<sub>Until the first successful upload to PyPI, that command will not find the package—use **from source** in “More install options” below.</sub>
+Add the user script directory to **PATH** (macOS example — version may differ):
+
+```bash
+export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+```
+
+Put that line in `~/.zshrc` (or run `gittan doctor` — it will hint if it detects this issue).
+
+<sub>Until PyPI has the package for your environment, use **from source** below.</sub>
 
 <br/>
 
@@ -42,12 +66,6 @@ python3 -m pip install --user timelog-extract
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install timelog-extract
-```
-
-**pipx** (isolated CLI; install pipx first—e.g. `brew install pipx && pipx ensurepath` on macOS)
-
-```bash
-pipx install timelog-extract
 ```
 
 **From source** <span id="from-source"></span>
@@ -64,8 +82,6 @@ Verify:
 gittan --help
 gittan -V
 ```
-
-A successful **PyPI** install (`pip` / `pipx` / venv `pip` above) puts **`gittan`** and **`timelog-extract`** on your PATH.
 
 Publishing checklist: [`docs/VERSIONING.md`](docs/VERSIONING.md).
 
@@ -136,6 +152,7 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 
 | Issue | Where to look |
 |--------|----------------|
+| `command not found: gittan` after install | Install via **pipx** (above), or add `~/Library/Python/…/bin` and `~/.local/bin` to **PATH**; run **`gittan doctor`** for copy-paste hints. |
 | “0 events” / sources empty | `docs/SOURCES_AND_FLAGS.md` |
 | Missing deps / editable install | `python3 -m pip install -e .` from clone |
 | Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |

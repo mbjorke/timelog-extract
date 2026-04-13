@@ -30,7 +30,7 @@ timelog-extract = "timelog_extract:main"
 timelog-friend-trial = "scripts.friend_trial:main"
 
 [tool.setuptools.packages.find]
-include = ["collectors*", "core*", "scripts*"]
+include = ["collectors*", "core*", "outputs*", "scripts*"]
 
 [tool.setuptools]
 py-modules = ["timelog_extract"]

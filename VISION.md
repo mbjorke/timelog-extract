@@ -1,6 +1,6 @@
 # Gittan: The Privacy-First Auditor for the AI Age
 
-This file is a **short public manifesto** (e.g. Patreon, landing snippets). The full product vision, boundaries, and metrics live under `docs/` — see `docs/VISION_DOCUMENTS.md` for hierarchy and precedence. Draft Patreon tiers, taglines, and positioning notes live in `docs/PATREON_POSITIONING.md`. If anything here disagrees with `docs/GITTAN_VISION.md` or `docs/V1_SCOPE.md`, **update this file** to match those (they are authoritative).
+This file is a **short public manifesto** (e.g. landing snippets and public messaging). The full product vision, boundaries, and metrics live under `docs/` — see `docs/VISION_DOCUMENTS.md` for hierarchy and precedence. Draft fundraising notes live in `docs/PATREON_POSITIONING.md`. If anything here disagrees with `docs/GITTAN_VISION.md` or `docs/V1_SCOPE.md`, **update this file** to match those (they are authoritative).
 
 ## The Problem
 
@@ -36,9 +36,9 @@ Gittan aggregates "signals" from your local system:
 
 **Roadmap (post-v1 — not current collectors):** Optional **cloud-agent platform** source adapters (job-level metadata from provider APIs) are **out of scope for v1**; see `docs/V1_SCOPE.md`. Directionally, Gittan aims to combine local signals with **consent-based** remote metadata so human + agent work stays billable—without replacing local-first defaults.
 
-## Why Support Gittan on Patreon?
+## Why Support Gittan?
 
-Gittan is **source-available** (see repository `LICENSE` and `docs/SPONSORSHIP_TERMS.md`) and privacy-focused. By becoming a Patron when your use requires it, you are supporting:
+Gittan is **GPL-3.0-or-later open source** and privacy-focused. By supporting development, you are supporting:
 
 - **New Source Adapters:** Faster integration for new AI tools as they launch.
 - **IDE Experience:** The optional Cursor extension and related UX — the **CLI remains the primary v1 path**; see `docs/VISION_DOCUMENTS.md` and `README.md`.

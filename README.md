@@ -19,14 +19,15 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
   - `V1_SCOPE.md`
   - `V1_FINISH_PLAN.md`
   - `PRIVACY_SECURITY.md`
-  - `SPONSORSHIP_TERMS.md` (Patreon tier mapping referenced by `LICENSE`)
-  - `LICENSE_GOALS.md` (why the license is shaped this way — not legal advice)
+  - `SPONSORSHIP_TERMS.md` (legacy sponsorship notes; not a license gate under GPL)
+  - `LICENSE_GOALS.md` (why GPL-3.0 fits the project strategy)
   - `SIMILAR_REPOS_CHECKLIST.md`
   - `TERMINAL_I18N.md` (English UI backlog; terminal output is English)
   - `TERMINAL_STYLE_GUIDE.md` (CLI visual semantics: typography, color roles, and low-noise layout rules)
   - `SOURCES_AND_FLAGS.md` (how source toggles and `--exclude` relate to collection — **not** a filter on one shared dataset)
   - `AI_ASSISTED_CONFIG.md` (vision: future in-product assistant for project JSON — names first, optional LLM, privacy notes)
   - `OPPORTUNITIES.md` (product / go-to-market working notes — for business-style review)
+  - `GITHUB_SPONSORS_PROFILE.md` (canonical bio/introduction copy for `github.com/sponsors/blueberry-maybe`)
   - `PRIVATE_LOCAL_NOTES.md` (how to keep **gitignored** `private/` business notes outside commits)
 
 ## Quick Start (Friend Trial)
@@ -138,7 +139,7 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
 ## Release Readiness
 
 - Changelog: `CHANGELOG.md`
-- License: `LICENSE` (Gittan / Timelog Extract — source-available; **use by more than two professional users per organization/engagement** may require Patreon — see `docs/SPONSORSHIP_TERMS.md`)
+- License: `LICENSE` (**GNU GPL-3.0-or-later**)
 - CI: [`docs/CI.md`](docs/CI.md) (workflow: `.github/workflows/ci.yml`)
 - CLI-first release gate: `docs/CLI_FIRST_V1_RELEASE_CHECKLIST.md`
 - RC test script for second tester: `docs/RC_TEST_SCRIPT_CLI_FIRST.md`

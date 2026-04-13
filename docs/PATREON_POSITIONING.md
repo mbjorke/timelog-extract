@@ -1,6 +1,6 @@
 # Patreon positioning (draft source material)
 
-**Status:** Working notes for Patreon and other fundraising copy — **not** a commitment to ship specific perks or prices. **Binding use obligations** (team size vs. tier) are defined in **`LICENSE`** and the mapping file **`docs/SPONSORSHIP_TERMS.md`**. Align published Patreon tiers with those files, plus `docs/V1_SCOPE.md`, `docs/PRIVACY_SECURITY.md`, and `docs/VISION_DOCUMENTS.md`, before going live.
+**Status:** Working notes for Patreon and other fundraising copy — **not** a commitment to ship specific perks or prices. This file is non-binding positioning material and should stay aligned with `LICENSE`, `docs/V1_SCOPE.md`, `docs/PRIVACY_SECURITY.md`, and `docs/VISION_DOCUMENTS.md`.
 
 This file captures positioning discussed during early product/marketing brainstorming (including third-party suggestions) so the repo stays the single place to refine the narrative.
 

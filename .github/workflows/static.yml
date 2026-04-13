@@ -37,7 +37,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site
-          cp gittan.html _site/index.html
+          if [ ! -f "gittan.html" ]; then
+            echo "No landing page file found (expected gittan.html)." >&2
+            exit 1
+          fi
+          cp "gittan.html" _site/index.html
           if [ -f CNAME ]; then
             cp CNAME _site/CNAME
           fi

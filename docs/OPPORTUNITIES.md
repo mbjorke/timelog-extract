@@ -1,6 +1,6 @@
 # Opportunities — product and go-to-market (working document)
 
-**Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE`, `docs/SPONSORSHIP_TERMS.md`, and `docs/VISION_DOCUMENTS.md`.
+**Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE` and `docs/VISION_DOCUMENTS.md`.
 
 **Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see **`docs/PRIVATE_LOCAL_NOTES.md`**.
 
@@ -59,9 +59,9 @@
 
 ## Funding and sustainability (high level)
 
-- The repo ships under the **Gittan / Timelog Extract License** (see `LICENSE`)—professional-scale use may map to **sponsorship tiers** described in **`docs/SPONSORSHIP_TERMS.md`**.
-- **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/PATREON_POSITIONING.md` is **non-binding** until aligned with legal docs.
-- **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with **`docs/SPONSORSHIP_TERMS.md`** and your live Patreon (or other) pages before merging.
+- The repo ships under **GNU GPL-3.0-or-later** (see `LICENSE`).
+- **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/PATREON_POSITIONING.md` is non-binding positioning material.
+- **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with live Patreon/Sponsors pages before merging.
 - **Planned — GitHub Discussions (announcements):** Turn on **Discussions** for the repo if needed; use the **Announcements** category for rare, high-signal posts. Composer with welcome helper: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
 - **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with **`CONTRIBUTING.md`** and what CI / `docs/CI.md` actually checks.
 - **Planned — Social preview (Open Graph):** GitHub shows a **repository image** when links are shared (social, Slack, etc.). Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Source asset in-repo: **`repository-open-graph-template.png`** (1280×640) — customize branding/text, export at that size, then upload the final PNG in GitHub (the uploaded file is stored by GitHub, not read live from the repo).
@@ -81,11 +81,11 @@ Use these in PR comments or advisor sessions when you want a **second brain** on
 1. Does this PR **strengthen or dilute** the CLI-first / local-first story?
 2. Who **benefits most**—solo consultant, small team, or internal champion in a larger org?
 3. Any **messaging risk** in README / VISION / new docs (overclaim, scope creep, competitor comparison)?
-4. Does the **LICENSE / sponsorship** story still match how we describe the product publicly?
+4. Does the **license / funding** story still match how we describe the product publicly?
 5. What is the **single next bet** (calendar, **simplified project config**, integrations) that best matches “market with pride”?
 
 ---
 
 ## Company context (public facts from repo)
 
-**Blueberry Maybe Ab Ltd** appears as copyright holder in `LICENSE`. Keep marketing and legal text consistent with that file and with `docs/SPONSORSHIP_TERMS.md` when publishing tiers or obligations.
+**Blueberry Maybe AB** appears as copyright holder in `LICENSE`. Keep marketing and legal text consistent with that file when publishing public copy.

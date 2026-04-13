@@ -135,8 +135,17 @@ def status(
 ):
     """Quick high-level hours summary."""
     from core.report_service import run_timelog_report
+    from rich import box
     from rich.console import Console
     from rich.table import Table
+
+    from outputs.terminal_theme import (
+        CLR_TEXT_SOFT,
+        CLR_VALUE_ORANGE,
+        STYLE_BORDER,
+        STYLE_LABEL,
+        STYLE_MUTED,
+    )
 
     df_s, dt_s = None, None
     if not (today or yesterday or last_3_days or last_week or last_14_days or last_month):
@@ -185,7 +194,7 @@ def status(
         quiet=True,
     )
 
-    console.print(f"[bold blue]Gittan Status - {title_date}[/bold blue]\n")
+    console.print(f"[bold {CLR_TEXT_SOFT}]Gittan Status — {title_date}[/bold {CLR_TEXT_SOFT}]\n")
 
     try:
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
@@ -194,10 +203,12 @@ def status(
             console.print("[yellow]No activity tracked for this period.[/yellow]")
             return
 
-        table = Table(title=f"Hours Summary ({title_date})")
-        table.add_column("Project", style="cyan")
-        table.add_column("Hours", justify="right", style="green")
-        table.add_column("Sessions", justify="right")
+        table = Table(title=f"Hours Summary ({title_date})", box=box.ROUNDED)
+        table.border_style = STYLE_BORDER
+        table.header_style = "bold #b7aed3"
+        table.add_column("Project", style=STYLE_LABEL)
+        table.add_column("Hours", justify="right", style=CLR_VALUE_ORANGE)
+        table.add_column("Sessions", justify="right", style=STYLE_MUTED)
 
         for project_name, days_data in report.project_reports.items():
             proj_hours = sum(d["hours"] for d in days_data.values())
@@ -212,7 +223,11 @@ def status(
         total_h = sum(d.get("hours", 0.0) for d in report.overall_days.values())
         total_sessions = sum(len(d.get("sessions", [])) for d in report.overall_days.values())
         table.add_section()
-        table.add_row("[bold]Total[/bold]", f"[bold]{total_h:.1f}h[/bold]", f"[bold]{total_sessions}[/bold]")
+        table.add_row(
+            f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]",
+            f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
+            f"[bold {STYLE_MUTED}]{total_sessions}[/bold {STYLE_MUTED}]",
+        )
 
         console.print(table)
 

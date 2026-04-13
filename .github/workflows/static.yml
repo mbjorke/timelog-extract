@@ -42,6 +42,12 @@ jobs:
             exit 1
           fi
           cp "gittan.html" _site/index.html
+          if [ -f "favicon.ico" ]; then
+            cp "favicon.ico" _site/favicon.ico
+          fi
+          if [ -f "og-image.png" ]; then
+            cp "og-image.png" _site/og-image.png
+          fi
           if [ -f CNAME ]; then
             cp CNAME _site/CNAME
           fi

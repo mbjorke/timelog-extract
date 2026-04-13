@@ -35,7 +35,7 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
 1. Create/activate Python 3.9+ environment.
 2. Install dependencies:
   - `python3 -m pip install -e .` (from a clone of this repository).
-  - **PyPI:** not published yet; `pip install timelog-extract` is planned for a near release (around **0.2.3**). See `docs/VERSIONING.md`.
+  - **PyPI:** not published yet; package version is **0.2.2** and is tracking toward first upload. See `docs/VERSIONING.md` for publish checklist.
 3. Run:
   - `python3 scripts/friend_trial.py --today --invoice-pdf`
 4. Share feedback in `friend_trial/FEEDBACK_TEMPLATE.md`.
@@ -91,6 +91,12 @@ All processing is local-only in the core v1 CLI flow (no cloud upload path).
 - Use `match_terms` as the single text-matching field for project classification.
 - Use `tracked_urls` for pinned AI chat URLs (Claude/Gemini and future providers).
 
+## Timelog vs Config Policy
+
+- `TIMELOG.md` is intentionally kept as a human-readable working journal and commit trace aid.
+- `timelog_projects.json` is system configuration; treat it as critical data and keep an external backup copy (for example under `~/.gittan/`).
+- The current setup flow creates timestamped backup files before recreating malformed config files.
+
 ## Cursor Extension (Scaffold)
 
 See `cursor-extension/README.md` for build/run instructions.
@@ -103,6 +109,7 @@ The extension is a beta companion; CLI/script workflows are the primary v1 path.
   - `python3 -m pip install -e .`
 - Missing project config:
   - verify `timelog_projects.json` exists, or pass `--projects-config PATH`
+  - if `gittan setup` reports invalid config, it now creates a timestamped backup (`timelog_projects.backup-YYYYMMDD-HHMMSS.json`) before recreating a minimal file
 - File permission/path issues:
   - check read access for `--worklog`, browser history DBs, and optional Mail/Screen Time sources
 - Global timelog automation setup:

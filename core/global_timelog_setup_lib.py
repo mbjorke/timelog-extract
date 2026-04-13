@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import sysconfig
+from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 
@@ -120,6 +121,18 @@ def _is_managed_hook(path: Path) -> bool:
         return "managed-by-gittan: global-timelog" in path.read_text(encoding="utf-8")
     except OSError:
         return False
+
+
+def _timestamped_backup_path(path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return path.with_name(f"{path.stem}.backup-{stamp}{path.suffix}")
+
+
+def _looks_like_projects_config(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    projects = payload.get("projects")
+    return isinstance(projects, list)
 
 
 def _discover_git_repos() -> list[Path]:
@@ -292,8 +305,28 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
 def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str:
     config_path = Path.cwd() / "timelog_projects.json"
     if config_path.exists():
-        console.print(f"[green]Project config exists:[/green] {config_path}")
-        return "PASS (dry-run)" if dry_run else "PASS"
+        try:
+            current_payload = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            current_payload = None
+        if _looks_like_projects_config(current_payload):
+            console.print(f"[green]Project config exists:[/green] {config_path}")
+            return "PASS (dry-run)" if dry_run else "PASS"
+        console.print(f"[yellow]Project config looks invalid:[/yellow] {config_path}")
+        should_repair = yes or questionary.confirm(
+            f"Backup and recreate minimal project config at {config_path}?",
+            default=False,
+        ).ask()
+        if not should_repair:
+            console.print("[yellow]Keeping current project config unchanged.[/yellow]")
+            return "ACTION_REQUIRED"
+        backup_path = _timestamped_backup_path(config_path)
+        if dry_run:
+            console.print(f"[yellow]Dry run:[/yellow] would create backup {backup_path}")
+            console.print(f"[yellow]Dry run:[/yellow] would recreate {config_path}")
+            return "PASS (dry-run)"
+        shutil.copy2(config_path, backup_path)
+        console.print(f"[green]Created backup:[/green] {backup_path}")
     should_create = yes or questionary.confirm(f"Create minimal project config at {config_path}?", default=True).ask()
     if not should_create:
         console.print("[yellow]Skipped project config bootstrap.[/yellow]")

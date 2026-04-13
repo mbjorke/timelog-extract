@@ -84,6 +84,8 @@ Use this when you want **repeatable pass/fail signals** independent of Chrome/Ma
 ## Scenario A — No project config file
 
 **Setup:** Rename or move aside `timelog_projects.json` (or run from a directory where it does not exist). Use default CLI (no extra flags first). For **objective** thresholds, run the **Deterministic spot-check** above in parallel.
+If you rename manually for this scenario, restore it after test (example: `mv timelog_projects.json.scenarioA.bak timelog_projects.json`).
+If setup rewrites an invalid file, restore from the newest `timelog_projects.backup-YYYYMMDD-HHMMSS.json`.
 
 | Step | Command / action | Expected (rough) | Pass / notes |
 |------|-------------------|------------------|--------------|

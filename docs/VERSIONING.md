@@ -52,13 +52,22 @@ Prefer **combining** unrelated follow-up work into **one** PR per version when p
 
 **Scope and backlog:** [`docs/RELEASE_SCOPE_0.2.3.md`](RELEASE_SCOPE_0.2.3.md).
 
-The project is a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`). **0.2.3** adds automated **build + publish** via [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) using [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC). Until the project is registered on PyPI and the publisher is linked to this GitHub repo, uploads will not succeed.
+The project is a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`). **0.2.3** adds automated **build + publish** via [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) using [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC). Until the first upload succeeds, your PyPI profile will say **“You have not uploaded any projects”** — that is normal.
 
 **Maintainer steps for the first upload**
 
-1. On [PyPI](https://pypi.org/), create the project (or claim the name) and add a **trusted publisher** for this repository pointing at workflow **`pypi.yml`** (see PyPI’s form for exact fields).
-2. Tag the release commit: `git tag -a v0.2.3 -m "Release 0.2.3"` and push tags, **or** run the workflow manually via **Actions → Publish to PyPI → Run workflow** (still requires a trusted publisher configured for that workflow).
-3. **Smoke-test** in a clean virtualenv after upload: `pip install timelog-extract` and `timelog-extract -V` / `gittan -V`.
+1. **Register a pending trusted publisher** (before any project appears on PyPI):
+   - Log in → **[Account settings → Publishing](https://pypi.org/manage/account/publishing/)** (or **Manage account** on your profile, then **Publishing**).
+   - Add **GitHub** as the publisher and fill in roughly:
+     - **Owner:** `mbjorke`
+     - **Repository name:** `timelog-extract`
+     - **Workflow name:** `pypi.yml` — the **filename** under `.github/workflows/` (must end in `.yml` or `.yaml`), **not** the workflow’s human-readable `name:` in the YAML (e.g. not “Publish to PyPI”).
+     - **Environment name:** leave **empty** (this repo’s workflow does not use a GitHub Environment).
+   - Save. PyPI will allow the **Publish to PyPI** GitHub Action to create **`timelog-extract`** on first successful run. Official reference: [Adding a pending publisher](https://docs.pypi.org/trusted-publishers/creating-a-pending-publisher/).
+2. On GitHub, ensure **`main`** has the release you want (e.g. version **0.2.3** in `pyproject.toml`), then either:
+   - `git tag -a v0.2.3 -m "Release 0.2.3"` and `git push origin v0.2.3`, **or**
+   - **Actions → Publish to PyPI → Run workflow** (uses the same `pypi.yml`).
+3. After the workflow turns green, open **`https://pypi.org/project/timelog-extract/`** — the project should exist. **Smoke-test:** `python3 -m pip install timelog-extract` and `gittan -V`.
 
 Local dry-run (no upload):
 

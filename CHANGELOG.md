@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-- Placeholder for post-0.2.3 changes.
-
 ## 0.2.3 - 2026-04-13
 
 - **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.
@@ -11,6 +9,7 @@
 - Packaging: include the **`outputs`** package in the wheel/sdist (`setuptools` `packages.find`) so installed CLIs import `outputs.terminal_theme` and related modules.
 - Docs: `docs/VERSIONING.md` and `docs/CI.md` updated for the publish workflow.
 - README: reorganized — **install** (`pipx` / `pip` / editable clone) at the top, short **get started**, command cheat sheet, compact troubleshooting; removed the long inline doc inventory (see `docs/VISION_DOCUMENTS.md`).
+- **Brand / site:** **Rabbit-v2** canonical masters; removed **steward** / **rabbit-pot** / **`variants/`** experiments. **`gittan-logo.png`** at repo root (768×768 square crop, pixel-crisp) for **`gittan.html`** hero and social/preview use; **nav** uses a two-part mark — mini **terminal review rabbit** (same beats as the demo: `(\/)` → `(..)` → `><` → `\`, staggered CSS reveal, respects `prefers-reduced-motion`) plus a **pixel-style wordmark** (**Press Start 2P**). **`scripts/build_brand_assets.sh`** generates favicon, README icon, **`gittan-logo.png`**, **`og-image.png`**; Pages workflow publishes the static assets. Docs: **`docs/brand/README.md`**, **`IDENTITY.md`**, **`VISION_DOCUMENTS.md`**, root **`README.md`**, **`outputs/gittan_banner.py`** docstring.
 
 ## 0.2.2 - 2026-04-13
 

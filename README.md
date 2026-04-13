@@ -1,33 +1,55 @@
-# Timelog Extract (Gittan)
+<div align="center">
 
-**Gittan** turns local signals—IDE time, browsers, mail, worklogs, optional GitHub activity—into **project time reports** and optional **invoice PDFs**.  
-Core reporting runs **on your machine**; there is no built-in cloud upload path.
+<img src="gittan-readme-icon.png" width="128" height="128" alt="Gittan logo" />
+
+# Gittan
+
+### Timelog Extract
+
+**Local time reports from how you actually work.**
+
+Aggregate IDE, browser, mail, and worklog signals—plus optional GitHub activity—into **project hours** and optional **invoice PDFs**.  
+Core reporting is **local-first**; there is no built-in cloud upload path.
+
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
+[![PyPI package](https://img.shields.io/badge/pypi-timelog--extract-006DAD?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/timelog-extract/)
 
 ---
 
 ## Install
 
-**Requirements:** Python **3.9+**.
+**Requirements:** Python **3.9+**. You do **not** need a PyPI account to install—only maintainers need PyPI access to publish.
 
-### From PyPI (recommended)
+**Default (pip):**
 
-When the package is live on PyPI:
+```bash
+python3 -m pip install --user timelog-extract
+```
+
+<sub>Until the first successful upload to PyPI, that command will not find the package—use **from source** in “More install options” below.</sub>
+
+<br/>
+
+<details>
+<summary><b>More install options</b></summary>
+
+<div align="left">
+
+**Virtual environment**
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install timelog-extract
+```
+
+**pipx** (isolated CLI; install pipx first—e.g. `brew install pipx && pipx ensurepath` on macOS)
 
 ```bash
 pipx install timelog-extract
 ```
 
-or:
-
-```bash
-python3 -m pip install timelog-extract
-```
-
-That installs the **`gittan`** and **`timelog-extract`** commands on your PATH.
-
-> **Note:** Publishing to PyPI is automated from this repo (see `docs/VERSIONING.md`). Until the first upload completes, use **from source** below.
-
-### From source (clone)
+**From source** <span id="from-source"></span>
 
 ```bash
 git clone https://github.com/mbjorke/timelog-extract.git
@@ -35,14 +57,21 @@ cd timelog-extract
 python3 -m pip install -e .
 ```
 
-Check the install:
+Verify:
 
 ```bash
 gittan --help
 gittan -V
 ```
 
----
+Publishing checklist: [`docs/VERSIONING.md`](docs/VERSIONING.md).
+
+</div>
+</details>
+
+<br/>
+
+</div>
 
 ## Get started
 
@@ -122,6 +151,7 @@ Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**
 ## Contributing · tests · license
 
 - **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — PR titles/descriptions in **English**; run tests before pushing.
+- **Maintainers (repo hygiene):** issue templates, Discussions, **Social preview** in GitHub Settings; **brand** — canonical PNGs in `docs/brand/`, then [`scripts/build_brand_assets.sh`](scripts/build_brand_assets.sh) → root **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`. See [`docs/brand/README.md`](docs/brand/README.md), [`docs/OPPORTUNITIES.md`](docs/OPPORTUNITIES.md).
 - **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/CI.md`](docs/CI.md)**.
 - Tests: `./scripts/run_autotests.sh` (also enforced in CI).
 - **License:** GNU **GPL-3.0-or-later** — [`LICENSE`](LICENSE). Changelog: [`CHANGELOG.md`](CHANGELOG.md).

@@ -14,6 +14,9 @@
   <meta name="twitter:description" content="Privacy-first, local-first CLI for automatic time tracking in the AI coding era." />
   <meta name="twitter:image" content="https://gittan.sh/og-image.png" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap" rel="stylesheet" />
 
   <style>
     :root {
@@ -94,32 +97,68 @@
     }
 
     .logo-mark {
-      font-family: var(--cond);
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
       display: flex;
-      gap: 2px;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 2.35rem;
+      min-height: 2.35rem;
     }
 
-    .logo-el {
-      border: 1px solid var(--border);
-      background: rgba(168,85,247,0.08);
-      color: var(--berry-bright);
-      padding: 0.1rem 0.3rem;
-      border-radius: 3px;
-      line-height: 1.4;
+    /* Terminal review rabbit — same beats as hero banner, mini; optional staggered reveal */
+    .logo-rabbit {
+      margin: 0;
+      padding: 0;
+      font-family: var(--mono);
+      font-size: 0.52rem;
+      line-height: 1.05;
+      color: var(--amber);
+      text-align: center;
+      white-space: pre;
+      text-shadow: 0 0 10px rgba(245, 166, 35, 0.25);
+    }
+
+    .logo-rabbit-line {
+      display: block;
+      opacity: 1;
+    }
+
+    @keyframes logo-rabbit-reveal {
+      0% { opacity: 0; }
+      4% { opacity: 1; }
+      78% { opacity: 1; }
+      88% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .logo-rabbit-line {
+        opacity: 0;
+        animation: logo-rabbit-reveal 5.5s ease-in-out infinite;
+      }
+      .logo-rabbit-line:nth-child(1) { animation-delay: 0s; }
+      .logo-rabbit-line:nth-child(2) { animation-delay: 0.18s; }
+      .logo-rabbit-line:nth-child(3) { animation-delay: 0.36s; }
+      .logo-rabbit-line:nth-child(4) { animation-delay: 0.54s; }
     }
 
     .logo-wordmark {
-      font-family: var(--cond);
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: 0.02em;
+      font-family: 'Press Start 2P', ui-monospace, monospace;
+      font-size: 0.58rem;
+      font-weight: 400;
+      color: var(--cream);
+      letter-spacing: 0.06em;
+      line-height: 1.35;
+      text-transform: none;
+      /* Sharper chunky pixels (Press Start 2P) */
+      -webkit-font-smoothing: none;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    .logo-wordmark span { color: var(--berry); }
+    .logo-wordmark span {
+      color: var(--berry-bright);
+      text-shadow: 0 0 14px var(--berry-glow);
+    }
 
     .nav-links {
       display: flex;
@@ -213,6 +252,25 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+    }
+
+    .hero-terminal-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hero-logo {
+      display: block;
+      width: min(100%, 280px);
+      height: auto;
+      aspect-ratio: 1;
+      margin: 0 auto 1.35rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 48px var(--berry-glow);
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
     }
 
     .hero-sub {
@@ -1169,8 +1227,8 @@
 <!-- ─── NAV ─── -->
 <nav>
   <div class="nav-logo">
-    <div class="logo-mark">
-      <span class="logo-el">Gt</span>
+    <div class="logo-mark" title="Review rabbit — same idea as the demo terminal">
+      <pre class="logo-rabbit" aria-hidden="true"><span class="logo-rabbit-line">  (\/)</span><span class="logo-rabbit-line">  (..)</span><span class="logo-rabbit-line">   &gt;&lt;</span><span class="logo-rabbit-line">    \</span></pre>
     </div>
     <div class="logo-wordmark">Git<span>tan</span></div>
   </div>
@@ -1199,6 +1257,16 @@
     </div>
   </div>
 
+  <div class="hero-terminal-wrap">
+    <img
+      class="hero-logo"
+      src="/gittan-logo.png"
+      width="768"
+      height="768"
+      alt="Gittan — local timeline, review-ready"
+      decoding="async"
+      fetchpriority="high"
+    />
   <div class="terminal">
     <div class="terminal-bar">
       <div class="terminal-dot td-red"></div>
@@ -1254,6 +1322,7 @@
 <br>
 <span class="t-berry">❯ </span><span class="cursor-blink">▋</span>
     </div>
+  </div>
   </div>
 </div>
 

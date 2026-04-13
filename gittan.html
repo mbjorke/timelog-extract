@@ -8,10 +8,6 @@
   <meta property="og:title" content="Gittan — Reconstruct your day. Locally." />
   <meta property="og:description" content="Stop losing hours to context switching. Gittan reconstructs your billable day from local signals — no cloud, no accounts, no excuses." />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-
   <style>
     :root {
       /* Blueberry brand colors */
@@ -35,13 +31,22 @@
       /* Terminal accent — stays amber, that's authentic */
       --amber:        #f5a623;
       /* Typography */
-      --sans:   'Barlow', sans-serif;
-      --cond:   'Barlow Condensed', sans-serif;
-      --mono:   'Space Mono', ui-monospace, monospace;
+      --sans:   Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --cond:   'Arial Narrow', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --mono:   'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
 
     body {
       background: var(--void);
@@ -139,6 +144,27 @@
     }
 
     .nav-btn:hover { background: var(--berry-dim) !important; text-decoration: none !important; }
+
+
+    @media (max-width: 800px) {
+      nav {
+        height: auto;
+        padding: 0.75rem 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .nav-links {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.75rem 1rem;
+      }
+
+      .nav-btn {
+        display: inline-flex;
+      }
+    }
 
     /* ─── HERO ─── */
     .hero {
@@ -1255,7 +1281,7 @@
   <div><strong>100%</strong> local processing</div>
   <div><strong>5</strong> signal sources</div>
   <div><strong>0</strong> cloud uploads</div>
-  <div><strong>GPL-3.0</strong> open source</div>
+  <div><strong>GPL-3.0-or-later</strong> open source</div>
   <div><strong>Made in</strong> Åland 🇦🇽</div>
 </div>
 
@@ -1434,7 +1460,7 @@
         <li>No account required. No telemetry. No usage tracking</li>
         <li>Optional GitHub integration uses your own token against GitHub's public API</li>
         <li>Invoice PDFs generated on your machine — no SaaS PDF service involved</li>
-        <li>GPL-3.0 licensed — read every line if you want to</li>
+        <li>GPL-3.0-or-later licensed — read every line if you want to</li>
       </ul>
     </div>
     <div class="privacy-terminal">
@@ -1643,7 +1669,7 @@
 <div class="cta-section">
   <div class="section-eyebrow" style="margin-bottom:0.75rem;">Ready?</div>
   <h2>Stop guessing.<br>Start billing.<br><em>Gittan knows.</em></h2>
-  <p>GPL-3.0. Privacy-first. Local-first.</p>
+  <p>GPL-3.0-or-later. Privacy-first. Local-first.</p>
   <div class="cta-actions">
     <a href="https://github.com/sponsors/blueberry-maybe/" class="btn-primary">
       Support Gittan on GitHub Sponsors →
@@ -1664,7 +1690,7 @@
         <div class="footer-bb-mark">
           <span class="footer-bb-el">Bl</span><span class="footer-bb-el">Be</span>
         </div>
-        Blueberry Maybe Ab Ltd
+        Blueberry Maybe AB
       </a>
     </div>
   </div>
@@ -1750,6 +1776,15 @@
     }
 
     async function runReplay() {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReducedMotion) {
+        outputEl.innerHTML = "";
+        const finalStep = steps[steps.length - 1];
+        commandEl.textContent = finalStep.cmd;
+        for (const line of finalStep.lines) addLine(line);
+        return;
+      }
+
       while (true) {
         outputEl.innerHTML = "";
         for (const step of steps) {

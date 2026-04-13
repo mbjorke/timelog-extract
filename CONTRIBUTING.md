@@ -49,6 +49,6 @@ The installable **package version** lives in `pyproject.toml` and is shown by `g
 
 ## License
 
-Copyright © Blueberry Maybe Ab Ltd. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
+Copyright © Blueberry Maybe AB. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
 
 For background on the license direction, see **`docs/LICENSE_GOALS.md`**.

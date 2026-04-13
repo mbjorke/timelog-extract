@@ -18,8 +18,8 @@
 | **Puts money on the table without a separate contract** | Weak | Weak | Weak | Weak | Weak (license is open-source; funding is voluntary) |
 | **“Street cred” / familiar to developers & hiring** | Strong | Strong | Mixed (some firms avoid AGPL) | Low — people think “Elasticsearch drama”, not your app | **Partial** — fine if README explains it once (`LICENSE_GOALS.md`) |
 | **Simple for others to reuse in closed products** | Strong | Strong | Weak | Partial | Weak (copyleft) |
-| **Forces competitors to open their changes** | Weak | Weak | Strong | Partial (ELv2 is product-specific) | Weak — not copyleft |
-| **Explicit patent grant (comfort for users)** | Weak | Strong | Yes (GPL family) | Varies | Not the focus of your license |
+| **Forces competitors to open their changes** | Weak | Weak | Strong | Partial (ELv2 is product-specific) | Strong — copyleft/reciprocal |
+| **Explicit patent grant (comfort for users)** | Weak | Strong | Yes (GPL family) | Varies | Strong — explicit patent grant/reciprocal |
 | **You can change terms on future releases** | Partial (old copies stay MIT) | Partial | Partial | Partial | Partial (old copies remain GPL) |
 | **Mental load / “did I overthink this?”** | Low | Low | High | High | **Medium** — one custom story, document it once |
 

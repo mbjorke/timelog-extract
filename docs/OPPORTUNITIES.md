@@ -88,4 +88,4 @@ Use these in PR comments or advisor sessions when you want a **second brain** on
 
 ## Company context (public facts from repo)
 
-**Blueberry Maybe Ab Ltd** appears as copyright holder in `LICENSE`. Keep marketing and legal text consistent with that file when publishing public copy.
+**Blueberry Maybe AB** appears as copyright holder in `LICENSE`. Keep marketing and legal text consistent with that file when publishing public copy.

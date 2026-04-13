@@ -28,6 +28,7 @@ class RunContext:
     profiles: List[Dict[str, Any]]
     loaded_config_path: Optional[Path]
     worklog_path: Path
+    source_strategy_effective: str
 
 
 def build_run_context(
@@ -85,6 +86,19 @@ def build_run_context(
     worklog_path = resolve_worklog_path_fn(
         args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
     )
+    chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
+    if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
+        chosen_strategy = "auto"
+    worklog_exists = worklog_path.exists() and worklog_path.is_file() and os.access(worklog_path, os.R_OK)
+    if chosen_strategy == "balanced":
+        source_strategy_effective = "balanced"
+    elif chosen_strategy == "worklog-first":
+        source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
+    else:
+        source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
+    args.source_strategy = chosen_strategy
+    args.source_strategy_effective = source_strategy_effective
+    args.primary_source = worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
 
     if want_log_fn(args):
         print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
@@ -95,6 +109,13 @@ def build_run_context(
         print(f"Local timezone: {local_tz}")
         print(f"Project profiles: {len(profiles)}")
         print(f"Worklog: {worklog_path}")
+        if chosen_strategy == "worklog-first" and not worklog_exists:
+            if worklog_path.exists() and worklog_path.is_file():
+                print("Source strategy: worklog-first requested, but worklog not readable; using balanced fallback.")
+            else:
+                print("Source strategy: worklog-first requested, but worklog missing; using balanced fallback.")
+        else:
+            print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
         print()
 
     return RunContext(
@@ -104,6 +125,7 @@ def build_run_context(
         profiles=profiles,
         loaded_config_path=loaded_config_path,
         worklog_path=worklog_path,
+        source_strategy_effective=source_strategy_effective,
     )
 
 
@@ -202,4 +224,3 @@ def collect_screen_time_status(
         "days": len(screen_time_days),
     }
     return screen_time_days
-

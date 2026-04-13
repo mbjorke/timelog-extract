@@ -28,6 +28,7 @@ If wording conflicts, use this order:
 | `docs/GITTAN_NORTHSTAR_METRICS.md` | Metrics that operationalize the vision. |
 | `docs/ACTIVITYWATCH_INTEGRATION.md` | **Backlog:** optional [ActivityWatch](https://activitywatch.net/) ingest — complementary local timeline signal; not shipped. |
 | `docs/MANUAL_TEST_MATRIX_0_2_x.md` | **Manual QA:** scenarios A/B/C (no config, CLI-only, minimal JSON) + optional checks; use before patch releases. **Partial automation:** `scripts/manual_matrix_automation.py` (`--deterministic`, optional `--last-month`). |
+| `docs/WORKLOG_FIRST_STRATEGY_PLAN.md` | **Roadmap plan:** worklog-first source strategy (`auto/worklog-first/balanced`), phased implementation, and acceptance criteria to reduce "empty" reports in repo-centric use. |
 | `docs/evals/latest.md` | **Golden eval output** from `scripts/run_golden_eval.py` (see `docs/ACCURACY_PLAN.md`). |
 | `tests/fixtures/golden_dataset.json` | **Expected hours** per (date, project) for the bundled worklog fixture; used by golden eval. |
 | `docs/SOURCES_AND_FLAGS.md` | **Behavior:** how collectors merge, source toggles vs `--exclude`, `collector_status` in JSON. |

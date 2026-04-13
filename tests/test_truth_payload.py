@@ -43,6 +43,9 @@ class TruthPayloadTests(unittest.TestCase):
             gap_minutes=15,
             min_session_minutes=15,
             min_session_passive_minutes=5,
+            source_strategy_requested="auto",
+            source_strategy_effective="worklog-first",
+            primary_source="TIMELOG.md",
             session_duration_hours_fn=_fake_session_duration,
         )
         self.assertEqual(payload["schema"], "timelog_extract.truth_payload")
@@ -53,6 +56,9 @@ class TruthPayloadTests(unittest.TestCase):
         sess = payload["days"][day]["sessions"][0]
         self.assertIn("hours_estimated", sess)
         self.assertIn("events", sess)
+        self.assertEqual(payload["settings"]["source_strategy_requested"], "auto")
+        self.assertEqual(payload["settings"]["source_strategy_effective"], "worklog-first")
+        self.assertEqual(payload["source_roles"]["primary_source"], "TIMELOG.md")
 
 
 if __name__ == "__main__":

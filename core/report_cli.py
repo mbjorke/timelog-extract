@@ -38,6 +38,9 @@ def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
         gap_minutes=report.args.gap_minutes,
         min_session_minutes=report.args.min_session,
         min_session_passive_minutes=report.args.min_session_passive,
+        source_strategy_requested=getattr(report.args, "source_strategy", "auto"),
+        source_strategy_effective=getattr(report.args, "source_strategy_effective", "balanced"),
+        primary_source=getattr(report.args, "primary_source", "balanced"),
         session_duration_hours_fn=_session_duration_hours,
     )
 

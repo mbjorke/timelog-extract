@@ -2,6 +2,14 @@
 
 This guide configures automatic timelog entries on every commit across all git repositories on this computer.
 
+Prefer the interactive CLI guide if available:
+
+```bash
+gittan setup-global-timelog
+```
+
+Use `--dry-run` to preview changes before applying.
+
 ## Quickstart (5 Commands)
 
 ```bash

@@ -78,6 +78,7 @@ class ReportPayload:
     screen_time_days: Optional[Dict[str, float]]
     collector_status: Dict[str, Dict[str, Any]]
     args: argparse.Namespace
+    source_strategy_effective: str
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -332,6 +333,7 @@ def run_timelog_report(
         screen_time_days=screen_time_days,
         collector_status=collector_status,
         args=args,
+        source_strategy_effective=context.source_strategy_effective,
     )
 
 

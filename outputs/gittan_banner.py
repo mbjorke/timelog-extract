@@ -1,4 +1,9 @@
-"""ASCII banner for CLI reports — original art, not third-party logos."""
+"""ASCII banner for CLI reports — original art, not third-party logos.
+
+Raster brand assets (favicon, README icon, ``gittan-logo.png`` for the site, OG image)
+are derived from canonical ``docs/brand/gittan-brand-mark.png`` / ``gittan-og-card.png``;
+see ``docs/brand/IDENTITY.md`` and ``scripts/build_brand_assets.sh``.
+"""
 
 from __future__ import annotations
 

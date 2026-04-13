@@ -48,6 +48,9 @@ jobs:
           if [ -f "og-image.png" ]; then
             cp "og-image.png" _site/og-image.png
           fi
+          if [ -f "gittan-logo.png" ]; then
+            cp "gittan-logo.png" _site/gittan-logo.png
+          fi
           if [ -f CNAME ]; then
             cp CNAME _site/CNAME
           fi

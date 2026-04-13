@@ -2,7 +2,7 @@
 
 **Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE` and `docs/VISION_DOCUMENTS.md`.
 
-**Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see **`docs/PRIVATE_LOCAL_NOTES.md`**.
+**Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see `**docs/PRIVATE_LOCAL_NOTES.md`**.
 
 **Language:** English-only for documentation in this repository (see `CONTRIBUTING.md` and PR language rules).
 
@@ -16,11 +16,13 @@
 
 ## Who it is for (now vs aspiration)
 
-| Layer | Audience |
-|-------|-----------|
-| **Primary (today)** | People comfortable in a **terminal**—typically **dev / ops**—who already stitch tools together and will run `gittan` or scripts. |
-| **Aspirational** | *Anyone* who has wished for **automatic time reporting**; messaging can invite that dream without promising zero-friction GUI parity on day one. |
+
+| Layer               | Audience                                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Primary (today)** | People comfortable in a **terminal**—typically **dev / ops**—who already stitch tools together and will run `gittan` or scripts.                                 |
+| **Aspirational**    | *Anyone* who has wished for **automatic time reporting**; messaging can invite that dream without promising zero-friction GUI parity on day one.                 |
 | **Strategic bonus** | Users who become **curious about terminal UX**—efficiency, composability, piping JSON—vs heavy GUI; CLI-first is a **differentiator**, not a compromise apology. |
+
 
 ---
 
@@ -35,7 +37,7 @@
 
 1. **CLI-first is the long-term “wow.”** Rich output, `gittan`, JSON truth payload, automation—this is the core experience worth amplifying.
 2. **Cursor / IDE extension** is **not** the hero path; companion GUI work may be **deprioritized or dropped** in favor of engine + terminal story.
-3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in **`docs/AI_ASSISTED_CONFIG.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
+3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in `**docs/AI_ASSISTED_CONFIG.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
 
@@ -51,7 +53,7 @@
 
 ## Risks (product)
 
-- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/SOURCES_AND_FLAGS.md`, `docs/MANUAL_TEST_MATRIX_0_2_x.md`). Mitigation is tied to the **simplify project configuration** bet above and to **`docs/AI_ASSISTED_CONFIG.md`** over time.
+- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/SOURCES_AND_FLAGS.md`, `docs/MANUAL_TEST_MATRIX_0_2_x.md`). Mitigation is tied to the **simplify project configuration** bet above and to `**docs/AI_ASSISTED_CONFIG.md`** over time.
 - **Collector maintenance:** App vendors change log paths and formats; quality depends on **fixtures** and **clear disable reasons** in reports.
 - **Expectation gap:** “Automatic” is **reconstruction + rules**, not mind-reading; calendar and chat integrations would **change** the story when shipped.
 
@@ -63,14 +65,14 @@
 - **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/PATREON_POSITIONING.md` is non-binding positioning material.
 - **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with live Patreon/Sponsors pages before merging.
 - **Planned — GitHub Discussions (announcements):** Turn on **Discussions** for the repo if needed; use the **Announcements** category for rare, high-signal posts. Composer with welcome helper: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
-- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with **`CONTRIBUTING.md`** and what CI / `docs/CI.md` actually checks.
-- **Planned — Social preview (Open Graph):** GitHub shows a **repository image** when links are shared (social, Slack, etc.). Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Source asset in-repo: **`repository-open-graph-template.png`** (1280×640) — customize branding/text, export at that size, then upload the final PNG in GitHub (the uploaded file is stored by GitHub, not read live from the repo).
+- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with `**CONTRIBUTING.md`** and what CI / `docs/CI.md` actually checks.
+- **Planned — Social preview (Open Graph):** GitHub shows a **repository image** when links are shared (social, Slack, etc.). Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Source asset in-repo: `**repository-open-graph-template.png`** (1280×640) — customize branding/text, export at that size, then upload the final PNG in GitHub (the uploaded file is stored by GitHub, not read live from the repo).
 
 ---
 
 ## Sensitive material (not in git)
 
-Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see **`docs/PRIVATE_LOCAL_NOTES.md`**. That keeps the public repo reviewable while preserving a private working surface.
+Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see `**docs/PRIVATE_LOCAL_NOTES.md`**. That keeps the public repo reviewable while preserving a private working surface.
 
 ---
 

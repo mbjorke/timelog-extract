@@ -22,16 +22,26 @@
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
 - Do not commit a **`private/`** directory or other gitignored local business notes (see **`docs/PRIVATE_LOCAL_NOTES.md`**).
 
+## Local data safety (destructive commands)
+
+- **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on **`timelog_projects.json`**, **`TIMELOG.md`**, dated backups, or anything under **`private/`**.
+- Before renaming, moving aside, or deleting files that are the **only copy** of configuration or work history, **confirm with the user** or use a **non-destructive** pattern first (e.g. `cp` to a timestamped path outside the repo, or document exact restore steps).
+- Scenario testing and “quick cleanup” are common ways to lose data; treat **`timelog_projects.json`** as **critical** even though it is gitignored.
+- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): **`docs/incidents/2026-04-13-project-config-backup-gap.md`**.
+
 ## Branch policy (`main`)
 
-- **`main` is branch-protected** (no direct push). Use a **feature branch**, push to `origin`, and merge via **pull request**.
+- **`main` is branch-protected** (no direct push). Land changes via a **named branch**, push to `origin`, and merge via **pull request**.
+- **Prefer release branches** over open-ended `feat/…` names: from latest `origin/main`, create **`release/X.Y.Z`** (e.g. `release/0.2.3`) for work that **ships a numbered line** — especially when it touches **`pyproject.toml` version**, **`CHANGELOG.md`**, or release-only automation/docs. One release branch per target version keeps PR scope reviewable and avoids mixing the next patch/minor with unrelated work.
+- **Before bumping the package version** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md` release section): **verify the current branch** is the one meant to carry that release (e.g. `git branch --show-current`, confirm you branched from the right base). Do not assume you are on `main` or on the correct `release/*` line; wrong-branch bumps create confusing PRs and tags.
+- Small, non-release fixes may still use a **short-lived named branch**; do not pile unrelated commits onto an open **`release/*`** PR without maintainer agreement.
 - See **`BRANCH.md`** for the git workflow and **`docs/CI.md`** for what CI runs on PRs.
 
 ## Git worktrees (parallel work)
 
 - Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.
 - Prefer sibling worktrees next to the main clone via `./scripts/git_worktree.sh add <branch> [dir-name]` from the primary repo; open the printed path in a separate Cursor window for that branch only.
-- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope.
+- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh **`release/X.Y.Z`** branch from updated `main`.
 - Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
 
 ## Global Automatic Timelog Setup

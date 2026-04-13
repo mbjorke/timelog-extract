@@ -22,7 +22,9 @@ A large merge to `main` with many CLI and licensing changes may warrant **0.2.0*
 
 ## PyPI distribution (planned)
 
-The project is already a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`), but it is **not** published to [PyPI](https://pypi.org/) yet. We plan a first upload around a **0.2.3** patch release so installers can use:
+**Planned first-upload milestone:** see [`docs/RELEASE_SCOPE_0.2.3.md`](RELEASE_SCOPE_0.2.3.md) for the explicit **0.2.3** scope (must/should/nice).
+
+The project is already a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`), but it is **not** published to [PyPI](https://pypi.org/) yet. Package version **0.2.2** is the current release line while we prepare the first upload target so installers can use:
 
 ```bash
 pip install timelog-extract

@@ -2,14 +2,15 @@
 
 ## Unreleased
 
-- Licensing: switched repository licensing direction to **GNU GPL-3.0** and aligned docs/metadata with open-source positioning.
-- Runtime/CLI: added `--source-strategy auto|worklog-first|balanced` (phase 1). Runtime now resolves and reports effective strategy (`auto` => worklog-first when a readable worklog file exists, else balanced fallback), and JSON truth payload includes strategy/source-role metadata.
-- CLI: added interactive onboarding commands:
-  - `gittan setup-global-timelog` configures global git hooks (`core.hooksPath` + `post-commit`) and global ignore (`core.excludesFile`) for automatic repo-local `TIMELOG.md` entries (`--dry-run` supported).
-  - `gittan setup` runs a full setup wizard (environment/PATH checks, optional global timelog automation, minimal `timelog_projects.json` bootstrap, doctor run, and optional smoke test).
-  - Global timelog setup now supports choosing timelog filename/path inside each repo and optional repo-scoped logging by scanning and selecting git repositories.
-- Tooling: `scripts/manual_matrix_automation.py` — partial automation for `docs/MANUAL_TEST_MATRIX_0_2_x.md` (`--deterministic` seeded worklog; `--last-month` + `QA_MATRIX_MIN_EVENTS` for calendar-month smoke against a repo root). Docs and `docs/VISION_DOCUMENTS.md` updated.
-- Tooling: **golden dataset** baseline (`tests/fixtures/golden_*.json`, `tests/fixtures/golden_TIMELOG.md`) and `scripts/run_golden_eval.py` — compares expected per-(date, project) hours; writes `docs/evals/latest.md`. See `docs/ACCURACY_PLAN.md`. Test: `tests/test_golden_eval.py`.
+- Placeholder for post-0.2.2 changes.
+
+## 0.2.2 - 2026-04-13
+
+- Setup safety: `gittan setup` now treats malformed `timelog_projects.json` as recoverable state, creates a timestamped backup (`timelog_projects.backup-YYYYMMDD-HHMMSS.json`), and only then recreates a minimal config.
+- Tests: added setup regression coverage for valid-config keep behavior and invalid-config backup/recreate flow (`tests/test_setup_projects_config.py`).
+- Docs/policy: clarified role split where `TIMELOG.md` remains human-readable local work journal while `timelog_projects.json` is critical configuration that should have an external backup.
+- Pages/social: added site assets `favicon.ico` and `og-image.png`, added Open Graph/Twitter/fav icon meta tags in `gittan.html`, and updated Pages workflow to publish the assets.
+- Versioning: moved release line to **0.2.2** and dev fallback to `0.2.2-dev` (`pyproject.toml`, `core/cli_options.py`).
 
 ## 0.2.1 - 2026-04-12
 

@@ -35,6 +35,7 @@ If wording conflicts, use this order:
 | `docs/TERMINAL_STYLE_GUIDE.md` | **UX semantics:** terminal typography, color roles, and low-noise output conventions for CLI commands. |
 | `docs/AI_ASSISTED_CONFIG.md` | **Vision:** built-in assistant for `timelog_projects.json`; project names first; opt-in LLM; Jira-native vs solo workflows. |
 | `docs/CI.md` | **CI:** branch-protected `main`, workflow jobs, link to `.github/workflows/ci.yml`. |
+| `docs/RELEASE_SCOPE_0.2.3.md` | **Release plan:** must/should/nice scope for the **0.2.3** PyPI-first-upload milestone; linked from `docs/VERSIONING.md`. |
 | `docs/OPPORTUNITIES.md` | **Product / GTM:** opportunities, risks, audience, differentiation—English; for business-style review. |
 | `docs/PRIVATE_LOCAL_NOTES.md` | **Process:** where to keep gitignored `private/` business notes vs public docs. |
 

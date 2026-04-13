@@ -92,16 +92,24 @@ def _ensure_executable(path: Path, *, dry_run: bool) -> None:
     path.chmod(mode | stat.S_IXUSR)
 
 
-def _ensure_timelog_ignored(ignore_path: Path, *, dry_run: bool) -> bool:
+def _ensure_timelog_ignored(ignore_path: Path, *, dry_run: bool, timelog_entry: str = "TIMELOG.md") -> bool:
     existing = ignore_path.read_text(encoding="utf-8") if ignore_path.exists() else ""
-    if "TIMELOG.md" in [line.strip() for line in existing.splitlines()]:
+    existing_lines = [line.strip() for line in existing.splitlines()]
+    # Check if both the configured entry and "TIMELOG.md" are present
+    has_configured = timelog_entry in existing_lines
+    has_default = "TIMELOG.md" in existing_lines
+    if has_configured and has_default:
         return False
     if dry_run:
         return True
     with ignore_path.open("a", encoding="utf-8") as handle:
         if existing and not existing.endswith("\n"):
             handle.write("\n")
-        handle.write("TIMELOG.md\n")
+        # Append missing entries
+        if not has_configured:
+            handle.write(f"{timelog_entry}\n")
+        if not has_default:
+            handle.write("TIMELOG.md\n")
     return True
 
 
@@ -149,10 +157,20 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
     scope_mode = "all"
     selected: list[str] = []
     if not yes:
-        timelog_name = (
-            questionary.text("Timelog file path inside each repo (relative path):", default="TIMELOG.md").ask()
-            or "TIMELOG.md"
-        ).strip()
+        # Validate timelog path: reject absolute paths and parent components
+        while True:
+            candidate = (
+                questionary.text("Timelog file path inside each repo (relative path):", default="TIMELOG.md").ask()
+                or "TIMELOG.md"
+            ).strip()
+            if os.path.isabs(candidate):
+                console.print("[yellow]Error: Absolute paths are not allowed. Please enter a relative path.[/yellow]")
+                continue
+            if ".." in Path(candidate).parts:
+                console.print("[yellow]Error: Parent directory components (..) are not allowed.[/yellow]")
+                continue
+            timelog_name = candidate
+            break
         scope_mode = questionary.select(
             "Where should global timelog automation run?",
             choices=["All git repositories (recommended default)", "Only selected repositories (scan and choose)"],
@@ -170,7 +188,7 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
         if selected:
             console.print(f"[yellow]Dry run:[/yellow] would write {len(selected)} selected repos to {GITTAN_SCOPE_FILE}.")
         elif scope_mode.startswith("Only selected"):
-            console.print("[yellow]Dry run:[/yellow] selected scope requested but no repos were chosen.")
+            console.print(f"[yellow]Dry run:[/yellow] would write empty allowlist to {GITTAN_SCOPE_FILE} (no repos selected).")
         else:
             console.print("[yellow]Dry run:[/yellow] would configure scope for all git repositories.")
         return
@@ -179,6 +197,9 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
     GITTAN_FILENAME_FILE.write_text(timelog_name + "\n", encoding="utf-8")
     if selected:
         GITTAN_SCOPE_FILE.write_text("\n".join(selected) + "\n", encoding="utf-8")
+    elif scope_mode.startswith("Only selected"):
+        # Empty selection explicitly means no repos - write empty file
+        GITTAN_SCOPE_FILE.write_text("", encoding="utf-8")
     elif GITTAN_SCOPE_FILE.exists():
         GITTAN_SCOPE_FILE.unlink()
 
@@ -235,8 +256,10 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         if not dry_run:
             ignore_path.touch(exist_ok=True)
         _run_git_config(["core.excludesFile", str(ignore_path)], dry_run=dry_run)
-        added_ignore = _ensure_timelog_ignored(ignore_path, dry_run=dry_run)
         _configure_timelog_scope_and_name(console, yes=yes, dry_run=dry_run)
+        # Get configured timelog name for gitignore (after configuration is set)
+        configured_timelog = GITTAN_FILENAME_FILE.read_text(encoding="utf-8").splitlines()[0].strip() if GITTAN_FILENAME_FILE.exists() else "TIMELOG.md"
+        added_ignore = _ensure_timelog_ignored(ignore_path, dry_run=dry_run, timelog_entry=configured_timelog)
     except subprocess.CalledProcessError as exc:
         console.print(f"[red]Git config command failed:[/red] {exc}")
         if exc.stderr:
@@ -266,15 +289,15 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     console.print("\nReference: `GLOBAL_TIMELOG_AUTOMATION.md`")
 
 
-def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> None:
+def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str:
     config_path = Path.cwd() / "timelog_projects.json"
     if config_path.exists():
         console.print(f"[green]Project config exists:[/green] {config_path}")
-        return
+        return "PASS (dry-run)" if dry_run else "PASS"
     should_create = yes or questionary.confirm(f"Create minimal project config at {config_path}?", default=True).ask()
     if not should_create:
         console.print("[yellow]Skipped project config bootstrap.[/yellow]")
-        return
+        return "SKIPPED"
     project_name, customer, keywords = "default-project", "Default Customer", "default"
     if not yes:
         project_name = questionary.text("Project name:", default=project_name).ask() or project_name
@@ -286,9 +309,10 @@ def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> Non
     }
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would create {config_path}")
-        return
+        return "PASS (dry-run)"
     config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Created minimal project config:[/green] {config_path}")
+    return "PASS"
 
 
 def _print_environment_status(console) -> None:
@@ -319,10 +343,10 @@ def _print_environment_status(console) -> None:
         console.print(f"[dim]Apply now in current terminal:[/dim] `export PATH=\"{scripts_path}:$PATH\"`")
 
 
-def _run_doctor_check(console, *, dry_run: bool) -> None:
+def _run_doctor_check(console, *, dry_run: bool) -> str:
     if dry_run:
         console.print("[yellow]Dry run:[/yellow] would run `gittan doctor`.")
-        return
+        return "PASS (dry-run)"
     entry = REPO_ROOT / "timelog_extract.py"
     completed = subprocess.run([sys.executable, str(entry), "doctor"], check=False, capture_output=True, text=True, cwd=str(Path.cwd()))
     console.print("[green]Doctor check completed.[/green]" if completed.returncode == 0 else "[yellow]Doctor check reported issues.[/yellow]")
@@ -330,12 +354,13 @@ def _run_doctor_check(console, *, dry_run: bool) -> None:
         console.print(completed.stdout.strip())
     if completed.stderr:
         console.print(f"[dim]{completed.stderr.strip()}[/dim]")
+    return "PASS" if completed.returncode == 0 else "ACTION_REQUIRED"
 
 
-def _run_smoke_report(console, *, dry_run: bool) -> None:
+def _run_smoke_report(console, *, dry_run: bool) -> str:
     if dry_run:
         console.print("[yellow]Dry run:[/yellow] would run `gittan report --last-week --include-uncategorized --format json --quiet`.")
-        return
+        return "PASS (dry-run)"
     entry = REPO_ROOT / "timelog_extract.py"
     with console.status("[bold blue]Running smoke report...[/bold blue]"):
         completed = subprocess.run(
@@ -351,7 +376,7 @@ def _run_smoke_report(console, *, dry_run: bool) -> None:
             console.print(f"[dim]{completed.stderr.strip()}[/dim]")
         if completed.stdout:
             console.print(completed.stdout.strip()[:1200])
-        return
+        return "FAIL"
     try:
         payload = json.loads(completed.stdout)
     except json.JSONDecodeError:
@@ -360,12 +385,14 @@ def _run_smoke_report(console, *, dry_run: bool) -> None:
         totals = payload.get("totals", {})
         console.print("[green]Smoke report passed.[/green]")
         console.print(f"[dim]schema={payload.get('schema')} | events={totals.get('event_count','n/a')} | days={totals.get('days_with_activity','n/a')} | hours={totals.get('hours_estimated','n/a')}[/dim]")
+        return "PASS"
     else:
         console.print("[yellow]Smoke report completed, but output was not recognized as truth payload JSON.[/yellow]")
         if completed.stdout:
             console.print(completed.stdout.strip()[:1200])
-    if completed.stderr:
-        console.print(f"[dim]{completed.stderr.strip()}[/dim]")
+        if completed.stderr:
+            console.print(f"[dim]{completed.stderr.strip()}[/dim]")
+        return "ACTION_REQUIRED"
 
 
 def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> None:
@@ -383,18 +410,18 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     else:
         console.print("[yellow]Skipped global timelog automation.[/yellow]")
         summary_rows.append(("Global timelog automation", "SKIPPED", "User skipped this step."))
-    _ensure_minimal_projects_config(console, yes=yes, dry_run=dry_run)
-    summary_rows.append(("Project config bootstrap", "PASS" if not dry_run else "PASS (dry-run)", "Checked existing config and offered minimal bootstrap."))
-    _run_doctor_check(console, dry_run=dry_run)
-    summary_rows.append(("Doctor check", "PASS" if not dry_run else "PASS (dry-run)", "Ran (or previewed) source/permission diagnostics."))
+    projects_status = _ensure_minimal_projects_config(console, yes=yes, dry_run=dry_run)
+    summary_rows.append(("Project config bootstrap", projects_status, "Checked existing config and offered minimal bootstrap."))
+    doctor_status = _run_doctor_check(console, dry_run=dry_run)
+    summary_rows.append(("Doctor check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
     if skip_smoke:
         console.print("[yellow]Skipped smoke report (--skip-smoke).[/yellow]")
         summary_rows.append(("Smoke report", "SKIPPED", "Skipped via --skip-smoke flag."))
     else:
         should_smoke = yes or questionary.confirm("Run final smoke report now?", default=True).ask()
         if should_smoke:
-            _run_smoke_report(console, dry_run=dry_run)
-            summary_rows.append(("Smoke report", "PASS" if not dry_run else "PASS (dry-run)", "Ran (or previewed) JSON smoke report command."))
+            smoke_status = _run_smoke_report(console, dry_run=dry_run)
+            summary_rows.append(("Smoke report", smoke_status, "Ran (or previewed) JSON smoke report command."))
         else:
             console.print("[yellow]Skipped smoke report.[/yellow]")
             summary_rows.append(("Smoke report", "SKIPPED", "User skipped this step."))
@@ -403,7 +430,14 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     summary_table.add_column("Result")
     summary_table.add_column("Notes", style="dim")
     for step, result, notes in summary_rows:
-        style = "green" if result.startswith("PASS") else "yellow"
+        if result.startswith("PASS"):
+            style = "green"
+        elif result == "FAIL":
+            style = "red"
+        elif result in ("ACTION_REQUIRED", "SKIPPED"):
+            style = "yellow"
+        else:
+            style = "yellow"
         summary_table.add_row(step, f"[{style}]{result}[/{style}]", notes)
     console.print("\n")
     console.print(summary_table)

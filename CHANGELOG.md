@@ -3,6 +3,8 @@
 ## Unreleased
 
 - CI: GitHub Pages — PRs to `main` run **`verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or **`workflow_dispatch`**. Docs: **`docs/CI.md`**, **`AGENTS.md`** (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
+- Site: **`gittan.html`** quick start aligned with **`README.md`** (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: **`test_quick_start_cli_commands_finish_within_60_seconds_each`** (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
+- Removed **Phase 0 friend trial** scaffolding: **`scripts/friend_trial.py`**, **`friend_trial/FEEDBACK_TEMPLATE.md`**, and the **`timelog-friend-trial`** console script entry (`pyproject.toml`). README / **`docs/TERMINAL_I18N.md`** updated.
 
 ## 0.2.3 - 2026-04-13
 

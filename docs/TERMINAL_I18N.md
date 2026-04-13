@@ -13,7 +13,7 @@ User-facing output is being moved to **English** for consistency and tooling.
 
 | Area | File(s) | Notes |
 |------|---------|--------|
-| Friend trial / scripts | `scripts/friend_trial.py`, `scripts/*.py` | Any user-visible strings |
+| Utility scripts | `scripts/*.py` | Any user-visible strings |
 | Tests | Tests that assert exact CLI help text | Update if help strings change |
 | Docs | `README.md` if it quotes old Swedish output | Align examples |
 

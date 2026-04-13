@@ -119,7 +119,6 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 
 ## What else is in the repo
 
-- **Friend trial** — `python3 scripts/friend_trial.py --today --invoice-pdf` and `friend_trial/FEEDBACK_TEMPLATE.md`.
 - **Cursor extension** (companion, beta) — `cursor-extension/README.md`.
 - **Engine script** (same API as the extension): `python3 scripts/run_engine_report.py --today --pdf`.
 

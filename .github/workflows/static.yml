@@ -33,11 +33,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Prepare static site artifact
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp gittan.html _site/index.html
+          if [ -f CNAME ]; then
+            cp CNAME _site/CNAME
+          fi
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # Upload only publish-ready static site output
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

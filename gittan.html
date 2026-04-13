@@ -601,6 +601,20 @@
       font-weight: 300;
     }
 
+    .step .step-note {
+      font-size: 0.75rem;
+      color: var(--dim);
+      margin-bottom: 0.6rem;
+      line-height: 1.45;
+      font-weight: 300;
+    }
+
+    .step .step-note code {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--amber);
+    }
+
     .code-inline {
       background: var(--deep);
       border: 1px solid var(--border);
@@ -1398,24 +1412,25 @@
 <!-- ─── HOW IT WORKS ─── -->
 <section id="how">
   <div class="section-eyebrow">Quick start</div>
-  <h2>Install to first report<br>in <em>under 60 seconds</em></h2>
-  <p class="section-sub">Three commands. No account required. No config needed to get started.</p>
+  <h2>Install, set up,<br><em>see your day</em></h2>
+  <p class="section-sub">Three steps. No account. On macOS, <strong>pipx</strong> avoids PATH headaches; the setup wizard is ~2 min. Full detail in the README.</p>
 
   <div class="steps">
     <div class="step">
-      <h3>Clone and install</h3>
-      <p>Requires Python 3.9+. One command installs everything.</p>
-      <code class="code-inline">pip install -e .</code>
+      <h3>Install</h3>
+      <p>Python 3.9+. Easiest on Mac: <strong>pipx</strong> (then open a new terminal or <code>source ~/.zshrc</code>):</p>
+      <code class="code-inline">pipx install timelog-extract</code>
+      <p class="step-note">Or: <code>python3 -m pip install --user timelog-extract</code> — you may need to add the user <code>bin</code> folder to PATH; <code>gittan doctor</code> hints if so. If <code>pip</code> is missing, use <code>python3 -m pip</code>. Clone + <code>python3 -m pip install -e .</code> if PyPI isn’t an option yet.</p>
     </div>
     <div class="step">
       <h3>Run setup</h3>
-      <p>The interactive wizard walks you through project matching in about two minutes.</p>
+      <p class="step-note">Preview: <code>gittan setup --dry-run</code> · then the full wizard:</p>
       <code class="code-inline">gittan setup</code>
     </div>
     <div class="step">
       <h3>See your day</h3>
-      <p>Get a full breakdown of today's work by project, with optional invoice PDF.</p>
-      <code class="code-inline">gittan report --today --invoice-pdf</code>
+      <p class="step-note">Matches README “first report”. Add <code>--invoice-pdf</code> for an invoice PDF.</p>
+      <code class="code-inline">gittan report --today --source-summary</code>
     </div>
   </div>
 </section>
@@ -1772,6 +1787,7 @@
   </div>
   <div class="footer-links">
     <a href="https://github.com/mbjorke/timelog-extract">GitHub</a>
+    <a href="https://github.com/mbjorke/timelog-extract/discussions">Feedback</a>
     <a href="https://github.com/mbjorke/timelog-extract/blob/main/LICENSE">License</a>
     <a href="https://github.com/mbjorke/timelog-extract/blob/main/docs/PRIVACY_SECURITY.md">Privacy</a>
     <a href="https://github.com/sponsors/blueberry-maybe/">Sponsors</a>

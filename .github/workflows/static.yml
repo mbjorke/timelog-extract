@@ -2,18 +2,28 @@
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
+  # Production: deploy only from the default branch (gittan.sh / Pages)
   push:
     branches: ["main"]
 
-  # Allows you to run this workflow manually from the Actions tab
+  # PRs: verify the static bundle builds; does NOT publish (avoids overwriting production).
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "gittan.html"
+      - "favicon.ico"
+      - "og-image.png"
+      - "gittan-logo.png"
+      - "CNAME"
+      - ".github/workflows/static.yml"
+      - "scripts/prepare_static_site.sh"
+
+  # Re-run deploy from Actions after merge if needed (same commit as main)
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Default: read-only. Pages + OIDC only on the deploy job.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -22,8 +32,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
+  # Green check on PRs; GitHub may still show "not deployed" on the branch — see docs/CI.md
+  verify-static-site:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare static site artifact
+        run: bash scripts/prepare_static_site.sh
+
   deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -34,26 +60,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Prepare static site artifact
-        run: |
-          set -euo pipefail
-          mkdir -p _site
-          if [ ! -f "gittan.html" ]; then
-            echo "No landing page file found (expected gittan.html)." >&2
-            exit 1
-          fi
-          cp "gittan.html" _site/index.html
-          if [ -f "favicon.ico" ]; then
-            cp "favicon.ico" _site/favicon.ico
-          fi
-          if [ -f "og-image.png" ]; then
-            cp "og-image.png" _site/og-image.png
-          fi
-          if [ -f "gittan-logo.png" ]; then
-            cp "gittan-logo.png" _site/gittan-logo.png
-          fi
-          if [ -f CNAME ]; then
-            cp CNAME _site/CNAME
-          fi
+        run: bash scripts/prepare_static_site.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

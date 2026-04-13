@@ -9,6 +9,7 @@ import importlib.util
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -80,6 +81,54 @@ class CliRegressionSmokeTests(unittest.TestCase):
             msg=completed.stderr or completed.stdout,
         )
         self.assertIn("Setup wizard completed.", completed.stdout)
+
+    def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
+        """Landing page quick start (after install): each CLI step should stay snappy on CI.
+
+        Step 1 on gittan.sh is ``pip install`` / PyPI; that path is covered by the CI **package** job
+        (wheel build + install). Here we time the three commands users run immediately after install:
+        version check, non-interactive setup preview, and ``doctor`` from an empty directory.
+        """
+        budget_s = 60.0
+
+        def run_timed(label: str, argv: list[str], cwd: str) -> subprocess.CompletedProcess:
+            start = time.perf_counter()
+            completed = subprocess.run(
+                argv,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=int(budget_s),
+            )
+            elapsed = time.perf_counter() - start
+            self.assertLess(
+                elapsed,
+                budget_s,
+                msg=f"{label}: {' '.join(argv)} took {elapsed:.1f}s (limit {budget_s:g}s)",
+            )
+            self.assertEqual(
+                completed.returncode,
+                0,
+                msg=completed.stderr or completed.stdout or label,
+            )
+            return completed
+
+        run_timed("version", [sys.executable, str(ENTRY), "-V"], str(ROOT))
+        run_timed(
+            "setup_dry_run",
+            [
+                sys.executable,
+                str(ENTRY),
+                "setup",
+                "--yes",
+                "--dry-run",
+                "--skip-smoke",
+            ],
+            str(ROOT),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = run_timed("doctor", [sys.executable, str(ENTRY), "doctor"], tmp)
+            self.assertIn("Gittan Health Check", doc.stdout)
 
 
 if __name__ == "__main__":

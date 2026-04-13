@@ -37,12 +37,40 @@
 - Small, non-release fixes may still use a **short-lived named branch**; do not pile unrelated commits onto an open **`release/*`** PR without maintainer agreement.
 - See **`BRANCH.md`** for the git workflow and **`docs/CI.md`** for what CI runs on PRs.
 
+## Releases: what the maintainer means vs what the agent does
+
+When the maintainer says they want a **new release** or to **ship version X.Y.Z**, they often mean the **product outcome** (users see a version, changelog, optional PyPI), **not** a specific sequence of git commands. Treat it as a **handoff**: do the repo and branch work; tell them clearly what is left for **GitHub / PyPI** in plain language.
+
+### Maintainer (human) — typical steps
+
+No need to memorize git; an agent can prepare the branch. The maintainer usually:
+
+1. **Decides** the target version (e.g. patch vs minor) and what must be in scope.
+2. On **GitHub**: open or refresh the **pull request** from `release/X.Y.Z` (or the agreed branch) into `main`, wait for **CI** to pass, then **merge** the PR (squash or merge commit per repo habit).
+3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in **`docs/VERSIONING.md`**.
+4. **Optional:** smoke-test `pip install timelog-extract` after upload.
+
+**Plain terms:** **PR** = request to merge a branch into `main`; **merge** = accept that request on GitHub; **tag** = release label on a commit (often triggers publish); **conflicts** = overlapping edits — resolved **in the branch** by the agent, then pushed, so the PR becomes mergeable again.
+
+### Agent — assume these responsibilities
+
+1. Work on **`release/X.Y.Z`** (or create it from latest **`origin/main`** for a **new** version line). Confirm branch name matches the version being bumped.
+2. Apply the **version bump checklist** in **`docs/VERSIONING.md`** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
+3. Run **`./scripts/run_autotests.sh`**; when packaging changes, also **`python -m build`** locally if appropriate.
+4. Commit, **`git push origin <branch>`**, and keep the maintainer informed in **non-jargon** terms (“PR is ready”, “CI should run”, “after you merge, tag vX.Y.Z”).
+5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by **`git fetch origin`** and **`git merge origin/main`** into the release branch, resolve conflicts (often **`CHANGELOG.md`**, **`README.md`**), commit the merge, push — see **`docs/VERSIONING.md`** and **`BRANCH.md`**.
+
 ## Git worktrees (parallel work)
 
 - Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.
 - Prefer sibling worktrees next to the main clone via `./scripts/git_worktree.sh add <branch> [dir-name]` from the primary repo; open the printed path in a separate Cursor window for that branch only.
 - Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh **`release/X.Y.Z`** branch from updated `main`.
 - Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
+
+## GitHub Pages (landing site)
+
+- **Production deploy** runs only on **push to `main`** (see **`docs/CI.md`** → *GitHub Pages*). A PR branch is **not** “deployed” until merge; that GitHub label is expected.
+- **PRs** run a **verify** job when site files change; merge to `main` to publish. **Re-run deploy:** Actions → *Deploy static content to Pages* → *Run workflow* (`workflow_dispatch`).
 
 ## Global Automatic Timelog Setup
 
@@ -65,6 +93,12 @@
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - If you use **Draft** PRs, click **Ready for review** once CI and feedback look good. **Open** (non-draft) PRs do not show that button—they are already reviewable; merging without it is fine.
 - `@coderabbitai` commands run a review only; they do **not** change Draft or ready state on GitHub.
+
+### CodeRabbit rate limits (GitHub app)
+
+- The **GitHub** integration can hit an **hourly cap on reviewed commits** for your org/plan. If CodeRabbit posts a **“Rate limit exceeded”** message, wait for the countdown (often ~1 hour) or use the **CLI** below instead of `@coderabbitai` on GitHub.
+- **Reduce surprises:** batch pushes, then trigger **one** `@coderabbitai full review` when the PR is stable — avoid requesting a full review after every small commit in the same hour.
+- **`@coderabbitai help`** in the PR lists commands; product details change over time — treat [CodeRabbit docs](https://docs.coderabbit.ai/) as source of truth for quotas.
 
 ### CodeRabbit CLI (optional local pre-check)
 

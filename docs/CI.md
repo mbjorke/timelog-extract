@@ -13,6 +13,22 @@ Treat **`main` as read-only** from local clones unless a maintainer performs an 
 
 - **PyPI publish:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — builds sdist + wheel and publishes on **version tags** `v*.*.*` or **workflow_dispatch** (requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI). See **`docs/VERSIONING.md`**.
 
+- **GitHub Pages (landing site):** [`.github/workflows/static.yml`](../.github/workflows/static.yml)
+
+## GitHub Pages (`gittan.sh` / project site)
+
+| Trigger | What happens |
+|---------|----------------|
+| **Push to `main`** | Runs [`scripts/prepare_static_site.sh`](../scripts/prepare_static_site.sh) to build `_site`, then **deploys** to the configured Pages URL. **`deploy`** has `pages: write` + `id-token: write`; workflow default is `contents: read` only. |
+| **Pull request → `main`** | Runs **`verify-static-site`** only (same script, **no** Pages/OIDC permissions), **no** publish. |
+| **`workflow_dispatch`** | **Re-deploy** production from the current `main` tip (Actions → *Deploy static content to Pages* → *Run workflow*). Use if a deploy failed or Pages was misconfigured. |
+
+### Why the PR says “This branch has not been deployed”
+
+GitHub’s **Deployments** UI tracks environments such as **`github-pages`** when a workflow **publishes** to that environment. We **only attach that environment on pushes to `main`**, not on PR branches — so feature/release branches correctly show as **not deployed** until you **merge**. After merge, the **push** to `main` runs **`deploy`**; if the site does not update, open **Actions** and check the latest **Deploy static content to Pages** run (or trigger **workflow_dispatch**).
+
+PRs still get a **green workflow** from **verify-static-site** when site-related files change; that is separate from the deployment badge.
+
 ## Jobs
 
 | Job | What it does |

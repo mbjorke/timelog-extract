@@ -31,9 +31,7 @@ I want real-world feedback before pushing wider:
 - **Who:** freelancers, consultants, or small teams doing technical delivery
 - **Privacy:** local-first approach (core flow runs locally)
 
-If you want in, comment **"pilot"** or DM me and I’ll send:
-- a 3-step quick-start
-- a 5-question feedback template
+If you want in, comment **"pilot"** or DM me and I’ll send a 3-step quick-start. **Feedback** after you try it: post in **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (General / Q&A) so we can iterate in the open.
 
 Repo: https://github.com/mbjorke/timelog-extract
 
@@ -81,8 +79,6 @@ I’m opening a small group of **free test pilots** for `timelog-extract` - buil
 - 1 week real workflow test
 - Direct line to shape product direction
 
-If you want early access, comment **pilot** or send me a DM and I’ll send:
-- a 3-step quick-start
-- a 5-question feedback template
+If you want early access, comment **pilot** or send me a DM and I’ll send a 3-step quick-start. Share feedback in **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** when you’ve run it.
 
 Repo: https://github.com/mbjorke/timelog-extract

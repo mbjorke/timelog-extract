@@ -161,6 +161,12 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 
 ---
 
+## Feedback
+
+Questions, install friction, or “does this match your workflow?” — use **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (e.g. **General** or **Q&A**). For **bugs** or small reproducible issues, open an **[issue](https://github.com/mbjorke/timelog-extract/issues)** instead.
+
+---
+
 ## Documentation map
 
 Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/VISION_DOCUMENTS.md`](docs/VISION_DOCUMENTS.md)** for an index (e.g. `SOURCES_AND_FLAGS.md`, `PRIVACY_SECURITY.md`, `TERMINAL_STYLE_GUIDE.md`, `CLI_FIRST_V1_RELEASE_CHECKLIST.md`).

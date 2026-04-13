@@ -19,7 +19,7 @@
 - Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `docs/VISION_DOCUMENTS.md`.
 - Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `docs/VISION_DOCUMENTS.md` and `README.md`.
 - Docs: `**BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
-- Docs: `**docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
+- Docs: **`docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
 - Docs: `**docs/OPPORTUNITIES.md**` (product/GTM working notes) and `**docs/PRIVATE_LOCAL_NOTES.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
 
 ## 0.2.0 - 2026-04-11
@@ -63,4 +63,3 @@ Why this release matters:
 - Added baseline CI workflow and repository README/license/changelog.
 - Added dedicated CI unittest step running `scripts/run_autotests.sh` after smoke run.
 - Added module/class/test-method docstrings in compatibility tests for clearer coverage.
-

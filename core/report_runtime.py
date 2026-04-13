@@ -89,7 +89,7 @@ def build_run_context(
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
     if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
         chosen_strategy = "auto"
-    worklog_exists = worklog_path.exists() and worklog_path.is_file()
+    worklog_exists = worklog_path.exists() and worklog_path.is_file() and os.access(worklog_path, os.R_OK)
     if chosen_strategy == "balanced":
         source_strategy_effective = "balanced"
     elif chosen_strategy == "worklog-first":
@@ -110,7 +110,10 @@ def build_run_context(
         print(f"Project profiles: {len(profiles)}")
         print(f"Worklog: {worklog_path}")
         if chosen_strategy == "worklog-first" and not worklog_exists:
-            print("Source strategy: worklog-first requested, but worklog missing; using balanced fallback.")
+            if worklog_path.exists() and worklog_path.is_file():
+                print("Source strategy: worklog-first requested, but worklog not readable; using balanced fallback.")
+            else:
+                print("Source strategy: worklog-first requested, but worklog missing; using balanced fallback.")
         else:
             print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
         print()
@@ -221,4 +224,3 @@ def collect_screen_time_status(
         "days": len(screen_time_days),
     }
     return screen_time_days
-

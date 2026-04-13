@@ -98,7 +98,7 @@ def build_run_context(
         source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
     args.source_strategy = chosen_strategy
     args.source_strategy_effective = source_strategy_effective
-    args.primary_source = "TIMELOG.md" if source_strategy_effective == "worklog-first" else "balanced"
+    args.primary_source = worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
 
     if want_log_fn(args):
         print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")

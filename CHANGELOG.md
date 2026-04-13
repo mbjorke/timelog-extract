@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Runtime/CLI: added `--source-strategy auto|worklog-first|balanced` (phase 1). Runtime now resolves and reports effective strategy (`auto` => worklog-first when worklog exists, else balanced fallback), and JSON truth payload includes strategy/source-role metadata.
+- Licensing: switched repository licensing direction to **GNU GPL-3.0** and aligned docs/metadata with open-source positioning.
+- Runtime/CLI: added `--source-strategy auto|worklog-first|balanced` (phase 1). Runtime now resolves and reports effective strategy (`auto` => worklog-first when a readable worklog file exists, else balanced fallback), and JSON truth payload includes strategy/source-role metadata.
 - CLI: added interactive onboarding commands:
   - `gittan setup-global-timelog` configures global git hooks (`core.hooksPath` + `post-commit`) and global ignore (`core.excludesFile`) for automatic repo-local `TIMELOG.md` entries (`--dry-run` supported).
   - `gittan setup` runs a full setup wizard (environment/PATH checks, optional global timelog automation, minimal `timelog_projects.json` bootstrap, doctor run, and optional smoke test).

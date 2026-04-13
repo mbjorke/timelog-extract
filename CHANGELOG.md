@@ -6,6 +6,10 @@
 - Site: **`gittan.html`** quick start aligned with **`README.md`** (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: **`test_quick_start_cli_commands_finish_within_60_seconds_each`** (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
 - Removed **Phase 0 friend trial** scaffolding: **`scripts/friend_trial.py`**, **`friend_trial/FEEDBACK_TEMPLATE.md`**, and the **`timelog-friend-trial`** console script entry (`pyproject.toml`). README / **`docs/TERMINAL_I18N.md`** updated.
 
+## 0.2.4 - 2026-04-13
+
+- **PyPI project page:** README hero image now uses a stable **`raw.githubusercontent.com`** URL so the logo renders on [the PyPI description](https://pypi.org/project/timelog-extract/) (relative paths do not work there). Added **`[project.urls]`** — `Homepage` (**gittan.sh**), `Repository`, `Issues`.
+
 ## 0.2.3 - 2026-04-13
 
 - **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.

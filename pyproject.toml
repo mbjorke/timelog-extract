@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "timelog-extract"
-version = "0.2.3"
+version = "0.2.4"
 description = "Aggregate local work activity from Gemini, Claude, Cursor, OpenAI Codex IDE, Chrome, Mail, worklog, optional GitHub public activity, and optional Screen Time."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -23,6 +23,11 @@ dependencies = [
   "rich",
   "questionary"
 ]
+
+[project.urls]
+Homepage = "https://gittan.sh"
+Repository = "https://github.com/mbjorke/timelog-extract"
+Issues = "https://github.com/mbjorke/timelog-extract/issues"
 
 [project.scripts]
 gittan = "timelog_extract:main"

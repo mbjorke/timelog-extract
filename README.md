@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="gittan-readme-icon.png" width="128" height="128" alt="Gittan logo" />
+<img src="https://raw.githubusercontent.com/mbjorke/timelog-extract/main/gittan-readme-icon.png" width="128" height="128" alt="Gittan logo" />
 
 # Gittan
 
@@ -19,7 +19,8 @@ Core reporting is **local-first**; there is no built-in cloud upload path.
 
 ## Install
 
-**Requirements:** Python **3.9+**. You do **not** need a PyPI account to install—only maintainers need PyPI access to publish.
+**Requirements:** Python **3.9+**. You do **not** need a PyPI account to install—only maintainers need PyPI access to publish.  
+If the shell says `command not found: pip`, use **`python3 -m pip`** instead of a bare `pip` command (common on macOS).
 
 **Default (pip):**
 

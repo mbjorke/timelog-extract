@@ -10,18 +10,17 @@ from rich.text import Text
 from rich.tree import Tree
 
 from outputs.gittan_banner import TAGLINE, banner_panel_lines
+from outputs.terminal_theme import (
+    CLR_BERRY_BRIGHT,
+    CLR_DIM,
+    CLR_GREEN,
+    CLR_SOURCE_BLUE,
+    CLR_TEXT_SOFT,
+    CLR_VALUE_ORANGE,
+    CLR_MUTED,
+)
 
 console = Console()
-
-# Shared terminal theme inspired by the landing page palette.
-CLR_BERRY = "#9f7aff"
-CLR_BERRY_BRIGHT = "#b79bff"
-CLR_MUTED = "#aaa0c8"
-CLR_DIM = "#847d9f"
-CLR_TEXT_SOFT = "#d8d0ee"
-CLR_GREEN = "#47cfa8"
-CLR_SOURCE_BLUE = "#67a8ff"
-CLR_VALUE_ORANGE = "#e7ad5a"
 
 STYLE_HEADING = f"bold {CLR_BERRY_BRIGHT}"
 STYLE_LABEL = f"bold {CLR_MUTED}"
@@ -235,6 +234,12 @@ def print_report(
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
+    breakdown_table.add_row(
+        "",
+        f"[{STYLE_META}]Hours[/{STYLE_META}]",
+        f"[{STYLE_META}]Billable[/{STYLE_META}]",
+        f"[{STYLE_META}]Days[/{STYLE_META}]",
+    )
 
     profile_by_name = {p["name"]: p for p in profiles}
     projects_by_customer = defaultdict(list)

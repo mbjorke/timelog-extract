@@ -19,6 +19,7 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
+from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -53,16 +54,8 @@ def doctor(
         REPO_ROOT,
     )
 
-    STYLE_LABEL = "#cfc8e8"
-    STYLE_MUTED = "#8f86ad"
-    STYLE_BORDER = "#4a4660"
-    OK_ICON = "[#47cfa8]✓[/#47cfa8]"
-    WARN_ICON = "[#d6b06a]![/#d6b06a]"
-    FAIL_ICON = "[#e26d85]✗[/#e26d85]"
-    NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"
-
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
-    table.border_style = "#4a4660"
+    table.border_style = STYLE_BORDER
     table.header_style = "bold #b7aed3"
     table.add_column("Source / Path", style=STYLE_LABEL)
     table.add_column("Status", justify="center")

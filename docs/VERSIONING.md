@@ -12,6 +12,34 @@ We follow a practical **SemVer-style** rule of thumb:
 
 A large merge to `main` with many CLI and licensing changes may warrant **0.2.0** even if the previous line was **0.1.0** — use judgment and describe the release in `CHANGELOG.md`.
 
+## Release workflow: maintainer vs agent
+
+| | **Maintainer (you)** | **Agent / automation** |
+|---|----------------------|-------------------------|
+| **Goal** | Ship a version users can install or read about | Prepare the branch, files, tests, and conflict fixes |
+| **GitHub** | Open PR → merge when CI is green; optional Draft / CodeRabbit | Push branch, summarize PR status in plain language |
+| **Version files** | Approve scope (which X.Y.Z) | Edit `pyproject.toml`, `core/cli_options.py`, `CHANGELOG.md` per checklist below |
+| **PyPI** | Configure trusted publisher; trigger tag or workflow | Remind checklist; local `python -m build` when packaging changes |
+| **Terminology** | “Merge the PR”, “tag the release” is enough | Avoid assuming the maintainer knows `rebase`, `squash`, or `fetch` unless they ask |
+
+When someone says **“I want a new release”**, interpret it as: **do the technical release prep** and **spell out the remaining GitHub/PyPI clicks** — see **`AGENTS.md`** (“Releases: what the maintainer means vs what the agent does”).
+
+### After squash merge: follow-up commits on `release/X.Y.Z`
+
+This repo often **squash-merges** PRs into `main`. That rewrites history: **`main` will not contain the same commits** as the release branch, only a **single new commit**. If you **continue the same branch name** (`release/0.2.3`) with more commits and open **another** PR, GitHub may report **conflicts** in `CHANGELOG.md`, `README.md`, or similar.
+
+**Agent fix (typical):** from the release branch:
+
+```bash
+git fetch origin
+git merge origin/main
+# resolve conflicts, then:
+git commit   # completes the merge
+git push origin release/X.Y.Z
+```
+
+Prefer **combining** unrelated follow-up work into **one** PR per version when possible to reduce this friction; if follow-up is unavoidable, merging `main` back into the release branch before merge is normal.
+
 ## Checklist when bumping the package version
 
 1. Set **`pyproject.toml`** → `[project] version` to `X.Y.Z`.

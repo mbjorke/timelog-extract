@@ -67,6 +67,11 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh **`release/X.Y.Z`** branch from updated `main`.
 - Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
 
+## GitHub Pages (landing site)
+
+- **Production deploy** runs only on **push to `main`** (see **`docs/CI.md`** → *GitHub Pages*). A PR branch is **not** “deployed” until merge; that GitHub label is expected.
+- **PRs** run a **verify** job when site files change; merge to `main` to publish. **Re-run deploy:** Actions → *Deploy static content to Pages* → *Run workflow* (`workflow_dispatch`).
+
 ## Global Automatic Timelog Setup
 
 - Full setup guide for all local repositories: `GLOBAL_TIMELOG_AUTOMATION.md`.
@@ -88,6 +93,12 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - If you use **Draft** PRs, click **Ready for review** once CI and feedback look good. **Open** (non-draft) PRs do not show that button—they are already reviewable; merging without it is fine.
 - `@coderabbitai` commands run a review only; they do **not** change Draft or ready state on GitHub.
+
+### CodeRabbit rate limits (GitHub app)
+
+- The **GitHub** integration can hit an **hourly cap on reviewed commits** for your org/plan. If CodeRabbit posts a **“Rate limit exceeded”** message, wait for the countdown (often ~1 hour) or use the **CLI** below instead of `@coderabbitai` on GitHub.
+- **Reduce surprises:** batch pushes, then trigger **one** `@coderabbitai full review` when the PR is stable — avoid requesting a full review after every small commit in the same hour.
+- **`@coderabbitai help`** in the PR lists commands; product details change over time — treat [CodeRabbit docs](https://docs.coderabbit.ai/) as source of truth for quotas.
 
 ### CodeRabbit CLI (optional local pre-check)
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Placeholder for post-0.2.3 changes.
+- CI: GitHub Pages — PRs to `main` run **`verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or **`workflow_dispatch`**. Docs: **`docs/CI.md`**, **`AGENTS.md`** (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
 
 ## 0.2.3 - 2026-04-13
 

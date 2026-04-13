@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import shutil
 import site
@@ -25,6 +26,28 @@ from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, ST
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_DOCTOR_LOG = logging.getLogger(__name__)
+
+
+def _shell_profile_hint() -> str:
+    """Typical rc file to mention for persisting PATH (from $SHELL when possible)."""
+    shell = os.environ.get("SHELL", "").lower()
+    if "zsh" in shell:
+        return "~/.zshrc"
+    if "bash" in shell:
+        return "~/.bashrc (or ~/.bash_profile on macOS)"
+    return "~/.zshrc or ~/.bashrc"
+
+
+def _shell_reload_phrase() -> str:
+    """How to reload shell config after pipx ensurepath (shell-agnostic fallback)."""
+    shell = os.environ.get("SHELL", "").lower()
+    if "zsh" in shell:
+        return "[bold]source ~/.zshrc[/bold]"
+    if "bash" in shell:
+        return "[bold]source ~/.bashrc[/bold] (or [bold]source ~/.bash_profile[/bold])"
+    return "source your shell startup file ([bold]e.g. ~/.zshrc or ~/.bashrc[/bold])"
 
 
 def _dir_on_path(bin_dir: Path) -> bool:
@@ -58,19 +81,21 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
         )
         return
     hints: list[str] = []
+    profile = _shell_profile_hint()
     try:
         user_bin = Path(site.getuserbase()) / "bin"
         if (user_bin / "gittan").is_file() and not _dir_on_path(user_bin):
             hints.append(
                 f"[{STYLE_MUTED}]pip --user: run [bold]export PATH=\"{user_bin}:$PATH\"[/bold] "
-                f"(add that line to [bold]~/.zshrc[/bold] so new terminals work).[/{STYLE_MUTED}]"
+                f"(add that line to [bold]{profile}[/bold] so new terminals work).[/{STYLE_MUTED}]"
             )
-    except Exception:
-        pass
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        _DOCTOR_LOG.warning("doctor: skipped pip --user PATH hint: %s", exc)
     pipx_bin = home / ".local" / "bin"
+    reload = _shell_reload_phrase()
     if (pipx_bin / "gittan").is_file() and not _dir_on_path(pipx_bin):
         hints.append(
-            f"[{STYLE_MUTED}]pipx: run [bold]pipx ensurepath[/bold], then [bold]source ~/.zshrc[/bold] "
+            f"[{STYLE_MUTED}]pipx: run [bold]pipx ensurepath[/bold], then {reload} "
             f"or open a [bold]new[/bold] terminal ([bold]{pipx_bin}[/bold] must be on PATH).[/{STYLE_MUTED}]"
         )
     if hints:

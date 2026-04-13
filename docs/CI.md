@@ -19,8 +19,8 @@ Treat **`main` as read-only** from local clones unless a maintainer performs an 
 
 | Trigger | What happens |
 |---------|----------------|
-| **Push to `main`** | Builds `_site` from `gittan.html` + static assets and **deploys** to the configured Pages URL (production). |
-| **Pull request → `main`** | Runs **`verify-static-site`** only: same copy steps, **no** publish. This checks that the bundle is valid before merge. |
+| **Push to `main`** | Runs [`scripts/prepare_static_site.sh`](../scripts/prepare_static_site.sh) to build `_site`, then **deploys** to the configured Pages URL. **`deploy`** has `pages: write` + `id-token: write`; workflow default is `contents: read` only. |
+| **Pull request → `main`** | Runs **`verify-static-site`** only (same script, **no** Pages/OIDC permissions), **no** publish. |
 | **`workflow_dispatch`** | **Re-deploy** production from the current `main` tip (Actions → *Deploy static content to Pages* → *Run workflow*). Use if a deploy failed or Pages was misconfigured. |
 
 ### Why the PR says “This branch has not been deployed”

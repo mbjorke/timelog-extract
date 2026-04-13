@@ -1,74 +1,13 @@
-Gittan / Timelog Extract License
-Version 1.0
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
 
-Copyright (c) 2026 Blueberry Maybe Ab Ltd. All rights reserved.
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
 
-“Software” means the Timelog Extract / Gittan project in this repository, including
-without limitation the Python package and entrypoints, supporting scripts, the
-Cursor/VS Code extension under `cursor-extension/`, and accompanying documentation,
-in source or object form.
+This project is licensed under the GNU General Public License v3.0 or later.
 
-“Sponsorship” means an active paid subscription on the Patreon (or successor
-platform) account designated by Licensor for this project, at the tier required for
-your use under the Sponsorship Terms (see below).
+SPDX-License-Identifier: GPL-3.0-or-later
 
-“Sponsorship Terms” means the file `docs/SPONSORSHIP_TERMS.md` **as it exists in the
-same revision of the Software you received** — for example the **git commit**, **release
-tag**, **source archive**, or **fork snapshot** you obtained. The applicable Sponsorship
-Terms are always the copy of `docs/SPONSORSHIP_TERMS.md` **in that tree**, not an
-unspecified “latest” file from a moving default branch. If you update your checkout to a
-newer revision, the Sponsorship Terms file in that revision may differ; the **license text**
-itself may also change for future releases (see section 5).
-
----
-
-1. **Grant.** Subject to sections 2–5, Licensor grants you a worldwide, non-exclusive,
-   royalty-free license to use, reproduce, prepare derivative works of, publicly
-   display, and distribute the Software.
-
-2. **Small-team use (no Sponsorship required).** You may use the Software without
-   Sponsorship if, for each **organization** (legal entity, or a single coordinated
-   client engagement or project team billing as one unit), **no more than two (2)
-   natural persons** use the Software in connection with their paid or professional
-   work in any rolling thirty (30) day period. Purely personal, non-commercial use
-   by an individual not acting on behalf of an organization is permitted without
-   Sponsorship.
-
-3. **Scale use (Sponsorship required).** If your use falls outside section 2 — for
-   example, more than two persons in the same organization or engagement use the
-   Software for professional work in a rolling thirty-day period — you must maintain
-   **Sponsorship at the tier** specified in the Sponsorship Terms for that situation.
-   Obtaining the Software by fork, clone, or download does not remove this obligation.
-
-4. **Redistribution and forks.** You may fork and share the Software (including
-   modifications) provided that **every** recipient receives a copy of this license
-   and the copyright notice, and that you do not misrepresent origin. Downstream
-   recipients remain bound by sections 2–3 for their use. You may not grant further
-   rights that waive sections 2–3.
-
-5. **Future versions and license changes.** Licensor may publish **later releases**
-   of the Software under **different** license terms. **This license applies only**
-   to copies that are distributed with or expressly reference this license text.
-   Licensor’s choice of terms for a new release does not revoke this license for
-   copies already validly received under this license (subject to your compliance).
-
-6. **No trademark grant.** This license does not grant permission to use trade names,
-   trademarks, or service marks of Licensor, except as required for reasonable and
-   customary use in describing origin.
-
-7. **Disclaimer of warranty.** THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF
-   ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
-   EVENT SHALL BLUEBERRY MAYBE AB LTD OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM,
-   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-   DEALINGS IN THE SOFTWARE.
-
-8. **Contributions.** If you contribute changes to this repository, you agree that
-   your contributions may be distributed under this license or a future license
-   chosen by Licensor for the Software, without further obligation beyond those terms.
-
----
-
-This is not legal advice. For questions about compliance in your jurisdiction,
-consult qualified counsel.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.

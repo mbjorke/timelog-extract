@@ -1,6 +1,6 @@
 # Gittan vision documents — how they relate
 
-Use this file as the **index** when updating marketing copy, Patreon text, or root `VISION.md` so all materials stay aligned.
+Use this file as the **index** when updating marketing copy or root `VISION.md` so all materials stay aligned.
 
 ## Precedence (source of truth)
 
@@ -18,11 +18,11 @@ If wording conflicts, use this order:
 
 | Document | Role |
 |----------|------|
-| `VISION.md` | Punchy external story: problem, three pillars, Patreon “why support” — keep brief. |
-| `docs/PATREON_POSITIONING.md` | **Draft** Patreon/funding copy, tier sketches, taglines — refine before publish; must stay consistent with 1–4 above. |
-| `docs/SPONSORSHIP_TERMS.md` | Maps team size to required Patreon tier; **referenced by** `LICENSE` (legal obligation for scale use). |
-| `docs/LICENSE_GOALS.md` | Non-binding explanation of **why** the `LICENSE` is shaped as it is (sustainability, source-available, future terms); does not replace legal text. |
-| `docs/LICENSE_DECISION_MATRIX.md` | Quick **MIT / Apache / AGPL / Elastic vs Gittan** comparison table to avoid overthinking license choice. |
+| `VISION.md` | Punchy external story: problem, three pillars, and why to support the project — keep brief. |
+| `docs/PATREON_POSITIONING.md` | **Draft** fundraising copy and sponsor positioning notes (non-binding). |
+| `docs/SPONSORSHIP_TERMS.md` | Legacy sponsorship-tier notes; no longer a legal license gate under GPL. |
+| `docs/LICENSE_GOALS.md` | Non-binding explanation of why GPL-3.0 fits sustainability/open-source strategy. |
+| `docs/LICENSE_DECISION_MATRIX.md` | Historical license comparison notes; update if licensing strategy changes. |
 | `docs/GITTAN_VISION.md` | Full vision: who it’s for, is/is not, roadmap links, decision filter. |
 | `docs/GITTAN_VISION_EN.md` | English narrative + scope pointers. |
 | `docs/GITTAN_NORTHSTAR_METRICS.md` | Metrics that operationalize the vision. |
@@ -46,4 +46,4 @@ Product docs describe **local reporting engine first**; the **Cursor extension**
 
 - Change **trust / local-first / scope** → update `GITTAN_VISION.md` first, then `VISION.md` and `GITTAN_VISION_EN.md` if needed.
 - Change **metrics or targets** → `GITTAN_NORTHSTAR_METRICS.md` (+ `ACCURACY_PLAN.md` where linked).
-- Change **Patreon or public pitch only** → update `docs/PATREON_POSITIONING.md` (draft details) and/or `VISION.md` (short manifesto); both must stay consistent with 1–4.
+- Change **fundraising or public pitch only** → update `docs/PATREON_POSITIONING.md` (draft details) and/or `VISION.md` (short manifesto); both must stay consistent with 1–4.

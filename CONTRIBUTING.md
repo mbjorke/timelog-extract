@@ -49,8 +49,6 @@ The installable **package version** lives in `pyproject.toml` and is shown by `g
 
 ## License
 
-Copyright © Blueberry Maybe Ab Ltd. The project is distributed under the **[Gittan / Timelog Extract License](LICENSE)** (a **source-available** license: full source, but **use beyond small teams** may require Patreon as described in **`docs/SPONSORSHIP_TERMS.md`**). Non-binding **intent** behind that choice is summarized in **`docs/LICENSE_GOALS.md`**.
+Copyright © Blueberry Maybe Ab Ltd. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
 
-By opening a pull request or otherwise contributing material you intend to be merged, you agree your contributions may be used and distributed under that license or under **future license terms** Blueberry Maybe Ab Ltd chooses for later releases (see `LICENSE` section 8).
-
-This is not legal advice. For business-critical decisions, consult a lawyer.
+For background on the license direction, see **`docs/LICENSE_GOALS.md`**.

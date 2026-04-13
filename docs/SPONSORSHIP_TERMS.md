@@ -1,21 +1,19 @@
 # Sponsorship terms (Patreon tier mapping)
 
-**Document version:** 1.0 (paired with **Gittan / Timelog Extract License** version 1.0 in `LICENSE`.)
-
-This file is referenced by the **`LICENSE`** in the repository root. It defines which **Patreon tier** (or successor sponsorship product) is required when use of the Software exceeds **small-team** use (see `LICENSE` section 2). **Which copy of this file applies** is determined by the **same revision of the repo** you received (commit/tag/archive), not by an unpinned “main” pointer — see the **Sponsorship Terms** definition in `LICENSE`.
+**Legacy note:** The repository now uses **GNU GPL-3.0-or-later**. This file is no longer a legal license gate; it remains as non-binding historical/fundraising notes.
 
 **Licensor:** Blueberry Maybe Ab Ltd  
 **Not legal advice.** Update this file when Patreon tiers or URLs change; **tag releases** so users and automated checks can pin terms to a revision.
 
-## Where to subscribe
+## Where to subscribe (optional support)
 
-- **Patreon:** Publish the public creator URL here before the first release that expects paid sponsorship at scale. Until then, this row may read **TBD**; the **tier table below** still defines which tier applies once the URL exists. *(Normative compliance uses this file at the repo revision you received — see `LICENSE`.)*
+- **Patreon:** Publish the public creator URL here for users who want to support development.
 
-## Tier mapping (normative for this document version; align marketing with `docs/PATREON_POSITIONING.md`)
+## Tier mapping (non-binding draft; align marketing with `docs/PATREON_POSITIONING.md`)
 
-| Professional users per org / engagement (rolling 30 days) | Required tier |
-|-------------------------------------------------------------|---------------|
-| 1–2 | None — use is covered by `LICENSE` section 2 |
+| Professional users per org / engagement (rolling 30 days) | Suggested tier |
+|-------------------------------------------------------------|----------------|
+| 1–2 | Optional support |
 | 3–15 | **Power User** tier (or the tier you designate for small teams) |
 | 16+ | **Agency / Enterprise** tier (or the tier you designate for large teams) |
 

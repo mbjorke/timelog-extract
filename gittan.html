@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timelog Setup Wizard - PREVIEW</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 780px;
+      margin: 24px auto;
+      background-color: #1e1e1e;
+      color: #cccccc;
+    }
+    h1 { font-size: 1.4rem; color: #ffffff; }
+    .card {
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background-color: #252526;
+    }
+    label { display: block; margin-top: 12px; font-weight: 600; color: #e1e1e1; }
+    input[type=text], select {
+      width: 100%;
+      margin-top: 6px;
+      padding: 8px;
+      background-color: #3c3c3c;
+      border: 1px solid #555;
+      color: white;
+      border-radius: 4px;
+    }
+    button {
+      margin-right: 8px;
+      margin-top: 16px;
+      padding: 8px 16px;
+      background-color: #007acc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0062a3; }
+    .muted { color: #888; font-size: 0.85rem; margin-top: 4px; }
+    .warning { color: #cca700; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Timelog Setup Wizard</h1>
+  <div class="card">
+    <p><strong>Consent</strong>: Timelog Extract reads local files/databases only. No cloud upload path is used in the report engine.</p>
+    <label><input id="consentAccepted" type="checkbox" /> I understand and consent to local data source scanning for this workspace.</label>
+    <p class="muted">Privacy-sensitive sources: Apple Mail, browser history, and Screen Time. Keep them off/auto unless needed.</p>
+  </div>
+  <div class="card">
+    <label for="projectsConfig">Projects config path</label>
+    <input id="projectsConfig" type="text" value="${workspaceFolder}/timelog_projects.json" />
+    <label for="worklogPath">Worklog path</label>
+    <input id="worklogPath" type="text" value="${workspaceFolder}/TIMELOG.md" />
+
+    <div style="margin-top: 15px; display: flex; gap: 20px;">
+      <label style="margin-top:0"><input id="includeUncategorized" type="checkbox" /> Include uncategorized</label>
+      <label style="margin-top:0"><input id="generatePdf" type="checkbox" checked /> Generate PDF</label>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+      <div>
+        <label for="chromeSource">Chrome source</label>
+        <select id="chromeSource">
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+      <div>
+        <label for="mailSource">Apple Mail source</label>
+        <select id="mailSource">
+          <option value="auto">auto</option>
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+      <div>
+        <label for="githubSource">GitHub source</label>
+        <select id="githubSource">
+          <option value="auto">auto</option>
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+      <div>
+        <label for="screenTime">Screen Time source</label>
+        <select id="screenTime">
+          <option value="auto">auto</option>
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="githubUser">GitHub user (optional)</label>
+    <input id="githubUser" type="text" placeholder="your-login" />
+
+    <p id="scanSummary" class="muted" style="border-top: 1px solid #444; padding-top: 10px; margin-top: 15px;">
+      Will scan with sources: chrome=on, mail=auto, github=auto, screenTime=auto.
+    </p>
+
+    <div>
+      <button>Save settings</button>
+      <button style="background-color: #333; border: 1px solid #555;">Run today</button>
+    </div>
+  </div>
+
+  <p class="muted" style="text-align: center;">(This is a static preview of the extension's Webview UI)</p>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gittan — Reconstruct your day. Locally.</title>
+  <meta name="description" content="Privacy-first, local-first CLI for automatic time tracking in the AI coding era. Stop guessing. Start billing." />
+  <meta property="og:title" content="Gittan — Reconstruct your day. Locally." />
+  <meta property="og:description" content="Stop losing hours to context switching. Gittan reconstructs your billable day from local signals — no cloud, no accounts, no excuses." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      /* Blueberry brand colors */
+      --void:         #0a0714;
+      --deep:         #100c1f;
+      --panel:        #16112b;
+      --surface:      #1e1838;
+      --border:       rgba(168,85,247,0.18);
+      --berry:        #a855f7;
+      --berry-dim:    #7c3aed;
+      --berry-bright: #c084fc;
+      --berry-glow:   rgba(168,85,247,0.22);
+      --rose:         #ec4899;
+      --text:         #f0ebff;
+      --muted:        #b2a6cf;
+      --dim:          #9182ad;
+      --cream:        #faf8ff;
+      --green:        #34d399;
+      --red:          #f87171;
+      --blue:         #60a5fa;
+      /* Terminal accent — stays amber, that's authentic */
+      --amber:        #f5a623;
+      /* Typography */
+      --sans:   'Barlow', sans-serif;
+      --cond:   'Barlow Condensed', sans-serif;
+      --mono:   'Space Mono', ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--void);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(168,85,247,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124,58,237,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 10% 80%, rgba(236,72,153,0.06) 0%, transparent 50%);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--berry-bright); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 58px;
+      background: rgba(10,7,20,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .logo-mark {
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      display: flex;
+      gap: 2px;
+    }
+
+    .logo-el {
+      border: 1px solid var(--border);
+      background: rgba(168,85,247,0.08);
+      color: var(--berry-bright);
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      line-height: 1.4;
+    }
+
+    .logo-wordmark {
+      font-family: var(--cond);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .logo-wordmark span { color: var(--berry); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      font-family: var(--cond);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .nav-btn {
+      background: var(--berry);
+      color: var(--cream) !important;
+      padding: 0.35rem 1rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      transition: background 0.15s;
+    }
+
+    .nav-btn:hover { background: var(--berry-dim) !important; text-decoration: none !important; }
+
+    /* ─── HERO ─── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 7rem 2rem 5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; padding: 4rem 1.5rem 3rem; }
+    }
+
+    .hero-eyebrow {
+      font-family: var(--cond);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--berry);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--berry) 0%, var(--rose) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      max-width: 430px;
+      font-weight: 300;
+      line-height: 1.65;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: var(--berry);
+      color: var(--cream);
+      padding: 0.65rem 1.4rem;
+      border-radius: 7px;
+      font-family: var(--cond);
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      transition: background 0.15s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-primary:hover { background: var(--berry-dim); text-decoration: none; transform: translateY(-1px); }
+
+    .btn-ghost {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.65rem 1.4rem;
+      border-radius: 7px;
+      font-family: var(--cond);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-ghost:hover { border-color: var(--berry); color: var(--berry-bright); text-decoration: none; }
+
+    /* ─── TERMINAL ─── */
+    .terminal {
+      background: var(--deep);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(168,85,247,0.06),
+        0 24px 60px rgba(0,0,0,0.55),
+        0 0 80px rgba(168,85,247,0.06);
+    }
+
+    .terminal-bar {
+      background: rgba(168,85,247,0.06);
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+    }
+
+    .td-red    { background: #ff5f57; }
+    .td-yellow { background: #febc2e; }
+    .td-green-dot { background: #28c840; }
+
+    .terminal-title {
+      font-family: var(--cond);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--dim);
+      margin-left: auto;
+      margin-right: auto;
+      letter-spacing: 0.04em;
+    }
+
+    .terminal-body {
+      padding: 1.25rem 1.4rem;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      line-height: 1.75;
+    }
+
+    .t-prompt { color: var(--berry); }
+    .t-cmd    { color: var(--text); }
+    .t-dim    { color: var(--dim); }
+    .t-green  { color: var(--green); }
+    .t-blue   { color: var(--blue); }
+    .t-amber  { color: var(--amber); }
+    .t-red    { color: var(--red); }
+    .t-berry  { color: var(--berry-bright); }
+
+    .t-rabbit { color: var(--berry-bright); line-height: 1.45; }
+
+    .t-table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+    .t-table th {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--dim);
+      padding: 0.12rem 0.7rem 0.12rem 0;
+      text-align: left;
+      font-weight: 400;
+    }
+    .t-table td {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text);
+      padding: 0.1rem 0.7rem 0.1rem 0;
+    }
+    .t-table .t-project { color: var(--berry-bright); }
+    .t-table .t-hours   { color: var(--green); }
+    .t-table .t-src     { color: var(--blue); font-size: 0.66rem; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .cursor-blink { animation: blink 1.1s step-end infinite; color: var(--berry); }
+
+    /* ─── STAT BAR ─── */
+    .stat-bar {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      background: rgba(168,85,247,0.04);
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      font-family: var(--cond);
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--dim);
+      flex-wrap: wrap;
+    }
+
+    .stat-bar strong { color: var(--berry-bright); font-weight: 700; margin-right: 0.25rem; }
+
+    /* ─── SECTIONS ─── */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5.5rem 2rem;
+    }
+
+    .section-eyebrow {
+      font-family: var(--cond);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--berry);
+      margin-bottom: 0.7rem;
+    }
+
+    h2 {
+      font-family: var(--sans);
+      font-size: clamp(1.7rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.12;
+      margin-bottom: 0.9rem;
+    }
+
+    h2 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--berry) 0%, var(--rose) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 300;
+      max-width: 500px;
+      margin-bottom: 3rem;
+      line-height: 1.65;
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ─── PROBLEM CARDS ─── */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1.25rem;
+      margin-top: 2.5rem;
+    }
+
+    .problem-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .p-icon {
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--berry);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      display: inline-block;
+      background: rgba(168,85,247,0.06);
+    }
+
+    .problem-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .problem-card p {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-weight: 300;
+    }
+
+    /* ─── FEATURES ─── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(168,85,247,0.45);
+      background: var(--surface);
+    }
+
+    .feature-icon {
+      font-family: var(--cond);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--berry);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.6rem;
+    }
+
+    .feature-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .feature-card p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-weight: 300;
+    }
+
+    /* ─── STEPS ─── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2rem;
+      counter-reset: step;
+    }
+
+    .step {
+      counter-increment: step;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+
+    .step::before {
+      content: "0" counter(step);
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--berry);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 0.6rem;
+    }
+
+    .step h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.83rem;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+      font-weight: 300;
+    }
+
+    .code-inline {
+      background: var(--deep);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.9rem;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--green);
+      display: block;
+    }
+
+    /* ─── DAI ─── */
+    .dai-header { text-align: center; margin-bottom: 3rem; }
+    .dai-subtitle {
+      font-size: 0.8rem;
+      color: var(--dim);
+      font-family: var(--cond);
+      letter-spacing: 0.04em;
+      margin-top: 0.3rem;
+    }
+
+    .dai-badge {
+      display: inline-block;
+      background: rgba(168,85,247,0.1);
+      color: var(--berry-bright);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: var(--cond);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0.15rem 0.55rem;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+      text-transform: uppercase;
+    }
+
+    .dai-table-wrap { overflow-x: auto; }
+
+    .dai-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .dai-table th {
+      padding: 0.75rem 1.25rem;
+      text-align: left;
+      font-family: var(--cond);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dim);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dai-table th.gittan-col { color: var(--berry-bright); }
+
+    .dai-table td {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 300;
+    }
+
+    .dai-table tr:last-child td { border-bottom: none; }
+
+    .dai-table td.metric-name { color: var(--text); font-weight: 500; }
+    .dai-table td.metric-sub {
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      color: var(--dim);
+      display: block;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+    }
+
+    .dai-table td.gittan-val { color: var(--green); font-weight: 700; font-family: var(--mono); font-size: 0.82rem; }
+    .dai-table td.bad-val   { color: var(--red);   font-family: var(--mono); font-size: 0.82rem; }
+    .dai-table td.mid-val   { color: #e9b95a;       font-family: var(--mono); font-size: 0.82rem; }
+
+    .dai-footnote {
+      font-family: var(--cond);
+      font-size: 0.72rem;
+      color: var(--dim);
+      margin-top: 1rem;
+      text-align: center;
+      font-style: italic;
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── PRIVACY ─── */
+    .privacy-section {
+      background: rgba(168,85,247,0.03);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .privacy-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5.5rem 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .privacy-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    }
+
+    .privacy-points {
+      list-style: none;
+      margin-top: 1.5rem;
+    }
+
+    .privacy-points li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+      font-size: 0.9rem;
+      font-weight: 300;
+      color: var(--muted);
+    }
+
+    .privacy-points li::before {
+      content: "✓";
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .privacy-terminal {
+      background: var(--deep);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      line-height: 1.85;
+      box-shadow: 0 0 40px rgba(168,85,247,0.06);
+    }
+
+    /* ─── ÅLAND ─── */
+    .aland-section {
+      background: rgba(168,85,247,0.04);
+      border-top: 1px solid var(--border);
+    }
+
+    .aland-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .aland-inner { grid-template-columns: 1fr; gap: 2rem; }
+    }
+
+    .aland-flag {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .aland-copy h2 { margin-bottom: 0.9rem; }
+    .aland-copy p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 300;
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+    }
+
+    .aland-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .aland-stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .aland-stat .stat-val {
+      font-family: var(--cond);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--berry-bright);
+      display: block;
+    }
+
+    .aland-stat .stat-label {
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      display: block;
+      margin-top: 0.2rem;
+    }
+
+    .aland-img {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 2rem;
+      position: relative;
+    }
+
+    .aland-img-placeholder {
+      font-family: var(--cond);
+      font-size: 5rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--berry) 0%, var(--rose) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      padding: 0.05em 0.05em 0.1em;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .aland-card-title {
+      font-family: var(--cond);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--berry);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .aland-coord-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.35rem;
+    }
+
+    .aland-coord-label {
+      font-family: var(--cond);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    .aland-coord-val {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--berry-bright);
+    }
+
+    .aland-facts {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .aland-fact-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.83rem;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .aland-fact-row::before {
+      content: "—";
+      color: var(--berry);
+      font-family: var(--mono);
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      margin-top: 0.12rem;
+    }
+
+    .aland-flag-line {
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      font-family: var(--cond);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .aland-img-sub {
+      font-family: var(--cond);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    .aland-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 1.5rem;
+      font-family: var(--cond);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--berry-bright);
+      border-bottom: 1px solid rgba(168,85,247,0.3);
+      padding-bottom: 0.1rem;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .aland-link:hover { color: var(--berry); border-color: var(--berry); text-decoration: none; }
+
+    /* ─── TESTIMONIALS ─── */
+    .testimonials-grid {
+      columns: 3;
+      column-gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) { .testimonials-grid { columns: 2; } }
+    @media (max-width: 560px) { .testimonials-grid { columns: 1; } }
+
+    .testimonial {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      break-inside: avoid;
+      transition: border-color 0.2s;
+    }
+
+    .testimonial:hover { border-color: rgba(168,85,247,0.4); }
+
+    .testimonial-text {
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin-bottom: 0.9rem;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .testimonial-author {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .author-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      font-family: var(--cond);
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--berry);
+      letter-spacing: 0.04em;
+    }
+
+    .author-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .author-handle {
+      font-family: var(--cond);
+      font-size: 0.72rem;
+      color: var(--dim);
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      text-align: center;
+      padding: 6rem 2rem;
+      border-top: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 300px;
+      background: radial-gradient(ellipse, rgba(168,85,247,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section h2 { max-width: 700px; margin: 0 auto 0.75rem; position: relative; }
+    .cta-section p { color: var(--dim); font-size: 0.9rem; margin-bottom: 2rem; font-family: var(--cond); letter-spacing: 0.03em; }
+
+    .cta-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-family: var(--cond);
+      font-size: 0.78rem;
+      color: var(--dim);
+      letter-spacing: 0.02em;
+    }
+
+    .footer-left { display: flex; flex-direction: column; gap: 0.2rem; }
+
+    .footer-blueberry {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+    }
+
+    .footer-bb-mark {
+      display: flex;
+      gap: 2px;
+      font-size: 0.6rem;
+      font-weight: 700;
+    }
+
+    .footer-bb-el {
+      border: 1px solid rgba(168,85,247,0.25);
+      color: var(--berry);
+      padding: 0.05rem 0.25rem;
+      border-radius: 2px;
+      background: rgba(168,85,247,0.06);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .footer-links a { color: var(--dim); font-size: 0.78rem; }
+    .footer-links a:hover { color: var(--muted); text-decoration: none; }
+
+    /* ─── TERMINAL REPLAY DEMO ─── */
+    .flow-showcase {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 4rem;
+    }
+
+    .flow-shell {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(30,24,56,0.7), rgba(10,7,20,0.92));
+      box-shadow: 0 26px 70px rgba(0,0,0,0.55), 0 0 80px rgba(168,85,247,0.08);
+      overflow: hidden;
+    }
+
+    .flow-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(168,85,247,0.07);
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      font-family: var(--cond);
+      font-size: 0.8rem;
+      color: var(--dim);
+    }
+
+    .flow-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--berry-bright);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .flow-live::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--rose);
+      box-shadow: 0 0 0 0 rgba(236,72,153,0.55);
+      animation: livePulse 1.5s infinite;
+    }
+
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(236,72,153,0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(236,72,153,0); }
+      100% { box-shadow: 0 0 0 0 rgba(236,72,153,0); }
+    }
+
+    .flow-content {
+      padding: 1rem 1rem 1.2rem;
+    }
+
+    .flow-headline {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.7rem;
+      font-family: var(--cond);
+    }
+
+    .flow-headline h3 {
+      font-size: 1rem;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .flow-headline .flow-time {
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .flow-note {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 0.85rem;
+      max-width: 760px;
+      font-weight: 300;
+    }
+
+    .flow-terminal {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(10,7,20,0.9);
+      padding: 0.85rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.72;
+      min-height: 300px;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+
+    .replay-line {
+      min-height: 1.45em;
+    }
+
+    .replay-prompt {
+      color: var(--berry);
+    }
+
+    .replay-output-dim {
+      color: var(--dim);
+    }
+
+    .replay-output-good {
+      color: var(--green);
+    }
+
+    .replay-output-info {
+      color: var(--blue);
+    }
+
+    .flow-legend {
+      margin-top: 0.75rem;
+      font-family: var(--cond);
+      font-size: 0.78rem;
+      color: var(--dim);
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .flow-legend strong {
+      color: var(--berry-bright);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-mark">
+      <span class="logo-el">Gt</span>
+    </div>
+    <div class="logo-wordmark">Git<span>tan</span></div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#how">Quick start</a></li>
+    <li><a href="#privacy">Privacy</a></li>
+    <li><a href="#aland">Åland</a></li>
+    <li><a href="https://github.com/mbjorke/timelog-extract">GitHub</a></li>
+    <li><a href="https://github.com/mbjorke/timelog-extract" class="nav-btn">Install</a></li>
+  </ul>
+</nav>
+
+<!-- ─── HERO ─── -->
+<div class="hero">
+  <div class="hero-copy">
+    <div class="hero-eyebrow">Local-first · Privacy-first · CLI</div>
+    <h1>Reconstruct<br>your day.<br><em>Locally.</em></h1>
+    <p class="hero-sub">
+      You switched contexts 47 times today.
+      How many hours will you actually bill?
+      Gittan reconstructs your day from local signals — no cloud, no accounts.
+    </p>
+    <div class="hero-actions">
+      <a href="#how" class="btn-primary">Get started →</a>
+      <a href="https://github.com/mbjorke/timelog-extract" class="btn-ghost">★ GitHub</a>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot td-red"></div>
+      <div class="terminal-dot td-yellow"></div>
+      <div class="terminal-dot td-green-dot"></div>
+      <div class="terminal-title">~/dev/my-project — gittan report --today</div>
+    </div>
+    <div class="terminal-body">
+<pre class="t-berry">   (\/)
+   (..)   &lt;- review rabbit
+    &gt;&lt;       (well-fed on good traces)
+     \
+  .----------.
+  |  GITTAN  |  local timeline → review-ready
+  '----------'</pre>
+<br>
+<span class="t-dim">Scanning local signals...</span>
+<br>
+<span class="t-green">✓</span> <span class="t-dim">cursor   </span>  <span class="t-amber">48 checkpoints</span>
+<span class="t-green">✓</span> <span class="t-dim">chrome   </span>  <span class="t-amber">31 relevant tabs</span>
+<span class="t-green">✓</span> <span class="t-dim">ai_logs  </span>  <span class="t-amber">12 claude sessions</span>
+<span class="t-green">✓</span> <span class="t-dim">timelog  </span>  <span class="t-amber">3 manual entries</span>
+<br>
+<table class="t-table">
+  <thead>
+    <tr>
+      <th>Project</th>
+      <th>Hours</th>
+      <th>Sources</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="t-project">api-v2</td>
+      <td class="t-hours">3h 40m</td>
+      <td class="t-src">cursor, chrome, ai</td>
+    </tr>
+    <tr>
+      <td class="t-project">client-portal</td>
+      <td class="t-hours">2h 15m</td>
+      <td class="t-src">cursor, timelog</td>
+    </tr>
+    <tr>
+      <td class="t-project">infra / devops</td>
+      <td class="t-hours">1h 05m</td>
+      <td class="t-src">chrome, ai</td>
+    </tr>
+  </tbody>
+</table>
+<br>
+<span class="t-green">✔</span> <span class="t-dim">Total </span><span class="t-amber">7h 00m</span> <span class="t-dim">· 3 projects</span>
+<span class="t-dim">  Invoice PDF → </span><span class="t-blue">output/timelog-2026-04-13.pdf</span>
+<br>
+<span class="t-berry">❯ </span><span class="cursor-blink">▋</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── INTERACTIVE FLOW DEMO ─── -->
+<div class="flow-showcase">
+  <div class="flow-shell">
+    <div class="flow-top">
+      <span class="flow-live">Live terminal replay</span>
+      <span>from first command to invoice artifact in &lt; 60s</span>
+    </div>
+
+    <div class="flow-content">
+      <div class="flow-headline">
+        <h3>Watch the exact CLI flow</h3>
+        <span class="flow-time">typing + output replay</span>
+      </div>
+      <p class="flow-note">No fake app UI: this demo replays a developer typing real `gittan` commands in sequence, then shows the resulting terminal output exactly where it appears.</p>
+      <div class="flow-terminal" id="terminalReplay">
+        <div class="replay-line replay-prompt" id="replayPrompt">$ <span id="replayCommand"></span><span class="cursor-blink">▋</span></div>
+        <div id="replayOutput"></div>
+      </div>
+      <div class="flow-legend">
+        <span><strong>Flow:</strong> setup → report summary → JSON truth payload → invoice PDF</span>
+        <span><strong>Loop:</strong> auto-restarts after final step</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STAT BAR ─── -->
+<div class="stat-bar">
+  <div><strong>100%</strong> local processing</div>
+  <div><strong>5</strong> signal sources</div>
+  <div><strong>0</strong> cloud uploads</div>
+  <div><strong>GPL-3.0</strong> open source</div>
+  <div><strong>Made in</strong> Åland 🇦🇽</div>
+</div>
+
+<!-- ─── THE PROBLEM ─── -->
+<section>
+  <div class="section-eyebrow">The problem</div>
+  <h2>You're building in <em>AI flow.</em><br>Your billing isn't.</h2>
+  <p class="section-sub">
+    Between Cursor, Claude, and Gemini you're building faster than ever.
+    But at the end of the month, you're estimating — and you're estimating low.
+  </p>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="p-icon">Context hell</div>
+      <h3>Five AI chats. Three windows.</h3>
+      <p>Which session was for which client? You can't remember. Gittan can.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">Under-billing</div>
+      <h3>Incomplete memory costs money</h3>
+      <p>Developers chronically under-report hours — not out of dishonesty, but because good memory requires good tools.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">Manual tracking</div>
+      <h3>Timers require you to remember</h3>
+      <p>In AI flow, nobody starts and stops a timer. Gittan reconstructs retroactively from signals you already leave behind.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">Cloud tools</div>
+      <h3>Most tools see too much</h3>
+      <p>Most time trackers sync your activity to their servers. Gittan doesn't. Your work history stays on your machine.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── HOW IT WORKS ─── -->
+<section id="how">
+  <div class="section-eyebrow">Quick start</div>
+  <h2>Install to first report<br>in <em>under 60 seconds</em></h2>
+  <p class="section-sub">Three commands. No account required. No config needed to get started.</p>
+
+  <div class="steps">
+    <div class="step">
+      <h3>Clone and install</h3>
+      <p>Requires Python 3.9+. One command installs everything.</p>
+      <code class="code-inline">pip install -e .</code>
+    </div>
+    <div class="step">
+      <h3>Run setup</h3>
+      <p>The interactive wizard walks you through project matching in about two minutes.</p>
+      <code class="code-inline">gittan setup</code>
+    </div>
+    <div class="step">
+      <h3>See your day</h3>
+      <p>Get a full breakdown of today's work by project, with optional invoice PDF.</p>
+      <code class="code-inline">gittan report --today --invoice-pdf</code>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── FEATURES ─── -->
+<section>
+  <div class="section-eyebrow">Features</div>
+  <h2>Built for <em>AI-era</em> developers</h2>
+  <p class="section-sub">Gittan understands how modern developers actually work — not how time tracking tools assume they do.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">Cursor + IDE</div>
+      <h3>Checkpoint-level accuracy</h3>
+      <p>Reads Cursor checkpoints and workspace logs. Knows what you worked on, not just when a window was open.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">AI sessions</div>
+      <h3>Claude, Gemini, OpenAI</h3>
+      <p>Detects AI sessions from local browser history. Counts prompts, not just tab opens.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">Invoice PDF</div>
+      <h3>Client-ready output</h3>
+      <p>Generate professional invoice PDFs directly from your report. No extra tools, no SaaS.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">Chrome history</div>
+      <h3>Relevant browsing only</h3>
+      <p>Identifies documentation, PR reviews, and work-related browsing. Filters noise intelligently.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">TIMELOG.md</div>
+      <h3>Git hook automation</h3>
+      <p>Automatic entries after every commit. Zero-friction manual notes when you want them.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">Doctor mode</div>
+      <h3>Full diagnostic</h3>
+      <p><code style="font-family:var(--mono);font-size:0.74rem;color:var(--berry-bright)">gittan doctor</code> — see exactly what's being picked up, what's missing, and why.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── DAI ─── -->
+<section>
+  <div class="dai-header">
+    <div class="section-eyebrow">The numbers</div>
+    <h2>Developer Amnesia Index™ <span class="dai-badge">DAI-1</span></h2>
+    <div class="dai-subtitle">Industry-standard. Peer-reviewed†.</div>
+  </div>
+
+  <div class="dai-table-wrap">
+    <table class="dai-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th class="gittan-col">Gittan</th>
+          <th>"I'll remember later"</th>
+          <th>Spreadsheet tracker</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="metric-name">Hours lost per month<span class="metric-sub">lower is better</span></td>
+          <td class="gittan-val">0.3h</td>
+          <td class="bad-val">12.4h</td>
+          <td class="mid-val">6.1h</td>
+        </tr>
+        <tr>
+          <td class="metric-name">"Which client was this?" utterances per week<span class="metric-sub">lower is better</span></td>
+          <td class="gittan-val">0.1</td>
+          <td class="bad-val">14.7</td>
+          <td class="mid-val">4.2</td>
+        </tr>
+        <tr>
+          <td class="metric-name">End-of-month invoice panic level<span class="metric-sub">lower is better</span></td>
+          <td class="gittan-val">none</td>
+          <td class="bad-val">extreme</td>
+          <td class="mid-val">moderate</td>
+        </tr>
+        <tr>
+          <td class="metric-name">Data uploaded to someone else's cloud<span class="metric-sub">lower is better</span></td>
+          <td class="gittan-val">0 bytes</td>
+          <td class="bad-val">0 bytes</td>
+          <td class="mid-val">everything</td>
+        </tr>
+        <tr>
+          <td class="metric-name">Dopamine per completed invoice<span class="metric-sub">higher is better</span></td>
+          <td class="gittan-val">9.6</td>
+          <td class="bad-val">1.4</td>
+          <td class="mid-val">4.0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dai-footnote">† Peer-reviewed by the author. n=1. p=vibes. Funded by zero venture capital.</p>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── PRIVACY ─── -->
+<div class="privacy-section" id="privacy">
+  <div class="privacy-inner">
+    <div>
+      <div class="section-eyebrow">Privacy-first architecture</div>
+      <h2>Your work history<br>stays <em>on your machine</em></h2>
+      <p style="color:var(--muted); font-size:0.92rem; font-weight:300; margin-top:0.75rem; max-width:420px; line-height:1.65;">
+        Raw activity data never leaves your computer.
+        Not for analytics. Not for features. Not for anything.
+      </p>
+      <ul class="privacy-points">
+        <li>All signal collection runs locally — Chrome history, IDE logs, AI sessions</li>
+        <li>No account required. No telemetry. No usage tracking</li>
+        <li>Optional GitHub integration uses your own token against GitHub's public API</li>
+        <li>Invoice PDFs generated on your machine — no SaaS PDF service involved</li>
+        <li>GPL-3.0 licensed — read every line if you want to</li>
+      </ul>
+    </div>
+    <div class="privacy-terminal">
+<span class="t-berry">$ gittan report --today --format json | jq '.sources'</span>
+<br>
+<span class="t-dim"># All collectors run in-process.</span>
+<span class="t-dim"># No network calls in core v1 path.</span>
+<br>
+{
+  <span class="t-green">"cursor"</span>:      <span class="t-blue">"local"</span>,
+  <span class="t-green">"chrome"</span>:      <span class="t-blue">"local SQLite"</span>,
+  <span class="t-green">"ai_logs"</span>:     <span class="t-blue">"local files"</span>,
+  <span class="t-green">"timelog"</span>:     <span class="t-blue">"local markdown"</span>,
+  <span class="t-green">"github"</span>:      <span class="t-blue">"your token → GitHub API"</span>,
+  <span class="t-green">"cloud_upload"</span>: <span class="t-red">false</span>
+}
+<br>
+<span class="t-dim"># Your data. Your machine.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ÅLAND ─── -->
+<div class="aland-section" id="aland">
+  <div class="aland-inner">
+    <div class="aland-copy">
+      <div class="section-eyebrow">Made in Åland</div>
+      <h2>Built on an island<br>in the <em>Baltic Sea</em></h2>
+      <p>
+        Gittan is made in Åland — an autonomous archipelago between Sweden and Finland
+        with its own parliament (Lagting), its own legislation, its own flag, and its own postage stamps.
+        Not a country, but not quite a region either. Something more interesting than both.
+      </p>
+      <p>
+        If you've ever considered working remotely somewhere that isn't a co-working space in a major city,
+        Åland is worth a serious look. 30,654 inhabitants across 6,700 islands,
+        clean air, and a growing number of people who build things from here.
+      </p>
+      <div class="aland-stats">
+        <div class="aland-stat">
+          <span class="stat-val">30,654</span>
+          <span class="stat-label">Inhabitants</span>
+        </div>
+        <div class="aland-stat">
+          <span class="stat-val">6,700</span>
+          <span class="stat-label">Islands</span>
+        </div>
+        <div class="aland-stat">
+          <span class="stat-val">1</span>
+          <span class="stat-label">Parliament</span>
+        </div>
+        <div class="aland-stat">
+          <span class="stat-val">🇦🇽</span>
+          <span class="stat-label">Own Flag</span>
+        </div>
+      </div>
+      <a href="https://www.alandliving.ax/sv" target="_blank" rel="noopener" class="aland-link">
+        Learn about living in Åland →
+      </a>
+    </div>
+    <div class="aland-img">
+      <div class="aland-img-placeholder">Åland</div>
+      <div class="aland-card-title">Location · Åland Islands</div>
+
+      <div class="aland-coord-row">
+        <span class="aland-coord-label">Latitude</span>
+        <span class="aland-coord-val">60.1785° N</span>
+      </div>
+      <div class="aland-coord-row">
+        <span class="aland-coord-label">Longitude</span>
+        <span class="aland-coord-val">19.9156° E</span>
+      </div>
+      <div class="aland-coord-row">
+        <span class="aland-coord-label">Sea</span>
+        <span class="aland-coord-val">Baltic</span>
+      </div>
+      <div class="aland-coord-row">
+        <span class="aland-coord-label">Status</span>
+        <span class="aland-coord-val">Autonomous</span>
+      </div>
+
+      <div class="aland-facts">
+        <div class="aland-fact-row">Own parliament — Lagting, since 1922</div>
+        <div class="aland-fact-row">Own legislation and regional autonomy</div>
+        <div class="aland-fact-row">Own flag 🇦🇽 and postage stamps</div>
+        <div class="aland-fact-row">Demilitarised zone under international law</div>
+      </div>
+
+      <div class="aland-flag-line">
+        🇦🇽 Åland — not a country, not quite a region
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TESTIMONIALS ─── -->
+<section>
+  <div class="section-eyebrow">Testimonials</div>
+  <h2>Someone said this, <em>once</em></h2>
+  <br>
+  <div class="testimonials-grid">
+
+    <div class="testimonial">
+      <p class="testimonial-text">"I invoiced 40% more last month. I didn't work more. I just finally knew what I'd actually done."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">FD</div>
+        <div>
+          <div class="author-name">Freelance Dev</div>
+          <div class="author-handle">@doing_my_best</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"It found 2.5 hours of Claude sessions I'd completely forgotten. That's real money on a client invoice."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">CO</div>
+        <div>
+          <div class="author-name">Consultant</div>
+          <div class="author-handle">@billing_by_hour</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"I was skeptical of anything that touches my browser history. Then I read the source code. Then I was fine."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">PE</div>
+        <div>
+          <div class="author-name">Paranoid Engineer</div>
+          <div class="author-handle">@read_the_source</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"My time tracking was a sticky note that said 'worked a lot'. This is an improvement."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">OP</div>
+        <div>
+          <div class="author-name">Optimist</div>
+          <div class="author-handle">@sticky_note_cto</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"No cloud. No accounts. No 'we've updated our privacy policy' emails. This is the way."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">LF</div>
+        <div>
+          <div class="author-name">Local-First Believer</div>
+          <div class="author-handle">@offline_by_choice</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"Wait, it can see how many times I prompted Claude today? That number is between me and my therapist."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">VC</div>
+        <div>
+          <div class="author-name">Vibe Coder</div>
+          <div class="author-handle">@too_many_prompts</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"Claude: I was not compensated for this testimonial. I was, however, correctly attributed 4.2 hours of pair programming."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">AI</div>
+        <div>
+          <div class="author-name">Claude</div>
+          <div class="author-handle">@claude_ai</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"I have 47 browser tabs open right now. Gittan knows which ones were actually work. I do not."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">TH</div>
+        <div>
+          <div class="author-name">Tab Hoarder</div>
+          <div class="author-handle">@47_tabs_open</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">"The review rabbit ASCII art alone is worth the install."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">AC</div>
+        <div>
+          <div class="author-name">ASCII Connoisseur</div>
+          <div class="author-handle">@art_appreciator</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── CTA ─── -->
+<div class="cta-section">
+  <div class="section-eyebrow" style="margin-bottom:0.75rem;">Ready?</div>
+  <h2>Stop guessing.<br>Start billing.<br><em>Gittan knows.</em></h2>
+  <p>GPL-3.0. Privacy-first. Local-first.</p>
+  <div class="cta-actions">
+    <a href="https://github.com/mbjorke/timelog-extract" class="btn-primary">
+      Get Gittan on GitHub →
+    </a>
+    <a href="https://github.com/sponsors/blueberry-maybe/" class="btn-ghost">
+      Support on GitHub Sponsors
+    </a>
+  </div>
+</div>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-left">
+    <div>Gittan — Made in Åland 🇦🇽</div>
+    <div class="footer-blueberry">
+      A project by
+      <a href="https://blueberry.ax" style="display:inline-flex;align-items:center;gap:0.4rem;color:inherit;text-decoration:none;">
+        <div class="footer-bb-mark">
+          <span class="footer-bb-el">Bl</span><span class="footer-bb-el">Be</span>
+        </div>
+        Blueberry Maybe Ab Ltd
+      </a>
+    </div>
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com/mbjorke/timelog-extract">GitHub</a>
+    <a href="https://github.com/mbjorke/timelog-extract/blob/main/LICENSE">License</a>
+    <a href="https://github.com/mbjorke/timelog-extract/blob/main/docs/PRIVACY_SECURITY.md">Privacy</a>
+    <a href="https://github.com/sponsors/blueberry-maybe/">Sponsors</a>
+    <a href="https://blueberry.ax">Blueberry</a>
+    <a href="https://www.alandliving.ax/sv">Åland Living</a>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    const commandEl = document.getElementById('replayCommand');
+    const outputEl = document.getElementById('replayOutput');
+    if (!commandEl || !outputEl) return;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const steps = [
+      {
+        cmd: "gittan doctor",
+        lines: [
+          { cls: "replay-output-dim", text: "Running diagnostics..." },
+          { cls: "replay-output-good", text: "✔ Worklog (Local)      Accessible" },
+          { cls: "replay-output-good", text: "✔ Chrome History       DB query successful" },
+          { cls: "replay-output-good", text: "✔ Cursor Storage       Accessible" },
+          { cls: "replay-output-good", text: "✔ Screen Time DB       DB query successful" },
+          { cls: "replay-output-dim", text: "Health check complete." }
+        ]
+      },
+      {
+        cmd: "gittan report --today --source-summary",
+        lines: [
+          { cls: "replay-output-dim", text: "Scanning: 2026-04-13 -> 2026-04-13" },
+          { cls: "replay-output-dim", text: "Source strategy: worklog-first (requested: auto)" },
+          { cls: "replay-output-dim", text: "Scanning local signals..." },
+          { cls: "replay-output-info", text: "[#####-----] cursor checkpoints" },
+          { cls: "replay-output-info", text: "[#######---] chrome relevant tabs" },
+          { cls: "replay-output-info", text: "[#########-] ai_logs + timelog" },
+          { cls: "replay-output-good", text: "✓ cursor 48 checkpoints  ✓ chrome 31 relevant tabs  ✓ ai_logs 12 sessions  ✓ timelog 3 entries" },
+          { cls: "replay-output-good", text: "Project                 Hours    Sources" },
+          { cls: "replay-output-good", text: "api-v2                  3h40m    cursor, chrome, ai" },
+          { cls: "replay-output-good", text: "client-portal           2h15m    cursor, timelog" },
+          { cls: "replay-output-good", text: "infra / devops          1h05m    chrome, ai" },
+          { cls: "replay-output-good", text: "Total                   7h00m    3 projects" }
+        ]
+      },
+      {
+        cmd: "gittan report --today --format json",
+        lines: [
+          { cls: "replay-output-info", text: '{ "schema": "timelog_extract.truth_payload", "version": "1",' },
+          { cls: "replay-output-info", text: '  "source_roles": { "primary_source": "TIMELOG.md", "mode": "worklog-first" },' },
+          { cls: "replay-output-info", text: '  "totals": { "hours_estimated": 7.0, "event_count": 91 } }' }
+        ]
+      },
+      {
+        cmd: "gittan report --today --invoice-pdf",
+        lines: [
+          { cls: "replay-output-dim", text: "Rendering invoice PDF..." },
+          { cls: "replay-output-info", text: "[##########] done" },
+          { cls: "replay-output-good", text: "✔ PDF created: output/timelog-2026-04-13.pdf" },
+          { cls: "replay-output-dim", text: "done. ship invoice with confidence." }
+        ]
+      }
+    ];
+
+    async function typeCommand(text) {
+      commandEl.textContent = "";
+      for (const ch of text) {
+        commandEl.textContent += ch;
+        await sleep(36);
+      }
+    }
+
+    function addLine(line) {
+      const row = document.createElement("div");
+      row.className = `replay-line ${line.cls}`;
+      row.textContent = line.text;
+      outputEl.appendChild(row);
+      outputEl.parentElement.scrollTop = outputEl.parentElement.scrollHeight;
+    }
+
+    async function runReplay() {
+      while (true) {
+        outputEl.innerHTML = "";
+        for (const step of steps) {
+          await typeCommand(step.cmd);
+          await sleep(620);
+          for (const line of step.lines) {
+            addLine(line);
+            await sleep(320);
+          }
+          addLine({ cls: "replay-line", text: "" });
+          await sleep(950);
+        }
+        await sleep(2200);
+      }
+    }
+
+    runReplay();
+  })();
+</script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 **Reviewer:** Claude (claude/gittan-launch-review-4a5DD)  
 **Scope:** Code quality + business strategy review for v1 launch readiness
 
+> Historical note: this review predates the later repository-wide move to GPL-3.0-or-later.
+
 ---
 
 ## Executive Summary

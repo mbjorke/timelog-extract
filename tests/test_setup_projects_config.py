@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -50,6 +51,29 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 self.assertEqual(len(backups), 1)
                 recreated = json.loads(cfg.read_text(encoding="utf-8"))
                 self.assertEqual(recreated["projects"][0]["name"], "default-project")
+            finally:
+                os.chdir(prev)
+
+    def test_bootstrap_uses_git_aware_defaults_when_available(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prev = Path.cwd()
+            try:
+                os.chdir(tmp)
+                subprocess.run(["git", "init"], check=True, capture_output=True, text=True)
+                subprocess.run(
+                    ["git", "remote", "add", "origin", "https://github.com/example/acme-tools.git"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                result = _ensure_minimal_projects_config(Console(record=True), yes=True, dry_run=False)
+                self.assertEqual(result, "PASS")
+                payload = json.loads((Path(tmp) / "timelog_projects.json").read_text(encoding="utf-8"))
+                project = payload["projects"][0]
+                self.assertEqual(project["name"], "acme-tools")
+                self.assertEqual(project["customer"], "example")
+                self.assertIn("acme-tools", project["match_terms"])
+                self.assertIn("example/acme-tools", project["match_terms"])
             finally:
                 os.chdir(prev)
 

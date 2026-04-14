@@ -43,6 +43,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             0,
             msg=completed.stderr or completed.stdout,
         )
+        self.assertIn("Next steps", completed.stdout)
         self.assertIn("Gittan Health Check", completed.stdout)
 
     def test_core_cli_py_compiles(self):
@@ -80,6 +81,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             0,
             msg=completed.stderr or completed.stdout,
         )
+        self.assertIn("Next steps", completed.stdout)
         self.assertIn("Setup wizard completed.", completed.stdout)
 
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
@@ -128,6 +130,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as tmp:
             doc = run_timed("doctor", [sys.executable, str(ENTRY), "doctor"], tmp)
+            self.assertIn("Next steps", doc.stdout)
             self.assertIn("Gittan Health Check", doc.stdout)
 
 

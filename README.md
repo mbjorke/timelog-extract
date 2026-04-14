@@ -98,11 +98,13 @@ Publishing checklist: [`docs/VERSIONING.md`](docs/VERSIONING.md).
    ```bash
    gittan doctor
    ```
+   `gittan doctor` ends with the most useful next command to run for your current setup.
 2. **First-time setup** — wizard for environment, optional global `TIMELOG.md` hooks, and `timelog_projects.json`:
    ```bash
    gittan setup --dry-run    # preview
    gittan setup              # interactive
    ```
+   `gittan setup` now closes with copyable next steps so the first real report is obvious.
 3. **First report** — today’s activity:
    ```bash
    gittan report --today --source-summary

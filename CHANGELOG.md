@@ -2,10 +2,7 @@
 
 ## Unreleased
 
-- Nothing yet.
-
-## 0.2.5rc1 - 2026-04-14
-
+- Docs: **`docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). **`AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
 - CI: **`static.yml`** — minimal workflow `permissions`; **`pages: write`** + **`id-token: write`** only on **`deploy`**. Shared site build in **`scripts/prepare_static_site.sh`** (verify + deploy). **`gittan doctor`**: shell-agnostic PATH hints; narrow **`except`** + **`logging`** when probing pip `--user` bin.
 - Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/OPPORTUNITIES.md`, `docs/LINKEDIN_PILOT_POSTS.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
 - UX: **`gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + **`gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.

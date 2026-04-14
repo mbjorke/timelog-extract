@@ -5,6 +5,11 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 
+PROJECT_STATUS_PASS = "PASS"
+PROJECT_STATUS_FAIL = "FAIL"
+PROJECT_STATUS_SKIPPED = "SKIPPED"
+PROJECT_STATUS_ACTION_REQUIRED = "ACTION_REQUIRED"
+
 
 def build_doctor_next_steps(
     *,
@@ -53,13 +58,13 @@ def build_setup_next_steps(
         steps.append("After setup, run `gittan report --today --source-summary` for a first report.")
         return steps
 
-    if doctor_status == "ACTION_REQUIRED":
+    if doctor_status == PROJECT_STATUS_ACTION_REQUIRED:
         steps.append("Rerun `gittan doctor` and follow the missing-path or permission hints it prints.")
-    if projects_status == "FAIL":
+    if projects_status == PROJECT_STATUS_FAIL:
         steps.append("Run `gittan projects` to repair project entries, then verify `match_terms`, worklog path, and local file permissions.")
-    if projects_status in {"SKIPPED", "ACTION_REQUIRED"}:
+    if projects_status in {PROJECT_STATUS_SKIPPED, PROJECT_STATUS_ACTION_REQUIRED}:
         steps.append("Use `gittan projects` to review project names, match terms, and the configured worklog path.")
-    if smoke_status in {"FAIL", "ACTION_REQUIRED", "SKIPPED"}:
+    if smoke_status in {PROJECT_STATUS_FAIL, PROJECT_STATUS_ACTION_REQUIRED, PROJECT_STATUS_SKIPPED}:
         steps.append("Run `gittan report --today --source-summary` to confirm you get a useful local report.")
     if not steps:
         steps.append("Run `gittan report --today --source-summary` for your first report.")

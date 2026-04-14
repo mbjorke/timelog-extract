@@ -49,6 +49,40 @@ class SetupRepoBootstrapTests(unittest.TestCase):
             self.assertIn(nested.resolve(), repos)
             self.assertNotIn(too_deep.resolve(), repos)
 
+    def test_discover_local_git_repos_filters_noise_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            valid_repo = root / "work" / "client-repo"
+            valid_repo.mkdir(parents=True)
+            (valid_repo / ".git").mkdir()
+            noise_vendor = root / "vendor-tools" / "vendor-repo"
+            noise_vendor.mkdir(parents=True)
+            (noise_vendor / ".git").mkdir()
+            noise_tmp = root / "scratch-tmp" / "tmp-repo"
+            noise_tmp.mkdir(parents=True)
+            (noise_tmp / ".git").mkdir()
+            hidden_noise = root / ".claude" / "repo"
+            hidden_noise.mkdir(parents=True)
+            (hidden_noise / ".git").mkdir()
+
+            repos = discover_local_git_repos(root, max_depth=3)
+            self.assertIn(valid_repo.resolve(), repos)
+            self.assertNotIn(noise_vendor.resolve(), repos)
+            self.assertNotIn(noise_tmp.resolve(), repos)
+            self.assertNotIn(hidden_noise.resolve(), repos)
+
+    def test_discover_local_git_repos_avoids_nested_duplicates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parent_repo = root / "mono"
+            (parent_repo / ".git").mkdir(parents=True)
+            nested_repo = parent_repo / "services" / "api"
+            (nested_repo / ".git").mkdir(parents=True)
+
+            repos = discover_local_git_repos(root, max_depth=4)
+            self.assertIn(parent_repo.resolve(), repos)
+            self.assertNotIn(nested_repo.resolve(), repos)
+
     def test_merge_repo_project_seeds_updates_terms_without_overwrite(self):
         payload = {
             "worklog": "TIMELOG.md",

@@ -16,6 +16,8 @@ from textwrap import dedent
 import questionary
 import typer
 
+from core.onboarding_guidance import build_setup_next_steps, print_next_steps
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GITTAN_CONFIG_DIR = Path.home() / ".gittan"
 GITTAN_SCOPE_FILE = GITTAN_CONFIG_DIR / "timelog_repos.txt"
@@ -447,6 +449,7 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     summary_rows.append(("Project config bootstrap", projects_status, "Checked existing config and offered minimal bootstrap."))
     doctor_status = _run_doctor_check(console, dry_run=dry_run)
     summary_rows.append(("Doctor check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
+    smoke_status = "SKIPPED"
     if skip_smoke:
         console.print("[yellow]Skipped smoke report (--skip-smoke).[/yellow]")
         summary_rows.append(("Smoke report", "SKIPPED", "Skipped via --skip-smoke flag."))
@@ -458,6 +461,7 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
         else:
             console.print("[yellow]Skipped smoke report.[/yellow]")
             summary_rows.append(("Smoke report", "SKIPPED", "User skipped this step."))
+            smoke_status = "SKIPPED"
     summary_table = Table(title="Setup summary")
     summary_table.add_column("Step", style="cyan")
     summary_table.add_column("Result")
@@ -474,4 +478,14 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
         summary_table.add_row(step, f"[{style}]{result}[/{style}]", notes)
     console.print("\n")
     console.print(summary_table)
+    console.print("\n")
+    print_next_steps(
+        console,
+        build_setup_next_steps(
+            dry_run=dry_run,
+            projects_status=projects_status,
+            doctor_status=doctor_status,
+            smoke_status=smoke_status,
+        ),
+    )
     console.print("\n[green]Setup wizard completed.[/green]")

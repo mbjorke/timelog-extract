@@ -22,11 +22,11 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
+from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
 _DOCTOR_LOG = logging.getLogger(__name__)
 
 
@@ -72,14 +72,14 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
     gittan_exe = shutil.which("gittan")
     if gittan_exe:
         table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
-        return
+        return True
     if sys.platform == "win32":
         table.add_row(
             "CLI (gittan on PATH)",
             WARN_ICON,
             f"[{STYLE_MUTED}]Not on PATH. Add Python [bold]Scripts[/bold] to PATH or use [bold]py -m pip install --user[/bold]; see README.[/{STYLE_MUTED}]",
         )
-        return
+        return False
     hints: list[str] = []
     profile = _shell_profile_hint()
     try:
@@ -101,12 +101,9 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
     if hints:
         detail = " ".join(hints)
     else:
-        detail = (
-            f"[{STYLE_MUTED}]`gittan` not on PATH and no known script in user/bin or pipx. "
-            f"Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
-        )
+        detail = f"[{STYLE_MUTED}]`gittan` not on PATH and no known script in user/bin or pipx. Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
     table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
-
+    return False
 
 @app.command()
 def doctor(
@@ -184,9 +181,9 @@ def doctor(
                 os.unlink(tmp.name)
 
     with console.status("[bold #b7aed3]Running diagnostics..."):
-        _add_cli_path_rows(table, home=home)
-        check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
-        check_file(worklog_path, "Worklog (Local)")
+        cli_on_path = _add_cli_path_rows(table, home=home)
+        project_config_ok = check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
+        worklog_ok = check_file(worklog_path, "Worklog (Local)")
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
@@ -236,6 +233,16 @@ def doctor(
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"
+    )
+    print_next_steps(
+        console,
+        build_doctor_next_steps(
+            cli_on_path=cli_on_path,
+            projects_config_ok=project_config_ok,
+            worklog_ok=worklog_ok,
+            config_path=REPO_ROOT / "timelog_projects.json",
+            worklog_path=worklog_path,
+        ),
     )
 
 

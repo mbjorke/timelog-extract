@@ -30,8 +30,14 @@ class SetupProjectsConfigTests(unittest.TestCase):
                     ),
                     encoding="utf-8",
                 )
-                result = _ensure_minimal_projects_config(Console(record=True), yes=True, dry_run=False)
-                self.assertEqual(result, "PASS")
+                status, notes, _steps = _ensure_minimal_projects_config(
+                    Console(record=True),
+                    yes=True,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                )
+                self.assertEqual(status, "PASS")
+                self.assertIn("discovered=0", notes)
                 payload = json.loads(cfg.read_text(encoding="utf-8"))
                 self.assertEqual(payload["projects"][0]["name"], "keep-me")
                 self.assertEqual(list(Path(tmp).glob("timelog_projects.backup-*.json")), [])
@@ -45,8 +51,14 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 os.chdir(tmp)
                 cfg = Path(tmp) / "timelog_projects.json"
                 cfg.write_text("{not valid json", encoding="utf-8")
-                result = _ensure_minimal_projects_config(Console(record=True), yes=True, dry_run=False)
-                self.assertEqual(result, "PASS")
+                status, notes, _steps = _ensure_minimal_projects_config(
+                    Console(record=True),
+                    yes=True,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                )
+                self.assertEqual(status, "PASS")
+                self.assertIn("fallback profile used", notes)
                 backups = list(Path(tmp).glob("timelog_projects.backup-*.json"))
                 self.assertEqual(len(backups), 1)
                 recreated = json.loads(cfg.read_text(encoding="utf-8"))
@@ -66,8 +78,14 @@ class SetupProjectsConfigTests(unittest.TestCase):
                     capture_output=True,
                     text=True,
                 )
-                result = _ensure_minimal_projects_config(Console(record=True), yes=True, dry_run=False)
-                self.assertEqual(result, "PASS")
+                status, notes, _steps = _ensure_minimal_projects_config(
+                    Console(record=True),
+                    yes=True,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                )
+                self.assertEqual(status, "PASS")
+                self.assertIn("discovered=1", notes)
                 payload = json.loads((Path(tmp) / "timelog_projects.json").read_text(encoding="utf-8"))
                 project = payload["projects"][0]
                 self.assertEqual(project["name"], "acme-tools")

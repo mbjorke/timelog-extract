@@ -15,9 +15,8 @@ from textwrap import dedent
 
 import questionary
 import typer
-
-from core.git_project_bootstrap import discover_git_project_hints
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
+from core.setup_projects_config_bootstrap import ensure_projects_config
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GITTAN_CONFIG_DIR = Path.home() / ".gittan"
@@ -303,60 +302,23 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         else:
             console.print("- repo scope = all git repositories")
     console.print("\nReference: `GLOBAL_TIMELOG_AUTOMATION.md`")
-def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str:
-    config_path = Path.cwd() / "timelog_projects.json"
-    if config_path.exists():
-        try:
-            current_payload = json.loads(config_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            current_payload = None
-        if _looks_like_projects_config(current_payload):
-            console.print(f"[green]Project config exists:[/green] {config_path}")
-            return "PASS (dry-run)" if dry_run else "PASS"
-        console.print(f"[yellow]Project config looks invalid:[/yellow] {config_path}")
-        should_repair = yes or questionary.confirm(
-            f"Backup and recreate minimal project config at {config_path}?",
-            default=False,
-        ).ask()
-        if not should_repair:
-            console.print("[yellow]Keeping current project config unchanged.[/yellow]")
-            return "ACTION_REQUIRED"
-        backup_path = _timestamped_backup_path(config_path)
-        if dry_run:
-            console.print(f"[yellow]Dry run:[/yellow] would create backup {backup_path}")
-            console.print(f"[yellow]Dry run:[/yellow] would recreate {config_path}")
-            return "PASS (dry-run)"
-        shutil.copy2(config_path, backup_path)
-        console.print(f"[green]Created backup:[/green] {backup_path}")
-    should_create = yes or questionary.confirm(f"Create minimal project config at {config_path}?", default=True).ask()
-    if not should_create:
-        console.print("[yellow]Skipped project config bootstrap.[/yellow]")
-        return "SKIPPED"
-    hints = discover_git_project_hints(Path.cwd())
-    if hints is not None:
-        project_name = hints.project_name
-        customer = hints.customer
-        keywords = ", ".join(hints.match_terms)
-        console.print(
-            "[cyan]Git-aware defaults:[/cyan] "
-            f"project=`{project_name}`, customer=`{customer}`, match_terms=`{keywords}`"
-        )
-    else:
-        project_name, customer, keywords = "default-project", "Default Customer", "default"
-    if not yes:
-        project_name = questionary.text("Project name:", default=project_name).ask() or project_name
-        customer = questionary.text("Customer name:", default=customer).ask() or customer
-        keywords = questionary.text("Match terms (comma separated):", default=keywords).ask() or keywords
-    payload = {
-        "worklog": "TIMELOG.md",
-        "projects": [{"name": project_name, "customer": customer, "match_terms": [k.strip() for k in keywords.split(",") if k.strip()], "tracked_urls": [], "email": "", "invoice_title": "", "invoice_description": "", "enabled": True}],
-    }
-    if dry_run:
-        console.print(f"[yellow]Dry run:[/yellow] would create {config_path}")
-        return "PASS (dry-run)"
-    config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    console.print(f"[green]Created minimal project config:[/green] {config_path}")
-    return "PASS"
+def _ensure_minimal_projects_config(
+    console,
+    *,
+    yes: bool,
+    dry_run: bool,
+    bootstrap_root: str | None = None,
+) -> tuple[str, str, list[str]]:
+    result = ensure_projects_config(
+        console=console,
+        yes=yes,
+        dry_run=dry_run,
+        bootstrap_root=bootstrap_root,
+        config_path=Path.cwd() / "timelog_projects.json",
+        timestamped_backup_path_fn=_timestamped_backup_path,
+        looks_like_projects_config_fn=_looks_like_projects_config,
+    )
+    return result.status, result.notes, result.next_steps
 def _print_environment_status(console) -> None:
     from rich.table import Table
 
@@ -437,12 +399,13 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
         return "ACTION_REQUIRED"
 
 
-def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> None:
+def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, bootstrap_root: str | None = None) -> None:
     from rich.table import Table
 
     console.print("[bold cyan]Gittan setup wizard[/bold cyan]")
     console.print("Guided onboarding for local-first timelog reporting.\n")
     summary_rows: list[tuple[str, str, str]] = []
+    next_steps: list[str] = []
     _print_environment_status(console)
     summary_rows.append(("Environment checks", "PASS", "Printed PATH and optional env status."))
     should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
@@ -452,8 +415,14 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     else:
         console.print("[yellow]Skipped global timelog automation.[/yellow]")
         summary_rows.append(("Global timelog automation", "SKIPPED", "User skipped this step."))
-    projects_status = _ensure_minimal_projects_config(console, yes=yes, dry_run=dry_run)
-    summary_rows.append(("Project config bootstrap", projects_status, "Checked existing config and offered minimal bootstrap."))
+    projects_status, projects_note, project_steps = _ensure_minimal_projects_config(
+        console,
+        yes=yes,
+        dry_run=dry_run,
+        bootstrap_root=bootstrap_root,
+    )
+    summary_rows.append(("Project config bootstrap", projects_status, projects_note))
+    next_steps.extend(project_steps)
     doctor_status = _run_doctor_check(console, dry_run=dry_run)
     summary_rows.append(("Doctor check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
     smoke_status = "SKIPPED"
@@ -486,13 +455,13 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     console.print("\n")
     console.print(summary_table)
     console.print("\n")
-    print_next_steps(
-        console,
+    next_steps.extend(
         build_setup_next_steps(
             dry_run=dry_run,
             projects_status=projects_status,
             doctor_status=doctor_status,
             smoke_status=smoke_status,
-        ),
+        )
     )
+    print_next_steps(console, list(dict.fromkeys(next_steps)))
     console.print("\n[green]Setup wizard completed.[/green]")

@@ -45,9 +45,14 @@ def setup_wizard(
         "--skip-smoke",
         help="Skip final smoke report step.",
     ),
+    bootstrap_root: str | None = typer.Option(
+        None,
+        "--bootstrap-root",
+        help="Root directory to scan for nearby git repositories during project bootstrap.",
+    ),
 ):
     """Run full onboarding: environment, timelog automation, config, doctor, and smoke test."""
     from rich.console import Console
 
     console = Console()
-    run_setup_wizard(console, yes=yes, dry_run=dry_run, skip_smoke=skip_smoke)
+    run_setup_wizard(console, yes=yes, dry_run=dry_run, skip_smoke=skip_smoke, bootstrap_root=bootstrap_root)

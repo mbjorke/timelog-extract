@@ -120,6 +120,7 @@ Publishing checklist: [`docs/VERSIONING.md`](docs/VERSIONING.md).
 |------|---------|
 | Full report (prompts for range if you omit dates) | `gittan report` |
 | Today / last week / custom range | `gittan report --today` · `--last-week` · `--from 2026-04-01 --to 2026-04-30` |
+| Guided cleanup of uncategorized activity | `gittan review --today --uncategorized` |
 | Quick hours overview | `gittan status --today` |
 | Source mix / empty collectors | `gittan sources` (and `docs/SOURCES_AND_FLAGS.md`) |
 | Edit projects JSON | `gittan projects` |

@@ -103,3 +103,75 @@ def load_profiles(config_path, args):
         }
     )
     return [fallback], None, {}
+
+
+def load_projects_config_payload(config_path: Path) -> dict:
+    if config_path.exists():
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            data = {"projects": data}
+        if not isinstance(data, dict):
+            raise ValueError("projects config must be an object or list")
+        data.setdefault("projects", [])
+        return data
+    return {"projects": [], "worklog": "TIMELOG.md"}
+
+
+def save_projects_config_payload(config_path: Path, payload: dict) -> None:
+    config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def apply_rule_to_project(
+    payload: dict,
+    *,
+    project_name: str,
+    rule_type: str,
+    rule_value: str,
+) -> tuple[str, str, bool]:
+    cleaned_name = str(project_name).strip()
+    if not cleaned_name:
+        raise ValueError("project_name is required")
+    cleaned_value = str(rule_value).strip()
+    if not cleaned_value:
+        raise ValueError("rule_value is required")
+    if rule_type not in {"match_terms", "tracked_urls"}:
+        raise ValueError(f"unsupported rule_type: {rule_type}")
+
+    projects = payload.setdefault("projects", [])
+    if not isinstance(projects, list):
+        raise ValueError("payload.projects must be a list")
+
+    target: dict | None = None
+    for project in projects:
+        if str(project.get("name", "")).strip() == cleaned_name:
+            target = project
+            break
+
+    created = False
+    if target is None:
+        created = True
+        target = {
+            "name": cleaned_name,
+            "customer": cleaned_name,
+            "match_terms": [cleaned_name],
+            "tracked_urls": [],
+            "email": "",
+            "invoice_title": "",
+            "invoice_description": "",
+            "enabled": True,
+        }
+        projects.append(target)
+
+    values = as_list(target.get(rule_type))
+    values.append(cleaned_value)
+    target[rule_type] = sorted({value for value in values if value})
+
+    normalized = normalize_profile(target)
+    normalized["enabled"] = bool(target.get("enabled", True))
+    normalized["email"] = str(target.get("email", "")).strip()
+    normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
+    normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()
+    normalized["customer"] = str(target.get("customer", "")).strip() or cleaned_name
+    target.clear()
+    target.update(normalized)
+    return rule_type, cleaned_value, created

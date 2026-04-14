@@ -33,7 +33,7 @@ _SKIP_DIRS = {
     "Library",
 }
 
-_SKIP_PARTIALS = ("cache", "tmp", "temp", "vendor", "import", "worktree")
+_SKIP_PARTIALS = {"cache", "tmp", "temp", "vendor", "import", "worktree"}
 
 
 @dataclass(frozen=True)
@@ -192,7 +192,9 @@ def discover_local_git_repos(root: Path, *, max_depth: int = 2, limit: int = 40)
             child_name = child.name.lower()
             if child_name.startswith(".") or child.name in _SKIP_DIRS:
                 continue
-            if any(partial in child_name for partial in _SKIP_PARTIALS):
+            # Token-aware matching: split by non-alphanumeric delimiters and check whole-token equality
+            tokens = re.split(r'[^a-z0-9]+', child_name)
+            if any(token in _SKIP_PARTIALS for token in tokens if token):
                 continue
             queue.append((child, depth + 1))
     return repos

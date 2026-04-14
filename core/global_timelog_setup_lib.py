@@ -160,8 +160,15 @@ def _discover_git_repos(console) -> list[Path]:
     if not unique:
         console.print("[yellow]Repository scan found no candidates in common workspace roots.[/yellow]")
         return []
-    console.print(f"[green]Repository scan complete:[/green] {len(unique[:120])} candidate repos available for selection.")
-    return unique[:120]
+    # Filter out nested repositories: remove ancestor paths if their nested children are present
+    filtered: list[Path] = []
+    for p in unique:
+        # Drop p if there exists another path q where q is relative to p (i.e., p is an ancestor of q)
+        is_ancestor = any(q != p and p in q.parents for q in unique)
+        if not is_ancestor:
+            filtered.append(p)
+    console.print(f"[green]Repository scan complete:[/green] {len(filtered[:120])} candidate repos available for selection.")
+    return filtered[:120]
 
 
 def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> None:

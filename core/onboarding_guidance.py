@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 
@@ -17,7 +18,7 @@ def build_doctor_next_steps(
     if not projects_config_ok or not worklog_ok:
         steps.append("Run `gittan setup` for the guided path through config bootstrap, diagnostics, and a smoke report.")
     if not projects_config_ok:
-        steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {config_path}`.")
+        steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {shlex.quote(str(config_path))}`.")
     if not worklog_ok:
         steps.append(
             f"Create `{worklog_path}` or point Gittan at another file with `--worklog /path/to/TIMELOG.md`."

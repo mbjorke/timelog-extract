@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,36 +11,46 @@ from core.onboarding_guidance import build_doctor_next_steps, build_setup_next_s
 
 class DoctorNextStepsTests(unittest.TestCase):
     def test_doctor_recommends_setup_when_basics_are_missing(self):
-        steps = build_doctor_next_steps(
-            cli_on_path=False,
-            projects_config_ok=False,
-            worklog_ok=False,
-            config_path=Path("/tmp/timelog_projects.json"),
-            worklog_path=Path("/tmp/TIMELOG.md"),
-        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            config_path = tmp_path / "timelog_projects.json"
+            worklog_path = tmp_path / "TIMELOG.md"
 
-        joined = "\n".join(steps)
-        self.assertIn("gittan setup", joined)
-        self.assertIn("gittan projects --config /tmp/timelog_projects.json", joined)
-        self.assertIn("/tmp/TIMELOG.md", joined)
-        self.assertIn("pipx ensurepath", joined)
+            steps = build_doctor_next_steps(
+                cli_on_path=False,
+                projects_config_ok=False,
+                worklog_ok=False,
+                config_path=config_path,
+                worklog_path=worklog_path,
+            )
+
+            joined = "\n".join(steps)
+            self.assertIn("gittan setup", joined)
+            self.assertIn(f"gittan projects --config {config_path}", joined)
+            self.assertIn(str(worklog_path), joined)
+            self.assertIn("pipx ensurepath", joined)
 
     def test_doctor_recommends_first_report_when_ready(self):
-        steps = build_doctor_next_steps(
-            cli_on_path=True,
-            projects_config_ok=True,
-            worklog_ok=True,
-            config_path=Path("/tmp/timelog_projects.json"),
-            worklog_path=Path("/tmp/TIMELOG.md"),
-        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            config_path = tmp_path / "timelog_projects.json"
+            worklog_path = tmp_path / "TIMELOG.md"
 
-        self.assertEqual(
-            steps,
-            [
-                "Run `gittan report --today --source-summary` for a first local report.",
-                "Use `gittan projects` if you want to refine project matching before reporting.",
-            ],
-        )
+            steps = build_doctor_next_steps(
+                cli_on_path=True,
+                projects_config_ok=True,
+                worklog_ok=True,
+                config_path=config_path,
+                worklog_path=worklog_path,
+            )
+
+            self.assertEqual(
+                steps,
+                [
+                    "Run `gittan report --today --source-summary` for a first local report.",
+                    "Use `gittan projects` if you want to refine project matching before reporting.",
+                ],
+            )
 
 
 class SetupNextStepsTests(unittest.TestCase):

@@ -41,6 +41,18 @@
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
 
+## Solo-first cloud delivery stance
+
+- **Preferred near-term shape:** local-first preparation in Gittan, optional cloud
+  delivery through a middle layer (Lovable) for drafting, styling, recipient handling,
+  and email send workflow.
+- **Why now:** this keeps user control explicit (review before upload, explicit send),
+  while avoiding early complexity from broad inbound API design and long-lived tokens.
+- **Promise boundary:** do not imply automatic background sync; frame this as
+  user-triggered export/upload and draft-first cloud workflow.
+- **Out of scope for this phase:** generic query API surface, bi-directional sync, and
+  enterprise-grade multi-tenant auth/permission systems.
+
 ---
 
 ## Differentiation (honest)

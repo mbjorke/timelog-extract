@@ -26,8 +26,9 @@ class DoctorNextStepsTests(unittest.TestCase):
             )
 
             joined = "\n".join(steps)
-            self.assertIn("gittan setup", joined)
-            self.assertIn(f"gittan projects --config {config_path}", joined)
+            self.assertNotIn("gittan setup", joined)
+            self.assertNotIn("gittan projects --config", joined)
+            self.assertIn(f"Create `{config_path.name}`", joined)
             self.assertIn(str(worklog_path), joined)
             self.assertIn("repo-specific `match_terms`", joined)
             self.assertIn("pipx ensurepath", joined)
@@ -97,8 +98,22 @@ class SetupNextStepsTests(unittest.TestCase):
 
         joined = "\n".join(steps)
         self.assertIn("gittan doctor", joined)
-        self.assertIn("gittan projects", joined)
         self.assertIn("gittan report --today --source-summary", joined)
+
+    def test_setup_live_all_pass_prefers_first_report_fallback(self):
+        steps = build_setup_next_steps(
+            dry_run=False,
+            projects_status="PASS",
+            doctor_status="PASS",
+            smoke_status="PASS",
+        )
+        self.assertEqual(
+            steps,
+            [
+                "Run `gittan report --today --source-summary` for your first report.",
+                "Use `gittan projects` later if you want to refine project matching.",
+            ],
+        )
 
 
 if __name__ == "__main__":

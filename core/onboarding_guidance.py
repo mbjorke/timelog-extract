@@ -17,15 +17,20 @@ def build_doctor_next_steps(
 ) -> list[str]:
     steps: list[str] = []
     if not projects_config_ok:
-        steps.append("Run `gittan setup` for the guided path through config bootstrap, diagnostics, and a smoke report.")
-    if not projects_config_ok:
-        steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {shlex.quote(str(config_path))}`.")
+        if cli_on_path:
+            steps.append("Run `gittan setup` for the guided path through config bootstrap, diagnostics, and a smoke report.")
+            steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {shlex.quote(str(config_path))}`.")
+        else:
+            steps.append(f"Create `{config_path.name}` in this repository with at least one enabled project profile.")
     if not worklog_ok:
         steps.append(
             f"Create `{worklog_path}` or point Gittan at another file with `--worklog {shlex.quote(str(worklog_path))}`."
         )
     if not match_terms_ok:
-        steps.append("Use `gittan projects` to add repo-specific `match_terms` so activity in this repo classifies cleanly.")
+        if cli_on_path:
+            steps.append("Use `gittan projects` to add repo-specific `match_terms` so activity in this repo classifies cleanly.")
+        else:
+            steps.append("Add repo-specific `match_terms` in your project config so activity in this repo classifies cleanly.")
     if not cli_on_path:
         steps.append("Run `pipx ensurepath`, reload your shell, then rerun `gittan doctor`.")
     if not steps:
@@ -50,7 +55,9 @@ def build_setup_next_steps(
 
     if doctor_status == "ACTION_REQUIRED":
         steps.append("Rerun `gittan doctor` and follow the missing-path or permission hints it prints.")
-    if projects_status in {"PASS", "SKIPPED", "ACTION_REQUIRED"}:
+    if projects_status == "FAIL":
+        steps.append("Run `gittan projects` to repair project entries, then verify `match_terms`, worklog path, and local file permissions.")
+    if projects_status in {"SKIPPED", "ACTION_REQUIRED"}:
         steps.append("Use `gittan projects` to review project names, match terms, and the configured worklog path.")
     if smoke_status in {"FAIL", "ACTION_REQUIRED", "SKIPPED"}:
         steps.append("Run `gittan report --today --source-summary` to confirm you get a useful local report.")

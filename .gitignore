@@ -19,6 +19,8 @@ TIMELOG.md
 
 # Local business / pitch notes (never commit)
 private/
+.claude/
+.tmp/
 
 # Generated reports/artifacts
 output/

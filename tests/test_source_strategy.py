@@ -30,6 +30,8 @@ class SourceStrategyTests(unittest.TestCase):
             projects_config="timelog_projects.json",
             date_from="2026-04-01",
             date_to="2026-04-01",
+            include_uncategorized=False,
+            source_summary=False,
             quiet=True,
         )
 
@@ -79,7 +81,6 @@ class SourceStrategyTests(unittest.TestCase):
                 want_log_fn=lambda _a: False,
             )
             self.assertEqual(ctx.source_strategy_effective, "balanced")
-
 
 if __name__ == "__main__":
     unittest.main()

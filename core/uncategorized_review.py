@@ -39,7 +39,9 @@ def _extract_domain(text: str) -> str:
     match = _URL_RE.search(text or "")
     if not match:
         return ""
-    host = urlparse(match.group(0)).netloc.lower().strip()
+    host = urlparse(match.group(0)).netloc
+    # Strip common surrounding punctuation characters
+    host = host.strip('.,;:)(\u005d}"\u0027').lower().strip()
     if host.startswith("www."):
         host = host[4:]
     return host
@@ -76,13 +78,17 @@ def build_uncategorized_clusters(
     clusters: list[UncategorizedCluster] = []
     for (rule_type, rule_value, source), grouped_events in grouped.items():
         sample_values: list[str] = []
-        for event in grouped_events:
-            detail = str(event.get("detail") or "").strip()
-            if not detail or detail in sample_values:
-                continue
-            sample_values.append(detail)
-            if len(sample_values) >= samples_per_cluster:
-                break
+        if samples_per_cluster == 0:
+            # Skip collecting samples if limit is zero
+            pass
+        else:
+            for event in grouped_events:
+                if len(sample_values) >= samples_per_cluster:
+                    break
+                detail = str(event.get("detail") or "").strip()
+                if not detail or detail in sample_values:
+                    continue
+                sample_values.append(detail)
         clusters.append(
             UncategorizedCluster(
                 key=f"{rule_type}:{rule_value}:{source}",

@@ -86,8 +86,14 @@ def build_run_context(
     if loaded_config_path is None:
         # No project config exists yet; include uncategorized activity so first report is useful.
         args.include_uncategorized = True
-        # Also show source summary by default for setup-free first runs.
-        args.source_summary = True
+        # Also show source summary by default for setup-free first runs, but not for machine-readable outputs.
+        is_machine_readable = (
+            getattr(args, 'machine_readable', False)
+            or getattr(args, 'output_format', '') in ('json', 'ndjson', 'script')
+            or (getattr(args, 'output_path', '') or '').endswith(('.json', '.ndjson'))
+        )
+        if not is_machine_readable:
+            args.source_summary = True
     worklog_path = resolve_worklog_path_fn(
         args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
     )

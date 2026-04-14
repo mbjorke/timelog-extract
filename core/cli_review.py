@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -83,7 +84,24 @@ def review(
         return
 
     config_path = Path(projects_config)
-    payload = load_projects_config_payload(config_path)
+    try:
+        payload = load_projects_config_payload(config_path)
+    except json.JSONDecodeError as exc:
+        console.print(f"[red]Error:[/red] Config file '{config_path}' contains invalid JSON: {exc}")
+        console.print("[yellow]Hint:[/yellow] Check the file syntax or delete it to start fresh.")
+        raise typer.Exit(code=1)
+    except PermissionError:
+        console.print(f"[red]Error:[/red] Cannot read config file '{config_path}' - permission denied.")
+        console.print("[yellow]Hint:[/yellow] Check file permissions.")
+        raise typer.Exit(code=1)
+    except OSError as exc:
+        console.print(f"[red]Error:[/red] Cannot access config file '{config_path}': {exc}")
+        console.print("[yellow]Hint:[/yellow] Verify the file path is accessible.")
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] Failed to load config from '{config_path}': {exc}")
+        console.print("[yellow]Hint:[/yellow] Check the file format and permissions.")
+        raise typer.Exit(code=1)
     console.print(
         f"[bold]Guided review[/bold] | uncategorized events: {len(uncategorized_events)} | clusters: {len(clusters)}"
     )
@@ -138,6 +156,19 @@ def review(
             rule_type=cluster.rule_type,
             rule_value=rule_value,
         )
-        save_projects_config_payload(config_path, payload)
+        try:
+            save_projects_config_payload(config_path, payload)
+        except PermissionError:
+            console.print(f"[red]Error:[/red] Cannot write to config file '{config_path}' - permission denied.")
+            console.print("[yellow]Hint:[/yellow] Check file permissions.")
+            raise typer.Exit(code=1)
+        except OSError as exc:
+            console.print(f"[red]Error:[/red] Cannot save config file '{config_path}': {exc}")
+            console.print("[yellow]Hint:[/yellow] Verify the directory is writable.")
+            raise typer.Exit(code=1)
+        except Exception as exc:
+            console.print(f"[red]Error:[/red] Failed to save config to '{config_path}': {exc}")
+            console.print("[yellow]Hint:[/yellow] Check disk space and permissions.")
+            raise typer.Exit(code=1)
         created_note = " (created project)" if created else ""
         console.print(f"[green]Saved[/green] {field} -> {value!r} for {project_name!r}{created_note}.")

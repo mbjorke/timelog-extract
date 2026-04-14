@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 
@@ -118,7 +120,31 @@ def load_projects_config_payload(config_path: Path) -> dict:
 
 
 def save_projects_config_payload(config_path: Path, payload: dict) -> None:
-    config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    parent_dir = config_path.parent
+    parent_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write to a temporary file in the same directory for atomic replacement
+    fd, temp_path = tempfile.mkstemp(dir=parent_dir, prefix=".tmp_", suffix=".json")
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(payload, indent=2, ensure_ascii=False))
+            f.flush()
+            os.fsync(f.fileno())
+
+        # Fsync the parent directory to ensure the file is durably written
+        dir_fd = os.open(parent_dir, os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+
+        # Atomically replace the target file
+        os.replace(temp_path, config_path)
+    except:
+        # Clean up temp file on error
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
 
 
 def apply_rule_to_project(
@@ -143,7 +169,9 @@ def apply_rule_to_project(
 
     target: dict | None = None
     for project in projects:
-        if str(project.get("name", "")).strip() == cleaned_name:
+        if not isinstance(project, dict):
+            continue
+        if str(project.get("name", "")).strip().lower() == cleaned_name.lower():
             target = project
             break
 

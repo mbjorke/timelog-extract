@@ -28,8 +28,6 @@ from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, ST
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 _DOCTOR_LOG = logging.getLogger(__name__)
-
-
 def _shell_profile_hint() -> str:
     """Typical rc file to mention for persisting PATH (from $SHELL when possible)."""
     shell = os.environ.get("SHELL", "").lower()
@@ -38,8 +36,6 @@ def _shell_profile_hint() -> str:
     if "bash" in shell:
         return "~/.bashrc (or ~/.bash_profile on macOS)"
     return "~/.zshrc or ~/.bashrc"
-
-
 def _shell_reload_phrase() -> str:
     """How to reload shell config after pipx ensurepath (shell-agnostic fallback)."""
     shell = os.environ.get("SHELL", "").lower()
@@ -48,8 +44,6 @@ def _shell_reload_phrase() -> str:
     if "bash" in shell:
         return "[bold]source ~/.bashrc[/bold] (or [bold]source ~/.bash_profile[/bold])"
     return "source your shell startup file ([bold]e.g. ~/.zshrc or ~/.bashrc[/bold])"
-
-
 def _dir_on_path(bin_dir: Path) -> bool:
     """True if bin_dir is a PATH entry (normalized)."""
     try:
@@ -65,8 +59,6 @@ def _dir_on_path(bin_dir: Path) -> bool:
         except OSError:
             continue
     return False
-
-
 def _add_cli_path_rows(table: Table, *, home: Path) -> None:
     """Warn when gittan exists but user script dirs are not on PATH (pip --user / pipx)."""
     gittan_exe = shutil.which("gittan")
@@ -106,8 +98,14 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
             f"Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
         )
     table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
-
-
+def _doctor_next_command(*, cli_ready: bool, project_ok: bool, worklog_ok: bool) -> str:
+    if not project_ok:
+        return "gittan setup --yes --skip-smoke"
+    if not worklog_ok:
+        return "gittan setup --yes --skip-smoke"
+    if not cli_ready:
+        return "gittan setup --dry-run --yes --skip-smoke"
+    return "gittan report --last-week --source-summary"
 @app.command()
 def doctor(
     worklog: Annotated[
@@ -143,7 +141,6 @@ def doctor(
     table.add_column("Source / Path", style=STYLE_LABEL)
     table.add_column("Status", justify="center")
     table.add_column("Details", style=STYLE_MUTED)
-
     def check_file(path: Path, label: str):
         if not path.exists():
             table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Not found: {path}[/{STYLE_MUTED}]")
@@ -184,9 +181,10 @@ def doctor(
                 os.unlink(tmp.name)
 
     with console.status("[bold #b7aed3]Running diagnostics..."):
+        cli_ready = shutil.which("gittan") is not None
         _add_cli_path_rows(table, home=home)
-        check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
-        check_file(worklog_path, "Worklog (Local)")
+        project_ok = check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
+        worklog_ok = check_file(worklog_path, "Worklog (Local)")
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
@@ -233,6 +231,10 @@ def doctor(
             table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
 
     console.print(table)
+    console.print(
+        f"\n[#8f86ad]Recommended next command:[/#8f86ad] "
+        f"[bold]{_doctor_next_command(cli_ready=cli_ready, project_ok=project_ok, worklog_ok=worklog_ok)}[/bold]"
+    )
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"

@@ -44,6 +44,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             msg=completed.stderr or completed.stdout,
         )
         self.assertIn("Gittan Health Check", completed.stdout)
+        self.assertIn("Recommended next command:", completed.stdout)
 
     def test_core_cli_py_compiles(self):
         """Regression: bad search/replace left invalid syntax (e.g. truncated for-loop)."""
@@ -81,6 +82,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             msg=completed.stderr or completed.stdout,
         )
         self.assertIn("Setup wizard completed.", completed.stdout)
+        self.assertIn("Next command:", completed.stdout)
 
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
         """Landing page quick start (after install): each CLI step should stay snappy on CI.

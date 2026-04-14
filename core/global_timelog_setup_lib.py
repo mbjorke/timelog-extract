@@ -428,6 +428,20 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
         return "ACTION_REQUIRED"
 
 
+def _recommended_setup_next_command(summary_rows: list[tuple[str, str, str]]) -> str:
+    status_by_step = {step: result for step, result, _notes in summary_rows}
+    has_blocker = any(
+        result == "FAIL" or result == "ACTION_REQUIRED"
+        for _step, result, _notes in summary_rows
+    )
+    if has_blocker:
+        return "gittan doctor"
+    smoke_state = status_by_step.get("Smoke report", "")
+    if smoke_state == "SKIPPED":
+        return "gittan report --today --source-summary"
+    return "gittan report --last-week --source-summary"
+
+
 def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> None:
     from rich.table import Table
 
@@ -474,4 +488,6 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
         summary_table.add_row(step, f"[{style}]{result}[/{style}]", notes)
     console.print("\n")
     console.print(summary_table)
-    console.print("\n[green]Setup wizard completed.[/green]")
+    next_command = _recommended_setup_next_command(summary_rows)
+    console.print("\n[cyan]Next command:[/cyan] [bold]" + next_command + "[/bold]")
+    console.print("[green]Setup wizard completed.[/green]")

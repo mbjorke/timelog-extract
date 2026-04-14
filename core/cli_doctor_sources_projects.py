@@ -99,12 +99,10 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
         )
     table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
 def _doctor_next_command(*, cli_ready: bool, project_ok: bool, worklog_ok: bool) -> str:
-    if not project_ok:
-        return "gittan setup --yes --skip-smoke"
-    if not worklog_ok:
-        return "gittan setup --yes --skip-smoke"
     if not cli_ready:
-        return "gittan setup --dry-run --yes --skip-smoke"
+        return "python timelog_extract.py setup --dry-run --yes --skip-smoke"
+    if not project_ok or not worklog_ok:
+        return "gittan setup --yes --skip-smoke"
     return "gittan report --last-week --source-summary"
 @app.command()
 def doctor(

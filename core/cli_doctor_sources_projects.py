@@ -24,10 +24,9 @@ from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
+from core.workspace_root import runtime_workspace_root
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
-# Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
-REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOCTOR_LOG = logging.getLogger(__name__)
 def _shell_profile_hint() -> str:
     """Typical rc file to mention for persisting PATH (from $SHELL when possible)."""
@@ -114,7 +113,8 @@ def doctor(
 
     console = Console()
     home = Path.home()
-    projects_cfg = REPO_ROOT / "timelog_projects.json"
+    workspace_root = runtime_workspace_root()
+    projects_cfg = workspace_root / "timelog_projects.json"
     _profiles, loaded_config_path, workspace = load_profiles(
         str(projects_cfg),
         argparse.Namespace(project="default-project", keywords="", email=""),
@@ -123,7 +123,7 @@ def doctor(
         worklog,
         loaded_config_path,
         workspace.get("worklog"),
-        REPO_ROOT,
+        workspace_root,
     )
 
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
@@ -174,7 +174,7 @@ def doctor(
 
     with console.status("[bold #b7aed3]Running diagnostics..."):
         cli_on_path = _add_cli_path_rows(table, home=home)
-        project_config_ok = check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
+        project_config_ok = check_file(projects_cfg, "Project Config")
         worklog_ok = check_file(worklog_path, "Worklog (Local)")
         coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
         coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
@@ -239,7 +239,7 @@ def doctor(
             projects_config_ok=project_config_ok,
             worklog_ok=worklog_ok,
             match_terms_ok=coverage.status != "warn",
-            config_path=REPO_ROOT / "timelog_projects.json",
+            config_path=projects_cfg,
             worklog_path=worklog_path,
         ),
     )

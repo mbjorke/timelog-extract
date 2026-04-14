@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -12,6 +13,8 @@ from core.git_project_bootstrap import assess_match_terms_coverage, discover_git
 
 class GitProjectBootstrapTests(unittest.TestCase):
     def _init_repo(self, tmp: str, remote_url: str = "https://github.com/example/acme-tools.git") -> Path:
+        if not shutil.which("git"):
+            self.skipTest("git not available in PATH")
         repo = Path(tmp)
         subprocess.run(["git", "init"], cwd=tmp, check=True, capture_output=True, text=True)
         subprocess.run(["git", "remote", "add", "origin", remote_url], cwd=tmp, check=True, capture_output=True, text=True)

@@ -28,13 +28,16 @@ class MatchTermsCoverage:
 
 
 def _run_git(cwd: Path, *args: str) -> str:
-    completed = subprocess.run(
-        ["git", *args],
-        cwd=str(cwd),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=str(cwd),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, OSError):
+        return ""
     if completed.returncode != 0:
         return ""
     return completed.stdout.strip()

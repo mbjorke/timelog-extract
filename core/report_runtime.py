@@ -83,6 +83,11 @@ def build_run_context(
 
     dt_from, dt_to = get_date_range_fn(args.date_from, args.date_to)
     profiles, loaded_config_path, workspace = load_profiles_fn(args.projects_config, args)
+    if loaded_config_path is None:
+        # No project config exists yet; include uncategorized activity so first report is useful.
+        args.include_uncategorized = True
+        # Also show source summary by default for setup-free first runs.
+        args.source_summary = True
     worklog_path = resolve_worklog_path_fn(
         args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
     )

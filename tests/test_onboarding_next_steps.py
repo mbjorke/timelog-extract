@@ -20,6 +20,7 @@ class DoctorNextStepsTests(unittest.TestCase):
                 cli_on_path=False,
                 projects_config_ok=False,
                 worklog_ok=False,
+                match_terms_ok=False,
                 config_path=config_path,
                 worklog_path=worklog_path,
             )
@@ -28,6 +29,7 @@ class DoctorNextStepsTests(unittest.TestCase):
             self.assertIn("gittan setup", joined)
             self.assertIn(f"gittan projects --config {config_path}", joined)
             self.assertIn(str(worklog_path), joined)
+            self.assertIn("repo-specific `match_terms`", joined)
             self.assertIn("pipx ensurepath", joined)
 
     def test_doctor_recommends_first_report_when_ready(self):
@@ -40,6 +42,7 @@ class DoctorNextStepsTests(unittest.TestCase):
                 cli_on_path=True,
                 projects_config_ok=True,
                 worklog_ok=True,
+                match_terms_ok=True,
                 config_path=config_path,
                 worklog_path=worklog_path,
             )

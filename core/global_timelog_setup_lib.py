@@ -16,6 +16,7 @@ from textwrap import dedent
 import questionary
 import typer
 
+from core.git_project_bootstrap import discover_git_project_hints
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -302,8 +303,6 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         else:
             console.print("- repo scope = all git repositories")
     console.print("\nReference: `GLOBAL_TIMELOG_AUTOMATION.md`")
-
-
 def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str:
     config_path = Path.cwd() / "timelog_projects.json"
     if config_path.exists():
@@ -333,7 +332,17 @@ def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str
     if not should_create:
         console.print("[yellow]Skipped project config bootstrap.[/yellow]")
         return "SKIPPED"
-    project_name, customer, keywords = "default-project", "Default Customer", "default"
+    hints = discover_git_project_hints(Path.cwd())
+    if hints is not None:
+        project_name = hints.project_name
+        customer = hints.customer
+        keywords = ", ".join(hints.match_terms)
+        console.print(
+            "[cyan]Git-aware defaults:[/cyan] "
+            f"project=`{project_name}`, customer=`{customer}`, match_terms=`{keywords}`"
+        )
+    else:
+        project_name, customer, keywords = "default-project", "Default Customer", "default"
     if not yes:
         project_name = questionary.text("Project name:", default=project_name).ask() or project_name
         customer = questionary.text("Customer name:", default=customer).ask() or customer
@@ -348,8 +357,6 @@ def _ensure_minimal_projects_config(console, *, yes: bool, dry_run: bool) -> str
     config_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Created minimal project config:[/green] {config_path}")
     return "PASS"
-
-
 def _print_environment_status(console) -> None:
     from rich.table import Table
 

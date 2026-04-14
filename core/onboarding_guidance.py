@@ -11,6 +11,7 @@ def build_doctor_next_steps(
     cli_on_path: bool,
     projects_config_ok: bool,
     worklog_ok: bool,
+    match_terms_ok: bool = True,
     config_path: Path,
     worklog_path: Path,
 ) -> list[str]:
@@ -23,6 +24,8 @@ def build_doctor_next_steps(
         steps.append(
             f"Create `{worklog_path}` or point Gittan at another file with `--worklog /path/to/TIMELOG.md`."
         )
+    if not match_terms_ok:
+        steps.append("Use `gittan projects` to add repo-specific `match_terms` so activity in this repo classifies cleanly.")
     if not cli_on_path:
         steps.append("Run `pipx ensurepath`, reload your shell, then rerun `gittan doctor`.")
     if not steps:

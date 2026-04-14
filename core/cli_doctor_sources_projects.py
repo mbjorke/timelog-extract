@@ -22,14 +22,13 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
+from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 # Same root as `core/report_service.REPO_ROOT` — default config/worklog live here, not CWD.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOCTOR_LOG = logging.getLogger(__name__)
-
-
 def _shell_profile_hint() -> str:
     """Typical rc file to mention for persisting PATH (from $SHELL when possible)."""
     shell = os.environ.get("SHELL", "").lower()
@@ -38,8 +37,6 @@ def _shell_profile_hint() -> str:
     if "bash" in shell:
         return "~/.bashrc (or ~/.bash_profile on macOS)"
     return "~/.zshrc or ~/.bashrc"
-
-
 def _shell_reload_phrase() -> str:
     """How to reload shell config after pipx ensurepath (shell-agnostic fallback)."""
     shell = os.environ.get("SHELL", "").lower()
@@ -48,8 +45,6 @@ def _shell_reload_phrase() -> str:
     if "bash" in shell:
         return "[bold]source ~/.bashrc[/bold] (or [bold]source ~/.bash_profile[/bold])"
     return "source your shell startup file ([bold]e.g. ~/.zshrc or ~/.bashrc[/bold])"
-
-
 def _dir_on_path(bin_dir: Path) -> bool:
     """True if bin_dir is a PATH entry (normalized)."""
     try:
@@ -65,8 +60,6 @@ def _dir_on_path(bin_dir: Path) -> bool:
         except OSError:
             continue
     return False
-
-
 def _add_cli_path_rows(table: Table, *, home: Path) -> None:
     """Warn when gittan exists but user script dirs are not on PATH (pip --user / pipx)."""
     gittan_exe = shutil.which("gittan")
@@ -104,7 +97,6 @@ def _add_cli_path_rows(table: Table, *, home: Path) -> None:
         detail = f"[{STYLE_MUTED}]`gittan` not on PATH and no known script in user/bin or pipx. Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
     table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
     return False
-
 @app.command()
 def doctor(
     worklog: Annotated[
@@ -184,6 +176,12 @@ def doctor(
         cli_on_path = _add_cli_path_rows(table, home=home)
         project_config_ok = check_file(REPO_ROOT / "timelog_projects.json", "Project Config")
         worklog_ok = check_file(worklog_path, "Worklog (Local)")
+        coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
+        coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
+        coverage_detail = coverage.detail
+        if coverage.status == "warn" and coverage.suggested_terms:
+            coverage_detail = f"{coverage.detail} Suggested cues: {', '.join(coverage.suggested_terms)}"
+        table.add_row("Git match_terms coverage", coverage_icon, f"[{STYLE_MUTED}]{coverage_detail}[/{STYLE_MUTED}]")
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
@@ -240,6 +238,7 @@ def doctor(
             cli_on_path=cli_on_path,
             projects_config_ok=project_config_ok,
             worklog_ok=worklog_ok,
+            match_terms_ok=coverage.status != "warn",
             config_path=REPO_ROOT / "timelog_projects.json",
             worklog_path=worklog_path,
         ),

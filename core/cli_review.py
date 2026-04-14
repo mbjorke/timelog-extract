@@ -86,6 +86,11 @@ def review(
     config_path = Path(projects_config)
     try:
         payload = load_projects_config_payload(config_path)
+        # Validate that projects exists and is a dict
+        if not isinstance(payload.get("projects"), dict):
+            console.print(f"[red]Error:[/red] Config file '{config_path}' must have a 'projects' dict at top level.")
+            console.print("[yellow]Hint:[/yellow] Expected format: {\"projects\": {\"project_name\": {...}}}")
+            raise typer.Exit(code=1)
     except json.JSONDecodeError as exc:
         console.print(f"[red]Error:[/red] Config file '{config_path}' contains invalid JSON: {exc}")
         console.print("[yellow]Hint:[/yellow] Check the file syntax or delete it to start fresh.")
@@ -129,7 +134,11 @@ def review(
         if action == "Skip":
             continue
 
-        project_names = [str(project.get("name", "")).strip() for project in payload.get("projects", []) if project.get("name")]
+        project_names = [
+            str(project.get("name", "")).strip()
+            for name, project in payload["projects"].items()
+            if isinstance(project, dict) and project.get("name")
+        ]
         project_name = ""
         if action == "Assign to existing project":
             if not project_names:

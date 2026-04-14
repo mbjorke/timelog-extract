@@ -16,7 +16,7 @@ def build_doctor_next_steps(
     worklog_path: Path,
 ) -> list[str]:
     steps: list[str] = []
-    if not projects_config_ok or not worklog_ok:
+    if not projects_config_ok:
         steps.append("Run `gittan setup` for the guided path through config bootstrap, diagnostics, and a smoke report.")
     if not projects_config_ok:
         steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {shlex.quote(str(config_path))}`.")

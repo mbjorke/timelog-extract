@@ -55,6 +55,25 @@ class DoctorNextStepsTests(unittest.TestCase):
                 ],
             )
 
+    def test_doctor_does_not_recommend_setup_when_only_worklog_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            config_path = tmp_path / "timelog_projects.json"
+            worklog_path = tmp_path / "TIMELOG.md"
+
+            steps = build_doctor_next_steps(
+                cli_on_path=True,
+                projects_config_ok=True,
+                worklog_ok=False,
+                match_terms_ok=True,
+                config_path=config_path,
+                worklog_path=worklog_path,
+            )
+
+            joined = "\n".join(steps)
+            self.assertNotIn("Run `gittan setup`", joined)
+            self.assertIn(str(worklog_path), joined)
+
 
 class SetupNextStepsTests(unittest.TestCase):
     def test_setup_dry_run_points_to_real_execution(self):

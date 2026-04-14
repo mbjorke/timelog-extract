@@ -81,7 +81,7 @@ def discover_git_project_hints(cwd: Path) -> GitProjectHints | None:
     customer = remote_owner or project_name
     terms: list[str] = []
     candidates = [project_name]
-    if repo_name and repo_name != project_name and not remote_repo:
+    if remote_repo and repo_name and repo_name.lower() != remote_repo.lower() and repo_name not in candidates:
         candidates.append(repo_name)
     for candidate in candidates:
         for variant in _keyword_variants(candidate):

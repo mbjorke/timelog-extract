@@ -22,7 +22,7 @@ def build_doctor_next_steps(
         steps.append(f"Create or repair `{config_path.name}` with `gittan projects --config {shlex.quote(str(config_path))}`.")
     if not worklog_ok:
         steps.append(
-            f"Create `{worklog_path}` or point Gittan at another file with `--worklog /path/to/TIMELOG.md`."
+            f"Create `{worklog_path}` or point Gittan at another file with `--worklog {shlex.quote(str(worklog_path))}`."
         )
     if not match_terms_ok:
         steps.append("Use `gittan projects` to add repo-specific `match_terms` so activity in this repo classifies cleanly.")

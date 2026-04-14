@@ -25,7 +25,7 @@ class CliVersionTests(unittest.TestCase):
         line = completed.stdout.strip()
         self.assertTrue(line.startswith("timelog-extract "))
         rest = line.removeprefix("timelog-extract ").strip()
-        self.assertRegex(rest, re.compile(r"^\d+\.\d+\.\d+(-dev)?$"))
+        self.assertRegex(rest, re.compile(r"^\d+\.\d+\.\d+(rc\d+)?(-dev)?$"))
 
 
 if __name__ == "__main__":

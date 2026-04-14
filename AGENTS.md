@@ -102,8 +102,12 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ### CodeRabbit CLI (optional local pre-check)
 
-- The **CodeRabbit CLI** (`coderabbit`, alias `cr`) reviews changes **in your repo** without using GitHub PR review quota. Install and auth: [CodeRabbit CLI docs](https://docs.coderabbit.ai/cli).
+- The **CodeRabbit CLI** (`coderabbit`) reviews changes **in your repo** without using GitHub PR review quota. Install and auth: [CodeRabbit CLI docs](https://docs.coderabbit.ai/cli).
 - **When:** before pushing a meaningful batch or before `@coderabbitai full review` / `@coderabbitai review` on GitHub, if you want fast feedback on the current branch without waiting on the GitHub app (still subject to [CLI rate limits](https://docs.coderabbit.ai/cli) for your plan).
-- **Typical commands** (from repo root): `coderabbit --base origin/main --type committed` to compare your branch to `main`; `coderabbit --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
+- **Typical commands** (from repo root): `coderabbit review --base main --type committed` to compare committed changes on your branch to `main`; `coderabbit review --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
 - **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
+
+### Release-candidate agent prompt (copy-paste)
+
+- For a **single canonical prompt** (RC tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use **`docs/AGENT_RC_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
 

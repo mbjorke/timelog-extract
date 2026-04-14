@@ -235,8 +235,13 @@ def doctor(
     console.print(table)
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
-        "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"
+        "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]"
     )
+    if not (REPO_ROOT / "timelog_projects.json").exists():
+        console.print("\n[cyan]→ Setup needed:[/cyan] run [bold]gittan setup[/bold] to create a project config, then run your first report.")
+    else:
+        console.print("\n[dim]→ Ready: run [bold]gittan report --today --source-summary[/bold] for your first time estimate.[/dim]")
+    console.print()
 
 
 @app.command()

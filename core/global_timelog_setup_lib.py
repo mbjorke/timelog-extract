@@ -475,3 +475,5 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool) -> 
     console.print("\n")
     console.print(summary_table)
     console.print("\n[green]Setup wizard completed.[/green]")
+    console.print("\n[bold cyan]→ First report:[/bold cyan] [bold]gittan report --today --source-summary[/bold]")
+    console.print("[dim]Run from a git repository to see your first time estimate.[/dim]")

@@ -64,6 +64,13 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
 - See `**BRANCH.md`** for the operational workflow and `**docs/CI.md`** for CI behavior.
 
+## Naming migration (`rc-` -> `task-`)
+
+- `rc-` naming is now considered **legacy** for day-to-day feature work.
+- Use `task/*` branch names for agent-delivered feature scope.
+- For prompt/story docs, prefer `docs/task-prompts/` for new material.
+- Existing `docs/rc-prompts/` content may stay temporarily during migration, but new docs should avoid introducing fresh `rc-` naming unless it is explicitly about release-candidate workflow.
+
 ## Releases: what the maintainer means vs what the agent does
 
 When the maintainer says they want a **new release** or to **ship version X.Y.Z**, they often mean the **product outcome** (users see a version, changelog, optional PyPI), **not** a specific sequence of git commands. Treat it as a **handoff**: do the repo and branch work; tell them clearly what is left for **GitHub / PyPI** in plain language.

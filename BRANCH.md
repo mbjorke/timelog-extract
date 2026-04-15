@@ -36,6 +36,13 @@ Use a two-level flow:
   - `feat/*`, `fix/*`, `docs/*`, `cursor/*`.
 - Keep PR scope narrow and merge quickly to reduce cross-branch drift.
 
+## Naming migration note
+
+- Treat `rc-*` feature naming as legacy.
+- Use `task/*` for new implementation work.
+- Keep `release/X.Y.Z` only for explicit release isolation.
+- Documentation/process artifacts still using `rc-` should be renamed gradually to `task-` equivalents as they are touched.
+
 ## Agents
 
 - **Never push directly to `main`**.

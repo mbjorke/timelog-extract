@@ -13,7 +13,7 @@ Hard rules derived from real incidents and orchestration learnings. Each links t
 | 4 | Commit `timelog_projects.json` | User-owned config, not recoverable from git if lost |
 | 5 | Commit anything under `private/` | Local business notes, never version-controlled |
 | 6 | Push directly to `main` | Branch-protected; all changes go through a PR |
-| 7 | Delete or rename `timelog_projects.json` without confirmation | Only copy; treat as critical data |
+| 7 | Delete or rename `timelog_projects.json` without confirmation | Only copy; treat as critical data → [TIL 2026-04-13](til/2026-04-13-gitignored-config-is-not-disposable.md) |
 
 ---
 

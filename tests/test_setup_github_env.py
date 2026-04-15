@@ -25,7 +25,7 @@ class SetupGithubEnvTests(unittest.TestCase):
 
     def test_configure_github_env_dry_run_reports_actions(self):
         console = Console(record=True)
-        with patch.dict("os.environ", {}, clear=False), patch.object(
+        with patch.dict("os.environ", {}, clear=True), patch.object(
             ghe.questionary, "confirm"
         ) as q_confirm, patch.object(
             ghe, "_gh_read_token", return_value="tok"

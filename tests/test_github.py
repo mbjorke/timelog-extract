@@ -21,7 +21,8 @@ class GithubCollectorTests(unittest.TestCase):
             github_source = "auto"
             github_user = None
 
-        en, reason = gh.github_source_enabled(Args())
+        with patch.dict("os.environ", {}, clear=True):
+            en, reason = gh.github_source_enabled(Args())
         self.assertFalse(en)
         self.assertIsNotNone(reason)
 
@@ -30,7 +31,8 @@ class GithubCollectorTests(unittest.TestCase):
             github_source = "on"
             github_user = ""
 
-        en, reason = gh.github_source_enabled(Args())
+        with patch.dict("os.environ", {}, clear=True):
+            en, reason = gh.github_source_enabled(Args())
         self.assertFalse(en)
         self.assertIn("username", reason.lower())
 

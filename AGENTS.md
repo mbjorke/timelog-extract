@@ -8,6 +8,7 @@ Hard rules derived from real incidents and orchestration learnings. Each links t
 | # | Do not | Why / reference |
 |---|---|---|
 | 1 | Fix code during a review task | Record findings in the document; fixes are a separate task → [TIL 2026-04-11](til/2026-04-11-review-tasks-are-documents-not-code.md) |
+| 1b | Fix unrelated things when starting an RC | Note them, finish the scoped work, open a separate branch → [TIL 2026-04-11](til/2026-04-11-dont-fix-unrelated-things-in-an-rc.md) · [incident](incidents/2026-04-11-unrelated-fix-bundled-into-review-branch.md) |
 | 2 | Invent or round `TIMELOG.md` timestamps | Wrong timestamps corrupt the time record → [incident 2026-04-09](incidents/2026-04-09-timelog-timestamp.md) |
 | 3 | Commit `TIMELOG.md` | Gitignored by policy; contains private work data |
 | 4 | Commit `timelog_projects.json` | User-owned config, not recoverable from git if lost |

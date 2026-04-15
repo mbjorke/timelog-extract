@@ -1,5 +1,22 @@
 # Agent Rules
 
+## Do not
+
+Hard rules derived from real incidents and orchestration learnings. Each links to the
+`docs/til/` entry that produced it.
+
+| # | Do not | Why / reference |
+|---|---|---|
+| 1 | Fix code during a review task | Record findings in the document; fixes are a separate task → [TIL 2026-04-11](til/2026-04-11-review-tasks-are-documents-not-code.md) |
+| 2 | Invent or round `TIMELOG.md` timestamps | Wrong timestamps corrupt the time record → [incident 2026-04-09](incidents/2026-04-09-timelog-timestamp.md) |
+| 3 | Commit `TIMELOG.md` | Gitignored by policy; contains private work data |
+| 4 | Commit `timelog_projects.json` | User-owned config, not recoverable from git if lost |
+| 5 | Commit anything under `private/` | Local business notes, never version-controlled |
+| 6 | Push directly to `main` | Branch-protected; all changes go through a PR |
+| 7 | Delete or rename `timelog_projects.json` without confirmation | Only copy; treat as critical data |
+
+---
+
 ## Standard Timelog Policy
 
 - Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).

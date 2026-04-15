@@ -23,6 +23,7 @@ def build_collector_specs(
     worklog_path: Path,
     *,
     chrome_history_exists: bool,
+    lovable_desktop_history_exists: bool,
     mail_root: Optional[Path],
     mail_msg: str,
     collect_claude_code: Callable,
@@ -30,6 +31,7 @@ def build_collector_specs(
     collect_claude_ai_urls: Callable,
     collect_gemini_web_urls: Callable,
     collect_chrome: Callable,
+    collect_lovable_desktop: Callable,
     collect_gemini_cli: Callable,
     collect_cursor: Callable,
     collect_cursor_checkpoints: Callable,
@@ -58,6 +60,19 @@ def build_collector_specs(
             reason="Consent/source setting disabled"
             if not chrome_enabled
             else (None if chrome_history_exists else "Chrome history database not found"),
+        ),
+        CollectorSpec(
+            "Lovable (desktop)",
+            collect_lovable_desktop,
+            "visits",
+            enabled=chrome_enabled,
+            reason="Consent/source setting disabled"
+            if not chrome_enabled
+            else (
+                None
+                if lovable_desktop_history_exists
+                else "Lovable Desktop history database not found"
+            ),
         ),
         CollectorSpec("Gemini CLI", collect_gemini_cli, "events"),
         CollectorSpec("Cursor", collect_cursor, "events"),

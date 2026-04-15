@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from collectors import lovable_desktop as lovable_desktop_collector
+
 
 class RuntimeCollectors:
     def __init__(
@@ -85,6 +87,21 @@ class RuntimeCollectors:
             dt_from,
             dt_to,
             collapse_minutes,
+            self.home,
+            self.chrome_epoch_delta_us,
+            self.classify_project,
+            self.make_event,
+        )
+
+    def collect_lovable_desktop(self, profiles, dt_from, dt_to):
+        collapse = 12
+        if self.cli_args is not None:
+            collapse = int(getattr(self.cli_args, "chrome_collapse_minutes", 12) or 12)
+        return lovable_desktop_collector.collect_lovable_desktop(
+            profiles,
+            dt_from,
+            dt_to,
+            collapse,
             self.home,
             self.chrome_epoch_delta_us,
             self.classify_project,

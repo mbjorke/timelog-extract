@@ -2,7 +2,7 @@
 
 ## Unreleased
 
- - Nothing yet.
+- Collect **Lovable Desktop** activity from app-local storage on macOS: prefer Chromium `History` when present, and fall back to Local/Session/IndexedDB signal files when `History` is absent (still respects `--chrome-source`; classification remains URL/title-based).
 
 ## 0.2.7 - 2026-04-14
 
@@ -18,31 +18,31 @@
 
 ## 0.2.6 - 2026-04-14
 
-- Docs: **`docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). **`AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
-- CI: **`static.yml`** — minimal workflow `permissions`; **`pages: write`** + **`id-token: write`** only on **`deploy`**. Shared site build in **`scripts/prepare_static_site.sh`** (verify + deploy). **`gittan doctor`**: shell-agnostic PATH hints; narrow **`except`** + **`logging`** when probing pip `--user` bin.
+- Docs: `**docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). `**AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
+- CI: `**static.yml`** — minimal workflow `permissions`; `**pages: write`** + `**id-token: write**` only on `**deploy**`. Shared site build in `**scripts/prepare_static_site.sh**` (verify + deploy). `**gittan doctor**`: shell-agnostic PATH hints; narrow `**except**` + `**logging**` when probing pip `--user` bin.
 - Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/OPPORTUNITIES.md`, `docs/LINKEDIN_PILOT_POSTS.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
-- UX: **`gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + **`gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.
+- UX: `**gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + `**gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.
 - Onboarding: `gittan doctor` now ends with concrete next steps based on the current machine state, including when to run `gittan setup`, `gittan projects`, `pipx ensurepath`, or a first `gittan report --today --source-summary`.
 - Onboarding: `gittan setup` now ends with copyable next steps after the summary table so the user can move directly from dry-run or setup completion to a useful first report.
 - Onboarding: project bootstrap is now Git-aware when `gittan setup` has to create `timelog_projects.json`, seeding project name, customer, and starter `match_terms` from the local repo and `origin` remote when available.
 - Diagnostics: `gittan doctor` now warns when the current repo's Git cues are not covered by any configured project's `match_terms`, with suggested terms to add in `gittan projects`.
 - Tests: regression coverage for onboarding next-step guidance in both helper-level unit tests and CLI smoke tests.
-- CI: GitHub Pages — PRs to `main` run **`verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or **`workflow_dispatch`**. Docs: **`docs/CI.md`**, **`AGENTS.md`** (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
-- Site: **`gittan.html`** quick start aligned with **`README.md`** (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: **`test_quick_start_cli_commands_finish_within_60_seconds_each`** (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
-- Removed **Phase 0 friend trial** scaffolding: **`scripts/friend_trial.py`**, **`friend_trial/FEEDBACK_TEMPLATE.md`**, and the **`timelog-friend-trial`** console script entry (`pyproject.toml`). README / **`docs/TERMINAL_I18N.md`** updated.
+- CI: GitHub Pages — PRs to `main` run `**verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or `**workflow_dispatch**`. Docs: `**docs/CI.md**`, `**AGENTS.md**` (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
+- Site: `**gittan.html`** quick start aligned with `**README.md**` (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: `**test_quick_start_cli_commands_finish_within_60_seconds_each**` (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
+- Removed **Phase 0 friend trial** scaffolding: `**scripts/friend_trial.py`**, `**friend_trial/FEEDBACK_TEMPLATE.md**`, and the `**timelog-friend-trial**` console script entry (`pyproject.toml`). README / `**docs/TERMINAL_I18N.md**` updated.
 
 ## 0.2.4 - 2026-04-13
 
-- **PyPI project page:** README hero image now uses a stable **`raw.githubusercontent.com`** URL so the logo renders on [the PyPI description](https://pypi.org/project/timelog-extract/) (relative paths do not work there). Added **`[project.urls]`** — `Homepage` (**gittan.sh**), `Repository`, `Issues`.
+- **PyPI project page:** README hero image now uses a stable `**raw.githubusercontent.com`** URL so the logo renders on [the PyPI description](https://pypi.org/project/timelog-extract/) (relative paths do not work there). Added `**[project.urls]**` — `Homepage` (**gittan.sh**), `Repository`, `Issues`.
 
 ## 0.2.3 - 2026-04-13
 
 - **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.
 - CI: new **package** job builds sdist/wheel with `python -m build` and smoke-installs the wheel (`timelog-extract -V`, `gittan -V`).
-- Packaging: include the **`outputs`** package in the wheel/sdist (`setuptools` `packages.find`) so installed CLIs import `outputs.terminal_theme` and related modules.
+- Packaging: include the `**outputs`** package in the wheel/sdist (`setuptools` `packages.find`) so installed CLIs import `outputs.terminal_theme` and related modules.
 - Docs: `docs/VERSIONING.md` and `docs/CI.md` updated for the publish workflow.
 - README: reorganized — **install** (`pipx` / `pip` / editable clone) at the top, short **get started**, command cheat sheet, compact troubleshooting; removed the long inline doc inventory (see `docs/VISION_DOCUMENTS.md`).
-- **Brand / site:** **Rabbit-v2** canonical masters; removed **steward** / **rabbit-pot** / **`variants/`** experiments. **`gittan-logo.png`** at repo root (768×768 square crop, pixel-crisp) for **`gittan.html`** hero and social/preview use; **nav** uses a two-part mark — mini **terminal review rabbit** (same beats as the demo: `(\/)` → `(..)` → `><` → `\`, staggered CSS reveal, respects `prefers-reduced-motion`) plus a **pixel-style wordmark** (**Press Start 2P**). **`scripts/build_brand_assets.sh`** generates favicon, README icon, **`gittan-logo.png`**, **`og-image.png`**; Pages workflow publishes the static assets. Docs: **`docs/brand/README.md`**, **`IDENTITY.md`**, **`VISION_DOCUMENTS.md`**, root **`README.md`**, **`outputs/gittan_banner.py`** docstring.
+- **Brand / site:** **Rabbit-v2** canonical masters; removed **steward** / **rabbit-pot** / `**variants/`** experiments. `**gittan-logo.png**` at repo root (768×768 square crop, pixel-crisp) for `**gittan.html**` hero and social/preview use; **nav** uses a two-part mark — mini **terminal review rabbit** (same beats as the demo: `(\/)` → `(..)` → `><` → `\`, staggered CSS reveal, respects `prefers-reduced-motion`) plus a **pixel-style wordmark** (Press Start 2P). `scripts/build_brand_assets.sh` generates favicon, README icon, `gittan-logo.png`, `og-image.png`; Pages workflow publishes the static assets. Docs: `docs/brand/README.md`, `IDENTITY.md`, `VISION_DOCUMENTS.md`, root `README.md`, `**outputs/gittan_banner.py`** docstring.
 
 ## 0.2.2 - 2026-04-13
 
@@ -61,8 +61,8 @@
 - Docs: **sources and flags** (`docs/SOURCES_AND_FLAGS.md`); linked from `README.md` and `docs/VISION_DOCUMENTS.md`.
 - Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `docs/VISION_DOCUMENTS.md` and `README.md`.
 - Docs: `**BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
-- Docs: **`docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
-- Docs: `**docs/OPPORTUNITIES.md**` (product/GTM working notes) and `**docs/PRIVATE_LOCAL_NOTES.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
+- Docs: `**docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
+- Docs: `**docs/OPPORTUNITIES.md`** (product/GTM working notes) and `**docs/PRIVATE_LOCAL_NOTES.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
 
 ## 0.2.0 - 2026-04-11
 

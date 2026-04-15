@@ -23,7 +23,9 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
         cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
         self.assertIn(("tracked_urls", "github.com"), cluster_keys)
-        self.assertIn(("match_terms", "worked"), cluster_keys)
+        # "acme-feature" is preferred over the generic verb "worked" because
+        # hyphenated tokens make more specific match_terms suggestions.
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
 
 
 class UncategorizedReviewConfigTests(unittest.TestCase):

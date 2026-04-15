@@ -15,6 +15,7 @@ from textwrap import dedent
 
 import questionary
 import typer
+from rich.console import Console
 from core.git_project_bootstrap import discover_local_git_repos
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
 from core.setup_projects_config_bootstrap import ensure_projects_config
@@ -138,7 +139,7 @@ def _looks_like_projects_config(payload: object) -> bool:
     return isinstance(projects, list)
 
 
-def _discover_git_repos(console) -> list[Path]:
+def _discover_git_repos(console: Console) -> list[Path]:
     candidates: list[Path] = []
     roots = [Path.cwd(), Path.home() / "Workspace", Path.home() / "Code", Path.home() / "Projects", Path.home() / "Developer"]
     seen_roots: set[Path] = set()

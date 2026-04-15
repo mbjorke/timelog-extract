@@ -132,3 +132,45 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 ### Release-candidate agent prompt (copy-paste)
 
 - For a **single canonical prompt** (RC tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_RC_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+
+## RC spec traceability (required)
+
+- Every new or updated RC spec/prompt in `**docs/rc-prompts/**` must include a
+  canonical `## Traceability` section using the exact field keys below.
+- Story ID must use your canonical tracker prefix, for example `GH-123` (GitHub)
+  or `JIRA-123` (Jira). Do not use free-form IDs.
+- Required fields and allowed values:
+  - `story_id`: string (`GH-123`, `JIRA-123`, etc.)
+  - `spec_status`: `draft | approved | superseded`
+  - `implementation_status`: `not built | in progress | built | verified`
+  - `created_at`: date `YYYY-MM-DD`
+  - `last_updated_at`: date `YYYY-MM-DD`
+  - `implementation.pr`: string (URL or PR reference)
+  - `implementation.branch`: string
+  - `implementation.commits`: list of commit SHAs
+  - `validation.evidence`: string (path/URL/note)
+  - `validation.decision`: `GO | conditional GO | NO-GO`
+  - `changelog`: list of dated notes
+- Canonical format example (copy shape exactly):
+
+  ```md
+  ## Traceability
+
+  - story_id: GH-123
+  - spec_status: draft
+  - implementation_status: not built
+  - created_at: 2026-04-15
+  - last_updated_at: 2026-04-15
+  - implementation.pr: pending
+  - implementation.branch: pending
+  - implementation.commits: []
+  - validation.evidence: pending
+  - validation.decision: NO-GO
+  - changelog:
+    - 2026-04-15: Initial draft created.
+  ```
+
+- Any change to requirements, thresholds, gates, or acceptance criteria must
+  update `last_updated_at` and append a short note to `changelog`.
+- If a spec has no implementation yet, `implementation_status` must explicitly
+  be `not built` (never implicit).

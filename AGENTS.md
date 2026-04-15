@@ -51,13 +51,18 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Scenario testing and “quick cleanup” are common ways to lose data; treat `**timelog_projects.json`** as **critical** even though it is gitignored.
 - **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `**docs/incidents/2026-04-13-project-config-backup-gap.md`**.
 
-## Branch policy (`main`)
+## Branch policy (`main` + `dev`)
 
-- `**main` is branch-protected** (no direct push). Land changes via a **named branch**, push to `origin`, and merge via **pull request**.
-- **Prefer release branches** over open-ended `feat/…` names: from latest `origin/main`, create `**release/X.Y.Z`** (e.g. `release/0.2.3`) for work that **ships a numbered line** — especially when it touches `**pyproject.toml` version**, `**CHANGELOG.md`**, or release-only automation/docs. One release branch per target version keeps PR scope reviewable and avoids mixing the next patch/minor with unrelated work.
-- **Before bumping the package version** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md` release section): **verify the current branch** is the one meant to carry that release (e.g. `git branch --show-current`, confirm you branched from the right base). Do not assume you are on `main` or on the correct `release/*` line; wrong-branch bumps create confusing PRs and tags.
-- Small, non-release fixes may still use a **short-lived named branch**; do not pile unrelated commits onto an open `**release/*`** PR without maintainer agreement.
-- See `**BRANCH.md`** for the git workflow and `**docs/CI.md`** for what CI runs on PRs.
+- `**main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
+- Use `**dev` as the single integration branch** for day-to-day agent work.
+- Agents should create **short-lived task branches from `dev`** (for example `task/<scope>`), merge back quickly, then delete the task branch.
+- Avoid long-lived branch families (`feat/*`, `fix/*`, `docs/*`, `cursor/*`) unless explicitly requested for a special case.
+- Release flow:
+  1. Stabilize scope on `dev`.
+  2. Open PR `dev -> main` for normal releases.
+  3. Use `release/X.Y.Z` only when versioning/release chores need explicit isolation.
+- **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
+- See `**BRANCH.md`** for the operational workflow and `**docs/CI.md`** for CI behavior.
 
 ## Releases: what the maintainer means vs what the agent does
 

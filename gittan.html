@@ -149,7 +149,7 @@
       color: var(--cream);
       letter-spacing: 0.06em;
       line-height: 1.35;
-      text-transform: none;
+      text-transform: uppercase;
       /* Sharper chunky pixels (Press Start 2P) */
       -webkit-font-smoothing: none;
       -moz-osx-font-smoothing: grayscale;
@@ -404,157 +404,6 @@
       50% { opacity: 0; }
     }
     .cursor-blink { animation: blink 1.1s step-end infinite; color: var(--berry); }
-
-    /* ─── TERMINAL DEMO (CLICK-TO-RUN) ─── */
-    .demo-showcase {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 1.5rem 2rem 4rem;
-    }
-
-    .demo-shell {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(30,24,56,0.7), rgba(10,7,20,0.92));
-      box-shadow: 0 26px 70px rgba(0,0,0,0.55), 0 0 80px rgba(168,85,247,0.08);
-      overflow: hidden;
-    }
-
-    .demo-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.9rem 1rem;
-      border-bottom: 1px solid var(--border);
-      background: rgba(168,85,247,0.07);
-      gap: 0.8rem;
-      flex-wrap: wrap;
-      font-family: var(--cond);
-      font-size: 0.8rem;
-      color: var(--dim);
-    }
-
-    .demo-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: var(--berry-bright);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .demo-badge::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 10px rgba(52,211,153,0.45);
-    }
-
-    .demo-content {
-      padding: 1rem 1rem 1.1rem;
-    }
-
-    .demo-headline {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.8rem;
-      flex-wrap: wrap;
-      margin-bottom: 0.8rem;
-    }
-
-    .demo-headline h3 {
-      font-family: var(--cond);
-      font-size: 1rem;
-      color: var(--text);
-      letter-spacing: 0.02em;
-    }
-
-    .demo-controls {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .demo-btn {
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      background: var(--panel);
-      color: var(--text);
-      font-family: var(--cond);
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      padding: 0.4rem 0.75rem;
-      cursor: pointer;
-    }
-
-    .demo-btn:hover {
-      border-color: rgba(168,85,247,0.45);
-      background: var(--surface);
-    }
-
-    .demo-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .demo-note {
-      color: var(--muted);
-      font-size: 0.88rem;
-      margin-bottom: 0.75rem;
-      max-width: 820px;
-      font-weight: 300;
-    }
-
-    .demo-terminal {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: rgba(10,7,20,0.9);
-      padding: 0.85rem 1rem;
-      font-family: var(--mono);
-      font-size: 0.75rem;
-      line-height: 1.72;
-      min-height: 260px;
-      white-space: pre-wrap;
-      color: var(--text);
-      overflow: auto;
-    }
-
-    .demo-line {
-      min-height: 1.45em;
-    }
-
-    .demo-prompt {
-      color: var(--berry);
-    }
-
-    .demo-dim {
-      color: var(--dim);
-    }
-
-    .demo-good {
-      color: var(--green);
-    }
-
-    .demo-info {
-      color: var(--blue);
-    }
-
-    .demo-legend {
-      margin-top: 0.75rem;
-      font-family: var(--cond);
-      font-size: 0.78rem;
-      color: var(--dim);
-    }
-
-    .demo-legend strong {
-      color: var(--berry-bright);
-    }
 
     /* ─── STAT BAR ─── */
     .stat-bar {
@@ -1257,7 +1106,7 @@
 <!-- ─── NAV ─── -->
 <nav>
   <div class="nav-logo">
-    <div class="logo-mark" title="Review rabbit — same idea as the demo terminal">
+    <div class="logo-mark" title="Review rabbit">
       <pre class="logo-rabbit" aria-hidden="true"><span class="logo-rabbit-line">  (\/)</span><span class="logo-rabbit-line">  (..)</span><span class="logo-rabbit-line">   &gt;&lt;</span><span class="logo-rabbit-line">    \</span></pre>
     </div>
     <div class="logo-wordmark">Git<span>tan</span></div>
@@ -1353,32 +1202,6 @@
 <span class="t-berry">❯ </span><span class="cursor-blink">▋</span>
     </div>
   </div>
-  </div>
-</div>
-
-<!-- ─── CLICK-TO-RUN TERMINAL DEMO ─── -->
-<div class="demo-showcase">
-  <div class="demo-shell">
-    <div class="demo-top">
-      <span class="demo-badge">Mockdata demo</span>
-      <span>deterministic snapshot · no autoplay</span>
-    </div>
-    <div class="demo-content">
-      <div class="demo-headline">
-        <h3>Run a realistic terminal walkthrough</h3>
-        <div class="demo-controls">
-          <button id="runDemoBtn" class="demo-btn" type="button">Run demo</button>
-          <button id="clearDemoBtn" class="demo-btn" type="button">Clear</button>
-        </div>
-      </div>
-      <p class="demo-note">
-        This is driven by fixed mockdata snapshots from real CLI-style outputs. It is intentionally click-to-run so reading stays stable.
-      </p>
-      <div class="demo-terminal" id="demoTerminal" aria-live="polite"></div>
-      <div class="demo-legend">
-        <strong>Flow:</strong> doctor → report summary → JSON truth payload → invoice artifact.
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1812,92 +1635,5 @@
   </div>
 </footer>
 
-<script>
-  (function () {
-    const runBtn = document.getElementById("runDemoBtn");
-    const clearBtn = document.getElementById("clearDemoBtn");
-    const terminal = document.getElementById("demoTerminal");
-    if (!runBtn || !clearBtn || !terminal) return;
-
-    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const steps = [
-      {
-        cmd: "gittan doctor",
-        lines: [
-          { cls: "demo-dim", text: "Running diagnostics..." },
-          { cls: "demo-good", text: "✓ Worklog (Local)      Accessible" },
-          { cls: "demo-good", text: "✓ Chrome History       DB query successful" },
-          { cls: "demo-good", text: "✓ Cursor Storage       Accessible" },
-          { cls: "demo-good", text: "✓ Claude Code CLI      Found projects" },
-          { cls: "demo-dim", text: "Next: run `gittan report --today --source-summary`" }
-        ]
-      },
-      {
-        cmd: "gittan report --today --source-summary",
-        lines: [
-          { cls: "demo-dim", text: "Scanning: 2026-04-15 -> 2026-04-15" },
-          { cls: "demo-dim", text: "Source strategy: auto" },
-          { cls: "demo-good", text: "✓ cursor 1120 events   ✓ chrome 29 events   ✓ timelog 7 entries" },
-          { cls: "demo-info", text: "Project                 Hours    Sessions" },
-          { cls: "demo-info", text: "Akturo                  0.8h     2" },
-          { cls: "demo-info", text: "Blueberry.ax            0.9h     3" },
-          { cls: "demo-info", text: "Time Log Genius         0.7h     2" },
-          { cls: "demo-good", text: "Total                   2.4h     7" }
-        ]
-      },
-      {
-        cmd: "gittan report --today --format json",
-        lines: [
-          { cls: "demo-info", text: '{ "schema": "timelog_extract.truth_payload", "version": 1,' },
-          { cls: "demo-info", text: '  "totals": { "hours_estimated": 2.4, "event_count": 1156 },' },
-          { cls: "demo-info", text: '  "collector_status": { "cursor": "ok", "chrome": "ok", "timelog": "ok" } }' }
-        ]
-      },
-      {
-        cmd: "gittan report --today --invoice-pdf",
-        lines: [
-          { cls: "demo-dim", text: "Rendering invoice PDF..." },
-          { cls: "demo-good", text: "✓ PDF created: output/timelog-2026-04-15.pdf" }
-        ]
-      }
-    ];
-
-    function addLine(text, cls) {
-      const line = document.createElement("div");
-      line.className = `demo-line ${cls || ""}`.trim();
-      line.textContent = text;
-      terminal.appendChild(line);
-      terminal.scrollTop = terminal.scrollHeight;
-    }
-
-    function clearOutput() {
-      terminal.innerHTML = "";
-    }
-
-    async function runDemo() {
-      runBtn.disabled = true;
-      clearBtn.disabled = true;
-      clearOutput();
-      addLine("$ demo start (mockdata)", "demo-dim");
-      addLine("", "");
-      for (const step of steps) {
-        addLine(`$ ${step.cmd}`, "demo-prompt");
-        await sleep(140);
-        for (const line of step.lines) {
-          addLine(line.text, line.cls);
-          await sleep(90);
-        }
-        addLine("", "");
-        await sleep(220);
-      }
-      addLine("$ demo done", "demo-dim");
-      runBtn.disabled = false;
-      clearBtn.disabled = false;
-    }
-
-    runBtn.addEventListener("click", runDemo);
-    clearBtn.addEventListener("click", clearOutput);
-  })();
-</script>
 </body>
 </html>

@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of truth.
+
 ## Project overview
 
 **Gittan** (`timelog-extract` on PyPI) is a local-first CLI tool that aggregates IDE, browser, mail, and worklog activity into project-hour reports and optional invoice PDFs. The CLI command is `gittan`; the package is installed via `pip install timelog-extract`. Python 3.9+ required.
@@ -21,6 +23,7 @@ bash scripts/run_autotests.sh
 ```
 
 This runs two things:
+
 1. `python scripts/check_file_lengths.py --max-lines 500` — enforces a **500-line limit per Python file**
 2. `python3 -m unittest discover -s tests -p "test_*.py"`
 
@@ -87,7 +90,7 @@ CLI command (Typer)
 
 Each collector returns a list of event dicts with keys `source`, `timestamp` (datetime), `detail`, `project`. Collectors are registered in `core/collector_registry.py` as `CollectorSpec` dataclasses with `name`, `collector` callable, `enabled`, and `reason`. The pipeline in `core/pipeline.py` runs them with a Rich progress bar (or silently in `--quiet` mode).
 
-Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, GitHub.
+Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, Lovable (desktop), GitHub.
 
 `AI_SOURCES` (in `core/sources.py`) is the set of sources that qualify for the shorter `min_session` floor vs `min_session_passive` for passive sources.
 
@@ -139,10 +142,12 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ## CI jobs (`.github/workflows/ci.yml`)
 
+
 | Job | What it does |
-|---|---|
+| --- | --- |
 | `python` | Installs (editable), smoke-runs `timelog_extract.py --today`, enforces 500-line limit, runs unit tests |
 | `package` | Builds sdist + wheel (`python -m build`), smoke-installs wheel, checks `gittan -V` |
 | `extension` | `npm install && npm run build` in `cursor-extension/` |
+
 
 GitHub Pages deploys only on push to `main` (see `docs/CI.md`).

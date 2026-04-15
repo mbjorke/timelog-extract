@@ -1,5 +1,27 @@
 # Agent Rules
 
+## Agent fast-path (Cursor/Codex/Claude)
+
+Use this compact execution order before deep exploration:
+
+1. Confirm branch and safety context:
+   - `git branch --show-current`
+   - `git status --short`
+2. If release-bound scope, verify branch naming early (`release/X.Y.Z`).
+3. Run smallest validating loop first:
+   - implement minimal change
+   - run targeted test(s)
+   - then `./scripts/run_autotests.sh`
+4. Prefer non-destructive config handling:
+   - never move/delete `timelog_projects.json`
+   - use explicit alternate paths (`--projects-config`) for experiments
+5. Keep commits scoped by intent:
+   - feature code
+   - docs/reorg
+   - follow-up cleanup
+
+If this section conflicts with any policy below, the detailed policy below wins.
+
 ## Standard Timelog Policy
 
 - Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).

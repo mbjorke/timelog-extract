@@ -5,7 +5,8 @@
 #   ./scripts/build_brand_assets.sh
 #
 # Outputs (repo root):
-#   favicon.ico, gittan-readme-icon.png, og-image.png, gittan-logo.png
+#   favicon.ico, favicon-16x16.png, favicon-32x32.png,
+#   gittan-readme-icon.png, og-image.png, gittan-logo.png
 #
 # Pixel / "taggig" GITTAN: default nearest-neighbor (-filter point / PIL NEAREST).
 # Override: BRAND_RESIZE_FILTER=lanczos
@@ -35,6 +36,8 @@ if command -v magick >/dev/null 2>&1 && [[ -n "${H:-}" ]]; then
   SQ="$(mktemp -t gittan-brand-sq.XXXXXX.png)"
   magick "$MARK" -gravity center -extent "${H}x${H}" -filter "$FILTER" "$SQ"
   magick "$SQ" -define icon:auto-resize=16,32,48,64 favicon.ico
+  magick "$SQ" -filter "$FILTER" -resize '16x16' favicon-16x16.png
+  magick "$SQ" -filter "$FILTER" -resize '32x32' favicon-32x32.png
   magick "$SQ" -filter "$FILTER" -resize '128x128' gittan-readme-icon.png
   magick "$SQ" -filter "$FILTER" -resize "${LOGO_SIZE}x${LOGO_SIZE}" gittan-logo.png
   rm -f "$SQ"
@@ -49,7 +52,9 @@ side = min(w, h)
 left = (w - side) // 2
 top = (h - side) // 2
 sq = im.crop((left, top, left + side, top + side))
-sq.resize((32, 32), Image.Resampling.NEAREST).save(Path("favicon.ico"), format="ICO")
+sq.save(Path("favicon.ico"), format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
+sq.resize((16, 16), Image.Resampling.NEAREST).save(Path("favicon-16x16.png"))
+sq.resize((32, 32), Image.Resampling.NEAREST).save(Path("favicon-32x32.png"))
 sq.resize((128, 128), Image.Resampling.NEAREST).save(Path("gittan-readme-icon.png"))
 sq.resize((int("$LOGO_SIZE"), int("$LOGO_SIZE")), Image.Resampling.NEAREST).save(Path("gittan-logo.png"))
 PY
@@ -60,7 +65,7 @@ if [[ -f "$OG_SRC" ]]; then
 fi
 
 if [[ -f og-image.png ]]; then
-  echo "OK: favicon.ico, gittan-readme-icon.png, gittan-logo.png, og-image.png"
+  echo "OK: favicon.ico, favicon-16x16.png, favicon-32x32.png, gittan-readme-icon.png, gittan-logo.png, og-image.png"
 else
-  echo "OK: favicon.ico, gittan-readme-icon.png, gittan-logo.png (no $OG_SRC — skipped og-image.png)"
+  echo "OK: favicon.ico, favicon-16x16.png, favicon-32x32.png, gittan-readme-icon.png, gittan-logo.png (no $OG_SRC — skipped og-image.png)"
 fi

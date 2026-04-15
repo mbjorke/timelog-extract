@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+## 0.2.8 - 2026-04-15
+
 - CLI: **A/B rule suggestions** from uncategorized clusters — `gittan suggest-rules --project "…"` (preview + writes `timelog_projects.ab-suggestions.json`), `gittan apply-suggestions --option A|B [--confirm]`, and `gittan review --uncategorized --ab-suggestions` (optional interactive apply). Option **A** prefers strong URL/domain anchors and low-ambiguity repeated terms; **B** adds medium-confidence and route-style tokens. Impact preview shows +events, +hours, and uncategorized delta; config writes require confirmation and use a timestamped backup plus `save_projects_config_payload`.
 - Classification: `tracked_urls` fragments now contribute to `classify_project` scoring when they appear in the same haystack as match terms (e.g. Chrome `url` + `title`), so suggested domains affect reports consistently.
 - Collect **Lovable Desktop** activity from app-local storage on macOS: prefer Chromium `History` when present, and fall back to Local/Session/IndexedDB signal files when `History` is absent (still respects `--chrome-source`; classification remains URL/title-based).
+- Site: removed the mock/live-replay terminal block from `gittan.html` to prioritize stable readability while a secure live terminal architecture is implemented.
+- Docs: added `docs/specs/live-terminal-sandbox-demo.md` describing a deployable, allowlisted sandbox terminal design for interactive website demos.
+- Site branding: favicon delivery now includes explicit `favicon-16x16.png` and `favicon-32x32.png` links/assets in addition to ICO fallback for broader client compatibility.
 
 ## 0.2.7 - 2026-04-14
 

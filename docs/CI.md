@@ -6,6 +6,16 @@ The default branch **`main`** does **not** accept direct pushes from contributor
 
 Treat **`main` as read-only** from local clones unless a maintainer performs an allowed merge. See **`BRANCH.md`** for the git workflow.
 
+## Integration branch (`dev`)
+
+The repository now uses **`dev`** as the default integration branch for contributor/agent work:
+
+- new work starts on `task/*` branches from `dev`,
+- PRs merge into `dev`,
+- stable `dev` is promoted via PR into `main`.
+
+`release/X.Y.Z` remains available for explicit version-isolation work.
+
 ## Workflow location
 
 - **File:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
@@ -40,6 +50,7 @@ PRs still get a **green workflow** from **verify-static-site** when site-related
 ## PR expectations (not auto-enforced in YAML)
 
 - **PR title and description in English** — see **`AGENTS.md`** and [`.github/pull_request_template.md`](../.github/pull_request_template.md). The workflow does not detect language; it is a project rule for reviewers and bots.
+- **Branch flow:** default contributor path is `task/* -> dev`; PRs to `main` should normally be release/integration PRs.
 
 ## Related
 

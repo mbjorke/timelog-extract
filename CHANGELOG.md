@@ -20,7 +20,7 @@
 
 - Docs: `**docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). `**AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
 - CI: `**static.yml`** — minimal workflow `permissions`; `**pages: write`** + `**id-token: write**` only on `**deploy**`. Shared site build in `**scripts/prepare_static_site.sh**` (verify + deploy). `**gittan doctor**`: shell-agnostic PATH hints; narrow `**except**` + `**logging**` when probing pip `--user` bin.
-- Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/OPPORTUNITIES.md`, `docs/LINKEDIN_PILOT_POSTS.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
+- Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/ideas/opportunities.md`, `docs/LINKEDIN_PILOT_POSTS.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
 - UX: `**gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + `**gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.
 - Onboarding: `gittan doctor` now ends with concrete next steps based on the current machine state, including when to run `gittan setup`, `gittan projects`, `pipx ensurepath`, or a first `gittan report --today --source-summary`.
 - Onboarding: `gittan setup` now ends with copyable next steps after the summary table so the user can move directly from dry-run or setup completion to a useful first report.
@@ -62,7 +62,7 @@
 - Docs: **AI-assisted project config** vision (`docs/AI_ASSISTED_CONFIG.md`); indexed in `docs/VISION_DOCUMENTS.md` and `README.md`.
 - Docs: `**BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
 - Docs: `**docs/CI.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/VISION_DOCUMENTS.md` updated for definitive wording.
-- Docs: `**docs/OPPORTUNITIES.md`** (product/GTM working notes) and `**docs/PRIVATE_LOCAL_NOTES.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
+- Docs: `**docs/ideas/opportunities.md`** (product/GTM working notes) and `**docs/PRIVATE_LOCAL_NOTES.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
 
 ## 0.2.0 - 2026-04-11
 
@@ -94,7 +94,7 @@ Why this release matters:
 
 ## 0.1.0 - 2026-04-08
 
-- Added pre-phase agentic code evaluation report in `docs/AGENTIC_EVALUATION.md`.
+- Added pre-phase agentic code evaluation report in `docs/archive/agentic-evaluation.md`.
 - Simplified core orchestration in `timelog_extract.py`:
   - `collect_all_events()`
   - `filter_included_events()`

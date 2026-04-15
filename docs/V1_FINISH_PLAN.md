@@ -52,7 +52,7 @@ Suggested file targets:
 - `tests/fixtures/*`
 - `tests/test_*collector*.py`
 - `.github/workflows/ci.yml`
-- `docs/AGENTIC_EVALUATION.md` (update testability status)
+- `docs/archive/agentic-evaluation.md` (update testability status)
 
 Exit criteria:
 

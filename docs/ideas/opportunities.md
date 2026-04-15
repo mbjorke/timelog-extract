@@ -44,14 +44,14 @@
 ## Solo-first cloud delivery stance
 
 - **Preferred near-term shape:** local-first preparation in Gittan, optional cloud
-  delivery through a middle layer (Lovable) for drafting, styling, recipient handling,
-  and email send workflow.
+delivery through a middle layer (Lovable) for drafting, styling, recipient handling,
+and email send workflow.
 - **Why now:** this keeps user control explicit (review before upload, explicit send),
-  while avoiding early complexity from broad inbound API design and long-lived tokens.
+while avoiding early complexity from broad inbound API design and long-lived tokens.
 - **Promise boundary:** do not imply automatic background sync; frame this as
-  user-triggered export/upload and draft-first cloud workflow.
+user-triggered export/upload and draft-first cloud workflow.
 - **Out of scope for this phase:** generic query API surface, bi-directional sync, and
-  enterprise-grade multi-tenant auth/permission systems.
+enterprise-grade multi-tenant auth/permission systems.
 
 ---
 
@@ -78,8 +78,8 @@
 - **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with live Patreon/Sponsors pages before merging.
 - **GitHub Discussions:** **[Discussions home](https://github.com/mbjorke/timelog-extract/discussions)** — default **General** / **Q&A** for community feedback and install questions (replaces the old in-repo pilot feedback file). **Announcements** for rare maintainer posts: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
 - **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with `**CONTRIBUTING.md`** and what CI / `docs/CI.md` actually checks.
-- **Planned — Social preview (GitHub repo):** When links to **this repository** are shared, GitHub can show a **repository card image**. Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Start from in-repo `**repository-open-graph-template.png**`, export a final PNG, and upload in Settings (GitHub stores it; not read live from the repo).
-- **Brand assets (in-repo):** Canonical masters `**docs/brand/gittan-brand-mark.png**` + `**gittan-og-card.png**`; experiments in `**docs/brand/drafts/**`; snapshots in `**docs/brand/archive/**`. Derived **`favicon.ico`**, **`gittan-readme-icon.png`**, root **`gittan-logo.png`** (landing nav/hero), **`og-image.png`** via **`scripts/build_brand_assets.sh`**. `gittan.html` uses **`/gittan-logo.png`**; meta uses `https://gittan.sh/og-image.png` after Pages deploy.
+- **Planned — Social preview (GitHub repo):** When links to **this repository** are shared, GitHub can show a **repository card image**. Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Start from in-repo `**repository-open-graph-template.png`**, export a final PNG, and upload in Settings (GitHub stores it; not read live from the repo).
+- **Brand assets (in-repo):** Canonical masters `**docs/brand/gittan-brand-mark.png`** + `**gittan-og-card.png`**; experiments in `**docs/brand/drafts/**`; snapshots in `**docs/brand/archive/**`. Derived `**favicon.ico**`, `**gittan-readme-icon.png**`, root `**gittan-logo.png**` (landing nav/hero), `**og-image.png**` via `**scripts/build_brand_assets.sh**`. `gittan.html` uses `**/gittan-logo.png**`; meta uses `https://gittan.sh/og-image.png` after Pages deploy.
 
 ---
 

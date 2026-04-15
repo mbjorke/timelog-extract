@@ -160,7 +160,7 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 | Missing deps / editable install | `python3 -m pip install -e .` from clone |
 | Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |
 | Paths / permissions | `--worklog`, browser DBs, Mail / Screen Time access |
-| Global timelog automation | `gittan setup-global-timelog`, `GLOBAL_TIMELOG_AUTOMATION.md` |
+| Global timelog automation | `gittan setup-global-timelog`, `docs/archive/global-timelog-automation-legacy.md` |
 
 ---
 
@@ -179,7 +179,7 @@ Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**
 ## Contributing · tests · license
 
 - **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — PR titles/descriptions in **English**; run tests before pushing.
-- **Maintainers (repo hygiene):** issue templates, Discussions, **Social preview** in GitHub Settings; **brand** — canonical PNGs in `docs/brand/`, then [`scripts/build_brand_assets.sh`](scripts/build_brand_assets.sh) → root **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`. See [`docs/brand/README.md`](docs/brand/README.md), [`docs/OPPORTUNITIES.md`](docs/OPPORTUNITIES.md).
+- **Maintainers (repo hygiene):** issue templates, Discussions, **Social preview** in GitHub Settings; **brand** — canonical PNGs in `docs/brand/`, then [`scripts/build_brand_assets.sh`](scripts/build_brand_assets.sh) -> root **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`. See [`docs/brand/README.md`](docs/brand/README.md), [`docs/ideas/opportunities.md`](docs/ideas/opportunities.md).
 - **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/CI.md`](docs/CI.md)**.
 - Tests: `./scripts/run_autotests.sh` (also enforced in CI).
 - **License:** GNU **GPL-3.0-or-later** — [`LICENSE`](LICENSE). Changelog: [`CHANGELOG.md`](CHANGELOG.md).

@@ -129,7 +129,7 @@ who has a less-structured workflow than the author.
 
 **Yes, with one structural gap.**
 
-The strategy documents are unusually thorough for a solo project. `OPPORTUNITIES.md`,
+The strategy documents are unusually thorough for a solo project. `docs/ideas/opportunities.md`,
 `GITTAN_NORTHSTAR_METRICS.md`, `SPONSORSHIP_TERMS.md`, and `V1_FINISH_PLAN.md` form a
 coherent whole. The metrics are specific and measurable. The finish plan has realistic
 exit criteria per milestone.

@@ -4,6 +4,10 @@ Thanks for helping improve Timelog Extract / Gittan. This document is the single
 
 **`main` is branch-protected** — no direct pushes; use a branch and PR. See [`BRANCH.md`](BRANCH.md) and [`docs/CI.md`](docs/CI.md) for workflow and what CI runs.
 
+## User feedback (not code)
+
+Experience reports, setup confusion, and product questions belong in **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** so others can find them. Use **issues** for defects or concrete feature requests you can describe precisely.
+
 ## Pull requests
 
 - **Write the PR title and PR description in English.** That is required for reviewers and tools (e.g. CodeRabbit). See [`AGENTS.md`](AGENTS.md).
@@ -49,8 +53,6 @@ The installable **package version** lives in `pyproject.toml` and is shown by `g
 
 ## License
 
-Copyright © Blueberry Maybe Ab Ltd. The project is distributed under the **[Gittan / Timelog Extract License](LICENSE)** (a **source-available** license: full source, but **use beyond small teams** may require Patreon as described in **`docs/SPONSORSHIP_TERMS.md`**). Non-binding **intent** behind that choice is summarized in **`docs/LICENSE_GOALS.md`**.
+Copyright © Blueberry Maybe AB. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
 
-By opening a pull request or otherwise contributing material you intend to be merged, you agree your contributions may be used and distributed under that license or under **future license terms** Blueberry Maybe Ab Ltd chooses for later releases (see `LICENSE` section 8).
-
-This is not legal advice. For business-critical decisions, consult a lawyer.
+For background on the license direction, see **`docs/LICENSE_GOALS.md`**.

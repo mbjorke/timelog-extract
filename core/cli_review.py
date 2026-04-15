@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Annotated, Optional
 
 import questionary
 import typer
 
+from core.cli_ab_rule_suggestions import (
+    UNCATEGORIZED,
+    _apply_timeframe_prompt,
+    _load_projects_payload,
+    gather_ab_suggestions,
+    persist_suggestion_state,
+    print_ab_suggestion_preview,
+    prompt_optional_apply,
+)
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
-from core.config import (
-    apply_rule_to_project,
-    load_projects_config_payload,
-    save_projects_config_payload,
-)
+from core.config import apply_rule_to_project, save_projects_config_payload
 from core.uncategorized_review import build_uncategorized_clusters
 
 
@@ -31,6 +34,14 @@ def review(
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     uncategorized: Annotated[bool, typer.Option(help="Review uncategorized activity clusters.")] = True,
+    ab_suggestions: Annotated[
+        bool,
+        typer.Option(help="Show A/B heuristic rule suggestions before the guided loop."),
+    ] = False,
+    project: Annotated[
+        Optional[str],
+        typer.Option(help="Project name for A/B suggestions (prompted if omitted with --ab-suggestions)."),
+    ] = None,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
     max_clusters: Annotated[int, typer.Option(help="Max clusters to review")] = 20,
     samples_per_cluster: Annotated[int, typer.Option(help="Sample events shown per cluster")] = 4,
@@ -44,16 +55,16 @@ def review(
         console.print("[yellow]Only uncategorized review is supported in this command for now.[/yellow]")
         raise typer.Exit(code=0)
 
-    if not (today or yesterday or last_3_days or last_week or last_14_days or last_month or date_from or date_to):
-        picked = prompt_for_timeframe()
-        today = picked.get("today", False)
-        yesterday = picked.get("yesterday", False)
-        last_3_days = picked.get("last_3_days", False)
-        last_week = picked.get("last_week", False)
-        last_14_days = picked.get("last_14_days", False)
-        last_month = picked.get("last_month", False)
-        date_from = picked.get("date_from")
-        date_to = picked.get("date_to")
+    date_from, date_to, today, yesterday, last_3_days, last_week, last_14_days, last_month = _apply_timeframe_prompt(
+        date_from,
+        date_to,
+        today,
+        yesterday,
+        last_3_days,
+        last_week,
+        last_14_days,
+        last_month,
+    )
 
     options = TimelogRunOptions(
         date_from=date_from,
@@ -69,7 +80,7 @@ def review(
         quiet=True,
     )
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-    uncategorized_events = [event for event in report.included_events if event.get("project") == "Uncategorized"]
+    uncategorized_events = [event for event in report.included_events if event.get("project") == UNCATEGORIZED]
     if not uncategorized_events:
         console.print("[green]No uncategorized events found in selected range.[/green]")
         return
@@ -84,31 +95,39 @@ def review(
         return
 
     config_path = Path(projects_config)
-    try:
-        payload = load_projects_config_payload(config_path)
-        # Validate that projects exists and is a dict
-        if not isinstance(payload.get("projects"), dict):
-            console.print(f"[red]Error:[/red] Config file '{config_path}' must have a 'projects' dict at top level.")
-            console.print("[yellow]Hint:[/yellow] Expected format: {\"projects\": {\"project_name\": {...}}}")
-            raise typer.Exit(code=1)
-    except json.JSONDecodeError as exc:
-        console.print(f"[red]Error:[/red] Config file '{config_path}' contains invalid JSON: {exc}")
-        console.print("[yellow]Hint:[/yellow] Check the file syntax or delete it to start fresh.")
-        raise typer.Exit(code=1)
-    except PermissionError:
-        console.print(f"[red]Error:[/red] Cannot read config file '{config_path}' - permission denied.")
-        console.print("[yellow]Hint:[/yellow] Check file permissions.")
-        raise typer.Exit(code=1)
-    except OSError as exc:
-        console.print(f"[red]Error:[/red] Cannot access config file '{config_path}': {exc}")
-        console.print("[yellow]Hint:[/yellow] Verify the file path is accessible.")
-        raise typer.Exit(code=1)
-    except Exception as exc:
-        console.print(f"[red]Error:[/red] Failed to load config from '{config_path}': {exc}")
-        console.print("[yellow]Hint:[/yellow] Check the file format and permissions.")
-        raise typer.Exit(code=1)
+    _load_projects_payload(console, config_path)
+
+    if ab_suggestions:
+        target_project = project or questionary.text("Target project for A/B suggestions:").ask() or ""
+        target_project = target_project.strip()
+        if not target_project:
+            console.print("[yellow]No project name; skipping A/B suggestions.[/yellow]")
+        else:
+            opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, target_project)
+            print_ab_suggestion_preview(console, target_project, opt_a, opt_b, prev_a, prev_b)
+            state_path = persist_suggestion_state(
+                config_path,
+                target_project,
+                len(uncategorized_events),
+                opt_a,
+                opt_b,
+                prev_a,
+                prev_b,
+            )
+            console.print(f"\n[dim]Saved suggestion state to {state_path} (for `gittan apply-suggestions`).[/dim]")
+            prompt_optional_apply(console, config_path, target_project, opt_a, opt_b)
+
     console.print(
         f"[bold]Guided review[/bold] | uncategorized events: {len(uncategorized_events)} | clusters: {len(clusters)}"
+    )
+
+    payload = _load_projects_payload(console, config_path)
+    project_names = sorted(
+        {
+            str(project.get("name", "")).strip()
+            for project in payload["projects"]
+            if isinstance(project, dict) and project.get("name")
+        }
     )
 
     for index, cluster in enumerate(clusters, start=1):
@@ -134,17 +153,12 @@ def review(
         if action == "Skip":
             continue
 
-        project_names = [
-            str(project.get("name", "")).strip()
-            for name, project in payload["projects"].items()
-            if isinstance(project, dict) and project.get("name")
-        ]
         project_name = ""
         if action == "Assign to existing project":
             if not project_names:
                 console.print("[yellow]No existing projects found; skipping this cluster.[/yellow]")
                 continue
-            project_name = questionary.select("Target project:", choices=sorted(project_names)).ask() or ""
+            project_name = questionary.select("Target project:", choices=project_names).ask() or ""
         else:
             project_name = questionary.text("New project name:").ask() or ""
         if not project_name.strip():
@@ -169,15 +183,19 @@ def review(
             save_projects_config_payload(config_path, payload)
         except PermissionError:
             console.print(f"[red]Error:[/red] Cannot write to config file '{config_path}' - permission denied.")
-            console.print("[yellow]Hint:[/yellow] Check file permissions.")
             raise typer.Exit(code=1)
         except OSError as exc:
             console.print(f"[red]Error:[/red] Cannot save config file '{config_path}': {exc}")
-            console.print("[yellow]Hint:[/yellow] Verify the directory is writable.")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from exc
         except Exception as exc:
             console.print(f"[red]Error:[/red] Failed to save config to '{config_path}': {exc}")
-            console.print("[yellow]Hint:[/yellow] Check disk space and permissions.")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from exc
         created_note = " (created project)" if created else ""
         console.print(f"[green]Saved[/green] {field} -> {value!r} for {project_name!r}{created_note}.")
+        project_names = sorted(
+            {
+                str(project.get("name", "")).strip()
+                for project in payload["projects"]
+                if isinstance(project, dict) and project.get("name")
+            }
+        )

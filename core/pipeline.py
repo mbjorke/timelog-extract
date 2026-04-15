@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
-
+from collectors.lovable_desktop import lovable_desktop_has_storage_signals, lovable_desktop_history_candidates
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 def collect_all_events(
@@ -24,6 +24,7 @@ def collect_all_events(
     collect_claude_ai_urls: Callable,
     collect_gemini_web_urls: Callable,
     collect_chrome: Callable,
+    collect_lovable_desktop: Callable,
     collect_gemini_cli: Callable,
     collect_cursor: Callable,
     collect_cursor_checkpoints: Callable,
@@ -35,11 +36,14 @@ def collect_all_events(
     all_events: List[Dict[str, Any]] = []
     collector_status: Dict[str, Dict[str, Any]] = {}
     chrome_history_exists = chrome_history_path_fn(home).exists()
+    lovable_desktop_history_exists = bool(lovable_desktop_history_candidates(home))
+    lovable_desktop_usable = lovable_desktop_history_exists or lovable_desktop_has_storage_signals(home)
     mail_root, mail_msg = detect_mail_root_fn(home)
     collectors = build_collector_specs_fn(
         args,
         worklog_path,
         chrome_history_exists=chrome_history_exists,
+        lovable_desktop_history_exists=lovable_desktop_usable,
         mail_root=mail_root,
         mail_msg=mail_msg,
         collect_claude_code=collect_claude_code,
@@ -47,6 +51,7 @@ def collect_all_events(
         collect_claude_ai_urls=collect_claude_ai_urls,
         collect_gemini_web_urls=collect_gemini_web_urls,
         collect_chrome=collect_chrome,
+        collect_lovable_desktop=collect_lovable_desktop,
         collect_gemini_cli=collect_gemini_cli,
         collect_cursor=collect_cursor,
         collect_cursor_checkpoints=collect_cursor_checkpoints,

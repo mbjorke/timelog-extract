@@ -312,7 +312,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
             console.print(f"- repo scope = selected list ({repo_count} repos)")
         else:
             console.print("- repo scope = all git repositories")
-    console.print("\nReference: `GLOBAL_TIMELOG_AUTOMATION.md`")
+    console.print("\nReference: `docs/archive/global-timelog-automation-legacy.md`")
 def _ensure_minimal_projects_config(
     console,
     *,

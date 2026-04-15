@@ -76,10 +76,10 @@ Control model:
 - Data leaves local environment only after explicit user action.
 - Import must create draft state by default, not auto-send.
 - First upload should include a consent screen describing destination and data
-  categories.
+categories.
 - Users must be able to delete drafts and revoke future uploads.
 - Regret handling should include operation IDs and manual undo instructions when
-  target APIs do not support full rollback.
+target APIs do not support full rollback.
 
 ## Regret recovery model
 
@@ -108,7 +108,7 @@ Out of scope:
 - Engine API boundary exists for local callers in `core/engine_api.py`.
 - CLI already supports PDF/JSON/HTML output in `core/report_cli.py`.
 - Briox experimentation exists as standalone connection test script
-  (`briox_connection_test.py`) and can evolve into draft-first push flows.
+(`briox_connection_test.py`) and can evolve into draft-first push flows.
 
 ## Product framing
 

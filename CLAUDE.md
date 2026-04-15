@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of truth.
+
 ## Project overview
 
 **Gittan** (`timelog-extract` on PyPI) is a local-first CLI tool that aggregates IDE, browser, mail, and worklog activity into project-hour reports and optional invoice PDFs. The CLI command is `gittan`; the package is installed via `pip install timelog-extract`. Python 3.9+ required.
@@ -21,6 +23,7 @@ bash scripts/run_autotests.sh
 ```
 
 This runs two things:
+
 1. `python scripts/check_file_lengths.py --max-lines 500` — enforces a **500-line limit per Python file**
 2. `python3 -m unittest discover -s tests -p "test_*.py"`
 
@@ -55,9 +58,9 @@ cd cursor-extension && npm install && npm run build
 
 ### Entry points
 
-- **`timelog_extract.py`** — top-level module; re-exports from `core/` for backward-compat; also the `__main__` entrypoint when run directly.
-- **`core/cli.py`** — wires up the Typer app by importing CLI command modules as side effects (`cli_doctor_sources_projects`, `cli_global_timelog_setup`, `cli_report_status`, `cli_review`). Each of those registers its own subcommand on the shared `app` in `core/cli_app.py`.
-- **`scripts/run_engine_report.py`** — standalone script using the same API as the Cursor extension.
+- `**timelog_extract.py**` — top-level module; re-exports from `core/` for backward-compat; also the `__main__` entrypoint when run directly.
+- `**core/cli.py**` — wires up the Typer app by importing CLI command modules as side effects (`cli_doctor_sources_projects`, `cli_global_timelog_setup`, `cli_report_status`, `cli_review`). Each of those registers its own subcommand on the shared `app` in `core/cli_app.py`.
+- `**scripts/run_engine_report.py**` — standalone script using the same API as the Cursor extension.
 
 ### Core data flow
 
@@ -87,7 +90,7 @@ CLI command (Typer)
 
 Each collector returns a list of event dicts with keys `source`, `timestamp` (datetime), `detail`, `project`. Collectors are registered in `core/collector_registry.py` as `CollectorSpec` dataclasses with `name`, `collector` callable, `enabled`, and `reason`. The pipeline in `core/pipeline.py` runs them with a Rich progress bar (or silently in `--quiet` mode).
 
-Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, GitHub.
+Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, Lovable (desktop), GitHub.
 
 `AI_SOURCES` (in `core/sources.py`) is the set of sources that qualify for the shorter `min_session` floor vs `min_session_passive` for passive sources.
 
@@ -114,35 +117,28 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ### Branch and PR policy
 
-- **`main` is branch-protected** — never push directly.
-- Use **`release/X.Y.Z`** branches for version bumps (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`). Small non-release fixes use any short-lived named branch.
-- PR titles and descriptions must be in **English**.
-- Keep PRs in **Draft** while iterating; mark Ready for review when CI is green.
-- For version release steps, see `docs/VERSIONING.md`.
-- After a squash-merge, rebase or merge `origin/main` back into an open `release/*` branch before pushing more commits (git history diverges after squash).
+- Fast rule-of-thumb:
+  - never push to `main`
+  - use `release/X.Y.Z` for release-bound work
+  - PR title/description in English
+- Canonical policy lives in `AGENTS.md` (branch/release/review sections).
+- Detailed release flow: `docs/VERSIONING.md`.
 
 ### Timelog file rules (critical)
 
-- **Never commit `TIMELOG.md`** — it is gitignored by policy.
-- When adding a timelog entry, use `date '+%Y-%m-%d %H:%M'` for the real wall time; do not round or invent timestamps.
-- **Never commit `timelog_projects.json`** (gitignored; treat as critical user data). Before renaming/deleting, confirm with the user or take a timestamped backup first.
-- Do not commit anything under `private/`.
-
-### Local data safety
-
-`timelog_projects.json` is the user's project config and **not recoverable from git** — it is gitignored. The config is saved atomically via `core/config.py::save_projects_config_payload()` (temp file + `os.replace`). Treat moves/deletes of this file as destructive; always confirm with the user or use a timestamped backup.
-
-### CodeRabbit review cadence
-
-- Push meaningful batches; trigger `@coderabbitai full review` only when the scope is complete and CI is green.
-- Aim for 1-2 review cycles per PR; resolve feedback in one consolidated commit when possible.
+- Do not commit `TIMELOG.md`, `timelog_projects.json`, or anything under `private/`.
+- Treat `timelog_projects.json` as critical local data; never move/delete without confirmation or backup.
+- Use real wall time (`date '+%Y-%m-%d %H:%M'`) for timelog entries.
+- Canonical safety/review cadence rules live in `AGENTS.md`.
 
 ## CI jobs (`.github/workflows/ci.yml`)
 
-| Job | What it does |
-|---|---|
-| `python` | Installs (editable), smoke-runs `timelog_extract.py --today`, enforces 500-line limit, runs unit tests |
-| `package` | Builds sdist + wheel (`python -m build`), smoke-installs wheel, checks `gittan -V` |
-| `extension` | `npm install && npm run build` in `cursor-extension/` |
+
+| Job         | What it does                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| `python`    | Installs (editable), smoke-runs `timelog_extract.py --today`, enforces 500-line limit, runs unit tests |
+| `package`   | Builds sdist + wheel (`python -m build`), smoke-installs wheel, checks `gittan -V`                     |
+| `extension` | `npm install && npm run build` in `cursor-extension/`                                                  |
+
 
 GitHub Pages deploys only on push to `main` (see `docs/CI.md`).

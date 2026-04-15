@@ -1,4 +1,7 @@
-# Global Automatic Timelog for All Repositories
+# Global Automatic Timelog for All Repositories (Legacy)
+
+Status: Archived legacy reference.
+Current recommended flow: use `gittan setup-global-timelog` (optionally with `--dry-run`).
 
 This guide configures automatic timelog entries on every commit across all git repositories on this computer.
 

@@ -16,6 +16,7 @@ SOURCE_ORDER = [
     WORKLOG_SOURCE,
     "Apple Mail",
     "Chrome",
+    "Lovable (desktop)",
     GITHUB_SOURCE,
 ]
 
@@ -25,6 +26,7 @@ AI_SOURCES = {
     "Gemini CLI",
     "Claude.ai (web)",
     "Gemini (web)",
+    "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
     WORKLOG_SOURCE,

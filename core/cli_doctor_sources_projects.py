@@ -24,6 +24,7 @@ from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
+from collectors.lovable_desktop import lovable_desktop_history_candidates
 from core.workspace_root import runtime_workspace_root
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
@@ -185,6 +186,15 @@ def doctor(
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
+        lh = lovable_desktop_history_candidates(home)
+        if lh:
+            check_db(lh[0], "Lovable Desktop History", "urls")
+        else:
+            table.add_row(
+                "Lovable Desktop History",
+                NA_ICON,
+                f"[{STYLE_MUTED}]No History DB yet (browse in Lovable to create one)[/{STYLE_MUTED}]",
+            )
 
         mail_path = home / "Library" / "Mail"
         if mail_path.exists():
@@ -202,14 +212,7 @@ def doctor(
         check_file(cursor_log_path, "Cursor Storage")
 
         cursor_checkpoints = (
-            home
-            / "Library"
-            / "Application Support"
-            / "Cursor"
-            / "User"
-            / "globalStorage"
-            / "anysphere.cursor-commits"
-            / "checkpoints"
+            home / "Library/Application Support/Cursor/User/globalStorage/anysphere.cursor-commits/checkpoints"
         )
         if cursor_checkpoints.exists():
             table.add_row("Cursor Checkpoints", OK_ICON, f"[{STYLE_MUTED}]Folder accessible[/{STYLE_MUTED}]")

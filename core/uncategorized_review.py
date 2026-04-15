@@ -48,11 +48,18 @@ def _extract_domain(text: str) -> str:
 
 
 def _extract_term(text: str) -> str:
-    for token in _TOKEN_RE.findall((text or "").lower()):
-        if token in _STOPWORDS:
-            continue
-        return token[:64]
-    return ""
+    tokens = [
+        token
+        for token in _TOKEN_RE.findall((text or "").lower())
+        if token not in _STOPWORDS
+    ]
+    # Prefer tokens that contain a hyphen or slash: these are more likely to be
+    # project-specific identifiers (e.g. "acme-feature", "org/repo") and
+    # therefore more useful as suggested match_terms.
+    for token in tokens:
+        if "-" in token or "/" in token:
+            return token[:64]
+    return tokens[0][:64] if tokens else ""
 
 
 def build_uncategorized_clusters(

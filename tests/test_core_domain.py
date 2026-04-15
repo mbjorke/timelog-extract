@@ -51,6 +51,58 @@ class CoreDomainTests(unittest.TestCase):
         )
         self.assertAlmostEqual(h, 0.25)
 
+    def test_session_duration_uses_passive_minimum(self):
+        """Uses the passive minimum when no AI sources are present."""
+        start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        end = start + timedelta(minutes=1)
+        events = [{"source": "Chrome"}]
+        h = domain.session_duration_hours(
+            events,
+            start,
+            end,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            ai_sources={"Claude Code CLI"},
+        )
+        self.assertAlmostEqual(h, 5 / 60)
+
+    def test_session_duration_uses_actual_when_longer_than_minimum(self):
+        """Returns the actual duration when it exceeds the minimum."""
+        start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        end = start + timedelta(hours=2)
+        events = [{"source": "Claude Code CLI"}]
+        h = domain.session_duration_hours(
+            events,
+            start,
+            end,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            ai_sources={"Claude Code CLI"},
+        )
+        self.assertAlmostEqual(h, 2.0)
+
+    def test_compute_sessions_merges_close_entries(self):
+        """Entries within the gap threshold are merged into a single session."""
+        base = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        entries = [
+            {"local_ts": base},
+            {"local_ts": base + timedelta(minutes=5)},
+            {"local_ts": base + timedelta(minutes=10)},
+        ]
+        sessions = domain.compute_sessions(entries, gap_minutes=15)
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(len(sessions[0][2]), 3)
+
+    def test_billable_total_hours_no_unit(self):
+        """Returns raw hours unchanged when unit is None or zero."""
+        self.assertAlmostEqual(domain.billable_total_hours(1.37, None), 1.37)
+        self.assertAlmostEqual(domain.billable_total_hours(1.37, 0), 1.37)
+
+    def test_classify_project_returns_fallback_with_no_profiles(self):
+        """Returns the fallback when the profile list is empty."""
+        result = domain.classify_project("any text here", [], "Uncategorized")
+        self.assertEqual(result, "Uncategorized")
+
 
 if __name__ == "__main__":
     unittest.main()

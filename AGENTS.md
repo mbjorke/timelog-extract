@@ -29,6 +29,36 @@
 - Scenario testing and “quick cleanup” are common ways to lose data; treat **`timelog_projects.json`** as **critical** even though it is gitignored.
 - **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): **`docs/incidents/2026-04-13-project-config-backup-gap.md`**.
 
+## Task types — read the brief before acting
+
+Before writing a single line of code or prose, identify what type of task you have been given. Delivering the wrong type of output wastes the PR cycle even if the work itself is correct.
+
+### Review
+
+The deliverable is a **document** — an analysis, findings list, or recommendation — committed as a Markdown file on the feature branch. Code changes are **not part of a review task** unless explicitly requested.
+
+Rules:
+- Read and analyse first. Write the document. Commit it.
+- If you find a bug or security issue while reading, **record it as a finding in the document** with a clear description and recommended fix.
+- Do **not** implement the fix during the review pass. Note it, then stop.
+- If a finding is critical enough that you believe an immediate fix is warranted, say so in the document and ask the maintainer before touching code.
+
+**Why:** bundling an unasked-for code fix into a review PR muddies the deliverable, makes the PR harder to evaluate as a review, and may cause the whole branch to be set aside even if the fix is correct. The review document is the finish line for a review task.
+
+**Reference incident (April 2026):** `claude/gittan-launch-review-4a5DD` was a review-only task. The agent produced the correct review document but also fixed a security issue in `collectors/chrome.py` in the same commit. Marcus cherry-picked the fix into `main` manually (PR #14), but the branch was never evaluated as a review because its scope was muddled. Fix landed; review did not get a proper cycle.
+
+### Implementation
+
+The deliverable is **working code** — changed files, passing tests, a clean commit on the feature branch. Write the code, run `bash scripts/run_autotests.sh`, fix failures, commit, push.
+
+### Hybrid (review + implementation in the same task)
+
+Only when the brief explicitly asks for both. Use **two separate commits in this order**:
+1. The review/analysis document.
+2. The code changes, with the commit message referencing the findings from commit 1.
+
+This keeps each deliverable independently reviewable.
+
 ## Branch policy (`main`)
 
 - **`main` is branch-protected** (no direct push). Land changes via a **named branch**, push to `origin`, and merge via **pull request**.

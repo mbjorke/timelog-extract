@@ -18,6 +18,7 @@ import typer
 from rich.console import Console
 from core.git_project_bootstrap import discover_local_git_repos
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
+from core.setup_github_env import configure_github_env_for_setup
 from core.setup_projects_config_bootstrap import ensure_projects_config
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -419,6 +420,11 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
     next_steps: list[str] = []
     _print_environment_status(console)
     summary_rows.append(("Environment checks", "PASS", "Printed PATH and optional env status."))
+    github_env_status, github_env_note, github_env_steps = configure_github_env_for_setup(
+        console, yes=yes, dry_run=dry_run
+    )
+    summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
+    next_steps.extend(github_env_steps)
     should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
     if should_setup_timelog:
         run_global_timelog_setup(console, yes=yes, dry_run=dry_run)

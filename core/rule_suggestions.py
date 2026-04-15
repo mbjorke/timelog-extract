@@ -337,12 +337,16 @@ def write_suggestions_state(
     uncategorized_total: int,
     option_previews: dict[str, Any],
 ) -> None:
+    option_a = option_previews.get("A")
+    option_b = option_previews.get("B")
+    if not isinstance(option_a, dict) or not isinstance(option_b, dict):
+        raise ValueError("option_previews must include both 'A' and 'B' preview dicts")
     payload = {
         "version": 1,
         "projects_config": projects_config,
         "target_project": target_project,
         "uncategorized_total": uncategorized_total,
-        "options": {"A": option_previews["A"], "B": option_previews["B"]},
+        "options": {"A": option_a, "B": option_b},
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -358,10 +362,16 @@ def rules_from_state_option(state: dict[str, Any], option: str) -> list[RuleSugg
         return []
     out: list[RuleSuggestion] = []
     for raw in block.get("rules", []):
+        if not isinstance(raw, dict):
+            continue
+        rule_type = str(raw.get("rule_type", "")).strip()
+        rule_value = str(raw.get("rule_value", "")).strip()
+        if rule_type not in {"match_terms", "tracked_urls"} or not rule_value:
+            continue
         out.append(
             RuleSuggestion(
-                rule_type=raw["rule_type"],
-                rule_value=raw["rule_value"],
+                rule_type=rule_type,
+                rule_value=rule_value,
                 cluster_count=int(raw.get("cluster_count", 0)),
                 source=str(raw.get("source", "")),
                 samples=tuple(raw.get("samples") or [])[:3],

@@ -16,8 +16,9 @@ positioning is credible and technically grounded, and the documentation depth is
 for a solo-founder project at this stage. The single honest blocker is distribution, not
 product.
 
-One security finding was fixed as part of this review (SQL injection in the Chrome
-collector — parameterized queries now used throughout `collectors/chrome.py`).
+One security finding (SQL injection risk in Chrome collector queries) was resolved
+in a separate fix commit during this review window; this document records the
+review outcome, while the code change landed independently in `collectors/chrome.py`.
 
 ---
 

@@ -96,7 +96,9 @@ class RuntimeCollectors:
     def collect_lovable_desktop(self, profiles, dt_from, dt_to):
         collapse = 12
         if self.cli_args is not None:
-            collapse = int(getattr(self.cli_args, "chrome_collapse_minutes", 12) or 12)
+            value = getattr(self.cli_args, "chrome_collapse_minutes", None)
+            if value is not None:
+                collapse = int(value)
         return lovable_desktop_collector.collect_lovable_desktop(
             profiles,
             dt_from,

@@ -361,7 +361,7 @@ def apply_suggestions(
     )
 
     if not confirm:
-        if not questionary.confirm("Write rules to timelog_projects.json now?", default=False).ask():
+        if not questionary.confirm(f"Write rules to {config_path} now?", default=False).ask():
             raise typer.Exit(code=0)
 
     payload = _load_projects_payload(console, config_path)

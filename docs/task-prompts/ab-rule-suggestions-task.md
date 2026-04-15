@@ -1,6 +1,6 @@
-# RC Prompt: A/B Suggestions For Uncategorized Rules (0.2.8)
+# Task Prompt: A/B Suggestions For Uncategorized Rules (0.2.8)
 
-Use this prompt to implement a release-candidate v1 with minimal back-and-forth.
+Use this prompt to implement a v1 task with minimal back-and-forth.
 Default behavior and decisions are defined below so the agent can proceed without
 asking clarifying questions unless there is a blocker.
 
@@ -76,7 +76,7 @@ Use existing clustering helpers and keep heuristics transparent in output.
 - `./scripts/run_autotests.sh` passes.
 - `CHANGELOG.md` Unreleased includes this feature.
 
-## RC output format for PR notes
+## Task output format for PR notes
 
 Provide:
 

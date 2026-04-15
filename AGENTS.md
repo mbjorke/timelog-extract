@@ -69,7 +69,7 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - `rc-` naming is now considered **legacy** for day-to-day feature work.
 - Use `task/*` branch names for agent-delivered feature scope.
 - For prompt/story docs, prefer `docs/task-prompts/` for new material.
-- Existing `docs/rc-prompts/` content may stay temporarily during migration, but new docs should avoid introducing fresh `rc-` naming unless it is explicitly about release-candidate workflow.
+- Use `docs/task-prompts/` for prompt/story docs; avoid creating new `rc-` names for feature work.
 
 ## Releases: what the maintainer means vs what the agent does
 
@@ -117,7 +117,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 ## Documentation privacy and path hygiene
 
 - In docs/specs/prompts, use **repo-relative paths** (for example
-  `docs/rc-prompts/example.md`) instead of absolute local paths.
+  `docs/task-prompts/example.md`) instead of absolute local paths.
 - Never include local home paths or user-identifying filesystem segments (for
   example `/Users/<name>/...`) in committed documentation.
 - Keep attribution neutral in specs (for example `Owner: Maintainer`) and avoid
@@ -150,13 +150,13 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - **Typical commands** (from repo root): `coderabbit review --base main --type committed` to compare committed changes on your branch to `main`; `coderabbit review --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
 - **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
 
-### Release-candidate agent prompt (copy-paste)
+### Task handover prompt (copy-paste)
 
-- For a **single canonical prompt** (RC tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_RC_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_TASK_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
 
-## RC spec traceability (required)
+## Task spec traceability (required)
 
-- Every new or updated RC spec/prompt in `**docs/rc-prompts/**` must include a
+- Every new or updated task spec/prompt in `**docs/task-prompts/**` must include a
   canonical `## Traceability` section using the exact field keys below.
 - Story ID must use your canonical tracker prefix, for example `GH-123` (GitHub)
   or `JIRA-123` (Jira). Do not use free-form IDs.

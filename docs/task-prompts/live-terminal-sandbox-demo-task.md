@@ -1,4 +1,4 @@
-# RC Prompt: Live Terminal Sandbox Demo
+# Task Prompt: Live Terminal Sandbox Demo
 
 Use this prompt to build a production-grade interactive terminal demo on
 `gittan.sh` backed by a secure sandbox, following the approved spec.
@@ -10,7 +10,7 @@ without exposing host systems, secrets, or arbitrary execution risk.
 
 ## Priority
 
-This RC is priority #2 (after inline CLI UX validation).
+This task is priority #2 (after inline CLI UX validation).
 
 ## Source of truth
 
@@ -58,12 +58,12 @@ All non-allowlisted input must be rejected safely.
 
 ## Suggested delivery slicing
 
-### RC-A (minimum secure path)
+### Task-A (minimum secure path)
 
 - Implement terminal UI + backend allowlist + deterministic fixture outputs.
 - Add server tests for command validation and rejection paths.
 
-### RC-B (hardening)
+### Task-B (hardening)
 
 - Strengthen isolation layer (container hardening/microVM path).
 - Add monitoring and operational alerts for failures/timeouts.
@@ -84,7 +84,7 @@ All non-allowlisted input must be rejected safely.
 - Security controls above are implemented and verified.
 - Site remains stable/readable without motion-heavy behavior.
 
-## RC output format
+## Task output format
 
 When done, provide:
 

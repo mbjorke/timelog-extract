@@ -1,6 +1,6 @@
-# RC Traceability Template
+# Task Traceability Template
 
-Use this block in every RC spec/prompt under `docs/rc-prompts/`.
+Use this block in every task spec/prompt under `docs/task-prompts/`.
 
 ## Traceability
 

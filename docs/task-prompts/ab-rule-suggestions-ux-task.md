@@ -1,12 +1,12 @@
-# RC-story: UX Validation For A/B Rule Suggestions
+# Task story: UX Validation For A/B Rule Suggestions
 
-Status: Draft (next RC)
+Status: Draft (next task pass)
 Owner: Maintainer + active agent
 Scope: UX discussion and validation based on real `gittan suggest-rules` outputs
 
 ## Traceability
 
-Use this block as mandatory metadata for RC tracking and follow-up.
+Use this block as mandatory metadata for task tracking and follow-up.
 
 - story_id: `GH-123`
 - spec_status: `draft`
@@ -64,7 +64,7 @@ Main UX risks:
 - broad mode can look powerful but overwhelm with low-context, generic terms.
 - decision cost grows when users must manually infer confidence from raw samples.
 
-## UX Hypotheses For This RC
+## UX Hypotheses For This task
 
 1. Users decide faster and with higher confidence when each rule has explicit quality
    signaling (for example confidence or noise risk level).
@@ -94,10 +94,10 @@ flowchart TD
   trustIncrease --> decisionNode{Apply or cancel?}
   trustDrop --> decisionNode
   decisionNode -->|Apply| applyPath[Run apply-suggestions]
-  decisionNode -->|Cancel| documentGap[Document UX gap for next RC]
+  decisionNode -->|Cancel| documentGap[Document UX gap for next task pass]
 ```
 
-## Manual UX Test Loop (RC round)
+## Manual UX Test Loop (task round)
 
 Run the same flow on 3-5 real project/timeframe combinations:
 
@@ -146,7 +146,7 @@ Treat shared low-quality candidates across both A and B as a hard UX risk.
 Required UX behavior when this gate fails:
 
 - do not recommend immediate apply,
-- present a "blocked: low-quality candidates" outcome in the RC notes,
+- present a "blocked: low-quality candidates" outcome in the task notes,
 - record specific fallback guidance (for example adjust timeframe, add one
   manual project anchor, rerun suggestions).
 
@@ -157,9 +157,9 @@ NO-GO when one or more occur:
 - B output feels high-volume but low-trust with unclear risk signaling,
 - testers repeatedly cancel due to uncertainty rather than deliberate caution.
 
-## RC Deliverable
+## Task Deliverable
 
-A concise UX validation report for the next RC discussion including:
+A concise UX validation report for the next task discussion including:
 
 - evidence from 3-5 manual runs,
 - confidence/trust patterns across projects,

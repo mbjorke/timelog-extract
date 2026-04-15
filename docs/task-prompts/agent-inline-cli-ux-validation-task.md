@@ -1,6 +1,6 @@
-# RC Prompt: Agent Inline CLI UX Validation
+# Task Prompt: Agent Inline CLI UX Validation
 
-Use this prompt to implement the highest-priority RC candidate from today's docs:
+Use this prompt to implement the highest-priority task candidate from today's docs:
 make agent-driven development validate CLI UX continuously via inline command
 smoke checks, not only at PR end.
 
@@ -11,7 +11,7 @@ loop and reports expected vs actual UX outcomes in its response.
 
 ## Priority
 
-This RC is priority #1.
+This task is priority #1.
 
 ## Branch and mode defaults
 
@@ -69,7 +69,7 @@ This RC is priority #1.
 - No regressions in existing CLI flows.
 - Docs updated minimally if command contract changed.
 
-## RC output format
+## Task output format
 
 When done, provide:
 

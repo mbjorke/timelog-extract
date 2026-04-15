@@ -123,7 +123,7 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
   - PR title/description in English
 - Canonical policy lives in `AGENTS.md` (branch/release/review sections).
 - Detailed release flow: `docs/VERSIONING.md`.
-- RC specs in `docs/rc-prompts/` must follow traceability requirements from
+- Task specs in `docs/task-prompts/` must follow traceability requirements from
   `AGENTS.md` (Story ID, status, created/updated dates, implementation and
   validation references).
 

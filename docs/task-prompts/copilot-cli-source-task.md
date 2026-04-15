@@ -1,12 +1,12 @@
-# RC Story: Add GitHub Copilot CLI As A Source
+# Task Story: Add GitHub Copilot CLI As A Source
 
-Use this RC story to implement first-class source support for GitHub Copilot CLI
+Use this task story to implement first-class source support for GitHub Copilot CLI
 activity in Gittan with safe defaults and clear diagnostics.
 
 ## Why this matters
 
 Users ask whether Gittan supports Copilot CLI directly. Today, Copilot CLI usage
-may appear only indirectly via terminal/context traces. This RC adds explicit
+may appear only indirectly via terminal/context traces. This task adds explicit
 source detection so Copilot work is visible, measurable, and classifiable.
 
 ## Goal
@@ -32,7 +32,7 @@ can be included in reports, source summaries, and diagnostics.
 
 - Branch from latest `main` using a short-lived named branch.
 - Keep PR scope focused on source support only.
-- Do not include unrelated docs cleanup in this RC.
+- Do not include unrelated docs cleanup in this task.
 
 ## Expected user-facing behavior
 
@@ -71,7 +71,7 @@ can be included in reports, source summaries, and diagnostics.
 
 ## PR output checklist
 
-When RC implementation is done, include:
+When task implementation is done, include:
 
 1. Summary of source integration points changed
 2. Example `doctor` output showing Copilot status

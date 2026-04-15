@@ -4,6 +4,18 @@
 
  - Nothing yet.
 
+## 0.2.7 - 2026-04-14
+
+- Setup UX: improved repository scope wording in `gittan setup` to reduce decision friction:
+  - `All repositories (fastest, recommended)`
+  - `Choose specific repositories (slower, advanced)`
+- Setup UX: added clear scan progress output for the "scan and choose" flow, including per-root candidate counts and a scan-complete summary.
+- Setup UX safety: when scan finds no repos, setup now shows a clear fallback message and continues safely with all-repositories scope (no perceived dead-end).
+- Discovery filtering: tightened repository scan filtering to skip obvious noise/internal paths such as `.claude`, `.tmp`, `.cache`, `worktrees`, `vendor`, `imports/import`, and temp/cache variants.
+- Discovery quality: avoid confusing nested duplicates where a parent repository already covers a nested path.
+- Discovery robustness: repository scan now gracefully handles permission errors while traversing directories.
+- Tests: expanded setup/discovery regression coverage in `tests/test_setup_repo_bootstrap.py` and added new setup selection UX tests in `tests/test_setup_scope_selection.py`.
+
 ## 0.2.6 - 2026-04-14
 
 - Docs: **`docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). **`AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.

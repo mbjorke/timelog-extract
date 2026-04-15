@@ -15,6 +15,7 @@ from textwrap import dedent
 
 import questionary
 import typer
+from core.git_project_bootstrap import discover_local_git_repos
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
 from core.setup_projects_config_bootstrap import ensure_projects_config
 
@@ -137,10 +138,11 @@ def _looks_like_projects_config(payload: object) -> bool:
     return isinstance(projects, list)
 
 
-def _discover_git_repos() -> list[Path]:
+def _discover_git_repos(console) -> list[Path]:
     candidates: list[Path] = []
     roots = [Path.cwd(), Path.home() / "Workspace", Path.home() / "Code", Path.home() / "Projects", Path.home() / "Developer"]
     seen_roots: set[Path] = set()
+    console.print("[cyan]Scanning local directories for git repositories...[/cyan]")
     for root in roots:
         try:
             root = root.resolve()
@@ -149,22 +151,24 @@ def _discover_git_repos() -> list[Path]:
         if root in seen_roots or not root.exists() or not root.is_dir():
             continue
         seen_roots.add(root)
-        if (root / ".git").exists():
-            candidates.append(root)
-        for git_dir in root.glob("**/.git"):
-            repo = git_dir.parent
-            if not repo.is_dir():
-                continue
-            repo_s = str(repo)
-            if "/.cache/" in repo_s or "/Library/" in repo_s:
-                continue
-            candidates.append(repo)
-            if len(candidates) >= 300:
-                break
-        if len(candidates) >= 300:
+        discovered = discover_local_git_repos(root, max_depth=3, limit=120)
+        console.print(f"[dim]- scanned {root} -> {len(discovered)} candidate repos[/dim]")
+        candidates.extend(discovered)
+        if len(candidates) >= 240:
             break
     unique = sorted({p.resolve() for p in candidates}, key=lambda p: str(p).lower())
-    return unique[:200]
+    if not unique:
+        console.print("[yellow]Repository scan found no candidates in common workspace roots.[/yellow]")
+        return []
+    # Filter out nested repositories: remove ancestor paths if their nested children are present
+    filtered: list[Path] = []
+    for p in unique:
+        # Drop p if there exists another path q where q is relative to p (i.e., p is an ancestor of q)
+        is_ancestor = any(q != p and p in q.parents for q in unique)
+        if not is_ancestor:
+            filtered.append(p)
+    console.print(f"[green]Repository scan complete:[/green] {len(filtered[:120])} candidate repos available for selection.")
+    return filtered[:120]
 
 
 def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> None:
@@ -188,21 +192,27 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
             break
         scope_mode = questionary.select(
             "Where should global timelog automation run?",
-            choices=["All git repositories (recommended default)", "Only selected repositories (scan and choose)"],
-        ).ask() or "All git repositories (recommended default)"
-        if scope_mode.startswith("Only selected"):
-            repos = _discover_git_repos()
+            choices=[
+                "All repositories (fastest, recommended)",
+                "Choose specific repositories (slower, advanced)",
+            ],
+        ).ask() or "All repositories (fastest, recommended)"
+        if scope_mode.startswith("Choose specific"):
+            repos = _discover_git_repos(console)
             if repos:
                 selected = questionary.checkbox("Select repositories to include:", choices=[str(repo) for repo in repos]).ask() or []
             else:
-                console.print("[yellow]No repositories found during scan; keeping scope = all repos.[/yellow]")
+                console.print(
+                    "[yellow]No repositories found during scan.[/yellow] "
+                    "Continuing safely with [bold]all repositories[/bold] scope."
+                )
                 scope_mode = "all"
 
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would set timelog file path to `{timelog_name}`.")
         if selected:
             console.print(f"[yellow]Dry run:[/yellow] would write {len(selected)} selected repos to {GITTAN_SCOPE_FILE}.")
-        elif scope_mode.startswith("Only selected"):
+        elif scope_mode.startswith("Choose specific"):
             console.print(f"[yellow]Dry run:[/yellow] would write empty allowlist to {GITTAN_SCOPE_FILE} (no repos selected).")
         else:
             console.print("[yellow]Dry run:[/yellow] would configure scope for all git repositories.")
@@ -212,7 +222,7 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
     GITTAN_FILENAME_FILE.write_text(timelog_name + "\n", encoding="utf-8")
     if selected:
         GITTAN_SCOPE_FILE.write_text("\n".join(selected) + "\n", encoding="utf-8")
-    elif scope_mode.startswith("Only selected"):
+    elif scope_mode.startswith("Choose specific"):
         # Empty selection explicitly means no repos - write empty file
         GITTAN_SCOPE_FILE.write_text("", encoding="utf-8")
     elif GITTAN_SCOPE_FILE.exists():

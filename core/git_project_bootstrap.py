@@ -14,13 +14,26 @@ _SKIP_DIRS = {
     ".git",
     ".hg",
     ".svn",
+    ".claude",
+    ".tmp",
+    ".worktrees",
+    ".cache",
     ".venv",
     "__pycache__",
+    "cache",
+    "tmp",
+    "temp",
+    "vendor",
+    "imports",
+    "import",
+    "worktrees",
     "node_modules",
     "dist",
     "build",
     "Library",
 }
+
+_SKIP_PARTIALS = {"cache", "tmp", "temp", "vendor", "import", "worktree"}
 
 
 @dataclass(frozen=True)
@@ -161,8 +174,13 @@ def discover_local_git_repos(root: Path, *, max_depth: int = 2, limit: int = 40)
         if current in seen:
             continue
         seen.add(current)
-        if (current / ".git").exists():
-            repos.append(current)
+        try:
+            has_git_dir = (current / ".git").exists()
+        except OSError:
+            continue
+        if has_git_dir:
+            if not any(parent in repos for parent in current.parents):
+                repos.append(current)
             continue
         if depth >= max_depth:
             continue
@@ -171,7 +189,12 @@ def discover_local_git_repos(root: Path, *, max_depth: int = 2, limit: int = 40)
         except OSError:
             continue
         for child in children:
-            if child.name.startswith(".") or child.name in _SKIP_DIRS:
+            child_name = child.name.lower()
+            if child_name.startswith(".") or child.name in _SKIP_DIRS:
+                continue
+            # Token-aware matching: split by non-alphanumeric delimiters and check whole-token equality
+            tokens = re.split(r'[^a-z0-9]+', child_name)
+            if any(token in _SKIP_PARTIALS for token in tokens if token):
                 continue
             queue.append((child, depth + 1))
     return repos

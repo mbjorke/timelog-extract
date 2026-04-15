@@ -1,48 +1,87 @@
-# RC Prompt: A/B Suggestions For Uncategorized Rules
+# RC Prompt: A/B Suggestions For Uncategorized Rules (0.2.8)
 
-Use this prompt when preparing a release candidate implementation of A/B rule suggestions.
+Use this prompt to implement a release-candidate v1 with minimal back-and-forth.
+Default behavior and decisions are defined below so the agent can proceed without
+asking clarifying questions unless there is a blocker.
 
-## Scope
+## Goal
 
-Implement a v1 assistant flow that proposes rule updates for uncategorized events,
-split into Option A (`safe`) and Option B (`broad`), with explicit user confirmation
-before writing `timelog_projects.json`.
+Add an assistant flow that proposes project-config rules from uncategorized events:
 
-## Required behavior
+- Option A: `safe` (higher precision, fewer rules)
+- Option B: `broad` (higher recall, more rules)
 
-- Add CLI entrypoint(s) for suggestion generation and apply.
-- Build suggestions from uncategorized event clusters in selected timeframe.
-- Display impact preview:
+The user must explicitly confirm before any write to `timelog_projects.json`.
+
+## Branch and mode defaults
+
+- Work on `release/0.2.8`.
+- Keep changes incremental and reviewable.
+- If uncertain, prefer extending existing modules over adding many new files.
+- Do not break existing `gittan review --uncategorized`.
+
+## CLI contract (v1 defaults)
+
+Implement at least one of these paths (both preferred):
+
+1. Split commands:
+   - `gittan suggest-rules --project "<name>" --today`
+   - `gittan apply-suggestions --option A --confirm`
+2. Integrated path:
+   - `gittan review --uncategorized --ab-suggestions`
+
+If only one path is feasible in v1, implement integrated `review` path first.
+
+## Behavior requirements
+
+- Source suggestions from uncategorized clusters in selected timeframe.
+- Show impact preview before apply:
   - estimated `+events`
   - estimated `+hours`
   - estimated `-uncategorized`
-- Require explicit confirmation before applying.
-- Create a backup before writing config.
+- Show sample matches per candidate rule (at least 1-3 samples).
+- Require explicit confirmation before apply (`--confirm` or interactive accept).
+- Create timestamped backup before write.
+- Write via existing safe config path (`save_projects_config_payload`).
 
-## Constraints
+## Heuristic defaults (no extra product questions)
 
-- Keep existing `gittan review` workflow functional.
-- Do not introduce destructive behavior.
-- Preserve local-first behavior.
-- Keep output concise and readable in terminal.
+- A (`safe`):
+  - stronger domain/URL anchors
+  - repeated terms with lower cross-project ambiguity
+  - fewer rules
+- B (`broad`):
+  - includes A plus medium-confidence terms
+  - may include route/feature tokens (e.g. checkout/pricing/subscription)
 
-## Test plan
+Use existing clustering helpers and keep heuristics transparent in output.
 
-- Unit tests for:
-  - clustering-to-suggestion mapping
-  - A vs B partition logic
-  - impact preview calculations
-  - backup + apply behavior
-- Manual smoke:
-  - run on a real day with uncategorized events
-  - verify A/B output quality
-  - verify rollback path using backup
+## Safety constraints
 
-## Deliverables checklist
+- Never move/delete `timelog_projects.json`.
+- Never write without explicit user approval.
+- If suggestion quality is too weak, show "no safe suggestions" instead of guessing.
 
-- CLI command docs/help updated
-- Implementation with explicit confirm gate
-- Backup-before-write path implemented
-- Tests added and passing
-- Changelog `Unreleased` updated
+## Acceptance criteria
+
+- New command/help text is visible and understandable.
+- A/B suggestions appear for real uncategorized data.
+- Preview shows `+events/+hours/-uncategorized`.
+- Apply path creates backup and writes only selected option.
+- Existing review workflow still works without `--ab-suggestions`.
+- Unit tests cover:
+  - A vs B split
+  - preview impact math
+  - backup + apply flow
+- `./scripts/run_autotests.sh` passes.
+- `CHANGELOG.md` Unreleased includes this feature.
+
+## RC output format for PR notes
+
+Provide:
+
+1. Summary bullets (what changed and why)
+2. Example terminal output for A/B preview
+3. Test evidence (unit + autotests)
+4. Known limitations (if any) and follow-up scope
 

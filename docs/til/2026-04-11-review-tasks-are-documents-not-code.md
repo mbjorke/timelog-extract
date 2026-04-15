@@ -31,9 +31,9 @@ maintainer to disentangle two things before deciding.
 
 ## What changed
 
-- `AGENTS.md` — "Task types — read the brief before acting" section added, with rules
-  for review, implementation, and hybrid tasks.
-- `CLAUDE.md` — same guidance added as "Task types and scope discipline".
+- `AGENTS.md` — **Do not #1** added to the top-level prohibition table; "Task types —
+  read the brief before acting" section added with full explanation.
+- `CLAUDE.md` — "Task types and scope discipline" section added.
 
 ## Orchestration pattern
 

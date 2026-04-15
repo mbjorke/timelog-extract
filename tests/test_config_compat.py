@@ -49,6 +49,21 @@ class ConfigCompatibilityTests(unittest.TestCase):
         result = classify_project("completely unrelated text", profiles)
         self.assertEqual(result, UNCATEGORIZED)
 
+    def test_classify_project_matches_tracked_url_fragment(self):
+        """URL fragments in tracked_urls participate in scoring (Chrome-style haystacks)."""
+        profiles = [
+            normalize_profile(
+                {
+                    "name": "ClientX",
+                    "match_terms": ["clientx"],
+                    "tracked_urls": ["app.clientx.io"],
+                }
+            ),
+            normalize_profile({"name": "Other", "match_terms": ["other"]}),
+        ]
+        result = classify_project("https://app.clientx.io/checkout Other noise", profiles)
+        self.assertEqual(result, "ClientX")
+
 
 if __name__ == "__main__":
     unittest.main()

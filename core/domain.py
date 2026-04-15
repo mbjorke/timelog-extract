@@ -12,6 +12,10 @@ def classify_project(text, profiles, fallback):
         score = len(matched)
         if profile["name"].lower() in haystack:
             score += 1
+        for url in profile.get("tracked_urls") or []:
+            fragment = str(url).strip().lower()
+            if fragment and fragment in haystack:
+                score += 2
         if score > best_score:
             best_score = score
             best_name = profile["name"]

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 
 def as_list(value):
@@ -117,6 +120,16 @@ def load_projects_config_payload(config_path: Path) -> dict:
         data.setdefault("projects", [])
         return data
     return {"projects": [], "worklog": "TIMELOG.md"}
+
+
+def backup_projects_config_if_exists(config_path: Path) -> Optional[Path]:
+    """Copy existing config to a timestamped sibling file; no-op if missing."""
+    if not config_path.is_file():
+        return None
+    ts = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+    backup_path = config_path.parent / f"{config_path.stem}.backup.{ts}{config_path.suffix}"
+    shutil.copy2(config_path, backup_path)
+    return backup_path
 
 
 def save_projects_config_payload(config_path: Path, payload: dict) -> None:

@@ -38,6 +38,17 @@ class SetupGithubEnvTests(unittest.TestCase):
         self.assertIn("dry-run", note)
         self.assertTrue(any("gittan doctor --github-source auto" in step for step in steps))
 
+    def test_configure_github_env_requires_user_for_pass(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            ghe, "_gh_read_token", return_value="tok"
+        ), patch.object(
+            ghe, "_gh_read_user", return_value=""
+        ):
+            status, note, _steps = ghe.configure_github_env_for_setup(console, yes=True, dry_run=True)
+        self.assertEqual(status, "ACTION_REQUIRED")
+        self.assertIn("dry-run", note)
+
 
 if __name__ == "__main__":
     unittest.main()

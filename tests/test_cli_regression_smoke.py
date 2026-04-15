@@ -74,6 +74,17 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Enabled (on) for user 'mbjorke'", completed.stdout)
         self.assertIn("public API limits apply", completed.stdout)
 
+    def test_doctor_rejects_invalid_github_source(self):
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "doctor", "--github-source", "invalid"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("Expected one of: auto, on, off", completed.stderr)
+
     def test_core_cli_py_compiles(self):
         """Regression: bad search/replace left invalid syntax (e.g. truncated for-loop)."""
         path = ROOT / "core" / "cli.py"

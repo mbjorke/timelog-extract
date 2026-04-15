@@ -15,7 +15,7 @@ Use a two-level flow:
    - `git switch dev && git pull origin dev` (if `dev` exists)
 2. Create a short-lived task branch from `dev`:
    - `git switch -c task/<short-scope> dev`
-3. Implement a small scoped change, run tests, commit, push.
+3. Implement a small-scoped change, run tests, commit, push.
 4. Open PR `task/<short-scope> -> dev`.
 5. Merge and **delete task branch** immediately (local + remote).
 6. When `dev` is stable, open PR `dev -> main`.

@@ -4,6 +4,22 @@ Use this prompt to implement the highest-priority task candidate from today's do
 make agent-driven development validate CLI UX continuously via inline command
 smoke checks, not only at PR end.
 
+## Traceability
+
+- story_id: `GH-123`
+- spec_status: `approved`
+- implementation_status: `not built`
+- created_at: `2026-04-15`
+- last_updated_at: `2026-04-15`
+- implementation.pr: `pending`
+- implementation.branch: `pending`
+- implementation.commits: `[]`
+- validation.evidence: `pending`
+- validation.decision: `NO-GO`
+- changelog:
+  - `2026-04-15: Initial task prompt created.`
+  - `2026-04-15: Added mandatory traceability metadata and dev branch-flow defaults.`
+
 ## Goal
 
 When CLI-related code changes, the agent automatically runs a minimal local smoke
@@ -15,7 +31,7 @@ This task is priority #1.
 
 ## Branch and mode defaults
 
-- Branch: create a short-lived feature branch from latest `main`.
+- Branch: create `task/<short-scope>` from latest `dev`.
 - Mode: implementation-first, minimal ceremony.
 - Keep scope small and incremental; avoid broad refactors.
 

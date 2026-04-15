@@ -2,7 +2,7 @@
 
 **Headline:** Human-First Automation: Engineering a Multi-Signal Time Tracker for the AI Era
 
-**By Marcus Bjorke**
+**Author:** DAIS Engineering
 
 At DAIS, we often talk about building "human-first" AI. But as developers and engineers, our own "human" experience is often bogged down by a task that feels decidedly anti-human: **manual time tracking.**
 
@@ -32,7 +32,7 @@ Traditional trackers see "Terminal" or "Browser" as monolithic blocks of time. B
 
 Last week, I sent out my first real-world invoice generated entirely by Gittan's data. For the first time, time tracking felt like a "win" rather than a chore.
 
-The project is now in Open Source Alpha, and I'm looking for feedback from the DAIS community. As people who understand data pipelines and AI integration, your perspective on how we can better "track the untrackable" is invaluable.
+The project is now in open-source alpha, and I'm looking for feedback from the DAIS community. As people who understand data pipelines and AI integration, your perspective on how we can better "track the untrackable" is invaluable.
 
 - **Project Site:** [gittan.sh](https://gittan.sh/)
 - **GitHub:** [mbjorke/timelog-extract](https://github.com/mbjorke/timelog-extract)

@@ -4,6 +4,22 @@ Use this prompt to implement a v1 task with minimal back-and-forth.
 Default behavior and decisions are defined below so the agent can proceed without
 asking clarifying questions unless there is a blocker.
 
+## Traceability
+
+- story_id: `GH-123`
+- spec_status: `approved`
+- implementation_status: `built`
+- created_at: `2026-04-15`
+- last_updated_at: `2026-04-15`
+- implementation.pr: `pending`
+- implementation.branch: `pending`
+- implementation.commits: `[]`
+- validation.evidence: `pending`
+- validation.decision: `conditional GO`
+- changelog:
+  - `2026-04-15: Initial task prompt created.`
+  - `2026-04-15: Added mandatory traceability metadata and updated branch defaults.`
+
 ## Goal
 
 Add an assistant flow that proposes project-config rules from uncategorized events:
@@ -15,7 +31,7 @@ The user must explicitly confirm before any write to `timelog_projects.json`.
 
 ## Branch and mode defaults
 
-- Work on `release/0.2.8`.
+- Work on a short-lived `task/<short-scope>` branch from latest `dev`.
 - Keep changes incremental and reviewable.
 - If uncertain, prefer extending existing modules over adding many new files.
 - Do not break existing `gittan review --uncategorized`.

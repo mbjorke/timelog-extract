@@ -3,6 +3,22 @@
 Use this prompt to build a production-grade interactive terminal demo on
 `gittan.sh` backed by a secure sandbox, following the approved spec.
 
+## Traceability
+
+- story_id: `GH-123`
+- spec_status: `draft`
+- implementation_status: `not built`
+- created_at: `2026-04-15`
+- last_updated_at: `2026-04-15`
+- implementation.pr: `pending`
+- implementation.branch: `pending`
+- implementation.commits: `[]`
+- validation.evidence: `pending`
+- validation.decision: `NO-GO`
+- changelog:
+  - `2026-04-15: Initial task prompt created.`
+  - `2026-04-15: Added mandatory traceability metadata.`
+
 ## Goal
 
 Ship a real interactive terminal experience (typed commands + streamed output)

@@ -3,6 +3,22 @@
 Use this task story to implement first-class source support for GitHub Copilot CLI
 activity in Gittan with safe defaults and clear diagnostics.
 
+## Traceability
+
+- story_id: `GH-123`
+- spec_status: `draft`
+- implementation_status: `not built`
+- created_at: `2026-04-15`
+- last_updated_at: `2026-04-15`
+- implementation.pr: `pending`
+- implementation.branch: `pending`
+- implementation.commits: `[]`
+- validation.evidence: `pending`
+- validation.decision: `NO-GO`
+- changelog:
+  - `2026-04-15: Initial task story created.`
+  - `2026-04-15: Added mandatory traceability metadata and dev branch-flow defaults.`
+
 ## Why this matters
 
 Users ask whether Gittan supports Copilot CLI directly. Today, Copilot CLI usage
@@ -30,7 +46,7 @@ can be included in reports, source summaries, and diagnostics.
 
 ## Branch and workflow defaults
 
-- Branch from latest `main` using a short-lived named branch.
+- Branch from latest `dev` using a short-lived `task/<short-scope>` branch.
 - Keep PR scope focused on source support only.
 - Do not include unrelated docs cleanup in this task.
 

@@ -11,6 +11,8 @@ from typing import Any
 
 import questionary
 
+_GH_TIMEOUT_SECONDS = 10
+
 
 def _shell_profile_path() -> Path:
     shell = (os.environ.get("SHELL") or "").lower()
@@ -51,16 +53,36 @@ def _upsert_export(path: Path, key: str, value: str, *, dry_run: bool) -> bool:
 
 
 def _gh_read_token() -> str:
-    if not shutil.which("gh"):
+    gh_path = shutil.which("gh")
+    if not gh_path:
         return ""
-    cp = subprocess.run(["gh", "auth", "token"], check=False, capture_output=True, text=True)
+    try:
+        cp = subprocess.run(
+            [gh_path, "auth", "token"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=_GH_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ""
     return cp.stdout.strip() if cp.returncode == 0 else ""
 
 
 def _gh_read_user() -> str:
-    if not shutil.which("gh"):
+    gh_path = shutil.which("gh")
+    if not gh_path:
         return ""
-    cp = subprocess.run(["gh", "api", "user", "--jq", ".login"], check=False, capture_output=True, text=True)
+    try:
+        cp = subprocess.run(
+            [gh_path, "api", "user", "--jq", ".login"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=_GH_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ""
     return cp.stdout.strip() if cp.returncode == 0 else ""
 
 
@@ -79,12 +101,14 @@ def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) ->
     user = existing_user
     token = existing_token
     mode = "existing"
-    if not token:
+    if not user or not token:
         if yes or questionary.confirm("Use GitHub CLI auth (`gh auth token`) if available?", default=True).ask():
-            token = _gh_read_token()
+            if not token:
+                token = _gh_read_token()
             if not user:
                 user = _gh_read_user()
-            mode = "gh"
+            if user or token:
+                mode = "gh"
     if not user and not yes:
         user = (questionary.text("GitHub username (for public events):").ask() or "").strip()
         if user:
@@ -109,7 +133,7 @@ def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) ->
     changed_note = ", ".join(changed_parts) if changed_parts else "no file changes"
     note = f"GitHub env bootstrap ({mode}): {changed_note}; profile={profile.name}."
     steps = [f"Reload shell profile (`{reload_hint}`) and run `gittan doctor --github-source auto`."]
-    status = "PASS" if (user or token) else "ACTION_REQUIRED"
+    status = "PASS" if user else "ACTION_REQUIRED"
     if dry_run:
         note = f"[dry-run] would update {changed_note or 'GitHub env vars'} in {profile.name}."
     return status, note, steps

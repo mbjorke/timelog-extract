@@ -60,6 +60,9 @@ def doctor(
     from rich import box
 
     console = Console()
+    gh_mode = (github_source or "auto").strip().lower()
+    if gh_mode not in {"auto", "on", "off"}:
+        raise typer.BadParameter("Expected one of: auto, on, off", param_hint="--github-source")
     home = Path.home()
     workspace_root = runtime_workspace_root()
     projects_cfg = workspace_root / "timelog_projects.json"
@@ -177,9 +180,6 @@ def doctor(
         else:
             table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
 
-        gh_mode = (github_source or "auto").strip().lower()
-        if gh_mode not in {"auto", "on", "off"}:
-            gh_mode = "auto"
         gh_user = (github_user or os.getenv("GITHUB_USER") or "").strip()
         gh_token_present = bool((os.getenv("GITHUB_TOKEN") or "").strip())
         if gh_mode == "off":

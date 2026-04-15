@@ -420,9 +420,17 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
     next_steps: list[str] = []
     _print_environment_status(console)
     summary_rows.append(("Environment checks", "PASS", "Printed PATH and optional env status."))
-    github_env_status, github_env_note, github_env_steps = configure_github_env_for_setup(
-        console, yes=yes, dry_run=dry_run
-    )
+    try:
+        github_env_status, github_env_note, github_env_steps = configure_github_env_for_setup(
+            console, yes=yes, dry_run=dry_run
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        console.print(f"[yellow]GitHub env bootstrap could not complete:[/yellow] {exc}")
+        github_env_status = "ACTION_REQUIRED"
+        github_env_note = f"GitHub env bootstrap failed: {exc}"
+        github_env_steps = [
+            "Set GITHUB_USER and optionally GITHUB_TOKEN manually, then rerun `gittan doctor --github-source auto`."
+        ]
     summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
     next_steps.extend(github_env_steps)
     should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()

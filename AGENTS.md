@@ -24,6 +24,12 @@ Use this compact execution order before deep exploration:
 
 If this section conflicts with any policy below, the detailed policy below wins.
 
+## Maintainer workflow preferences (low copy-paste)
+
+- The maintainer prefers **as little copy-paste of shell commands as possible** in chat and handoffs. Agents should **run** `git`, `gh`, tests, and similar steps in the environment when possible, and report **outcomes and links** in plain language instead of long runnable command dumps.
+- For GitHub follow-ups (PR comments, resolving review threads, listing checks), **use `gh` or the API in the agent session** rather than giving the maintainer a sequence of commands to paste manually.
+- When documentation must list commands, keep them **short and canonical** (one script or one doc section); avoid duplicating the same shell in both docs and chat.
+
 ## Standard Timelog Policy
 
 - Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).

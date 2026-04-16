@@ -34,6 +34,8 @@ deterministic demo data.
 
 ## Command contract (v1 allowlist)
 
+**Code:** `core/live_terminal_demo_contract.py` is the canonical allowlist and denial message; keep this section in sync when changing commands.
+
 Allowed commands (exact or normalized aliases):
 
 - `gittan doctor`
@@ -67,6 +69,8 @@ Build-phase checklist (P0–P5) lives in `docs/live-terminal-sandbox/README.md`.
   - command execution endpoint
   - output streaming endpoint
 - Per-session ephemeral sandbox runtime.
+
+**P1 sketch (repo):** stdlib HTTP in `core/live_terminal_demo_http.py` — `POST /demo/sessions`, `POST /demo/sessions/<id>/exec` with JSON `{"line":"..."}`, `GET /demo/health`. Allowlist only via `demo_exec_line` (stub output, no subprocess). Run: `python3 scripts/live_terminal_demo_server.py`.
 
 ### Runtime isolation
 

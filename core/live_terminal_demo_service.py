@@ -1,0 +1,60 @@
+"""Live terminal demo P1 — session store and allowlisted exec (no shell, no subprocess)."""
+
+from __future__ import annotations
+
+import json
+import secrets
+import time
+from dataclasses import dataclass, field
+from typing import Dict, Final, Tuple
+
+from core.live_terminal_demo_contract import (
+    DEMO_SANDBOX_DENIED_MESSAGE,
+    validate_demo_command,
+)
+from core.live_terminal_demo_stub_output import demo_stub_output
+
+SESSION_TTL_SECONDS: Final[int] = 120
+
+
+@dataclass
+class DemoSession:
+    created: float
+
+
+@dataclass
+class DemoSessionStore:
+    """In-memory sessions with lazy TTL expiry."""
+
+    _sessions: Dict[str, DemoSession] = field(default_factory=dict)
+    ttl_seconds: int = SESSION_TTL_SECONDS
+
+    def create(self) -> str:
+        self._purge_expired()
+        sid = secrets.token_urlsafe(16)
+        self._sessions[sid] = DemoSession(created=time.monotonic())
+        return sid
+
+    def valid(self, session_id: str) -> bool:
+        self._purge_expired()
+        return session_id in self._sessions
+
+    def _purge_expired(self) -> None:
+        now = time.monotonic()
+        dead = [sid for sid, s in self._sessions.items() if now - s.created > self.ttl_seconds]
+        for sid in dead:
+            del self._sessions[sid]
+
+
+def demo_exec_line(store: DemoSessionStore, session_id: str, line: str) -> Tuple[int, str, str]:
+    """Execute one demo line. Returns (http_status, content_type, body).
+
+    content_type is ``text/plain`` or ``application/json`` (errors only for JSON shape).
+    """
+    if not store.valid(session_id):
+        return 404, "application/json", json.dumps({"error": "session not found or expired"})
+    allowed, msg = validate_demo_command(line)
+    if not allowed:
+        return 400, "application/json", json.dumps({"error": msg or DEMO_SANDBOX_DENIED_MESSAGE})
+    out = demo_stub_output(line)
+    return 200, "text/plain; charset=utf-8", out

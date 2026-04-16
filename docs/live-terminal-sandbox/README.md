@@ -4,8 +4,8 @@ Companion to `docs/specs/live-terminal-sandbox-demo.md`. Use this folder for **b
 
 ## Phase checklist
 
-- [ ] **P0 — Contract:** allowlisted commands frozen; error copy for unknown input (spec § Command contract).
-- [ ] **P1 — Backend sketch:** session create + execute + stream; **no** shell passthrough; server-side allowlist only.
+- [x] **P0 — Contract:** allowlisted commands frozen; error copy for unknown input (spec § Command contract). Implemented in `core/live_terminal_demo_contract.py` (import from server-side demo code; do not duplicate lists).
+- [x] **P1 — Backend sketch:** session create + execute + stream; **no** shell passthrough; server-side allowlist only. Implemented: `core/live_terminal_demo_http.py` + `core/live_terminal_demo_service.py` (stub output via `core/live_terminal_demo_stub_output.py`); run `python3 scripts/live_terminal_demo_server.py`. Responses are full body (streaming/WebSocket deferred to P3).
 - [ ] **P2 — Isolation pick:** document chosen option (Firecracker / gVisor / rootless Docker) and threat model one-pager.
 - [ ] **P3 — Frontend:** xterm.js (or equivalent), WebSocket or SSE, no autoplay on load.
 - [ ] **P4 — Fixture data:** deterministic demo workspace; reset path tested under load.

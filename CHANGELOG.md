@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.10 - 2026-04-16
+
+- Calibration: added deterministic A/B/C experiment harness for CI (`core/cli_experiments.py`, `scripts/run_cli_experiments_ci.py`) with fixture scorecards and a report-only `cli-experiments` CI job.
+- Reconciliation: added March invoice reconciliation and unified calibration reports (`core/march_reconciliation.py`, `core/march_calibration.py`, `scripts/run_march_reconciliation.py`, `scripts/run_march_calibration_report.py`) including grouped invoice support for customer-level invoice rows.
+- Screen Time analysis: introduced dedicated gap analysis (`core/screen_time_gap_analysis.py`, `scripts/run_screen_time_gap_analysis.py`) with day-level coverage metrics and project-allocated signed gaps.
+- Demo/Copilot hardening: fixed remaining CodeRabbit findings for demo HTTP request-body validation, Copilot CLI log collector resilience, deterministic Copilot tests, and screen-time coverage edge cases.
+- Docs/ops: expanded calibration and release workflow docs and reinforced low copy-paste maintainer flow and agent quality gates.
+
 ## 0.2.9 - 2026-04-16
 
 - CLI / UX: command heroes (`outputs/cli_heroes.py`), `ux-heroes` subcommand, shared terminal theme usage; decision docs under `docs/decisions/` (CLI UX guidelines, Copilot terminal reference); post-commit hook script split into `core/global_timelog_hook_script.py` (500-line policy).

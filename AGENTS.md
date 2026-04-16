@@ -11,6 +11,7 @@ Use this compact execution order before deep exploration:
 3. Run smallest validating loop first:
    - implement minimal change
    - run targeted test(s)
+   - after **CLI-facing** edits, also run `bash scripts/cli_impact_smoke.sh` (see `docs/decisions/agent-inline-cli-ux-validation.md`)
    - then `./scripts/run_autotests.sh`
 4. Prefer non-destructive config handling:
    - never move/delete `timelog_projects.json`

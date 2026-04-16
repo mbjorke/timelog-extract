@@ -127,6 +127,13 @@ class RuntimeCollectors:
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 
+    def collect_copilot_cli(self, profiles, dt_from, dt_to):
+        from collectors.copilot_cli import collect_copilot_cli
+
+        return collect_copilot_cli(
+            profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
+        )
+
     def collect_cursor(self, profiles, dt_from, dt_to):
         return self.cursor.collect_cursor(
             profiles, dt_from, dt_to, self.home, self.local_tz, self.classify_project, self.make_event

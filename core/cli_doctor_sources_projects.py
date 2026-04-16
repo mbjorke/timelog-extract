@@ -26,6 +26,7 @@ from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
 from collectors.lovable_desktop import lovable_desktop_history_candidates
+from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
@@ -182,6 +183,15 @@ def doctor(
             table.add_row("Claude Code CLI", OK_ICON, f"[{STYLE_MUTED}]Found projects[/{STYLE_MUTED}]")
         else:
             table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
+
+        add_copilot_cli_doctor_row(
+            table,
+            home,
+            ok_icon=OK_ICON,
+            warn_icon=WARN_ICON,
+            na_icon=NA_ICON,
+            style_muted=STYLE_MUTED,
+        )
 
         gh_user = (github_user or os.getenv("GITHUB_USER") or "").strip()
         gh_token_present = bool((os.getenv("GITHUB_TOKEN") or "").strip())

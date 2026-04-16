@@ -47,6 +47,10 @@ Any other input returns:
 
 - `Command not allowed in demo sandbox. Try: help`
 
+## Implementation tracking
+
+Build-phase checklist (P0–P5) lives in `docs/live-terminal-sandbox/README.md`.
+
 ## Architecture
 
 ### Frontend

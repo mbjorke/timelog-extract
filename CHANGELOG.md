@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Collectors: **GitHub Copilot CLI** — reads timestamp lines from `~/.copilot/logs` (or `COPILOT_HOME`); `gittan doctor` shows directory/log status.
+- Tooling: `scripts/cli_impact_smoke.sh` bundles the default agent inline CLI smoke loop (`-V`, `report --today --source-summary --quiet`, `ux-heroes`).
+- Docs: `docs/live-terminal-sandbox/README.md` phase checklist for the public live-terminal demo (see spec cross-link).
+
 ## 0.2.8 - 2026-04-15
 
 - CLI: **A/B rule suggestions** from uncategorized clusters — `gittan suggest-rules --project "…"` (preview + writes `timelog_projects.ab-suggestions.json`), `gittan apply-suggestions --option A|B [--confirm]`, and `gittan review --uncategorized --ab-suggestions` (optional interactive apply). Option **A** prefers strong URL/domain anchors and low-ambiguity repeated terms; **B** adds medium-confidence and route-style tokens. Impact preview shows +events, +hours, and uncategorized delta; config writes require confirmation and use a timestamped backup plus `save_projects_config_payload`.

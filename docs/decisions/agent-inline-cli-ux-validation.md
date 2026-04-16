@@ -29,6 +29,16 @@ meaningful edits and before claiming the change is done.
    - Report expected vs actual behavior in 1-3 lines.
    - If blocked, report exact blocker and stop guessing.
 
+## One-command bundle (repo root)
+
+Agents can run the same loop mechanically:
+
+```bash
+bash scripts/cli_impact_smoke.sh
+```
+
+Override entrypoint if needed: `TIMOLOG_ENTRY=timelog_extract.py PYTHON=python3.12 bash scripts/cli_impact_smoke.sh`.
+
 ## Guardrails
 
 - Prefer non-destructive commands in routine smoke checks.

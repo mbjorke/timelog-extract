@@ -8,7 +8,7 @@ At DAIS, we often talk about building "human-first" AI. But as developers and en
 
 As our workflows become "AI-augmented," the struggle has intensified. On any given day, we're jumping between Cursor, the terminal with Claude Code, browser-based research, and Slack huddles. Trying to reconstruct at the end of the month whether you spent 15 minutes or 2 hours on a specific API bottleneck is a cognitive nightmare.
 
-That's exactly why I built **Gittan (timelog-extract)**.
+That's exactly why we built **Gittan (timelog-extract)**.
 
 ## The Data Engineering Approach: Digging Where You Stand
 

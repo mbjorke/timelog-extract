@@ -53,16 +53,19 @@ If this section conflicts with any policy below, the detailed policy below wins.
 
 ## Branch policy (`main` + `dev`)
 
-- `**main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
-- Use `**dev` as the single integration branch** for day-to-day agent work.
+- **`main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
+- **`dev` is also branch-protected** (no direct push). Use it as the integration branch for day-to-day agent work.
 - Agents should create **short-lived task branches from `dev`** (for example `task/<scope>`), merge back quickly, then delete the task branch.
 - Avoid long-lived branch families (`feat/*`, `fix/*`, `docs/*`, `cursor/*`) unless explicitly requested for a special case.
 - Release flow:
   1. Stabilize scope on `dev`.
   2. Open PR `dev -> main` for normal releases.
   3. Use `release/X.Y.Z` only when versioning/release chores need explicit isolation.
+- Review intent:
+  - `task/* -> dev`: feature/incremental review.
+  - `dev -> main`: release/integration review gate (final check before release).
 - **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
-- See `**BRANCH.md`** for the operational workflow and `**docs/CI.md`** for CI behavior.
+- See **`BRANCH.md`** for the operational workflow and **`docs/CI.md`** for CI behavior.
 
 ## Naming migration (`rc-` -> `task-`)
 

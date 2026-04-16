@@ -86,7 +86,13 @@ def _gh_read_user() -> str:
     return cp.stdout.strip() if cp.returncode == 0 else ""
 
 
-def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) -> tuple[str, str, list[str]]:
+def configure_github_env_for_setup(
+    console: Any,
+    *,
+    yes: bool,
+    dry_run: bool,
+    persist_token: bool | None = None,
+) -> tuple[str, str, list[str]]:
     """Optionally bootstrap GitHub env vars for better source reliability."""
     existing_user = (os.environ.get("GITHUB_USER") or "").strip()
     existing_token = (os.environ.get("GITHUB_TOKEN") or "").strip()
@@ -101,6 +107,7 @@ def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) ->
     user = existing_user
     token = existing_token
     mode = "existing"
+    persist_token_choice = bool(persist_token)
     if not user or not token:
         if yes or questionary.confirm("Use GitHub CLI auth (`gh auth token`) if available?", default=True).ask():
             if not token:
@@ -117,6 +124,13 @@ def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) ->
         token = (questionary.password("Paste GITHUB_TOKEN (input hidden, optional):").ask() or "").strip()
         if token:
             mode = "manual"
+    if token and (persist_token is None) and not yes:
+        persist_token_choice = bool(
+            questionary.confirm(
+                f"Persist GITHUB_TOKEN in {profile.name}? (recommended: no)",
+                default=False,
+            ).ask()
+        )
 
     if not user and not token:
         return "ACTION_REQUIRED", "GitHub env vars still unset after setup attempt.", ["Set GITHUB_USER and optionally GITHUB_TOKEN, then rerun `gittan doctor`."]
@@ -125,16 +139,25 @@ def configure_github_env_for_setup(console: Any, *, yes: bool, dry_run: bool) ->
     if user and (not existing_user or user != existing_user):
         _upsert_export(profile, "GITHUB_USER", user, dry_run=dry_run)
         changed_parts.append("GITHUB_USER")
-    if token and (not existing_token or token != existing_token):
+    if persist_token_choice and token and (not existing_token or token != existing_token):
         _upsert_export(profile, "GITHUB_TOKEN", token, dry_run=dry_run)
         changed_parts.append("GITHUB_TOKEN")
 
     reload_hint = f"source {profile}"
     changed_note = ", ".join(changed_parts) if changed_parts else "no file changes"
     note = f"GitHub env bootstrap ({mode}): {changed_note}; profile={profile.name}."
-    steps = [f"Reload shell profile (`{reload_hint}`) and run `gittan doctor --github-source auto`."]
+    steps: list[str] = []
+    if changed_parts:
+        steps.append(f"Reload shell profile (`{reload_hint}`) and run `gittan doctor --github-source auto`.")
+    if not user:
+        steps.append(
+            "Set GITHUB_USER manually (or run `gh api user --jq .login` and export it), then rerun `gittan doctor --github-source auto`."
+        )
+    elif not steps:
+        steps.append("Run `gittan doctor --github-source auto` to verify GitHub source status.")
     status = "PASS" if user else "ACTION_REQUIRED"
     if dry_run:
-        note = f"[dry-run] would update {changed_note or 'GitHub env vars'} in {profile.name}."
+        token_note = " with GITHUB_TOKEN persisted" if persist_token_choice else " without persisting GITHUB_TOKEN"
+        note = f"[dry-run] would update {changed_note or 'GitHub env vars'} in {profile.name}{token_note}."
     return status, note, steps
 

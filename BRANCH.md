@@ -1,6 +1,11 @@
 # Branching model (`main` + `dev`)
 
-The default branch **`main`** is **branch-protected** on GitHub: **direct pushes are blocked**; changes land via **pull request**. **CI** runs on PRs (see **`docs/CI.md`**).
+The repository uses two protected branches on GitHub:
+
+- `dev`: protected integration branch for `task/*` work.
+- `main`: protected release/integration branch.
+
+Direct pushes are blocked on both; changes land via pull requests. CI runs on PRs (see `docs/CI.md`).
 
 Use a two-level flow:
 
@@ -19,6 +24,11 @@ Use a two-level flow:
 4. Open PR `task/<short-scope> -> dev`.
 5. Merge and **delete task branch** immediately (local + remote).
 6. When `dev` is stable, open PR `dev -> main`.
+
+## Review intent by branch
+
+- `task/* -> dev`: feature/incremental review.
+- `dev -> main`: release/integration review (final quality gate before release).
 
 ## Release flow
 

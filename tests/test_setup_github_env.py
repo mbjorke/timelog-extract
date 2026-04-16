@@ -49,6 +49,33 @@ class SetupGithubEnvTests(unittest.TestCase):
         self.assertEqual(status, "ACTION_REQUIRED")
         self.assertIn("dry-run", note)
 
+    def test_configure_github_env_does_not_persist_token_by_default(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            ghe, "_gh_read_token", return_value="tok"
+        ), patch.object(
+            ghe, "_gh_read_user", return_value="mbjorke"
+        ), patch.object(ghe, "_upsert_export") as upsert:
+            status, note, _steps = ghe.configure_github_env_for_setup(console, yes=True, dry_run=False)
+        self.assertEqual(status, "PASS")
+        self.assertIn("GITHUB_USER", note)
+        self.assertEqual(upsert.call_count, 1)
+        _profile_path, key, value = upsert.call_args.args
+        self.assertEqual(key, "GITHUB_USER")
+        self.assertEqual(value, "mbjorke")
+        self.assertEqual(upsert.call_args.kwargs.get("dry_run"), False)
+
+    def test_configure_github_env_missing_user_adds_actionable_step(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            ghe, "_gh_read_token", return_value="tok"
+        ), patch.object(
+            ghe, "_gh_read_user", return_value=""
+        ):
+            status, _note, steps = ghe.configure_github_env_for_setup(console, yes=True, dry_run=True)
+        self.assertEqual(status, "ACTION_REQUIRED")
+        self.assertTrue(any("Set GITHUB_USER manually" in step for step in steps))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,4 +11,5 @@ echo "==> report --today --source-summary --quiet"
 "$PY" "$ENTRY" report --today --source-summary --quiet
 echo "==> ux-heroes"
 "$PY" "$ENTRY" ux-heroes
+echo "==> handoff: run CI fixtures with scripts/run_cli_experiments_ci.sh (report-only by default)"
 echo "CLI impact smoke: OK"

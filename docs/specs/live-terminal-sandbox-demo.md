@@ -102,6 +102,21 @@ Demo uses deterministic fixture data only:
 - readonly mount inside sandbox
 - pinned expected output snapshots for each allowed command
 
+## Internal CI harness (non-public use)
+
+The same allowlist contract can be reused for deterministic internal test flows.
+This is separate from the public website demo runtime:
+
+- public demo: visitor-facing terminal UX and isolated runtime
+- internal CI harness: fixture-driven command contract validation + scorecards
+
+Internal harness requirements:
+
+- use allowlisted command sequence only (same canonical contract)
+- never execute arbitrary shell commands
+- evaluate fixture outputs for setup quality experiments (`A/B/C`)
+- keep report-only mode by default and gate only after stability evidence
+
 ## Reliability requirements
 
 - P95 command start latency under 1.5s (warm path).

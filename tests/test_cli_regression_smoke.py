@@ -105,6 +105,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             msg=completed.stderr or completed.stdout,
         )
         self.assertIn("Dry run completed.", completed.stdout)
+        self.assertIn("Gittan Global Timelog", completed.stdout)
 
     def test_setup_wizard_dry_run(self):
         """Full setup wizard should support non-interactive dry-run execution."""
@@ -123,6 +124,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Next steps", completed.stdout)
         self.assertIn("Setup wizard completed.", completed.stdout)
         self.assertIn("GitHub env bootstrap", completed.stdout)
+        self.assertIn("Gittan Setup", completed.stdout)
 
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
         """Landing page quick start (after install): each CLI step should stay snappy on CI.
@@ -172,6 +174,21 @@ class CliRegressionSmokeTests(unittest.TestCase):
             doc = run_timed("doctor", [sys.executable, str(ENTRY), "doctor"], tmp)
             self.assertIn("Next steps", doc.stdout)
             self.assertIn("Gittan Health Check", doc.stdout)
+
+    def test_ux_heroes_command_prints_all_hero_titles(self):
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "ux-heroes"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        self.assertIn("Gittan Status", completed.stdout)
+        self.assertIn("Gittan Doctor", completed.stdout)
+        self.assertIn("Gittan Setup", completed.stdout)
+        self.assertIn("Gittan Global Timelog", completed.stdout)
+        self.assertIn("Gittan Report", completed.stdout)
 
 
 if __name__ == "__main__":

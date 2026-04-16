@@ -135,6 +135,7 @@ def status(
 ):
     """Quick high-level hours summary."""
     from core.report_service import run_timelog_report
+    from outputs.cli_heroes import print_command_hero
     from rich import box
     from rich.console import Console
     from rich.table import Table
@@ -194,6 +195,7 @@ def status(
         quiet=True,
     )
 
+    print_command_hero(console, "status")
     console.print(f"[bold {CLR_TEXT_SOFT}]Gittan Status — {title_date}[/bold {CLR_TEXT_SOFT}]\n")
 
     try:

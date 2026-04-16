@@ -27,6 +27,7 @@ from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
 from collectors.lovable_desktop import lovable_desktop_history_candidates
 from core.workspace_root import runtime_workspace_root
+from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ def doctor(
     gh_mode = (github_source or "auto").strip().lower()
     if gh_mode not in {"auto", "on", "off"}:
         raise typer.BadParameter("Expected one of: auto, on, off", param_hint="--github-source")
+    print_command_hero(console, "doctor")
+    console.print("")
     home = Path.home()
     workspace_root = runtime_workspace_root()
     projects_cfg = workspace_root / "timelog_projects.json"

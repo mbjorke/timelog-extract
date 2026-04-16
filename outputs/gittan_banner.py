@@ -7,20 +7,20 @@ see ``docs/brand/IDENTITY.md`` and ``scripts/build_brand_assets.sh``.
 
 from __future__ import annotations
 
-# Compact so it fits narrow terminals; ASCII letters/symbols only (see tests/test_i18n_only_english.py).
+# Compact framed hero to mirror modern CLI onboarding style.
+# ASCII letters/symbols only (see tests/test_i18n_only_english.py).
 GITTAN_FEEDING_RABBIT = r"""
-   (\/)
-   (..)     <- review rabbit
-    ><       (well-fed on good traces)
-     \
-  .----------.
-  |  GITTAN  |  local timeline -> review-ready
-  '----------'
++-------------------------------------------------------------------------+
+|  /\_/\   Gittan CLI                                                     |
+| ( o.o )  Choose timeframe to get started.                               |
+|  > ^ <   Tip: run `gittan status --today` for a fast check.             |
+|          AI-assisted estimates: always verify before reporting/invoicing.|
++-------------------------------------------------------------------------+
 """.strip(
     "\n"
 )
 
-TAGLINE = "Feeds the review rabbit - context beats guessing."
+TAGLINE = "Local timeline -> review-ready."
 
 
 def banner_panel_lines() -> list[str]:

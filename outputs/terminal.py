@@ -9,7 +9,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
-from outputs.gittan_banner import TAGLINE, banner_panel_lines
+from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
@@ -112,14 +112,7 @@ def print_report(
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
 ):
-    art = Text("\n".join(banner_panel_lines()), style=STYLE_HEADING)
-    headline = Text.assemble(
-        ("GITTAN", STYLE_HEADING),
-        (" - Local Activity & Time Report\n", STYLE_LABEL),
-        (TAGLINE, STYLE_META),
-    )
-    console.print(art)
-    console.print(headline)
+    print_command_hero(console, "report")
     console.print()
 
     # Header Info

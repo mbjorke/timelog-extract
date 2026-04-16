@@ -11,65 +11,22 @@ import sys
 import sysconfig
 from datetime import datetime
 from pathlib import Path
-from textwrap import dedent
 
 import questionary
 import typer
 from rich.console import Console
 from core.git_project_bootstrap import discover_local_git_repos
+from core.global_timelog_hook_script import HOOK_BODY
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
+from core.setup_github_env import configure_github_env_for_setup
 from core.setup_projects_config_bootstrap import ensure_projects_config
+from outputs.cli_heroes import print_command_hero
+from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GITTAN_CONFIG_DIR = Path.home() / ".gittan"
 GITTAN_SCOPE_FILE = GITTAN_CONFIG_DIR / "timelog_repos.txt"
 GITTAN_FILENAME_FILE = GITTAN_CONFIG_DIR / "timelog_filename"
-
-HOOK_BODY = dedent(
-    """\
-    #!/bin/zsh
-    # managed-by-gittan: global-timelog
-    set -euo pipefail
-
-    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
-    ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-    [[ -n "${ROOT_DIR:-}" ]] || exit 0
-
-    GITTAN_CFG_DIR="$HOME/.gittan"
-    SCOPE_FILE="$GITTAN_CFG_DIR/timelog_repos.txt"
-    FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"
-    TIMELOG_NAME="TIMELOG.md"
-    if [[ -f "$FILENAME_FILE" ]]; then
-      CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\r')"
-      if [[ -n "${CANDIDATE:-}" ]]; then
-        TIMELOG_NAME="$CANDIDATE"
-      fi
-    fi
-    if [[ -f "$SCOPE_FILE" ]]; then
-      if ! rg -Fx -- "$ROOT_DIR" "$SCOPE_FILE" >/dev/null 2>&1; then
-        exit 0
-      fi
-    fi
-
-    TIMELOG_FILE="$ROOT_DIR/$TIMELOG_NAME"
-    mkdir -p "$(dirname "$TIMELOG_FILE")"
-    TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"
-    SUBJECT="$(git log -1 --pretty=%s)"
-
-    if [[ ! -f "$TIMELOG_FILE" ]]; then
-      {
-        echo "# TIMELOG"
-        echo
-      } > "$TIMELOG_FILE"
-    fi
-
-    {
-      echo "## $TIMESTAMP"
-      echo "- Commit: $SUBJECT"
-      echo
-    } >> "$TIMELOG_FILE"
-    """
-)
 
 
 def _run_git_config(args: list[str], *, dry_run: bool) -> None:
@@ -232,6 +189,7 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
 
 def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     from rich.table import Table
+    from rich import box
 
     home = Path.home()
     hooks_dir = home / ".githooks"
@@ -240,11 +198,13 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     current_hooks_path = _read_global_git_config("core.hooksPath")
     current_excludes_file = _read_global_git_config("core.excludesFile")
 
-    console.print("[bold cyan]Global timelog automation setup[/bold cyan]")
+    print_command_hero(console, "setup-global-timelog")
     console.print("This will configure global git hooks so each commit appends an entry to repo-local `TIMELOG.md`.")
-    table = Table(title="Current global git status")
-    table.add_column("Setting", style="cyan")
-    table.add_column("Current value", style="dim")
+    table = Table(title="Current global git status", box=box.ROUNDED)
+    table.border_style = STYLE_BORDER
+    table.header_style = "bold #b7aed3"
+    table.add_column("Setting", style=STYLE_LABEL)
+    table.add_column("Current value", style=STYLE_MUTED)
     table.add_row("core.hooksPath", current_hooks_path or "(not set)")
     table.add_row("core.excludesFile", current_excludes_file or "(not set)")
     table.add_row("Hook file", str(hook_path) if hook_path.exists() else "(missing)")
@@ -313,6 +273,8 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         else:
             console.print("- repo scope = all git repositories")
     console.print("\nReference: `docs/archive/global-timelog-automation-legacy.md`")
+
+
 def _ensure_minimal_projects_config(
     console,
     *,
@@ -330,11 +292,16 @@ def _ensure_minimal_projects_config(
         looks_like_projects_config_fn=_looks_like_projects_config,
     )
     return result.status, result.notes, result.next_steps
+
+
 def _print_environment_status(console) -> None:
     from rich.table import Table
+    from rich import box
 
-    table = Table(title="Environment checks")
-    table.add_column("Check", style="cyan")
+    table = Table(title="Environment checks", box=box.ROUNDED)
+    table.border_style = STYLE_BORDER
+    table.header_style = "bold #b7aed3"
+    table.add_column("Check", style=STYLE_LABEL)
     table.add_column("Status")
     table.add_column("Details", style="dim")
     gittan_in_path = shutil.which("gittan")
@@ -356,6 +323,24 @@ def _print_environment_status(console) -> None:
         console.print(f"[cyan]Suggested profile file:[/cyan] {rc_file}")
         console.print(f"[yellow]Tip:[/yellow] add this to your shell profile: `export PATH=\"{scripts_path}:$PATH\"`")
         console.print(f"[dim]Apply now in current terminal:[/dim] `export PATH=\"{scripts_path}:$PATH\"`")
+
+
+def _print_setup_header(console, *, dry_run: bool) -> None:
+    print_command_hero(console, "setup")
+    if dry_run:
+        console.print("[yellow]Dry run mode:[/yellow] commands are previewed; no system files are changed.")
+    console.print("")
+
+
+def _print_setup_environment_loaded(console) -> None:
+    projects_present = int((Path.cwd() / "timelog_projects.json").exists())
+    github_user_set = int(bool((os.environ.get("GITHUB_USER") or "").strip()))
+    github_token_set = int(bool((os.environ.get("GITHUB_TOKEN") or "").strip()))
+    console.print(
+        "[dim]Environment loaded:[/dim] "
+        f"{projects_present} project config, {github_user_set} GitHub user env, {github_token_set} GitHub token env"
+    )
+    console.print("")
 
 
 def _run_doctor_check(console, *, dry_run: bool) -> str:
@@ -412,13 +397,27 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
 
 def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, bootstrap_root: str | None = None) -> None:
     from rich.table import Table
+    from rich import box
 
-    console.print("[bold cyan]Gittan setup wizard[/bold cyan]")
-    console.print("Guided onboarding for local-first timelog reporting.\n")
+    _print_setup_header(console, dry_run=dry_run)
     summary_rows: list[tuple[str, str, str]] = []
     next_steps: list[str] = []
     _print_environment_status(console)
+    _print_setup_environment_loaded(console)
     summary_rows.append(("Environment checks", "PASS", "Printed PATH and optional env status."))
+    try:
+        github_env_status, github_env_note, github_env_steps = configure_github_env_for_setup(
+            console, yes=yes, dry_run=dry_run
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        console.print(f"[yellow]GitHub env bootstrap could not complete:[/yellow] {exc}")
+        github_env_status = "ACTION_REQUIRED"
+        github_env_note = f"GitHub env bootstrap failed: {exc}"
+        github_env_steps = [
+            "Set GITHUB_USER and optionally GITHUB_TOKEN manually, then rerun `gittan doctor --github-source auto`."
+        ]
+    summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
+    next_steps.extend(github_env_steps)
     should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
     if should_setup_timelog:
         run_global_timelog_setup(console, yes=yes, dry_run=dry_run)
@@ -449,10 +448,12 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
             console.print("[yellow]Skipped smoke report.[/yellow]")
             summary_rows.append(("Smoke report", "SKIPPED", "User skipped this step."))
             smoke_status = "SKIPPED"
-    summary_table = Table(title="Setup summary")
-    summary_table.add_column("Step", style="cyan")
+    summary_table = Table(title="Setup summary", box=box.ROUNDED)
+    summary_table.border_style = STYLE_BORDER
+    summary_table.header_style = "bold #b7aed3"
+    summary_table.add_column("Step", style=STYLE_LABEL)
     summary_table.add_column("Result")
-    summary_table.add_column("Notes", style="dim")
+    summary_table.add_column("Notes", style=STYLE_MUTED)
     for step, result, notes in summary_rows:
         if result.startswith("PASS"):
             style = "green"

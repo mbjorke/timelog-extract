@@ -191,6 +191,7 @@ def collect_runtime_events(
         collect_chrome=runtime_collectors.collect_chrome,
         collect_lovable_desktop=runtime_collectors.collect_lovable_desktop,
         collect_gemini_cli=runtime_collectors.collect_gemini_cli,
+        collect_copilot_cli=runtime_collectors.collect_copilot_cli,
         collect_cursor=runtime_collectors.collect_cursor,
         collect_cursor_checkpoints=runtime_collectors.collect_cursor_checkpoints,
         collect_codex_ide=runtime_collectors.collect_codex_ide,

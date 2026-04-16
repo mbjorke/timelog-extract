@@ -20,6 +20,7 @@ from core import cli_global_timelog_setup  # noqa: F401
 from core import cli_report_status  # noqa: F401
 from core import cli_ab_rule_suggestions  # noqa: F401
 from core import cli_review  # noqa: F401
+from core import cli_ux  # noqa: F401
 
 
 def main() -> None:

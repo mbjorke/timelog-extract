@@ -24,79 +24,14 @@ from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
+from core.doctor_cli_path import add_cli_path_rows
 from collectors.lovable_desktop import lovable_desktop_history_candidates
+from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
+from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
-def _shell_profile_hint() -> str:
-    """Typical rc file to mention for persisting PATH (from $SHELL when possible)."""
-    shell = os.environ.get("SHELL", "").lower()
-    if "zsh" in shell:
-        return "~/.zshrc"
-    if "bash" in shell:
-        return "~/.bashrc (or ~/.bash_profile on macOS)"
-    return "~/.zshrc or ~/.bashrc"
-def _shell_reload_phrase() -> str:
-    """How to reload shell config after pipx ensurepath (shell-agnostic fallback)."""
-    shell = os.environ.get("SHELL", "").lower()
-    if "zsh" in shell:
-        return "[bold]source ~/.zshrc[/bold]"
-    if "bash" in shell:
-        return "[bold]source ~/.bashrc[/bold] (or [bold]source ~/.bash_profile[/bold])"
-    return "source your shell startup file ([bold]e.g. ~/.zshrc or ~/.bashrc[/bold])"
-def _dir_on_path(bin_dir: Path) -> bool:
-    """True if bin_dir is a PATH entry (normalized)."""
-    try:
-        resolved = os.path.normcase(os.path.normpath(str(bin_dir.expanduser().resolve())))
-    except OSError:
-        resolved = os.path.normcase(os.path.normpath(str(bin_dir.expanduser())))
-    for p in os.environ.get("PATH", "").split(os.pathsep):
-        if not p.strip():
-            continue
-        try:
-            if os.path.normcase(os.path.normpath(p)) == resolved:
-                return True
-        except OSError:
-            continue
-    return False
-def _add_cli_path_rows(table: Table, *, home: Path) -> None:
-    """Warn when gittan exists but user script dirs are not on PATH (pip --user / pipx)."""
-    gittan_exe = shutil.which("gittan")
-    if gittan_exe:
-        table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
-        return True
-    if sys.platform == "win32":
-        table.add_row(
-            "CLI (gittan on PATH)",
-            WARN_ICON,
-            f"[{STYLE_MUTED}]Not on PATH. Add Python [bold]Scripts[/bold] to PATH or use [bold]py -m pip install --user[/bold]; see README.[/{STYLE_MUTED}]",
-        )
-        return False
-    hints: list[str] = []
-    profile = _shell_profile_hint()
-    try:
-        user_bin = Path(site.getuserbase()) / "bin"
-        if (user_bin / "gittan").is_file() and not _dir_on_path(user_bin):
-            hints.append(
-                f"[{STYLE_MUTED}]pip --user: run [bold]export PATH=\"{user_bin}:$PATH\"[/bold] "
-                f"(add that line to [bold]{profile}[/bold] so new terminals work).[/{STYLE_MUTED}]"
-            )
-    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
-        _DOCTOR_LOG.warning("doctor: skipped pip --user PATH hint: %s", exc)
-    pipx_bin = home / ".local" / "bin"
-    reload = _shell_reload_phrase()
-    if (pipx_bin / "gittan").is_file() and not _dir_on_path(pipx_bin):
-        hints.append(
-            f"[{STYLE_MUTED}]pipx: run [bold]pipx ensurepath[/bold], then {reload} "
-            f"or open a [bold]new[/bold] terminal ([bold]{pipx_bin}[/bold] must be on PATH).[/{STYLE_MUTED}]"
-        )
-    if hints:
-        detail = " ".join(hints)
-    else:
-        detail = f"[{STYLE_MUTED}]`gittan` not on PATH and no known script in user/bin or pipx. Reinstall with [bold]pipx install timelog-extract[/bold] or see README.[/{STYLE_MUTED}]"
-    table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
-    return False
 @app.command()
 def doctor(
     worklog: Annotated[
@@ -106,6 +41,20 @@ def doctor(
             help="Path to TIMELOG.md (overrides config; default matches report: config worklog, else project default).",
         ),
     ] = None,
+    github_source: Annotated[
+        str,
+        typer.Option(
+            "--github-source",
+            help="GitHub source mode: auto, on, or off (doctor visibility only).",
+        ),
+    ] = "auto",
+    github_user: Annotated[
+        Optional[str],
+        typer.Option(
+            "--github-user",
+            help="GitHub username for public events (doctor visibility only).",
+        ),
+    ] = None,
 ):
     """Check health and permissions of all local data sources."""
     from rich.console import Console
@@ -113,6 +62,11 @@ def doctor(
     from rich import box
 
     console = Console()
+    gh_mode = (github_source or "auto").strip().lower()
+    if gh_mode not in {"auto", "on", "off"}:
+        raise typer.BadParameter("Expected one of: auto, on, off", param_hint="--github-source")
+    print_command_hero(console, "doctor")
+    console.print("")
     home = Path.home()
     workspace_root = runtime_workspace_root()
     projects_cfg = workspace_root / "timelog_projects.json"
@@ -174,7 +128,7 @@ def doctor(
                 os.unlink(tmp.name)
 
     with console.status("[bold #b7aed3]Running diagnostics..."):
-        cli_on_path = _add_cli_path_rows(table, home=home)
+        cli_on_path = add_cli_path_rows(table, home=home)
         project_config_ok = check_file(projects_cfg, "Project Config")
         worklog_ok = check_file(worklog_path, "Worklog (Local)")
         coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
@@ -229,6 +183,37 @@ def doctor(
             table.add_row("Claude Code CLI", OK_ICON, f"[{STYLE_MUTED}]Found projects[/{STYLE_MUTED}]")
         else:
             table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
+
+        add_copilot_cli_doctor_row(
+            table,
+            home,
+            ok_icon=OK_ICON,
+            warn_icon=WARN_ICON,
+            na_icon=NA_ICON,
+            style_muted=STYLE_MUTED,
+        )
+
+        gh_user = (github_user or os.getenv("GITHUB_USER") or "").strip()
+        gh_token_present = bool((os.getenv("GITHUB_TOKEN") or "").strip())
+        if gh_mode == "off":
+            table.add_row(
+                "GitHub Source",
+                NA_ICON,
+                f"[{STYLE_MUTED}]Disabled ({gh_mode}); enable with --github-source on[/{STYLE_MUTED}]",
+            )
+        elif not gh_user:
+            table.add_row(
+                "GitHub Source",
+                NA_ICON,
+                f"[{STYLE_MUTED}]Not configured ({gh_mode}); set --github-user or GITHUB_USER[/{STYLE_MUTED}]",
+            )
+        else:
+            token_note = "token present" if gh_token_present else "no token (public API limits apply)"
+            table.add_row(
+                "GitHub Source",
+                OK_ICON,
+                f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
+            )
 
     console.print(table)
     console.print(

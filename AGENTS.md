@@ -11,6 +11,7 @@ Use this compact execution order before deep exploration:
 3. Run smallest validating loop first:
    - implement minimal change
    - run targeted test(s)
+   - after **CLI-facing** edits, also run `bash scripts/cli_impact_smoke.sh` (see `docs/decisions/agent-inline-cli-ux-validation.md`)
    - then `./scripts/run_autotests.sh`
 4. Prefer non-destructive config handling:
    - never move/delete `timelog_projects.json`
@@ -19,8 +20,15 @@ Use this compact execution order before deep exploration:
    - feature code
    - docs/reorg
    - follow-up cleanup
+6. **Before `git push` to `origin`:** run **`./scripts/run_autotests.sh`** on what you are pushing (same gate as CI). For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
 
 If this section conflicts with any policy below, the detailed policy below wins.
+
+## Maintainer workflow preferences (low copy-paste)
+
+- The maintainer prefers **as little copy-paste of shell commands as possible** in chat and handoffs. Agents should **run** `git`, `gh`, tests, and similar steps in the environment when possible, and report **outcomes and links** in plain language instead of long runnable command dumps.
+- For GitHub follow-ups (PR comments, resolving review threads, listing checks), **use `gh` or the API in the agent session** rather than giving the maintainer a sequence of commands to paste manually.
+- When documentation must list commands, keep them **short and canonical** (one script or one doc section); avoid duplicating the same shell in both docs and chat.
 
 ## Standard Timelog Policy
 
@@ -51,13 +59,28 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Scenario testing and “quick cleanup” are common ways to lose data; treat `**timelog_projects.json`** as **critical** even though it is gitignored.
 - **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `**docs/incidents/2026-04-13-project-config-backup-gap.md`**.
 
-## Branch policy (`main`)
+## Branch policy (`main` + `dev`)
 
-- `**main` is branch-protected** (no direct push). Land changes via a **named branch**, push to `origin`, and merge via **pull request**.
-- **Prefer release branches** over open-ended `feat/…` names: from latest `origin/main`, create `**release/X.Y.Z`** (e.g. `release/0.2.3`) for work that **ships a numbered line** — especially when it touches `**pyproject.toml` version**, `**CHANGELOG.md`**, or release-only automation/docs. One release branch per target version keeps PR scope reviewable and avoids mixing the next patch/minor with unrelated work.
-- **Before bumping the package version** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md` release section): **verify the current branch** is the one meant to carry that release (e.g. `git branch --show-current`, confirm you branched from the right base). Do not assume you are on `main` or on the correct `release/*` line; wrong-branch bumps create confusing PRs and tags.
-- Small, non-release fixes may still use a **short-lived named branch**; do not pile unrelated commits onto an open `**release/*`** PR without maintainer agreement.
-- See `**BRANCH.md`** for the git workflow and `**docs/CI.md`** for what CI runs on PRs.
+- **`main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
+- **`dev` is also branch-protected** (no direct push). Use it as the integration branch for day-to-day agent work.
+- Agents should create **short-lived task branches from `dev`** (for example `task/<scope>`), merge back quickly, then delete the task branch.
+- Avoid long-lived branch families (`feat/*`, `fix/*`, `docs/*`, `cursor/*`) unless explicitly requested for a special case.
+- Release flow:
+  1. Stabilize scope on `dev`.
+  2. Open PR `dev -> main` for normal releases.
+  3. Use `release/X.Y.Z` only when versioning/release chores need explicit isolation.
+- Review intent:
+  - `task/* -> dev`: feature/incremental review.
+  - `dev -> main`: release/integration review gate (final check before release).
+- **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
+- See **`BRANCH.md`** for the operational workflow and **`docs/CI.md`** for CI behavior.
+
+## Naming migration (`rc-` -> `task-`)
+
+- `rc-` naming is now considered **legacy** for day-to-day feature work.
+- Use `task/*` branch names for agent-delivered feature scope.
+- For prompt/story docs, prefer `docs/task-prompts/` for new material.
+- Use `docs/task-prompts/` for prompt/story docs; avoid creating new `rc-` names for feature work.
 
 ## Releases: what the maintainer means vs what the agent does
 
@@ -102,16 +125,31 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 - **PR title and PR description must be written in English.** That includes the initial post on GitHub and any edits before merge. Code comments may follow normal project language, but anything reviewers and bots read in the PR thread should be English-only.
 
+## Documentation privacy and path hygiene
+
+- In docs/specs/prompts, use **repo-relative paths** (for example
+  `docs/task-prompts/example.md`) instead of absolute local paths.
+- Never include local home paths or user-identifying filesystem segments (for
+  example `/Users/<name>/...`) in committed documentation.
+- Keep attribution neutral in specs (for example `Owner: Maintainer`) and avoid
+  personal identifiers unless explicitly required for a formal incident record.
+
 ## Review Cadence (CodeRabbit)
 
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.
+- Keep CodeRabbit auto-review enabled; throttle manual review commands to at most
+  one trigger per stable batch.
 - Trigger `**@coderabbitai full review`** when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use `**@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
 - Trigger that review only when:
   - the current scope is complete enough for review,
   - CI is green (or expected to be green after the latest push),
   - no immediate follow-up commit is expected.
 - Resolve review feedback in one consolidated commit when possible.
+- When feedback is fixed, reply in the same thread with a short note like
+  `Addressed in <sha>: <what changed>`, then resolve the thread.
+- Do not silently resolve threads: always leave a short commit-linked note first.
+- Keep a thread open only when verification or product decision is still pending.
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - If you use **Draft** PRs, click **Ready for review** once CI and feedback look good. **Open** (non-draft) PRs do not show that button—they are already reviewable; merging without it is fine.
 - `@coderabbitai` commands run a review only; they do **not** change Draft or ready state on GitHub.
@@ -129,6 +167,48 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - **Typical commands** (from repo root): `coderabbit review --base main --type committed` to compare committed changes on your branch to `main`; `coderabbit review --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
 - **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
 
-### Release-candidate agent prompt (copy-paste)
+### Task handover prompt (copy-paste)
 
-- For a **single canonical prompt** (RC tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_RC_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_TASK_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+
+## Task spec traceability (required)
+
+- Every new or updated task spec/prompt in `**docs/task-prompts/**` must include a
+  canonical `## Traceability` section using the exact field keys below.
+- Story ID must use your canonical tracker prefix, for example `GH-123` (GitHub)
+  or `JIRA-123` (Jira). Do not use free-form IDs.
+- Required fields and allowed values:
+  - `story_id`: string (`GH-123`, `JIRA-123`, etc.)
+  - `spec_status`: `draft | approved | superseded`
+  - `implementation_status`: `not built | in progress | built | verified`
+  - `created_at`: date `YYYY-MM-DD`
+  - `last_updated_at`: date `YYYY-MM-DD`
+  - `implementation.pr`: string (URL or PR reference)
+  - `implementation.branch`: string
+  - `implementation.commits`: list of commit SHAs
+  - `validation.evidence`: string (path/URL/note)
+  - `validation.decision`: `GO | conditional GO | NO-GO`
+  - `changelog`: list of dated notes
+- Canonical format example (copy shape exactly):
+
+  ```md
+  ## Traceability
+
+  - story_id: GH-123
+  - spec_status: draft
+  - implementation_status: not built
+  - created_at: 2026-04-15
+  - last_updated_at: 2026-04-15
+  - implementation.pr: pending
+  - implementation.branch: pending
+  - implementation.commits: []
+  - validation.evidence: pending
+  - validation.decision: NO-GO
+  - changelog:
+    - 2026-04-15: Initial draft created.
+  ```
+
+- Any change to requirements, thresholds, gates, or acceptance criteria must
+  update `last_updated_at` and append a short note to `changelog`.
+- If a spec has no implementation yet, `implementation_status` must explicitly
+  be `not built` (never implicit).

@@ -1,6 +1,6 @@
 # Spec: A/B Rule Suggestions For Uncategorized Review
 
-Status: Draft (v1)
+Status: Draft (v2 - A/B/C experiment contract)
 Owner: Maintainer + AI agents
 
 ## Problem
@@ -10,9 +10,10 @@ AI-assisted suggestions with explicit approval before writing config changes.
 
 ## Goals
 
-- Generate two suggestion sets from uncategorized activity:
+- Generate three suggestion sets from uncategorized activity:
   - Option A (`safe`): high precision, fewer rules.
   - Option B (`broad`): higher recall, more rules.
+  - Option C (`balanced`): keeps deterministic anchors and repeated terms, avoids single-event broad noise.
 - Show projected impact before applying:
   - `+events`, `+hours`, `-uncategorized`.
 - Keep user in control: no writes without explicit confirmation.
@@ -40,7 +41,7 @@ Alternative integrated path:
 - Existing `timelog_projects.json`.
 - Cluster helpers from `core/uncategorized_review.py`.
 
-## Suggestion model (v1 heuristic)
+## Suggestion model (v2 heuristic)
 
 For target project:
 
@@ -60,6 +61,12 @@ Option B (`broad`) includes Option A plus medium-confidence terms:
 
 - less frequent candidates
 - broader lexical terms that may increase capture
+
+Option C (`balanced`) is computed from B with a stricter filter:
+
+- keep all `tracked_urls` suggestions
+- keep `match_terms` only when cluster count >= 2
+- drop single-event broad-only match terms
 
 ## Impact preview
 
@@ -99,5 +106,23 @@ Before write, compute and show:
 - Backup file is created and path printed.
 - Unit tests cover:
   - suggestion split A vs B
+  - Option C filter behavior (repeated terms retained; single-event broad terms removed)
   - preview math
   - apply path with backup
+
+## CI experiment thresholds (deterministic fixtures)
+
+The CI experiment harness evaluates each variant (`A/B/C`) against deterministic fixture packs.
+Phase-1 thresholds:
+
+- `events_classified_pct_min`: `0.20`
+- `suggestion_acceptance_ratio_min`: `0.50`
+- `setup_seconds_max`: `180`
+- `matched_hours_min`: `0.20`
+
+Each fixture records:
+
+- command sequence (must satisfy sandbox allowlist contract),
+- setup speed per variant,
+- acceptance ratio per variant,
+- computed recategorization impact from preview logic.

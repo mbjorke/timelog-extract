@@ -65,6 +65,67 @@ class RuleSuggestionsABSplitTests(unittest.TestCase):
         self.assertIn(("match_terms", "zeta"), keys_b)
         self.assertNotIn(("match_terms", "zeta"), keys_a)
 
+    def test_filters_meta_noise_match_terms_from_broad_suggestions(self):
+        clusters = [
+            UncategorizedCluster(
+                key="m:commit:TIMELOG.md",
+                rule_type="match_terms",
+                rule_value="commit",
+                source="TIMELOG.md",
+                count=9,
+                samples=["- Commit: docs cleanup", "- Commit: release prep"],
+            ),
+            UncategorizedCluster(
+                key="m:checkoutsuccess:Chrome",
+                rule_type="match_terms",
+                rule_value="checkoutsuccess",
+                source="Chrome",
+                count=2,
+                samples=["https://example.com/CheckoutSuccess", "CheckoutSuccess page"],
+            ),
+        ]
+        profiles = [_prof("Target", ["target"])]
+        opt_a, opt_b = split_ab_suggestions(clusters, profiles, "Target")
+        keys_a = {(r.rule_type, r.rule_value) for r in opt_a}
+        keys_b = {(r.rule_type, r.rule_value) for r in opt_b}
+        self.assertNotIn(("match_terms", "commit"), keys_a)
+        self.assertNotIn(("match_terms", "commit"), keys_b)
+        self.assertIn(("match_terms", "checkoutsuccess"), keys_b)
+
+    def test_sanitizes_tracked_url_with_control_char_noise(self):
+        clusters = [
+            UncategorizedCluster(
+                key="u:lovable-dev-noise:Lovable (desktop)",
+                rule_type="tracked_urls",
+                rule_value="lovable.dev\x014:e",
+                source="Lovable (desktop)",
+                count=1,
+                samples=["storage signal — https://lovable.dev\x014:e"],
+            )
+        ]
+        profiles = [_prof("Target", ["target"])]
+        opt_a, opt_b = split_ab_suggestions(clusters, profiles, "Target")
+        keys_a = {(r.rule_type, r.rule_value) for r in opt_a}
+        keys_b = {(r.rule_type, r.rule_value) for r in opt_b}
+        self.assertIn(("tracked_urls", "lovable.dev"), keys_a)
+        self.assertIn(("tracked_urls", "lovable.dev"), keys_b)
+
+    def test_ignores_match_term_clusters_from_timelog_source(self):
+        clusters = [
+            UncategorizedCluster(
+                key="m:changelog:TIMELOG.md",
+                rule_type="match_terms",
+                rule_value="changelog",
+                source="TIMELOG.md",
+                count=3,
+                samples=["- Commit: update changelog"],
+            )
+        ]
+        profiles = [_prof("Target", ["target"])]
+        opt_a, opt_b = split_ab_suggestions(clusters, profiles, "Target")
+        self.assertEqual(opt_a, [])
+        self.assertEqual(opt_b, [])
+
 
 class RuleSuggestionsPreviewTests(unittest.TestCase):
     def test_preview_counts_events_and_hours(self):

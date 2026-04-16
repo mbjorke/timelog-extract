@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.2.9 - 2026-04-16
+
+- CLI / UX: command heroes (`outputs/cli_heroes.py`), `ux-heroes` subcommand, shared terminal theme usage; decision docs under `docs/decisions/` (CLI UX guidelines, Copilot terminal reference); post-commit hook script split into `core/global_timelog_hook_script.py` (500-line policy).
+- DX: `.cursor/rules/pre-push-quality-gate.mdc` (always-on) + `AGENTS.md` fast-path step 6 — run `run_autotests.sh` (and optional CodeRabbit CLI) before `git push`; optional `scripts/git-hooks/pre-push.sample`.
+- Live terminal sandbox **P0:** `core/live_terminal_demo_contract.py` — frozen allowlist + `DEMO_SANDBOX_DENIED_MESSAGE` for the public demo (spec § Command contract).
+- Live terminal sandbox **P1:** stdlib HTTP sketch — `POST /demo/sessions`, `POST /demo/sessions/<id>/exec` (JSON `{"line":...}`), `GET /demo/health`; allowlist enforced in `demo_exec_line`; deterministic stub output only (`python3 scripts/live_terminal_demo_server.py`).
+- Collectors: **GitHub Copilot CLI** — reads timestamp lines from `~/.copilot/logs` (or `COPILOT_HOME`); `gittan doctor` shows directory/log status.
+- Tooling: `scripts/cli_impact_smoke.sh` bundles the default agent inline CLI smoke loop (`-V`, `report --today --source-summary --quiet`, `ux-heroes`).
+- Docs: `docs/live-terminal-sandbox/README.md` phase checklist for the public live-terminal demo (see spec cross-link).
+
 ## 0.2.8 - 2026-04-15
 
 - CLI: **A/B rule suggestions** from uncategorized clusters — `gittan suggest-rules --project "…"` (preview + writes `timelog_projects.ab-suggestions.json`), `gittan apply-suggestions --option A|B [--confirm]`, and `gittan review --uncategorized --ab-suggestions` (optional interactive apply). Option **A** prefers strong URL/domain anchors and low-ambiguity repeated terms; **B** adds medium-confidence and route-style tokens. Impact preview shows +events, +hours, and uncategorized delta; config writes require confirmation and use a timestamped backup plus `save_projects_config_payload`.
@@ -25,7 +35,7 @@
 
 ## 0.2.6 - 2026-04-14
 
-- Docs: `**docs/AGENT_RC_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). `**AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
+- Docs: `**docs/AGENT_TASK_HANDOVER_PROMPT.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). `**AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
 - CI: `**static.yml`** — minimal workflow `permissions`; `**pages: write`** + `**id-token: write**` only on `**deploy**`. Shared site build in `**scripts/prepare_static_site.sh**` (verify + deploy). `**gittan doctor**`: shell-agnostic PATH hints; narrow `**except**` + `**logging**` when probing pip `--user` bin.
 - Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/ideas/opportunities.md`, `docs/LINKEDIN_PILOT_POSTS.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
 - UX: `**gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + `**gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.

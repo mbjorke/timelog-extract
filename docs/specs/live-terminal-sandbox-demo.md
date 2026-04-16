@@ -34,6 +34,8 @@ deterministic demo data.
 
 ## Command contract (v1 allowlist)
 
+**Code:** `core/live_terminal_demo_contract.py` is the canonical allowlist and denial message; keep this section in sync when changing commands.
+
 Allowed commands (exact or normalized aliases):
 
 - `gittan doctor`
@@ -46,6 +48,10 @@ Allowed commands (exact or normalized aliases):
 Any other input returns:
 
 - `Command not allowed in demo sandbox. Try: help`
+
+## Implementation tracking
+
+Build-phase checklist (P0–P5) lives in `docs/live-terminal-sandbox/README.md`.
 
 ## Architecture
 
@@ -63,6 +69,8 @@ Any other input returns:
   - command execution endpoint
   - output streaming endpoint
 - Per-session ephemeral sandbox runtime.
+
+**P1 sketch (repo):** stdlib HTTP in `core/live_terminal_demo_http.py` — `POST /demo/sessions`, `POST /demo/sessions/<id>/exec` with JSON `{"line":"..."}`, `GET /demo/health`. Allowlist only via `demo_exec_line` (stub output, no subprocess). Run: `python3 scripts/live_terminal_demo_server.py`.
 
 ### Runtime isolation
 
@@ -93,6 +101,21 @@ Demo uses deterministic fixture data only:
 - versioned fixture bundle in repo (`tests/fixtures` or dedicated `demo/fixtures`)
 - readonly mount inside sandbox
 - pinned expected output snapshots for each allowed command
+
+## Internal CI harness (non-public use)
+
+The same allowlist contract can be reused for deterministic internal test flows.
+This is separate from the public website demo runtime:
+
+- public demo: visitor-facing terminal UX and isolated runtime
+- internal CI harness: fixture-driven command contract validation + scorecards
+
+Internal harness requirements:
+
+- use allowlisted command sequence only (same canonical contract)
+- never execute arbitrary shell commands
+- evaluate fixture outputs for setup quality experiments (`A/B/C`)
+- keep report-only mode by default and gate only after stability evidence
 
 ## Reliability requirements
 

@@ -1,10 +1,55 @@
 # CI and repository gates
 
-## `main` is branch-protected
+## Branch protection model (`dev` + `main`)
 
-The default branch **`main`** does **not** accept direct pushes from contributors. Changes merge via **pull request** only (typically **squash merge**). This is enforced by **GitHub branch protection**, not by the workflow file alone.
+The repository uses two protected branches with different review intent:
 
-Treat **`main` as read-only** from local clones unless a maintainer performs an allowed merge. See **`BRANCH.md`** for the git workflow.
+- **`dev`**: day-to-day integration quality gate (`task/* -> dev`).
+- **`main`**: release/integration gate (`dev -> main`), release-ready history only.
+
+Both branches block direct pushes and require pull requests.
+
+## Integration branch (`dev`)
+
+The repository now uses **`dev`** as the default integration branch for contributor/agent work:
+
+- new work starts on `task/*` branches from `dev`,
+- PRs merge into `dev`,
+- stable `dev` is promoted via PR into `main`.
+
+`release/X.Y.Z` remains available for explicit version-isolation work.
+
+## GitHub settings checklist
+
+Configure this in **GitHub -> Settings -> Branches** (or Rulesets) for both branches.
+
+### `dev` protection (integration gate)
+
+- Require a pull request before merging.
+- Require status checks to pass before merging:
+  - `python`
+  - `package`
+  - `extension`
+- Require conversation resolution before merging.
+- Dismiss stale pull request approvals when new commits are pushed.
+- Require linear history (optional but recommended).
+- Disable force pushes and branch deletion.
+
+### `main` protection (release/integration review gate)
+
+- Require a pull request before merging.
+- Restrict expected merge path to `dev -> main` for routine releases.
+- Require status checks to pass before merging:
+  - `python`
+  - `package`
+  - `extension`
+- Require conversation resolution before merging.
+- Require at least one maintainer approval for `dev -> main`.
+- Dismiss stale pull request approvals when new commits are pushed.
+- Disable force pushes and branch deletion.
+
+This keeps feature-level review load on `dev`, while preserving a final release
+gate on `main`.
 
 ## Workflow location
 
@@ -40,6 +85,7 @@ PRs still get a **green workflow** from **verify-static-site** when site-related
 ## PR expectations (not auto-enforced in YAML)
 
 - **PR title and description in English** — see **`AGENTS.md`** and [`.github/pull_request_template.md`](../.github/pull_request_template.md). The workflow does not detect language; it is a project rule for reviewers and bots.
+- **Branch flow:** default contributor path is `task/* -> dev`; PRs to `main` should normally be release/integration PRs.
 
 ## Related
 

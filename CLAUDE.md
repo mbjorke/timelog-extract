@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of truth.
 
+**Maintainer preference:** minimize copy-paste command blocks for the human; run `git` / `gh` / tests in the agent session and summarize results. See `AGENTS.md` → *Maintainer workflow preferences (low copy-paste)*.
+
 ## Project overview
 
 **Gittan** (`timelog-extract` on PyPI) is a local-first CLI tool that aggregates IDE, browser, mail, and worklog activity into project-hour reports and optional invoice PDFs. The CLI command is `gittan`; the package is installed via `pip install timelog-extract`. Python 3.9+ required.
@@ -123,6 +125,9 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
   - PR title/description in English
 - Canonical policy lives in `AGENTS.md` (branch/release/review sections).
 - Detailed release flow: `docs/VERSIONING.md`.
+- Task specs in `docs/task-prompts/` must follow traceability requirements from
+  `AGENTS.md` (Story ID, status, created/updated dates, implementation and
+  validation references).
 
 ### Timelog file rules (critical)
 

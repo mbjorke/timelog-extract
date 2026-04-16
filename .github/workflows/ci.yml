@@ -60,3 +60,26 @@ jobs:
         run: npm install
       - name: Build extension
         run: npm run build
+
+  cli-experiments:
+    runs-on: ubuntu-latest
+    env:
+      STRICT_CLI_EXPERIMENTS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Run deterministic CLI experiments
+        run: |
+          bash scripts/run_cli_experiments_ci.sh
+      - name: Upload CLI experiment scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-experiment-scorecard
+          path: out/cli-experiments/

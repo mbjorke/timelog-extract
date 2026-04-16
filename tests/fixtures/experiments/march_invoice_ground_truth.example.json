@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "Time Log Genius": 18.5,
+    "Internal Ops": 4.0
+  },
+  "invoice_groups": {
+    "Combined Internal": {
+      "actual_hours": 22.5,
+      "projects": [
+        "Time Log Genius",
+        "Internal Ops"
+      ]
+    }
+  }
+}

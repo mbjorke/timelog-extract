@@ -8,6 +8,7 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 from core.domain import classify_project
 from core.uncategorized_review import UncategorizedCluster
@@ -51,6 +52,29 @@ ROUTE_FEATURES = frozenset(
     }
 )
 
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]+")
+DOMAIN_RE = re.compile(r"([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})")
+META_NOISE_TERMS = frozenset(
+    {
+        "commit",
+        "post-merge",
+        "first-pass",
+        "cherry-picking",
+        "click-to-run",
+        "branch/sync",
+        "root-level",
+        "fast-path",
+        "end-to-end",
+    }
+)
+META_NOISE_PREFIXES = (
+    "docs/",
+    "scripts/",
+    "core/",
+    "tests/",
+)
+NOISY_MATCH_TERM_SOURCES = frozenset({"timelog.md", "timelog"})
+
 @dataclass(frozen=True)
 class RuleSuggestion:
     rule_type: str
@@ -68,11 +92,7 @@ class RuleSuggestion:
     @staticmethod
     def from_cluster(cluster: UncategorizedCluster, note: str) -> RuleSuggestion:
         samples = tuple(cluster.samples[:3])
-        value = cluster.rule_value.strip()
-        if cluster.rule_type == "match_terms":
-            value = value.lower()
-        elif cluster.rule_type == "tracked_urls":
-            value = value.lower()
+        value = _normalized_rule_value(cluster.rule_type, cluster.rule_value)
         return RuleSuggestion(
             rule_type=cluster.rule_type,
             rule_value=value,
@@ -118,9 +138,9 @@ def _target_existing_rules(profile: dict[str, Any] | None) -> set[tuple[str, str
         return set()
     out: set[tuple[str, str]] = set()
     for term in profile.get("match_terms") or []:
-        out.add(("match_terms", str(term).lower()))
+        out.add(("match_terms", _normalized_rule_value("match_terms", str(term))))
     for url in profile.get("tracked_urls") or []:
-        out.add(("tracked_urls", str(url).strip().lower()))
+        out.add(("tracked_urls", _normalized_rule_value("tracked_urls", str(url))))
     return out
 
 
@@ -133,7 +153,7 @@ def _find_target_profile(profiles: list[dict[str, Any]], project_name: str) -> d
 
 
 def _ambiguous_value(rule_type: str, value: str, others: set[str]) -> bool:
-    v = value.strip().lower()
+    v = _normalized_rule_value(rule_type, value)
     if not v:
         return True
     if v in others:
@@ -167,8 +187,8 @@ def _domain_is_common(domain: str) -> bool:
 
 def _rule_key(cluster: UncategorizedCluster) -> tuple[str, str]:
     if cluster.rule_type == "match_terms":
-        return ("match_terms", cluster.rule_value.strip().lower())
-    return ("tracked_urls", cluster.rule_value.strip().lower())
+        return ("match_terms", _normalized_rule_value("match_terms", cluster.rule_value))
+    return ("tracked_urls", _normalized_rule_value("tracked_urls", cluster.rule_value))
 
 
 def _cluster_applicable(cluster: UncategorizedCluster, existing: set[tuple[str, str]]) -> bool:
@@ -183,6 +203,47 @@ def _note_for_cluster(cluster: UncategorizedCluster, tier: str) -> str:
     if tier == "medium":
         return "medium-confidence repeated term"
     return "route/feature-style token"
+
+
+def _strip_control_chars(text: str) -> str:
+    return CONTROL_CHARS_RE.sub("", text)
+
+
+def _sanitize_tracked_url_value(value: str) -> str:
+    raw = _strip_control_chars(value.strip().lower())
+    if not raw:
+        return ""
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    candidate = parsed.netloc or parsed.path
+    candidate = _strip_control_chars(candidate).strip()
+    match = DOMAIN_RE.search(candidate)
+    if match:
+        return match.group(1)
+    match = DOMAIN_RE.search(raw)
+    if match:
+        return match.group(1)
+    return candidate
+
+
+def _normalized_rule_value(rule_type: str, value: str) -> str:
+    if rule_type == "tracked_urls":
+        return _sanitize_tracked_url_value(value)
+    return _strip_control_chars(value.strip().lower())
+
+
+def _is_meta_noise_term(term: str) -> bool:
+    t = term.strip().lower()
+    if not t:
+        return True
+    if t in META_NOISE_TERMS:
+        return True
+    if t.startswith(META_NOISE_PREFIXES):
+        return True
+    if t.endswith(".md") or t.endswith(".py"):
+        return True
+    if "timelog" in t:
+        return True
+    return False
 
 
 def split_ab_suggestions(
@@ -201,13 +262,13 @@ def split_ab_suggestions(
 
     def key_for_suggestion(rule_type: str, rule_value: str) -> tuple[str, str]:
         if rule_type == "match_terms":
-            return ("match_terms", rule_value.strip().lower())
-        return ("tracked_urls", rule_value.strip().lower())
+            return ("match_terms", _normalized_rule_value("match_terms", rule_value))
+        return ("tracked_urls", _normalized_rule_value("tracked_urls", rule_value))
 
     for cluster in clusters:
         if not _cluster_applicable(cluster, existing):
             continue
-        rv = cluster.rule_value.strip()
+        rv = _normalized_rule_value(cluster.rule_type, cluster.rule_value)
         ck = _rule_key(cluster)
         if ck in assigned:
             continue
@@ -230,6 +291,10 @@ def split_ab_suggestions(
             continue
 
         term = rv.lower()
+        if cluster.source.strip().lower() in NOISY_MATCH_TERM_SOURCES:
+            continue
+        if _is_meta_noise_term(term):
+            continue
         if _ambiguous_value("match_terms", term, others):
             continue
 
@@ -279,11 +344,13 @@ def augment_profiles_with_rules(
     for rule in rules:
         if rule.rule_type == "match_terms":
             terms = {t.lower() for t in target.get("match_terms") or [] if t}
-            terms.add(rule.rule_value.strip().lower())
+            terms.add(_normalized_rule_value("match_terms", rule.rule_value))
             target["match_terms"] = sorted(terms)
         elif rule.rule_type == "tracked_urls":
             urls = {str(u).strip() for u in target.get("tracked_urls") or [] if u}
-            urls.add(rule.rule_value.strip())
+            cleaned = _normalized_rule_value("tracked_urls", rule.rule_value)
+            if cleaned:
+                urls.add(cleaned)
             target["tracked_urls"] = sorted(urls)
     return out
 

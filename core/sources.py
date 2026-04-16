@@ -12,6 +12,7 @@ SOURCE_ORDER = [
     "Cursor",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
+    "GitHub Copilot CLI",
     "Gemini CLI",
     WORKLOG_SOURCE,
     "Apple Mail",
@@ -29,5 +30,6 @@ AI_SOURCES = {
     "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
+    "GitHub Copilot CLI",
     WORKLOG_SOURCE,
 }

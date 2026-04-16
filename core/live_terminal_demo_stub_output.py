@@ -48,5 +48,5 @@ def demo_stub_output(line: str) -> str:
             '"totals":{"event_count":0,"hours_estimated":0}}\n'
         )
     if key == "gittan report --today --invoice-pdf":
-        return "Invoice PDF (demo stub): /tmp/gittan-demo-invoice.pdf\n"
-    return "[demo] OK\n"
+        return "Invoice PDF (demo stub): not generated in sandbox mode\n"
+    raise ValueError(f"Unhandled allowlisted demo command in stub output: {key}")

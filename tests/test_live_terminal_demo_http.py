@@ -22,23 +22,23 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
         thread.start()
         try:
             base = f"http://127.0.0.1:{port}"
-            with urllib.request.urlopen(f"{base}/demo/health", timeout=2) as r:
+            with urllib.request.urlopen(f"{base}/demo/health", timeout=2) as r:  # noqa: S310
                 self.assertEqual(r.status, 200)
                 self.assertEqual(json.loads(r.read().decode())["status"], "ok")
 
-            req = urllib.request.Request(f"{base}/demo/sessions", method="POST", data=b"")
-            with urllib.request.urlopen(req, timeout=2) as r:
+            req = urllib.request.Request(f"{base}/demo/sessions", method="POST", data=b"")  # noqa: S310
+            with urllib.request.urlopen(req, timeout=2) as r:  # noqa: S310
                 self.assertEqual(r.status, 201)
                 sid = json.loads(r.read().decode())["session_id"]
 
             body = json.dumps({"line": "gittan doctor"}).encode("utf-8")
-            req = urllib.request.Request(
+            req = urllib.request.Request(  # noqa: S310
                 f"{base}/demo/sessions/{sid}/exec",
                 method="POST",
                 data=body,
                 headers={"Content-Type": "application/json"},
             )
-            with urllib.request.urlopen(req, timeout=2) as r:
+            with urllib.request.urlopen(req, timeout=2) as r:  # noqa: S310
                 self.assertEqual(r.status, 200)
                 text = r.read().decode("utf-8")
                 self.assertIn("Gittan Health Check", text)

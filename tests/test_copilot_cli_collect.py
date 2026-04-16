@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from collectors import copilot_cli
 
@@ -29,14 +31,15 @@ class CopilotCliCollectTests(unittest.TestCase):
             def classify(_hay, _profiles):
                 return "default-project"
 
-            events = copilot_cli.collect_copilot_cli(
-                [],
-                dt_from,
-                dt_to,
-                home,
-                classify,
-                _make_event,
-            )
+            with patch.dict(os.environ, {"COPILOT_HOME": str(home / ".copilot")}, clear=False):
+                events = copilot_cli.collect_copilot_cli(
+                    [],
+                    dt_from,
+                    dt_to,
+                    home,
+                    classify,
+                    _make_event,
+                )
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["source"], "GitHub Copilot CLI")
         self.assertEqual(events[0]["project"], "default-project")
@@ -49,14 +52,15 @@ class CopilotCliCollectTests(unittest.TestCase):
         dt_to = datetime(2026, 1, 2, tzinfo=utc)
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
-            events = copilot_cli.collect_copilot_cli(
-                [],
-                dt_from,
-                dt_to,
-                home,
-                lambda _h, _p: "x",
-                _make_event,
-            )
+            with patch.dict(os.environ, {"COPILOT_HOME": str(home / ".copilot")}, clear=False):
+                events = copilot_cli.collect_copilot_cli(
+                    [],
+                    dt_from,
+                    dt_to,
+                    home,
+                    lambda _h, _p: "x",
+                    _make_event,
+                )
         self.assertEqual(events, [])
 
 

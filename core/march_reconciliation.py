@@ -110,7 +110,7 @@ def evaluate_reconciliation(
                 )
             continue
 
-        opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, project_name)
+        _opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, project_name)
         opt_c = variant_c_rules(opt_b)
         # We recompute C with same preview API by reusing report args.
         from core.rule_suggestions import preview_suggestion_impact

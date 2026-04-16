@@ -49,7 +49,13 @@ def collect_copilot_cli(
     results: List[Dict[str, Any]] = []
     seen: set[Tuple[datetime, str, str]] = set()
     tail = 256 * 1024
-    paths = sorted(logs.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)[:40]
+    candidates: List[Tuple[float, Path]] = []
+    for path in logs.glob("*.log"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except OSError:
+            continue
+    paths = [path for _mtime, path in sorted(candidates, reverse=True)[:40]]
     for path in paths:
         try:
             data = path.read_bytes()

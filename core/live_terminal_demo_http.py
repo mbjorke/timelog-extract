@@ -10,6 +10,7 @@ from typing import Optional
 from core.live_terminal_demo_service import DemoSessionStore, demo_exec_line
 
 _EXEC_PATH = re.compile(r"^/demo/sessions/([^/]+)/exec/?$")
+_MAX_BODY_BYTES = 64 * 1024
 
 
 def make_demo_handler(store: DemoSessionStore) -> type[BaseHTTPRequestHandler]:
@@ -56,18 +57,23 @@ def make_demo_handler(store: DemoSessionStore) -> type[BaseHTTPRequestHandler]:
             if not m:
                 self.send_error(404)
                 return
-            length = int(self.headers.get("Content-Length") or 0)
+            raw_len = self.headers.get("Content-Length")
+            try:
+                length = int(raw_len) if raw_len is not None else 0
+            except ValueError:
+                self._json_error(400, "invalid Content-Length")
+                return
+            if length < 0:
+                self._json_error(400, "invalid Content-Length")
+                return
+            if length > _MAX_BODY_BYTES:
+                self._json_error(413, "request body too large")
+                return
             raw = self.rfile.read(length) if length else b"{}"
             try:
                 payload = json.loads(raw.decode("utf-8"))
             except json.JSONDecodeError:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self._cors()
-                err = json.dumps({"error": "invalid JSON body"}).encode("utf-8")
-                self.send_header("Content-Length", str(len(err)))
-                self.end_headers()
-                self.wfile.write(err)
+                self._json_error(400, "invalid JSON body")
                 return
             line = str(payload.get("line", ""))
             status, ctype, out = demo_exec_line(store, m.group(1), line)
@@ -78,6 +84,15 @@ def make_demo_handler(store: DemoSessionStore) -> type[BaseHTTPRequestHandler]:
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+
+        def _json_error(self, status: int, message: str) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self._cors()
+            err = json.dumps({"error": message}).encode("utf-8")
+            self.send_header("Content-Length", str(len(err)))
+            self.end_headers()
+            self.wfile.write(err)
 
     return DemoTerminalHandler
 

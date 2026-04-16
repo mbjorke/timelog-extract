@@ -81,7 +81,11 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
         "totals": {
             "estimated_hours": round(total_estimated, 4),
             "screen_time_hours": round(total_screen, 4),
-            "coverage_ratio": round(total_estimated / total_screen, 4) if total_screen > 0 else 1.0,
+            "coverage_ratio": (
+                round(total_estimated / total_screen, 4)
+                if total_screen > 0
+                else (1.0 if total_estimated == 0 else 0.0)
+            ),
             "unexplained_screen_time_hours": round(total_unexplained, 4),
             "over_attributed_hours": round(total_over, 4),
         },

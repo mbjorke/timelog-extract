@@ -56,5 +56,8 @@ def demo_exec_line(store: DemoSessionStore, session_id: str, line: str) -> Tuple
     allowed, msg = validate_demo_command(line)
     if not allowed:
         return 400, "application/json", json.dumps({"error": msg or DEMO_SANDBOX_DENIED_MESSAGE})
-    out = demo_stub_output(line)
+    try:
+        out = demo_stub_output(line)
+    except ValueError as exc:
+        return 500, "application/json", json.dumps({"error": str(exc)})
     return 200, "text/plain; charset=utf-8", out

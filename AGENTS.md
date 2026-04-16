@@ -127,6 +127,8 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.
+- Keep CodeRabbit auto-review enabled; throttle manual review commands to at most
+  one trigger per stable batch.
 - Trigger `**@coderabbitai full review`** when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use `**@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
 - Trigger that review only when:
   - the current scope is complete enough for review,

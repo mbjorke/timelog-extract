@@ -4,7 +4,7 @@ from textwrap import dedent
 
 HOOK_BODY = dedent(
     """\
-    #!/bin/zsh
+    #!/usr/bin/env zsh
     # managed-by-gittan: global-timelog
     set -euo pipefail
 
@@ -17,13 +17,19 @@ HOOK_BODY = dedent(
     FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"
     TIMELOG_NAME="TIMELOG.md"
     if [[ -f "$FILENAME_FILE" ]]; then
-      CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\r')"
+      CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\\r')"
       if [[ -n "${CANDIDATE:-}" ]]; then
-        TIMELOG_NAME="$CANDIDATE"
+        case "$CANDIDATE" in
+          */* | *..*)
+            ;;
+          *)
+            TIMELOG_NAME="$CANDIDATE"
+            ;;
+        esac
       fi
     fi
     if [[ -f "$SCOPE_FILE" ]]; then
-      if ! rg -Fx -- "$ROOT_DIR" "$SCOPE_FILE" >/dev/null 2>&1; then
+      if ! grep -Fxq -- "$ROOT_DIR" "$SCOPE_FILE" 2>/dev/null; then
         exit 0
       fi
     fi

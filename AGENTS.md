@@ -133,6 +133,10 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
   - CI is green (or expected to be green after the latest push),
   - no immediate follow-up commit is expected.
 - Resolve review feedback in one consolidated commit when possible.
+- When feedback is fixed, reply in the same thread with a short note like
+  `Addressed in <sha>: <what changed>`, then resolve the thread.
+- Do not silently resolve threads: always leave a short commit-linked note first.
+- Keep a thread open only when verification or product decision is still pending.
 - Aim for at most 1-2 CodeRabbit review cycles per PR.
 - If you use **Draft** PRs, click **Ready for review** once CI and feedback look good. **Open** (non-draft) PRs do not show that button—they are already reviewable; merging without it is fine.
 - `@coderabbitai` commands run a review only; they do **not** change Draft or ready state on GitHub.

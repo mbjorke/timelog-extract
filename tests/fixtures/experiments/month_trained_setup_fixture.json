@@ -1,0 +1,83 @@
+{
+  "name": "month-trained-setup",
+  "target_project": "Time Log Genius",
+  "profiles": [
+    {
+      "name": "Time Log Genius",
+      "match_terms": [
+        "time log genius",
+        "timelog"
+      ],
+      "tracked_urls": [
+        "app.timeloggenius.dev"
+      ]
+    },
+    {
+      "name": "Internal Ops",
+      "match_terms": [
+        "ops",
+        "infra"
+      ],
+      "tracked_urls": [
+        "ops.example.com"
+      ]
+    }
+  ],
+  "uncategorized_events": [
+    {
+      "source": "Chrome",
+      "detail": "https://app.timeloggenius.dev/onboarding",
+      "project": "Uncategorized",
+      "timestamp": "2026-04-10T09:00:00+00:00"
+    },
+    {
+      "source": "Chrome",
+      "detail": "https://app.timeloggenius.dev/checkoutsuccess",
+      "project": "Uncategorized",
+      "timestamp": "2026-04-10T09:10:00+00:00"
+    },
+    {
+      "source": "Cursor",
+      "detail": "checkoutsuccess flow copy update",
+      "project": "Uncategorized",
+      "timestamp": "2026-04-10T09:22:00+00:00"
+    },
+    {
+      "source": "Chrome",
+      "detail": "https://app.timeloggenius.dev/subscriptions",
+      "project": "Uncategorized",
+      "timestamp": "2026-04-10T09:35:00+00:00"
+    },
+    {
+      "source": "Chrome",
+      "detail": "https://ops.example.com/pager",
+      "project": "Uncategorized",
+      "timestamp": "2026-04-10T10:00:00+00:00"
+    }
+  ],
+  "command_sequence": [
+    "gittan doctor",
+    "gittan report --today --source-summary",
+    "gittan report --today --format json",
+    "help",
+    "clear"
+  ],
+  "thresholds": {
+    "events_classified_pct_min": 0.2,
+    "suggestion_acceptance_ratio_min": 0.5,
+    "setup_seconds_max": 180.0,
+    "matched_hours_min": 0.2
+  },
+  "variant_inputs": {
+    "setup_seconds": {
+      "A": 110.0,
+      "B": 150.0,
+      "C": 95.0
+    },
+    "suggestion_acceptance_ratio": {
+      "A": 0.62,
+      "B": 0.5,
+      "C": 0.74
+    }
+  }
+}

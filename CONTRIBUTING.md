@@ -41,13 +41,15 @@ Naming notes:
   python3 -m pip install -e .
   ```
 
-- Run the same checks as CI:
+- Run the same checks as CI **before you push** (agents: see `AGENTS.md` fast-path step 6 and `.cursor/rules/pre-push-quality-gate.mdc`):
 
   ```bash
   bash scripts/run_autotests.sh
   ```
 
   This runs the line-length policy (`scripts/check_file_lengths.py`, default max **500** lines per Python file) and the unit tests under `tests/`.
+
+- **Optional:** install a local **pre-push** hook so a failed run blocks `git push` — see [`scripts/git-hooks/README.md`](scripts/git-hooks/README.md).
 
 - For a quicker test loop:
 

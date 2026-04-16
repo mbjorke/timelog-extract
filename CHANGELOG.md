@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- DX: `.cursor/rules/pre-push-quality-gate.mdc` (always-on) + `AGENTS.md` fast-path step 6 — run `run_autotests.sh` (and optional CodeRabbit CLI) before `git push`; optional `scripts/git-hooks/pre-push.sample`.
 - Live terminal sandbox **P0:** `core/live_terminal_demo_contract.py` — frozen allowlist + `DEMO_SANDBOX_DENIED_MESSAGE` for the public demo (spec § Command contract).
 - Live terminal sandbox **P1:** stdlib HTTP sketch — `POST /demo/sessions`, `POST /demo/sessions/<id>/exec` (JSON `{"line":...}`), `GET /demo/health`; allowlist enforced in `demo_exec_line`; deterministic stub output only (`python3 scripts/live_terminal_demo_server.py`).
 - Collectors: **GitHub Copilot CLI** — reads timestamp lines from `~/.copilot/logs` (or `COPILOT_HOME`); `gittan doctor` shows directory/log status.

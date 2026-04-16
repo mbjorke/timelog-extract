@@ -1,0 +1,9 @@
+#!/bin/sh
+# Optional local hook: copy into .git/hooks/pre-push and chmod +x
+# Runs the same checks as CI before a push (blocks the push on failure).
+#
+#   cp scripts/git-hooks/pre-push.sample .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+REPO_ROOT="$(git rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
+exec bash scripts/run_autotests.sh

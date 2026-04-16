@@ -20,6 +20,7 @@ Use this compact execution order before deep exploration:
    - feature code
    - docs/reorg
    - follow-up cleanup
+6. **Before `git push` to `origin`:** run **`./scripts/run_autotests.sh`** on what you are pushing (same gate as CI). For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
 
 If this section conflicts with any policy below, the detailed policy below wins.
 

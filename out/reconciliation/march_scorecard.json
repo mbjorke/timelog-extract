@@ -1,0 +1,172 @@
+{
+  "winner": "baseline",
+  "winner_grouped": "baseline",
+  "summaries": {
+    "baseline": {
+      "mae": 4.846,
+      "total_predicted": 17.9418,
+      "total_actual": 18.75,
+      "total_delta": -0.8082
+    },
+    "A": {
+      "mae": 4.846,
+      "total_predicted": 24.9418,
+      "total_actual": 18.75,
+      "total_delta": 6.1918
+    },
+    "B": {
+      "mae": 6.4169,
+      "total_predicted": 31.5838,
+      "total_actual": 18.75,
+      "total_delta": 12.8338
+    },
+    "C": {
+      "mae": 6.4169,
+      "total_predicted": 31.5838,
+      "total_actual": 18.75,
+      "total_delta": 12.8338
+    }
+  },
+  "group_summaries": {
+    "baseline": {
+      "mae": 0.8082,
+      "total_predicted": 17.9418,
+      "total_actual": 18.75,
+      "total_delta": -0.8082
+    },
+    "A": {
+      "mae": 6.1918,
+      "total_predicted": 24.9418,
+      "total_actual": 18.75,
+      "total_delta": 6.1918
+    },
+    "B": {
+      "mae": 12.8338,
+      "total_predicted": 31.5838,
+      "total_actual": 18.75,
+      "total_delta": 12.8338
+    },
+    "C": {
+      "mae": 12.8338,
+      "total_predicted": 31.5838,
+      "total_actual": 18.75,
+      "total_delta": 12.8338
+    }
+  },
+  "rows": {
+    "baseline": [
+      {
+        "project": "\u00c5SS: Membra",
+        "actual_hours": 10.75,
+        "baseline_hours": 15.1919,
+        "predicted_hours": 15.1919,
+        "absolute_error": 4.4419
+      },
+      {
+        "project": "\u00c5SS: Nav",
+        "actual_hours": 8.0,
+        "baseline_hours": 2.7499,
+        "predicted_hours": 2.7499,
+        "absolute_error": 5.2501
+      }
+    ],
+    "A": [
+      {
+        "project": "\u00c5SS: Membra",
+        "actual_hours": 10.75,
+        "baseline_hours": 15.1919,
+        "predicted_hours": 18.6919,
+        "absolute_error": 7.9419
+      },
+      {
+        "project": "\u00c5SS: Nav",
+        "actual_hours": 8.0,
+        "baseline_hours": 2.7499,
+        "predicted_hours": 6.2499,
+        "absolute_error": 1.7501
+      }
+    ],
+    "B": [
+      {
+        "project": "\u00c5SS: Membra",
+        "actual_hours": 10.75,
+        "baseline_hours": 15.1919,
+        "predicted_hours": 22.0359,
+        "absolute_error": 11.2859
+      },
+      {
+        "project": "\u00c5SS: Nav",
+        "actual_hours": 8.0,
+        "baseline_hours": 2.7499,
+        "predicted_hours": 9.5479,
+        "absolute_error": 1.5479
+      }
+    ],
+    "C": [
+      {
+        "project": "\u00c5SS: Membra",
+        "actual_hours": 10.75,
+        "baseline_hours": 15.1919,
+        "predicted_hours": 22.0359,
+        "absolute_error": 11.2859
+      },
+      {
+        "project": "\u00c5SS: Nav",
+        "actual_hours": 8.0,
+        "baseline_hours": 2.7499,
+        "predicted_hours": 9.5479,
+        "absolute_error": 1.5479
+      }
+    ]
+  },
+  "group_rows": {
+    "baseline": [
+      {
+        "group": "\u00c5SS",
+        "actual_hours": 18.75,
+        "predicted_hours": 17.9418,
+        "absolute_error": 0.8082,
+        "member_projects": [
+          "\u00c5SS: Nav",
+          "\u00c5SS: Membra"
+        ]
+      }
+    ],
+    "A": [
+      {
+        "group": "\u00c5SS",
+        "actual_hours": 18.75,
+        "predicted_hours": 24.9418,
+        "absolute_error": 6.1918,
+        "member_projects": [
+          "\u00c5SS: Nav",
+          "\u00c5SS: Membra"
+        ]
+      }
+    ],
+    "B": [
+      {
+        "group": "\u00c5SS",
+        "actual_hours": 18.75,
+        "predicted_hours": 31.5838,
+        "absolute_error": 12.8338,
+        "member_projects": [
+          "\u00c5SS: Nav",
+          "\u00c5SS: Membra"
+        ]
+      }
+    ],
+    "C": [
+      {
+        "group": "\u00c5SS",
+        "actual_hours": 18.75,
+        "predicted_hours": 31.5838,
+        "absolute_error": 12.8338,
+        "member_projects": [
+          "\u00c5SS: Nav",
+          "\u00c5SS: Membra"
+        ]
+      }
+    ]
+  }
+}

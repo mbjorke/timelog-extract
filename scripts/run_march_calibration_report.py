@@ -22,6 +22,12 @@ def _markdown(payload: dict) -> str:
     gap = payload["screen_time_gap"]
     lines: list[str] = ["## March Calibration Report", ""]
     lines.append(f"- Winner by invoice MAE: `{payload['winner_by_invoice_mae']}`")
+    if payload.get("winner_by_grouped_invoice_mae"):
+        lines.append(f"- Winner by grouped invoice MAE: `{payload['winner_by_grouped_invoice_mae']}`")
+    lines.append(
+        f"- Primary metric mode: `{payload.get('primary_metric_mode', 'project')}` "
+        f"(winner: `{payload.get('primary_winner', payload['winner_by_invoice_mae'])}`)"
+    )
     lines.append("")
     lines.append("### Reconciliation summary")
     for variant, summary in recon["summaries"].items():
@@ -30,6 +36,14 @@ def _markdown(payload: dict) -> str:
             f"actual_total={summary['total_actual']}, delta={summary['total_delta']}"
         )
     lines.append("")
+    if recon.get("group_summaries"):
+        lines.append("### Grouped reconciliation summary")
+        for variant, summary in recon["group_summaries"].items():
+            lines.append(
+                f"- `{variant}`: mae={summary['mae']}, predicted_total={summary['total_predicted']}, "
+                f"actual_total={summary['total_actual']}, delta={summary['total_delta']}"
+            )
+        lines.append("")
     totals = gap["totals"]
     lines.append("### Screen-time gap summary")
     lines.append(
@@ -56,8 +70,11 @@ def main() -> int:
 
     truth = json.loads(Path(args.ground_truth).read_text(encoding="utf-8"))
     projects = truth.get("projects") or {}
+    invoice_groups = truth.get("invoice_groups") or {}
     if not isinstance(projects, dict) or not projects:
         raise SystemExit("ground truth must include non-empty 'projects' object")
+    if invoice_groups and not isinstance(invoice_groups, dict):
+        raise SystemExit("'invoice_groups' must be an object when provided")
 
     options = TimelogRunOptions(
         date_from=args.date_from,
@@ -68,7 +85,11 @@ def main() -> int:
         screen_time="on",
     )
     report = run_timelog_report(args.projects_config, args.date_from, args.date_to, options)
-    payload = build_march_calibration_payload(report, {str(k): float(v) for k, v in projects.items()})
+    payload = build_march_calibration_payload(
+        report,
+        {str(k): float(v) for k, v in projects.items()},
+        invoice_groups={str(k): v for k, v in invoice_groups.items()} if invoice_groups else None,
+    )
 
     out_json = Path(args.out_json)
     out_md = Path(args.out_md)

@@ -82,9 +82,17 @@ Ground truth format:
   "projects": {
     "Project A": 12.5,
     "Project B": 8.0
+  },
+  "invoice_groups": {
+    "Customer X invoice row": {
+      "actual_hours": 20.5,
+      "projects": ["Project A", "Project B"]
+    }
   }
 }
 ```
+
+`invoice_groups` is optional but recommended when invoice lines intentionally combine multiple internal projects.
 
 ## Screen Time gap loop (coverage calibration)
 

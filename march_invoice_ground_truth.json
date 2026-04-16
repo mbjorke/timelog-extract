@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "ÅSS: Nav": 8.0,
+    "ÅSS: Membra": 10.75
+  },
+  "invoice_groups": {
+    "ÅSS": {
+      "actual_hours": 18.75,
+      "projects": [
+        "ÅSS: Nav",
+        "ÅSS: Membra"
+      ]
+    }
+  }
+}

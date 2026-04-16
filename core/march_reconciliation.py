@@ -30,9 +30,52 @@ class ReconciliationResult:
         }
 
 
+@dataclass(frozen=True)
+class GroupReconciliationResult:
+    group: str
+    actual_hours: float
+    predicted_hours: float
+    absolute_error: float
+    member_projects: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "group": self.group,
+            "actual_hours": round(self.actual_hours, 4),
+            "predicted_hours": round(self.predicted_hours, 4),
+            "absolute_error": round(self.absolute_error, 4),
+            "member_projects": list(self.member_projects),
+        }
+
+
+def _group_rows_for_variant(
+    variant_rows: list[ReconciliationResult],
+    invoice_groups: dict[str, dict[str, Any]],
+) -> list[GroupReconciliationResult]:
+    by_project = {row.project: row for row in variant_rows}
+    out: list[GroupReconciliationResult] = []
+    for group_name, config in sorted(invoice_groups.items()):
+        projects = tuple(str(p) for p in (config.get("projects") or []) if str(p).strip())
+        if not projects:
+            continue
+        actual = float(config.get("actual_hours", 0.0))
+        predicted = sum(float(by_project.get(name).predicted_hours) for name in projects if name in by_project)
+        out.append(
+            GroupReconciliationResult(
+                group=group_name,
+                actual_hours=actual,
+                predicted_hours=predicted,
+                absolute_error=abs(predicted - actual),
+                member_projects=projects,
+            )
+        )
+    return out
+
+
 def evaluate_reconciliation(
     report,
     ground_truth_hours: dict[str, float],
+    invoice_groups: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compare baseline + A/B/C projections against invoiced ground truth."""
     uncategorized_events = [e for e in report.included_events if e.get("project") == UNCATEGORIZED]
@@ -109,9 +152,34 @@ def evaluate_reconciliation(
             "total_delta": round(predicted_total - actual_total, 4),
         }
     winner = min(summaries.keys(), key=lambda v: summaries[v]["mae"])
+    group_rows_by_variant: dict[str, list[dict[str, Any]]] = {}
+    group_summaries: dict[str, dict[str, float]] = {}
+    if invoice_groups:
+        for key, rows in variants.items():
+            group_rows = _group_rows_for_variant(rows, invoice_groups)
+            group_rows_by_variant[key] = [row.as_dict() for row in group_rows]
+            errors = [row.absolute_error for row in group_rows]
+            pred_total = sum(row.predicted_hours for row in group_rows)
+            act_total = sum(row.actual_hours for row in group_rows)
+            group_summaries[key] = {
+                "mae": round(mean(errors), 4) if errors else 0.0,
+                "total_predicted": round(pred_total, 4),
+                "total_actual": round(act_total, 4),
+                "total_delta": round(pred_total - act_total, 4),
+            }
+    winner_grouped = min(group_summaries.keys(), key=lambda v: group_summaries[v]["mae"]) if group_summaries else winner
+
+    primary_mode = "grouped" if group_summaries else "project"
+    primary_winner = winner_grouped if group_summaries else winner
+
     return {
         "winner": winner,
+        "winner_grouped": winner_grouped,
+        "primary_metric_mode": primary_mode,
+        "primary_winner": primary_winner,
         "summaries": summaries,
+        "group_summaries": group_summaries,
         "rows": {key: [row.as_dict() for row in rows] for key, rows in variants.items()},
+        "group_rows": group_rows_by_variant,
     }
 

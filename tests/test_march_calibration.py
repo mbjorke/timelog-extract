@@ -37,10 +37,19 @@ class MarchCalibrationTests(unittest.TestCase):
                 min_session_passive=5,
             ),
         )
-        payload = build_march_calibration_payload(report, {"Time Log Genius": 3.0})
+        payload = build_march_calibration_payload(
+            report,
+            {"Time Log Genius": 3.0},
+            invoice_groups={
+                "Internal": {"actual_hours": 3.0, "projects": ["Time Log Genius"]}
+            },
+        )
         self.assertIn("reconciliation", payload)
         self.assertIn("screen_time_gap", payload)
         self.assertIn(payload["winner_by_invoice_mae"], {"baseline", "A", "B", "C"})
+        self.assertIn(payload["winner_by_grouped_invoice_mae"], {"baseline", "A", "B", "C"})
+        self.assertEqual(payload["primary_metric_mode"], "grouped")
+        self.assertEqual(payload["primary_winner"], payload["winner_by_grouped_invoice_mae"])
 
 
 if __name__ == "__main__":

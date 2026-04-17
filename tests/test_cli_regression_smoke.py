@@ -21,6 +21,11 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
+    @staticmethod
+    def _plain_text(output: str) -> str:
+        """Strip ANSI color/style escapes from Rich-rendered CLI output."""
+        return ANSI_ESCAPE_RE.sub("", output)
+
     """Minimal subprocess/import checks."""
 
     @staticmethod

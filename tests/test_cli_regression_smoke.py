@@ -110,9 +110,9 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Gittan Global Timelog", completed.stdout)
 
     def test_setup_wizard_dry_run(self):
-        """Full setup wizard should support non-interactive dry-run execution."""
+        """Default setup should run non-interactive dry-run execution."""
         completed = subprocess.run(
-            [sys.executable, str(ENTRY), "setup", "--yes", "--dry-run", "--skip-smoke"],
+            [sys.executable, str(ENTRY), "setup", "--dry-run", "--skip-smoke"],
             cwd=str(ROOT),
             capture_output=True,
             text=True,
@@ -127,6 +127,18 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Setup wizard completed.", completed.stdout)
         self.assertIn("GitHub env bootstrap", completed.stdout)
         self.assertIn("Gittan Setup", completed.stdout)
+
+    def test_setup_wizard_interactive_dry_run_flag_exists(self):
+        """Interactive flag should remain available for prompt-driven setup."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--help"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        self.assertIn("--interactive", completed.stdout)
 
     def test_setup_one_click_dry_run(self):
         """One-click setup should run non-interactive with recommended defaults."""

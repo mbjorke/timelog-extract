@@ -16,11 +16,11 @@
 
 ## Nice / follow-up
 
-- Further **terminal table consistency** beyond `gittan status` / `gittan doctor` (see `docs/TERMINAL_STYLE_GUIDE.md`).
+- Further **terminal table consistency** beyond `gittan status` / `gittan doctor` (see `docs/terminal-style-guide.md`).
 - **Homebrew** or other installers — only after PyPI is stable; track separately from this scope doc.
 - **Brand / visuals:** Canonical `docs/brand/gittan-brand-mark.png` + `gittan-og-card.png`; `drafts/` / `archive/`; derived **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`; optional GitHub **Social preview** from `repository-open-graph-template.png`. See `docs/brand/README.md` and `scripts/build_brand_assets.sh`.
 
 ## References
 
-- Maintainer checklist: [`docs/VERSIONING.md`](VERSIONING.md)
+- Maintainer checklist: [`docs/versioning.md`](VERSIONING.md)
 - Incident that informed config backup + agent rules: [`docs/incidents/2026-04-13-project-config-backup-gap.md`](incidents/2026-04-13-project-config-backup-gap.md)

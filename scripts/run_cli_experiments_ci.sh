@@ -9,6 +9,6 @@ if [[ "${STRICT_CLI_EXPERIMENTS:-0}" == "1" ]]; then
   STRICT_FLAG=(--strict)
 fi
 
-python3 scripts/run_cli_experiments_ci.py "${STRICT_FLAG[@]}"
+python3 scripts/ci/run_cli_experiments_ci.py "${STRICT_FLAG[@]}"
 echo "CLI experiments completed."
 

@@ -69,7 +69,7 @@ If a promoted default regresses, fall back to previous default and continue in r
 
 When billed truth is available, run reconciliation on the same month range:
 
-- `python3 scripts/run_march_reconciliation.py --ground-truth <path-to-json>`
+- `python3 scripts/calibration/run_march_reconciliation.py --ground-truth <path-to-json>`
 - compares baseline + A/B/C projection against invoiced hours per project
 - writes:
   - `out/reconciliation/march_scorecard.json`
@@ -98,7 +98,7 @@ Ground truth format:
 
 Run this analysis to understand where estimated project time diverges from system activity:
 
-- `python3 scripts/run_screen_time_gap_analysis.py`
+- `python3 scripts/calibration/run_screen_time_gap_analysis.py`
 - outputs:
   - `out/reconciliation/screen_time_gap.json`
   - `out/reconciliation/screen_time_gap.md`
@@ -114,7 +114,7 @@ Reported metrics:
 
 For a single decision-ready run (invoice + screen-time in one artifact):
 
-- `python3 scripts/run_march_calibration_report.py --ground-truth <path-to-json>`
+- `python3 scripts/calibration/run_march_calibration_report.py --ground-truth <path-to-json>`
 - outputs:
   - `out/reconciliation/march_calibration.json`
   - `out/reconciliation/march_calibration.md`

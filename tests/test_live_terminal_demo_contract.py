@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.live_terminal_demo_contract import (
+from core.live_terminal.contract import (
     DEMO_SANDBOX_DENIED_MESSAGE,
     is_allowlisted_demo_command,
     normalize_demo_command_line,

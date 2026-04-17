@@ -27,4 +27,4 @@ The assistant should not assume one audience: offer **“start from project name
 
 ## Status
 
-**Vision / backlog.** No in-repo assistant ships today; this document aligns product discussion with `docs/GITTAN_VISION.md` and `docs/V1_SCOPE.md`.
+**Vision / backlog.** No in-repo assistant ships today; this document aligns product discussion with `docs/gittan-vision.md` and `docs/v1-scope.md`.

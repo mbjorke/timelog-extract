@@ -6,7 +6,7 @@ Make reports more predictable and useful for repo-centric workflows by treating 
 
 ## Why this change
 
-- Scenario A in `docs/MANUAL_TEST_MATRIX_0_2_x.md` can look "empty" even when sources are accessible, because classification/filtering depends on fallback profile keywords.
+- Scenario A in `docs/manual-test-matrix-0-2-x.md` can look "empty" even when sources are accessible, because classification/filtering depends on fallback profile keywords.
 - Repo users often already maintain meaningful log entries (commits, tickets, notes) in `TIMELOG.md`.
 - A worklog-first approach improves trust: "what I wrote in my worklog is the base truth; other sources enrich it."
 
@@ -78,7 +78,7 @@ This is a recommended precondition for testing and rollout; worklog-first must s
 
 - Add strategy/source role metadata to truth payload (`schema` compatible extension).
 - Update terminal source summary to show primary/supporting split.
-- Document behavior in `README.md` and `docs/SOURCES_AND_FLAGS.md`.
+- Document behavior in `README.md` and `docs/sources-and-flags.md`.
 
 ## Phase 4 - Validation and rollout
 

@@ -1,6 +1,6 @@
 # Patreon positioning (draft source material)
 
-**Status:** Working notes for Patreon and other fundraising copy — **not** a commitment to ship specific perks or prices. This file is non-binding positioning material and should stay aligned with `LICENSE`, `docs/V1_SCOPE.md`, `docs/PRIVACY_SECURITY.md`, and `docs/VISION_DOCUMENTS.md`.
+**Status:** Working notes for Patreon and other fundraising copy — **not** a commitment to ship specific perks or prices. This file is non-binding positioning material and should stay aligned with `LICENSE`, `docs/v1-scope.md`, `docs/privacy-security.md`, and `docs/vision-documents.md`.
 
 This file captures positioning discussed during early product/marketing brainstorming (including third-party suggestions) so the repo stays the single place to refine the narrative.
 
@@ -28,7 +28,7 @@ These are **illustrative** tiers from brainstorming — rename, reprice, or drop
 | **Power user** (~$15/mo) | **Early access** to the optional **Cursor extension** (companion to the CLI, not required for core value) + channel for **priority requests** for new sources (Firefox, Jira, etc.) — scope requests realistically. |
 | **Agency / hands-on** (~$50/mo) | **Direct help** setting up complex `timelog_projects.json` and **custom PDF branding** — clearly separate from the open-source core; spell out limits (hours, SLA) when you offer this. |
 
-**CLI-first reminder:** Core reporting remains the **CLI / script path**; extension and PDF branding are **add-ons**, not prerequisites. See `README.md` and `docs/VISION_DOCUMENTS.md`.
+**CLI-first reminder:** Core reporting remains the **CLI / script path**; extension and PDF branding are **add-ons**, not prerequisites. See `README.md` and `docs/vision-documents.md`.
 
 ## Marketing angles / taglines (pick and test)
 
@@ -45,6 +45,6 @@ Financial goals are not legal terms, but they guide **what tier design must supp
 ## Before you publish on Patreon
 
 - [ ] Tiers match what you can deliver (badge, extension access, support hours).
-- [ ] Wording does not contradict **local-first** or **consent** (`docs/PRIVACY_SECURITY.md`).
+- [ ] Wording does not contradict **local-first** or **consent** (`docs/privacy-security.md`).
 - [ ] No promise of cloud processing or data leaving the machine unless you explicitly add that product.
 - [ ] Update **`VISION.md`** if the public one-liner changes.

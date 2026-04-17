@@ -9,7 +9,7 @@
 
 - **Patreon:** Publish the public creator URL here for users who want to support development.
 
-## Tier mapping (non-binding draft; align marketing with `docs/PATREON_POSITIONING.md`)
+## Tier mapping (non-binding draft; align marketing with `docs/patreon-positioning.md`)
 
 | Professional users per org / engagement (rolling 30 days) | Suggested tier |
 |-------------------------------------------------------------|----------------|

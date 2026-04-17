@@ -37364,7 +37364,7 @@
             {
               "source": "Gemini CLI",
               "timestamp": "2026-04-08T14:37:18.870000+00:00",
-              "detail": "[gemini] I will start by reading the `README.md` and `docs/V1_SCOPE.md` files t",
+              "detail": "[gemini] I will start by reading the `README.md` and `docs/v1-scope.md` files t",
               "project": "timelog-extract",
               "local_time": "2026-04-08T17:37:18.870000+03:00"
             },
@@ -60453,7 +60453,7 @@
         {
           "source": "Gemini CLI",
           "timestamp": "2026-04-08T14:37:18.870000+00:00",
-          "detail": "[gemini] I will start by reading the `README.md` and `docs/V1_SCOPE.md` files t",
+          "detail": "[gemini] I will start by reading the `README.md` and `docs/v1-scope.md` files t",
           "project": "timelog-extract",
           "local_time": "2026-04-08T17:37:18.870000+03:00"
         },

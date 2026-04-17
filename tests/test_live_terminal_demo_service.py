@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import unittest
 
-from core.live_terminal_demo_contract import DEMO_SANDBOX_DENIED_MESSAGE
-from core.live_terminal_demo_service import DemoSessionStore, demo_exec_line
+from core.live_terminal.contract import DEMO_SANDBOX_DENIED_MESSAGE
+from core.live_terminal.service import DemoSessionStore, demo_exec_line
 
 
 class LiveTerminalDemoServiceTests(unittest.TestCase):

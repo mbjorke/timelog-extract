@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core.cli_experiments import run_fixture, run_fixtures
+from core.calibration.experiments import run_fixture, run_fixtures
 
 
 class CliExperimentHarnessTests(unittest.TestCase):

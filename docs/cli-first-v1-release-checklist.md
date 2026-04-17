@@ -70,7 +70,7 @@ It assumes CLI and script workflows are the primary user path, while the Cursor 
   - PDF path printed and file exists
 - [x] `python3 timelog_extract.py --today --source-summary` output is readable and non-erroring.
 
-Use `docs/RC_TEST_SCRIPT_CLI_FIRST.md` for second-tester execution and report collection.
+Use `docs/rc-test-script-cli-first.md` for second-tester execution and report collection.
 
 ## 8) Go / No-Go Decision
 

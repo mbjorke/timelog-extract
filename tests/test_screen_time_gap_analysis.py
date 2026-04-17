@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from core.screen_time_gap_analysis import analyze_screen_time_gaps
+from core.calibration.screen_time_gap import analyze_screen_time_gaps
 
 
 class ScreenTimeGapAnalysisTests(unittest.TestCase):

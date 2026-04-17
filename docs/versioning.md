@@ -80,4 +80,4 @@ python -m build
 
 ## Not the same: JSON truth payload `version`
 
-`--format json` output includes a **`version`** field inside the payload that describes the **truth-payload schema** (an integer contract for automation), not the PyPI package version. See `docs/V1_TAG_ANNOTATION_DRAFT.md` and `docs/CLI_FIRST_V1_RELEASE_CHECKLIST.md`.
+`--format json` output includes a **`version`** field inside the payload that describes the **truth-payload schema** (an integer contract for automation), not the PyPI package version. See `docs/v1-tag-annotation-draft.md` and `docs/cli-first-v1-release-checklist.md`.

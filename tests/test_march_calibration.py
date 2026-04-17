@@ -5,7 +5,7 @@ from argparse import Namespace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from core.march_calibration import build_march_calibration_payload
+from core.calibration.report import build_march_calibration_payload
 
 
 class MarchCalibrationTests(unittest.TestCase):

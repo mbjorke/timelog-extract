@@ -31,8 +31,8 @@ This task is priority #2 (after inline CLI UX validation).
 ## Source of truth
 
 - `docs/specs/live-terminal-sandbox-demo.md`
-- `docs/PRIVACY_SECURITY.md`
-- `docs/CI.md`
+- `docs/privacy-security.md`
+- `docs/ci.md`
 
 ## Scope (v1)
 

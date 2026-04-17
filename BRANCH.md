@@ -5,7 +5,7 @@ The repository uses two protected branches on GitHub:
 - `dev`: protected integration branch for `task/*` work.
 - `main`: protected release/integration branch.
 
-Direct pushes are blocked on both; changes land via pull requests. CI runs on PRs (see `docs/CI.md`).
+Direct pushes are blocked on both; changes land via pull requests. CI runs on PRs (see `docs/ci.md`).
 
 Use a two-level flow:
 
@@ -57,4 +57,4 @@ Use a two-level flow:
 
 - **Never push directly to `main`**.
 - Default agent target is `dev` via short-lived `task/*` branches.
-- For release/version operations, follow `AGENTS.md` and `docs/VERSIONING.md`.
+- For release/version operations, follow `AGENTS.md` and `docs/versioning.md`.

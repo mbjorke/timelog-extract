@@ -56,7 +56,7 @@ gate on `main`.
 - **File:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - **Triggers:** `push` and `pull_request` (so PRs and the merge target both run checks).
 
-- **PyPI publish:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — builds sdist + wheel and publishes on **version tags** `v*.*.*` or **workflow_dispatch** (requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI). See **`docs/VERSIONING.md`**.
+- **PyPI publish:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — builds sdist + wheel and publishes on **version tags** `v*.*.*` or **workflow_dispatch** (requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI). See **`docs/versioning.md`**.
 
 - **GitHub Pages (landing site):** [`.github/workflows/static.yml`](../.github/workflows/static.yml)
 

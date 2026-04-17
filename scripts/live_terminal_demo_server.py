@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the live terminal demo HTTP sketch (P1). See ``core.live_terminal_demo_http``."""
+"""Run the live terminal demo HTTP sketch (P1). See ``core.live_terminal.http``."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from core.live_terminal_demo_http import serve_demo
+from core.live_terminal.http import serve_demo
 
 
 def main() -> None:

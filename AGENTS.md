@@ -50,7 +50,7 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Never commit `TIMELOG.md`.
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
-- Do not commit a `**private/`** directory or other gitignored local business notes (see `**docs/PRIVATE_LOCAL_NOTES.md`**).
+- Do not commit a `**private/`** directory or other gitignored local business notes (see `**docs/private-local-notes.md`**).
 
 ## Local data safety (destructive commands)
 
@@ -73,7 +73,7 @@ If this section conflicts with any policy below, the detailed policy below wins.
   - `task/* -> dev`: feature/incremental review.
   - `dev -> main`: release/integration review gate (final check before release).
 - **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
-- See **`BRANCH.md`** for the operational workflow and **`docs/CI.md`** for CI behavior.
+- See **`BRANCH.md`** for the operational workflow and **`docs/ci.md`** for CI behavior.
 
 ## Naming migration (`rc-` -> `task-`)
 
@@ -92,7 +92,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 1. **Decides** the target version (e.g. patch vs minor) and what must be in scope.
 2. On **GitHub**: open or refresh the **pull request** from `release/X.Y.Z` (or the agreed branch) into `main`, wait for **CI** to pass, then **merge** the PR (squash or merge commit per repo habit).
-3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in `**docs/VERSIONING.md`**.
+3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in `**docs/versioning.md`**.
 4. **Optional:** smoke-test `pip install timelog-extract` after upload.
 
 **Plain terms:** **PR** = request to merge a branch into `main`; **merge** = accept that request on GitHub; **tag** = release label on a commit (often triggers publish); **conflicts** = overlapping edits — resolved **in the branch** by the agent, then pushed, so the PR becomes mergeable again.
@@ -100,10 +100,10 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 ### Agent — assume these responsibilities
 
 1. Work on `**release/X.Y.Z`** (or create it from latest `**origin/main`** for a **new** version line). Confirm branch name matches the version being bumped.
-2. Apply the **version bump checklist** in `**docs/VERSIONING.md`** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
+2. Apply the **version bump checklist** in `**docs/versioning.md`** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
 3. Run `**./scripts/run_autotests.sh`**; when packaging changes, also `**python -m build`** locally if appropriate.
 4. Commit, `**git push origin <branch>**`, and keep the maintainer informed in **non-jargon** terms (“PR is ready”, “CI should run”, “after you merge, tag vX.Y.Z”).
-5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by `**git fetch origin`** and `**git merge origin/main`** into the release branch, resolve conflicts (often `**CHANGELOG.md`**, `**README.md**`), commit the merge, push — see `**docs/VERSIONING.md**` and `**BRANCH.md**`.
+5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by `**git fetch origin`** and `**git merge origin/main`** into the release branch, resolve conflicts (often `**CHANGELOG.md`**, `**README.md**`), commit the merge, push — see `**docs/versioning.md**` and `**BRANCH.md**`.
 
 ## Git worktrees (parallel work)
 
@@ -114,7 +114,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ## GitHub Pages (landing site)
 
-- **Production deploy** runs only on **push to `main`** (see `**docs/CI.md**` → *GitHub Pages*). A PR branch is **not** “deployed” until merge; that GitHub label is expected.
+- **Production deploy** runs only on **push to `main`** (see `**docs/ci.md**` → *GitHub Pages*). A PR branch is **not** “deployed” until merge; that GitHub label is expected.
 - **PRs** run a **verify** job when site files change; merge to `main` to publish. **Re-run deploy:** Actions → *Deploy static content to Pages* → *Run workflow* (`workflow_dispatch`).
 
 ## Global Automatic Timelog Setup
@@ -169,7 +169,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ### Task handover prompt (copy-paste)
 
-- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/AGENT_TASK_HANDOVER_PROMPT.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/agent-task-handover-prompt.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
 
 ## Task spec traceability (required)
 

@@ -11,7 +11,7 @@ Some material is **too sensitive or premature** for the public repository (pitch
 ## What stays in the repo instead
 
 - **`docs/ideas/opportunities.md`** — shareable, English, **strategic** opportunities and risks (audience, bets, differentiation). Not the place for channel-by-channel marketing execution.
-- **`LICENSE`** and **`docs/SPONSORSHIP_TERMS.md`** — binding terms for distribution and team-scale use.
+- **`LICENSE`** and **`docs/sponsorship-terms.md`** — binding terms for distribution and team-scale use.
 
 ## Public `ideas/opportunities.md` vs local `private/` (how to split)
 
@@ -23,7 +23,7 @@ Some material is **too sensitive or premature** for the public repository (pitch
 | **LinkedIn / social** post drafts, hooks, posting calendar | Only high-level notes if needed for context | **Full drafts**, dates, A/B variants |
 | **Test rabbit** / beta recruitment wording | One honest line in `OPPORTUNITIES` is enough | Concrete DMs, names, commitments |
 | Revenue targets, runway, investor-only narrative | — | **Always private** until you choose to publish |
-| Competitor notes, pricing experiments, Patreon tier experiments | Illustrative drafts may live in `docs/PATREON_POSITIONING.md` (already marked draft) | **Numbers and promises** you are not ready to stand behind |
+| Competitor notes, pricing experiments, Patreon tier experiments | Illustrative drafts may live in `docs/patreon-positioning.md` (already marked draft) | **Numbers and promises** you are not ready to stand behind |
 
 **Later**, when you "move business to private," you can **shorten** `ideas/opportunities.md` to thesis + risks + pointers, and keep **richer** business notes only under `private/`.
 

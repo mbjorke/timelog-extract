@@ -106,7 +106,7 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ### Output layer (`outputs/`)
 
-- `terminal.py` — Rich-based CLI rendering; follow `docs/TERMINAL_STYLE_GUIDE.md` for style rules (calm/readable; semantic hierarchy; purple/neutral base; blue for source names; muted orange for values; no rainbow coloring).
+- `terminal.py` — Rich-based CLI rendering; follow `docs/terminal-style-guide.md` for style rules (calm/readable; semantic hierarchy; purple/neutral base; blue for source names; muted orange for values; no rainbow coloring).
 - `pdf.py` — invoice PDF via reportlab.
 - `narrative.py` — executive summary text block.
 - `html_timeline.py` — HTML timeline export.
@@ -124,7 +124,7 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
   - use `release/X.Y.Z` for release-bound work
   - PR title/description in English
 - Canonical policy lives in `AGENTS.md` (branch/release/review sections).
-- Detailed release flow: `docs/VERSIONING.md`.
+- Detailed release flow: `docs/versioning.md`.
 - Task specs in `docs/task-prompts/` must follow traceability requirements from
   `AGENTS.md` (Story ID, status, created/updated dates, implementation and
   validation references).
@@ -146,4 +146,4 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 | `extension` | `npm install && npm run build` in `cursor-extension/`                                                  |
 
 
-GitHub Pages deploys only on push to `main` (see `docs/CI.md`).
+GitHub Pages deploys only on push to `main` (see `docs/ci.md`).

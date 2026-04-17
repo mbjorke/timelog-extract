@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Repo hygiene: removed **`.github/FUNDING.yml`** from version control; maintainer-only funding link drafts belong under local **`private/`** (documented in **`docs/meta/private-local-notes.md`**). **`docs/ideas/opportunities.md`** now points to GitHub **Settings → Sponsorships** for a Sponsor button without committing that file.
+
 ## 0.2.10 - 2026-04-16
 
 - Calibration: added deterministic A/B/C experiment harness for CI (`core/cli_experiments.py`, `scripts/run_cli_experiments_ci.py`) with fixture scorecards and a report-only `cli-experiments` CI job.

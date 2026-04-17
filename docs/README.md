@@ -18,6 +18,8 @@ For **code and script layout** (not doc taxonomy), see [`structure.md`](structur
 | `security/` | Privacy baseline, license intent, upstream risk notes. |
 | `sources/` | Collectors, flags, and integration notes (including backlog integrations). |
 | `ideas/` | Exploratory proposals and learning notes — not final policy. |
+| `contributing/` | Contributor-focused guides (e.g. [ai-assisted-work.md](contributing/ai-assisted-work.md) for all AI tools). |
+| `inspiration/` | Short external links and patterns before they become specs; see [`inspiration/README.md`](inspiration/README.md). |
 | `incidents/` | Postmortems and corrective actions after concrete incidents. |
 | `legacy/` | Old docs kept for reference only — **not** maintained like active docs; not a curated “museum,” just stuff we do not delete yet. |
 | `brand/` | Brand assets and identity notes. |

@@ -24,6 +24,8 @@ Use this compact execution order before deep exploration:
 
 If this section conflicts with any policy below, the detailed policy below wins.
 
+**Multiple AI tools/editors:** policy stays in this file; for a tool matrix, inspiration vs ideas, and optional skills guidance, see **`docs/contributing/ai-assisted-work.md`** and **`docs/inspiration/README.md`**.
+
 ## Maintainer workflow preferences (low copy-paste)
 
 - The maintainer prefers **as little copy-paste of shell commands as possible** in chat and handoffs. Agents should **run** `git`, `gh`, tests, and similar steps in the environment when possible, and report **outcomes and links** in plain language instead of long runnable command dumps.

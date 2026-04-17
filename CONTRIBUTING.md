@@ -2,6 +2,8 @@
 
 Thanks for helping improve Timelog Extract / Gittan. This document is the single entry point for contributors; agent-specific habits (timelog files, worktrees) live in [`AGENTS.md`](AGENTS.md).
 
+**Many editors and AI tools** (Claude Code, Codex, Cursor, VS Code, Zed, Lovable, etc.) share the same repo rules: read **`AGENTS.md` first**. For a tool-by-tool map, inspiration vs ideas, and how we avoid duplicating policy, see **[`docs/contributing/ai-assisted-work.md`](docs/contributing/ai-assisted-work.md)**. Quick links and external sparks live under **[`docs/inspiration/`](docs/inspiration/)**.
+
 **`main` is branch-protected** — no direct pushes; use a branch and PR.  
 Default contributor flow is **`task/* -> dev -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
 

@@ -7,6 +7,7 @@ arbitrary directories, or when edits broke core/cli.py syntax.
 import ast
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -16,9 +17,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ENTRY = ROOT / "timelog_extract.py"
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
+    @staticmethod
+    def _plain_text(output: str) -> str:
+        """Strip ANSI color/style escapes from Rich-rendered CLI output."""
+        return ANSI_ESCAPE_RE.sub("", output)
+
     """Minimal subprocess/import checks."""
 
     def _run_doctor(self, args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
@@ -138,7 +145,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             timeout=120,
         )
         self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
-        self.assertIn("--interactive", completed.stdout)
+        self.assertIn("--interactive", self._plain_text(completed.stdout))
 
     def test_setup_one_click_dry_run(self):
         """One-click setup should run non-interactive with recommended defaults."""
@@ -230,9 +237,10 @@ class CliRegressionSmokeTests(unittest.TestCase):
             timeout=120,
         )
         self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
-        self.assertIn("Sync TIMELOG-derived hours to Jira worklogs", completed.stdout)
-        self.assertIn("--require-confirm", completed.stdout)
-        self.assertIn("--dry-run", completed.stdout)
+        output = self._plain_text(completed.stdout)
+        self.assertIn("Sync TIMELOG-derived hours to Jira worklogs", output)
+        self.assertIn("--require-confirm", output)
+        self.assertIn("--dry-run", output)
 
 
 if __name__ == "__main__":

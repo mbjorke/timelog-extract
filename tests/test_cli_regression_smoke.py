@@ -52,6 +52,8 @@ class CliRegressionSmokeTests(unittest.TestCase):
         """Regression: ModuleNotFoundError: outputs when cwd != repo (gittan from PATH)."""
         completed = self._run_doctor([])
         self.assertIn("Next steps", completed.stdout)
+        self.assertIn("Toggl Source", completed.stdout)
+        self.assertIn("Not configured (auto)", completed.stdout)
 
     def test_doctor_github_source_off_row_is_shown(self):
         completed = self._run_doctor(["--github-source", "off", "--github-user", "mbjorke"])

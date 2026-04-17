@@ -17,6 +17,8 @@ Examples include `--chrome-source`, `--mail-source`, `--github-source` (see CLI 
 
 `core/collector_registry.build_collector_specs` marks collectors as enabled or disabled with an optional **reason** (e.g. consent off, database not found, no GitHub username). Disabled collectors are not invoked; enabled ones run and append events.
 
+Toggl follows the same pattern with **auto-detection**: when `TOGGL_API_TOKEN` exists, the Toggl source is enabled; otherwise it is disabled with a clear reason in `collector_status`.
+
 ## Per-collector status in JSON output
 
 When you use `--format json`, the truth payload includes **`collector_status`**: for each named source, whether it was **enabled**, a **reason** string when disabled or failed, and **how many raw events** that collector returned (`core/truth_payload.py`).

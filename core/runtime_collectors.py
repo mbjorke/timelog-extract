@@ -28,6 +28,7 @@ class RuntimeCollectors:
         mail_collector,
         timelog_collector,
         github_collector,
+        toggl_collector,
         github_token: Optional[str] = None,
     ):
         self.home = home
@@ -46,6 +47,7 @@ class RuntimeCollectors:
         self.mail = mail_collector
         self.timelog = timelog_collector
         self.github = github_collector
+        self.toggl = toggl_collector
         self.cli_args = cli_args
         self.github_token = github_token
 
@@ -198,6 +200,15 @@ class RuntimeCollectors:
             dt_to,
             username=user,
             token=self.github_token,
+            classify_project=self.classify_project,
+            make_event=self.make_event,
+        )
+
+    def collect_toggl(self, profiles, dt_from, dt_to):
+        return self.toggl.collect_workspace_events(
+            profiles,
+            dt_from,
+            dt_to,
             classify_project=self.classify_project,
             make_event=self.make_event,
         )

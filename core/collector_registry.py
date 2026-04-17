@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from collectors.github import github_source_enabled
+from collectors.toggl import toggl_source_enabled
 
 
 @dataclass
@@ -40,11 +41,13 @@ def build_collector_specs(
     collect_apple_mail: Callable,
     collect_worklog: Callable,
     collect_github: Callable,
+    collect_toggl: Callable,
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
     mail_mode = getattr(args, "mail_source", "auto")
     mail_enabled = mail_mode in {"on", "auto"}
     gh_enabled, gh_reason = github_source_enabled(args)
+    toggl_enabled, toggl_reason = toggl_source_enabled(args)
 
     return [
         CollectorSpec("Claude Code CLI", collect_claude_code, "events"),
@@ -102,5 +105,12 @@ def build_collector_specs(
             "events",
             enabled=gh_enabled,
             reason=gh_reason,
+        ),
+        CollectorSpec(
+            "Toggl",
+            collect_toggl,
+            "events",
+            enabled=toggl_enabled,
+            reason=toggl_reason,
         ),
     ]

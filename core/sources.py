@@ -3,6 +3,7 @@
 CURSOR_CHECKPOINTS_SOURCE = "Cursor checkpoints"
 WORKLOG_SOURCE = "TIMELOG.md"
 GITHUB_SOURCE = "GitHub"
+TOGGL_SOURCE = "Toggl"
 
 SOURCE_ORDER = [
     "Claude Code CLI",
@@ -19,6 +20,7 @@ SOURCE_ORDER = [
     "Chrome",
     "Lovable (desktop)",
     GITHUB_SOURCE,
+    TOGGL_SOURCE,
 ]
 
 AI_SOURCES = {

@@ -52,7 +52,7 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Never commit `TIMELOG.md`.
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
-- Do not commit a `**private/`** directory or other gitignored local business notes — including **revenue, detailed metrics, and sponsor-specific numbers** (see `**docs/private-local-notes.md`**).
+- Do not commit a `**private/`** directory or other gitignored local business notes — including **revenue, detailed metrics, and sponsor-specific numbers** (see `**docs/meta/private-local-notes.md`**).
 
 ## Local data safety (destructive commands)
 
@@ -177,7 +177,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ### Task handover prompt (copy-paste)
 
-- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/agent-task-handover-prompt.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/contributing/agent-task-handover-prompt.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
 
 ## Task spec traceability (required)
 

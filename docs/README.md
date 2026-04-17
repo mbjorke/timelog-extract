@@ -2,9 +2,9 @@
 
 This folder is the **single map** for where to put and find docs. Prefer this file when routing new material; keep it updated when you add top-level categories.
 
-For **code and script layout** (not doc taxonomy), see [`structure.md`](structure.md).
+For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](meta/structure.md).
 
-**Sensitive business data** (revenue, detailed metrics, unpublished numbers): keep under **gitignored `private/`** — see [`private-local-notes.md`](private-local-notes.md).
+**Sensitive business data** (revenue, detailed metrics, unpublished numbers): keep under **gitignored `private/`** — see [`meta/private-local-notes.md`](meta/private-local-notes.md).
 
 ## Top-level categories
 
@@ -20,7 +20,8 @@ For **code and script layout** (not doc taxonomy), see [`structure.md`](structur
 | `security/` | Privacy baseline, license intent, upstream risk notes. |
 | `sources/` | Collectors, flags, and integration notes (including backlog integrations). |
 | `ideas/` | Exploratory proposals and learning notes — not final policy. |
-| `contributing/` | Contributor-focused guides (e.g. [ai-assisted-work.md](contributing/ai-assisted-work.md) for all AI tools). |
+| `contributing/` | Contributor-focused guides (e.g. [ai-assisted-work.md](contributing/ai-assisted-work.md), [agent-task-handover-prompt.md](contributing/agent-task-handover-prompt.md)). |
+| `meta/` | Repo layout ([`structure.md`](meta/structure.md)), private-business policy ([`private-local-notes.md`](meta/private-local-notes.md)), and [`documentation-structure.md`](meta/documentation-structure.md) redirect. |
 | `inspiration/` | Short external links and patterns before they become specs; see [`inspiration/README.md`](inspiration/README.md). |
 | `incidents/` | Postmortems and corrective actions after concrete incidents. |
 | `legacy/` | Old docs kept for reference only — **not** maintained like active docs; not a curated “museum,” just stuff we do not delete yet. |
@@ -54,4 +55,6 @@ User-facing strings in the codebase should **not** embed `docs/legacy/` paths. U
 
 ## Legacy pointer
 
-Older references to `documentation-structure.md` still resolve; that file redirects here.
+Older references to `docs/documentation-structure.md` still resolve via [`meta/documentation-structure.md`](meta/documentation-structure.md); that file redirects here.
+
+Only **`README.md`** should live at the `docs/` root; everything else belongs in a subfolder.

@@ -3,7 +3,7 @@
 Status: active  
 Owner: Maintainer + active implementation agent
 
-For **where to place markdown under `docs/`** (taxonomy and routing), see [`docs/README.md`](README.md).
+For **where to place markdown under `docs/`** (taxonomy and routing), see [`../README.md`](../README.md).
 
 ## Goals
 

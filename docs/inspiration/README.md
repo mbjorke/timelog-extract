@@ -21,3 +21,4 @@ Use this folder for **short** notes that help contributors and agents **orient f
 ## Examples
 
 - [`slay-zone.md`](slay-zone.md) — SlayZone docs and local-first agent workflow inspiration.
+- [`similar-repos-checklist.md`](similar-repos-checklist.md) — comparable tools and ecosystems (working list).

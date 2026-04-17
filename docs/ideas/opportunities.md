@@ -2,7 +2,7 @@
 
 **Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE` and `docs/product/vision-documents.md`.
 
-**Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see `**docs/private-local-notes.md`**.
+**Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see `**docs/meta/private-local-notes.md`**.
 
 **Language:** English-only for documentation in this repository (see `CONTRIBUTING.md` and PR language rules).
 
@@ -85,7 +85,7 @@ enterprise-grade multi-tenant auth/permission systems.
 
 ## Sensitive material (not in git)
 
-Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see `**docs/private-local-notes.md`**. That keeps the public repo reviewable while preserving a private working surface.
+Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see `**docs/meta/private-local-notes.md`**. That keeps the public repo reviewable while preserving a private working surface.
 
 ---
 

@@ -106,7 +106,7 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ### Output layer (`outputs/`)
 
-- `terminal.py` — Rich-based CLI rendering; follow `docs/terminal-style-guide.md` for style rules (calm/readable; semantic hierarchy; purple/neutral base; blue for source names; muted orange for values; no rainbow coloring).
+- `terminal.py` — Rich-based CLI rendering; follow `docs/product/terminal-style-guide.md` for style rules (calm/readable; semantic hierarchy; purple/neutral base; blue for source names; muted orange for values; no rainbow coloring).
 - `pdf.py` — invoice PDF via reportlab.
 - `narrative.py` — executive summary text block.
 - `html_timeline.py` — HTML timeline export.

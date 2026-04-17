@@ -119,7 +119,7 @@ Why this release matters:
 
 ## 0.1.0 - 2026-04-08
 
-- Added pre-phase agentic code evaluation report in `docs/archive/agentic-evaluation.md`.
+- Added pre-phase agentic code evaluation report in `docs/legacy/agentic-evaluation.md`.
 - Simplified core orchestration in `timelog_extract.py`:
   - `collect_all_events()`
   - `filter_included_events()`

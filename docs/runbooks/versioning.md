@@ -50,7 +50,7 @@ Prefer **combining** unrelated follow-up work into **one** PR per version when p
 
 ## PyPI distribution
 
-**Scope and backlog:** [`docs/archive/release-scope-0.2.3.md`](archive/release-scope-0.2.3.md).
+**Scope and backlog:** [`docs/legacy/release-scope-0.2.3.md`](../legacy/release-scope-0.2.3.md).
 
 The project is a normal **setuptools** package (`pyproject.toml`, `[project] name = "timelog-extract"`). **0.2.3** adds automated **build + publish** via [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) using [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC). Until the first upload succeeds, your PyPI profile will say **“You have not uploaded any projects”** — that is normal.
 

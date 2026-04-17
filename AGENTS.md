@@ -119,7 +119,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ## Global Automatic Timelog Setup
 
-- Full setup guide for all local repositories: `docs/archive/global-timelog-automation-legacy.md`.
+- Global timelog (machine-wide hooks): `docs/runbooks/global-timelog-setup.md` (historical detail: `docs/legacy/global-timelog-automation-legacy.md`).
 
 ## Pull requests (language)
 

@@ -3,6 +3,8 @@
 Status: active  
 Owner: Maintainer + active implementation agent
 
+For **where to place markdown under `docs/`** (taxonomy and routing), see [`docs/README.md`](README.md).
+
 ## Goals
 
 - keep domain code grouped by bounded context
@@ -30,4 +32,3 @@ Migration policy:
 - move high-traffic docs first and update links in the same change
 - keep risk low by combining rename + reference updates per batch
 - avoid partial renames that leave broken references
-

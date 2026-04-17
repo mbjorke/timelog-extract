@@ -156,9 +156,9 @@ This vision is implemented through the existing docs in `docs/`:
 - **Product boundary and UX scope:** `V1_SCOPE.md`
 - **Privacy baseline and consent rules:** `PRIVACY_SECURITY.md`
 - **Accuracy targets and measurement loop:** `ACCURACY_PLAN.md`
-- **Architecture simplification and service boundary:** `docs/archive/agentic-evaluation.md`
+- **Architecture simplification and service boundary:** `docs/legacy/agentic-evaluation.md`
 - **Risk posture from adjacent products:** `RISK_PATTERNS_FROM_UPSTREAM.md`
-- **Audience narratives:** `docs/archive/case-study.md` and `docs/archive/case-study-tech.md`
+- **Audience narratives:** `docs/legacy/case-study.md` and `docs/legacy/case-study-tech.md`
 
 If future decisions conflict with this document, the default is:
 1. keep local-first trust guarantees,

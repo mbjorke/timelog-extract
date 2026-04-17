@@ -160,7 +160,7 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 | Missing deps / editable install | `python3 -m pip install -e .` from clone |
 | Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |
 | Paths / permissions | `--worklog`, browser DBs, Mail / Screen Time access |
-| Global timelog automation | `gittan setup-global-timelog`, `docs/archive/global-timelog-automation-legacy.md` |
+| Global timelog automation | `gittan setup-global-timelog`, [`docs/runbooks/global-timelog-setup.md`](docs/runbooks/global-timelog-setup.md) |
 
 ---
 

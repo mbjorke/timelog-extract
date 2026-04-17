@@ -14,7 +14,7 @@ Make reports more predictable and useful for repo-centric workflows by treating 
 
 For worklog-first to deliver consistent value across repositories, users should have machine-level timelog capture enabled via global git hooks.
 
-- Canonical setup guide: `docs/archive/global-timelog-automation-legacy.md`.
+- Canonical setup guide: `docs/runbooks/global-timelog-setup.md` (legacy deep-dive: `docs/legacy/global-timelog-automation-legacy.md`).
 - Required global git settings:
   - `core.hooksPath` pointing to a global hooks directory (for example `~/.githooks`)
   - `core.excludesFile` including `TIMELOG.md` to prevent accidental commits

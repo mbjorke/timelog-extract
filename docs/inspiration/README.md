@@ -17,3 +17,7 @@ Use this folder for **short** notes that help contributors and agents **orient f
 ## Naming
 
 - Kebab-case files, e.g. `cli-patterns-from-other-tools.md`, `2026-agent-ecosystem-notes.md`.
+
+## Examples
+
+- [`slay-zone.md`](slay-zone.md) — SlayZone docs and local-first agent workflow inspiration.

@@ -23,7 +23,7 @@ Keep these **short**: duplicate only orientation, not policy.
 | **Cursor** | [`.cursor/rules/`](../../.cursor/rules/) for workspace rules; still read `AGENTS.md`. |
 | **Codex / ChatGPT / other chat UIs** | Paste or attach **`AGENTS.md`** (and `CONTRIBUTING.md` for first PR). No separate file required unless we add a one-line stub later. |
 | **VS Code / Zed (no agent)** | Open `AGENTS.md` + `CONTRIBUTING.md` in editor; same content. |
-| **Slay-zone** | Use whatever “project context” feature exists; **point it at `AGENTS.md`**. |
+| **SlayZone** | Point project/task context at **`AGENTS.md`**. Ecosystem notes: [`../inspiration/slay-zone.md`](../inspiration/slay-zone.md). |
 | **Lovable / web IDEs** | Not authoritative for this repo’s CLI; use for experiments only. Copy **decisions back** into `docs/decisions/` or `docs/specs/` if they should stick. |
 
 Adding a new vendor-specific file (e.g. `GEMINI.md`) is OK **only** if it is a stub: “Read `AGENTS.md` first” + link to architecture in `CLAUDE.md` or `README.md`.
@@ -46,5 +46,5 @@ If we later add a **repo-level** `SKILL.md`, it should be a **thin** pointer to 
 ## Where “inspiration” lives
 
 Product bets and GTM thinking stay in **`docs/ideas/`** (e.g. `opportunities.md`).  
-**Ad-hoc links, patterns, and “we saw this elsewhere”** notes belong in **`docs/inspiration/`** — see [`../inspiration/README.md`](../inspiration/README.md).  
+**Ad-hoc links, patterns, and “we saw this elsewhere”** (including external products like SlayZone) belong in **`docs/inspiration/`** — see [`../inspiration/README.md`](../inspiration/README.md).  
 Formal direction still moves to **`docs/decisions/`** or **`docs/specs/`** when we commit to it.

@@ -128,6 +128,23 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("GitHub env bootstrap", completed.stdout)
         self.assertIn("Gittan Setup", completed.stdout)
 
+    def test_setup_one_click_dry_run(self):
+        """One-click setup should run non-interactive with recommended defaults."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--one-click", "--dry-run", "--skip-smoke"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=completed.stderr or completed.stdout,
+        )
+        self.assertIn("Setup wizard completed.", completed.stdout)
+        self.assertIn("Gittan Setup", completed.stdout)
+
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
         """Landing page quick start (after install): each CLI step should stay snappy on CI.
 

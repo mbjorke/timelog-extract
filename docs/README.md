@@ -44,6 +44,10 @@ For **code and script layout** (not doc taxonomy), see [`structure.md`](structur
 - Prefer **kebab-case** file names.
 - Keep tooling-standard root filenames (`README.md`, `CHANGELOG.md`, `AGENTS.md`, etc.) unchanged at repo root.
 
+## Code and CLI
+
+User-facing strings in the codebase should **not** embed `docs/legacy/` paths. Use `runbooks/`, `decisions/`, `specs/`, or `product/` instead; link to `legacy/` only from prose docs when history matters. See `AGENTS.md` → *Documentation paths in code*.
+
 ## Legacy pointer
 
 Older references to `documentation-structure.md` still resolve; that file redirects here.

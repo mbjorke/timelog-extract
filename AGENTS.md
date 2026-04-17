@@ -125,6 +125,12 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 - **PR title and PR description must be written in English.** That includes the initial post on GitHub and any edits before merge. Code comments may follow normal project language, but anything reviewers and bots read in the PR thread should be English-only.
 
+## Documentation paths in code (CLI, errors, `console.print`)
+
+- **Do not** point user-facing code (Python CLI output, error helpers, extension copy) at **`docs/legacy/`**. Those files are not maintained as operational truth.
+- **Do** reference maintained docs: typically **`docs/runbooks/`** for procedures, **`docs/decisions/`** for policy, **`docs/specs/`** for behavior contracts, **`docs/product/`** for product truth. If the right doc does not exist yet, add a short runbook and link optional history from there.
+- Markdown (README, `docs/README.md`, changelogs) may still mention `docs/legacy/` as secondary context.
+
 ## Documentation privacy and path hygiene
 
 - In docs/specs/prompts, use **repo-relative paths** (for example

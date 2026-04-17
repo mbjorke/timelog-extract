@@ -45,14 +45,14 @@
 
 - Docs: `**docs/agent-task-handover-prompt.md`** — copy-paste **release-candidate / onboarding** agent prompt (RC tag format, PyPI tag workflow caveat, worktrees, `coderabbit review`, `gh pr` deduplication, A/B notes). `**AGENTS.md`**: link to that doc; **CodeRabbit CLI** examples updated to `coderabbit review --base main`.
 - CI: `**static.yml`** — minimal workflow `permissions`; `**pages: write`** + `**id-token: write**` only on `**deploy**`. Shared site build in `**scripts/prepare_static_site.sh**` (verify + deploy). `**gittan doctor**`: shell-agnostic PATH hints; narrow `**except**` + `**logging**` when probing pip `--user` bin.
-- Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/ideas/opportunities.md`, `docs/linkedin-pilot-posts.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
+- Docs: **user feedback** via **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (`README.md`, `CONTRIBUTING.md`, `docs/ideas/opportunities.md`, `docs/business/linkedin-pilot-posts.md`) — replaces removed `friend_trial/FEEDBACK_TEMPLATE.md`.
 - UX: `**gittan doctor`** now reports **CLI / PATH** (`gittan` on `PATH`, pip `--user` bin, pipx `~/.local/bin`) with copy-paste **export** / **pipx ensurepath** hints. README + `**gittan.html`** recommend **pipx** first on macOS to reduce “command not found: gittan” after install.
 - Onboarding: `gittan doctor` now ends with concrete next steps based on the current machine state, including when to run `gittan setup`, `gittan projects`, `pipx ensurepath`, or a first `gittan report --today --source-summary`.
 - Onboarding: `gittan setup` now ends with copyable next steps after the summary table so the user can move directly from dry-run or setup completion to a useful first report.
 - Onboarding: project bootstrap is now Git-aware when `gittan setup` has to create `timelog_projects.json`, seeding project name, customer, and starter `match_terms` from the local repo and `origin` remote when available.
 - Diagnostics: `gittan doctor` now warns when the current repo's Git cues are not covered by any configured project's `match_terms`, with suggested terms to add in `gittan projects`.
 - Tests: regression coverage for onboarding next-step guidance in both helper-level unit tests and CLI smoke tests.
-- CI: GitHub Pages — PRs to `main` run `**verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or `**workflow_dispatch**`. Docs: `**docs/ci.md**`, `**AGENTS.md**` (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
+- CI: GitHub Pages — PRs to `main` run `**verify-static-site`** when landing-page assets change; **production deploy** remains **push to `main`** or `**workflow_dispatch**`. Docs: `**docs/runbooks/ci.md**`, `**AGENTS.md**` (why PRs show “not deployed” until merge). **AGENTS.md:** CodeRabbit **hourly review** limits and when to use CLI vs `@coderabbitai`.
 - Site: `**gittan.html`** quick start aligned with `**README.md**` (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: `**test_quick_start_cli_commands_finish_within_60_seconds_each**` (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
 - Removed **Phase 0 friend trial** scaffolding: `**scripts/friend_trial.py`**, `**friend_trial/FEEDBACK_TEMPLATE.md**`, and the `**timelog-friend-trial**` console script entry (`pyproject.toml`). README / `**docs/terminal-i18n.md**` updated.
 
@@ -65,8 +65,8 @@
 - **Package version 0.2.3** — first **PyPI upload** milestone: maintainers publish sdist + wheel via GitHub Actions (tag `v0.2.3` or manual workflow run) after [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured for this repository.
 - CI: new **package** job builds sdist/wheel with `python -m build` and smoke-installs the wheel (`timelog-extract -V`, `gittan -V`).
 - Packaging: include the `**outputs`** package in the wheel/sdist (`setuptools` `packages.find`) so installed CLIs import `outputs.terminal_theme` and related modules.
-- Docs: `docs/versioning.md` and `docs/ci.md` updated for the publish workflow.
-- README: reorganized — **install** (`pipx` / `pip` / editable clone) at the top, short **get started**, command cheat sheet, compact troubleshooting; removed the long inline doc inventory (see `docs/vision-documents.md`).
+- Docs: `docs/runbooks/versioning.md` and `docs/runbooks/ci.md` updated for the publish workflow.
+- README: reorganized — **install** (`pipx` / `pip` / editable clone) at the top, short **get started**, command cheat sheet, compact troubleshooting; removed the long inline doc inventory (see `docs/product/vision-documents.md`).
 - **Brand / site:** **Rabbit-v2** canonical masters; removed **steward** / **rabbit-pot** / `**variants/`** experiments. `**gittan-logo.png**` at repo root (768×768 square crop, pixel-crisp) for `**gittan.html**` hero and social/preview use; **nav** uses a two-part mark — mini **terminal review rabbit** (same beats as the demo: `(\/)` → `(..)` → `><` → `\`, staggered CSS reveal, respects `prefers-reduced-motion`) plus a **pixel-style wordmark** (Press Start 2P). `scripts/build_brand_assets.sh` generates favicon, README icon, `gittan-logo.png`, `og-image.png`; Pages workflow publishes the static assets. Docs: `docs/brand/README.md`, `IDENTITY.md`, `VISION_DOCUMENTS.md`, root `README.md`, `**outputs/gittan_banner.py`** docstring.
 
 ## 0.2.2 - 2026-04-13
@@ -79,19 +79,19 @@
 
 ## 0.2.1 - 2026-04-12
 
-- **Package version 0.2.1** — documentation and GTM housekeeping; maintainer checklist: `docs/versioning.md`.
-- Distribution: **PyPI publication** planned for a near release (target **0.2.3**) so end users can run `pip install timelog-extract` instead of cloning and using `pip install -e .` only. README Quick Start and `docs/versioning.md` describe the plan until upload.
-- Docs: optional **ActivityWatch** integration backlog (`docs/activitywatch-integration.md`); linked from `docs/vision-documents.md` and deferred list in `docs/v1-scope.md`.
-- Docs: manual QA matrix for **0.2.x** (`docs/manual-test-matrix-0-2-x.md`); indexed in `docs/vision-documents.md`.
-- Docs: **sources and flags** (`docs/sources-and-flags.md`); linked from `README.md` and `docs/vision-documents.md`.
-- Docs: **AI-assisted project config** vision (`docs/ai-assisted-config.md`); indexed in `docs/vision-documents.md` and `README.md`.
+- **Package version 0.2.1** — documentation and GTM housekeeping; maintainer checklist: `docs/runbooks/versioning.md`.
+- Distribution: **PyPI publication** planned for a near release (target **0.2.3**) so end users can run `pip install timelog-extract` instead of cloning and using `pip install -e .` only. README Quick Start and `docs/runbooks/versioning.md` describe the plan until upload.
+- Docs: optional **ActivityWatch** integration backlog (`docs/sources/activitywatch-integration.md`); linked from `docs/product/vision-documents.md` and deferred list in `docs/product/v1-scope.md`.
+- Docs: manual QA matrix for **0.2.x** (`docs/runbooks/manual-test-matrix-0-2-x.md`); indexed in `docs/product/vision-documents.md`.
+- Docs: **sources and flags** (`docs/sources/sources-and-flags.md`); linked from `README.md` and `docs/product/vision-documents.md`.
+- Docs: **AI-assisted project config** vision (`docs/sources/ai-assisted-config.md`); indexed in `docs/product/vision-documents.md` and `README.md`.
 - Docs: `**BRANCH.md`** — `main` is branch-protected; use feature branches + PR. Linked from `README.md`, `AGENTS.md`.
-- Docs: `**docs/ci.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/vision-documents.md` updated for definitive wording.
+- Docs: `**docs/runbooks/ci.md`** — CI overview, branch protection, and workflow; `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/product/vision-documents.md` updated for definitive wording.
 - Docs: `**docs/ideas/opportunities.md`** (product/GTM working notes) and `**docs/private-local-notes.md**`; gitignore `**private/**` for local business-only files. **OPPORTUNITIES** also lists maintainer links for **GitHub Funding** (`.github/FUNDING.yml`), **Discussions** (announcements), **issue templates**, and **Social preview** (Open Graph sizes); `**repository-open-graph-template.png`** (1280×640) at repo root as the template asset (upload a finalized image in GitHub Settings when a logo exists).
 
 ## 0.2.0 - 2026-04-11
 
-- **Package version 0.2.0** — merge to `main` with large CLI-first and licensing changes; maintainer checklist for future bumps: `docs/versioning.md`.
+- **Package version 0.2.0** — merge to `main` with large CLI-first and licensing changes; maintainer checklist for future bumps: `docs/runbooks/versioning.md`.
 - Core: inclusive preset ranges for last 3/7/14/30 days (`report_runtime`, `cli_prompts`, `status`); `--quiet` collection now fills `collector_status` like non-quiet runs; `gittan status` exits non-zero on report errors and guards missing date range.
 - CLI: `gittan doctor` checks default config/worklog under **repo root** (not CWD); `sources` passes all timeframe presets into `TimelogRunOptions`; `projects` exits on JSON read/parse errors; `as_run_options` rejects unknown keys (fail fast).
 - Code review follow-up: Ruff-safe `get_source_color`, sorted `core.cli.__all__`, `VISION.md` roadmap wording for cloud agents, `V1_TAG_ANNOTATION_DRAFT.md` payload version label, `gui_preview.html` label `for=` attributes, test import from `cli_options`, ASCII hyphen in banner tagline, `SPONSORSHIP_TERMS` Patreon URL note.

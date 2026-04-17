@@ -28,7 +28,7 @@ Suggested file targets:
 - `cursor-extension/src/webview/*`
 - `cursor-extension/src/commands/*`
 - `cursor-extension/src/config/*`
-- `docs/privacy-security.md` (consent language alignment)
+- `docs/security/privacy-security.md` (consent language alignment)
 
 Exit criteria:
 

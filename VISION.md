@@ -1,6 +1,6 @@
 # Gittan: The Privacy-First Auditor for the AI Age
 
-This file is a **short public manifesto** (e.g. landing snippets and public messaging). The full product vision, boundaries, and metrics live under `docs/` — see `docs/vision-documents.md` for hierarchy and precedence. Draft fundraising notes live in `docs/patreon-positioning.md`. If anything here disagrees with `docs/gittan-vision.md` or `docs/v1-scope.md`, **update this file** to match those (they are authoritative).
+This file is a **short public manifesto** (e.g. landing snippets and public messaging). The full product vision, boundaries, and metrics live under `docs/` — see `docs/product/vision-documents.md` for hierarchy and precedence. Draft fundraising notes live in `docs/business/patreon-positioning.md`. If anything here disagrees with `docs/product/gittan-vision.md` or `docs/product/v1-scope.md`, **update this file** to match those (they are authoritative).
 
 ## The Problem
 
@@ -34,14 +34,14 @@ Gittan aggregates "signals" from your local system:
 - **Communication:** Apple Mail headers (sender/receiver) to catch that "quick 10-minute email" that turned into an hour.
 - **System Truth:** Cross-references everything with macOS Screen Time to help the timeline stay coherent.
 
-**Roadmap (post-v1 — not current collectors):** Optional **cloud-agent platform** source adapters (job-level metadata from provider APIs) are **out of scope for v1**; see `docs/v1-scope.md`. Directionally, Gittan aims to combine local signals with **consent-based** remote metadata so human + agent work stays billable—without replacing local-first defaults.
+**Roadmap (post-v1 — not current collectors):** Optional **cloud-agent platform** source adapters (job-level metadata from provider APIs) are **out of scope for v1**; see `docs/product/v1-scope.md`. Directionally, Gittan aims to combine local signals with **consent-based** remote metadata so human + agent work stays billable—without replacing local-first defaults.
 
 ## Why Support Gittan?
 
 Gittan is **GPL-3.0-or-later open source** and privacy-focused. By supporting development, you are supporting:
 
 - **New Source Adapters:** Faster integration for new AI tools as they launch.
-- **IDE Experience:** The optional Cursor extension and related UX — the **CLI remains the primary v1 path**; see `docs/vision-documents.md` and `README.md`.
+- **IDE Experience:** The optional Cursor extension and related UX — the **CLI remains the primary v1 path**; see `docs/product/vision-documents.md` and `README.md`.
 - **Independence:** Keeping Gittan free from venture capital and corporate data-mining.
 
 ---

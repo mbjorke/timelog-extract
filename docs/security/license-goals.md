@@ -8,7 +8,7 @@ This document explains **why** the repository uses **GNU GPL-3.0-or-later** (`LI
 
 2. **Copyleft reciprocity** — Derivative distributions remain under GPL-compatible terms, which protects openness as the project grows.
 
-3. **Alignment with privacy positioning** — Licensing is independent from data collection; product design remains **local-first** by default. See `docs/privacy-security.md`.
+3. **Alignment with privacy positioning** — Licensing is independent from data collection; product design remains **local-first** by default. See `docs/security/privacy-security.md`.
 
 4. **Contributor trust** — A standard license improves onboarding and reduces ambiguity compared with custom terms.
 

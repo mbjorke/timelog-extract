@@ -83,7 +83,7 @@ gittan --help
 gittan -V
 ```
 
-Publishing checklist: [`docs/versioning.md`](docs/versioning.md).
+Publishing checklist: [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md).
 
 </div>
 </details>
@@ -122,7 +122,7 @@ Publishing checklist: [`docs/versioning.md`](docs/versioning.md).
 | Today / last week / custom range | `gittan report --today` · `--last-week` · `--from 2026-04-01 --to 2026-04-30` |
 | Guided cleanup of uncategorized activity | `gittan review --today --uncategorized` |
 | Quick hours overview | `gittan status --today` |
-| Source mix / empty collectors | `gittan sources` (and `docs/sources-and-flags.md`) |
+| Source mix / empty collectors | `gittan sources` (and `docs/sources/sources-and-flags.md`) |
 | Edit projects JSON | `gittan projects` |
 | Machine-wide commit → `TIMELOG.md` hooks | `gittan setup-global-timelog` |
 
@@ -133,7 +133,7 @@ gittan report --today --format json
 gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html
 ```
 
-**Optional GitHub activity:** set `GITHUB_USER` or `--github-user`; optional `GITHUB_TOKEN` for rate limits. Details: `docs/sources-and-flags.md`.
+**Optional GitHub activity:** set `GITHUB_USER` or `--github-user`; optional `GITHUB_TOKEN` for rate limits. Details: `docs/sources/sources-and-flags.md`.
 
 ---
 
@@ -156,7 +156,7 @@ gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/tr
 | Issue | Where to look |
 |--------|----------------|
 | `command not found: gittan` after install | Install via **pipx** (above), or add `~/Library/Python/…/bin` and `~/.local/bin` to **PATH**; run **`gittan doctor`** for copy-paste hints. |
-| “0 events” / sources empty | `docs/sources-and-flags.md` |
+| “0 events” / sources empty | `docs/sources/sources-and-flags.md` |
 | Missing deps / editable install | `python3 -m pip install -e .` from clone |
 | Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |
 | Paths / permissions | `--worklog`, browser DBs, Mail / Screen Time access |
@@ -172,7 +172,7 @@ Questions, install friction, or “does this match your workflow?” — use **[
 
 ## Documentation map
 
-Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/vision-documents.md`](docs/vision-documents.md)** for an index (e.g. `SOURCES_AND_FLAGS.md`, `PRIVACY_SECURITY.md`, `TERMINAL_STYLE_GUIDE.md`, `CLI_FIRST_V1_RELEASE_CHECKLIST.md`).
+Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/product/vision-documents.md`](docs/product/vision-documents.md)** for an index (e.g. `SOURCES_AND_FLAGS.md`, `PRIVACY_SECURITY.md`, `TERMINAL_STYLE_GUIDE.md`, `CLI_FIRST_V1_RELEASE_CHECKLIST.md`).
 
 ---
 
@@ -180,6 +180,6 @@ Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**
 
 - **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — PR titles/descriptions in **English**; run tests before pushing.
 - **Maintainers (repo hygiene):** issue templates, Discussions, **Social preview** in GitHub Settings; **brand** — canonical PNGs in `docs/brand/`, then [`scripts/build_brand_assets.sh`](scripts/build_brand_assets.sh) -> root **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`. See [`docs/brand/README.md`](docs/brand/README.md), [`docs/ideas/opportunities.md`](docs/ideas/opportunities.md).
-- **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/ci.md`](docs/ci.md)**.
+- **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/runbooks/ci.md`](docs/runbooks/ci.md)**.
 - Tests: `./scripts/run_autotests.sh` (also enforced in CI).
 - **License:** GNU **GPL-3.0-or-later** — [`LICENSE`](LICENSE). Changelog: [`CHANGELOG.md`](CHANGELOG.md).

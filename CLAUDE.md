@@ -124,7 +124,7 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
   - use `release/X.Y.Z` for release-bound work
   - PR title/description in English
 - Canonical policy lives in `AGENTS.md` (branch/release/review sections).
-- Detailed release flow: `docs/versioning.md`.
+- Detailed release flow: `docs/runbooks/versioning.md`.
 - Task specs in `docs/task-prompts/` must follow traceability requirements from
   `AGENTS.md` (Story ID, status, created/updated dates, implementation and
   validation references).
@@ -146,4 +146,4 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 | `extension` | `npm install && npm run build` in `cursor-extension/`                                                  |
 
 
-GitHub Pages deploys only on push to `main` (see `docs/ci.md`).
+GitHub Pages deploys only on push to `main` (see `docs/runbooks/ci.md`).

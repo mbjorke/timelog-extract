@@ -6,11 +6,11 @@ Turn Gittan vision into measurable product behavior.
 
 This document operationalizes:
 
-- `docs/gittan-vision.md`
-- `docs/accuracy-plan.md`
+- `docs/product/gittan-vision.md`
+- `docs/product/accuracy-plan.md`
 - Blueberry strategic context in `blueberry/private/northstar.md` and `blueberry/private/metrics.md`
 
-**Index:** How this file relates to root `VISION.md` and other vision docs — see `docs/vision-documents.md`.
+**Index:** How this file relates to root `VISION.md` and other vision docs — see `docs/product/vision-documents.md`.
 
 ## North Star Outcome
 
@@ -136,7 +136,7 @@ If a feature improves one metric but breaks these guardrails, do not ship.
 
 ## Weekly Review Ritual (45 minutes)
 
-1. Run accuracy eval (`docs/accuracy-plan.md` workflow).
+1. Run accuracy eval (`docs/product/accuracy-plan.md` workflow).
 2. Review top mismatches and uncategorized clusters.
 3. Pick one high-impact rule/refactor change.
 4. Re-run and compare KPI deltas.

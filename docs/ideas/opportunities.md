@@ -1,6 +1,6 @@
 # Opportunities — product and go-to-market (working document)
 
-**Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE` and `docs/vision-documents.md`.
+**Status:** Living notes for **business / product** review (e.g. CodeRabbit follow-ups, human advisors). **Not** legal advice. Public repo copy stays aligned with `LICENSE` and `docs/product/vision-documents.md`.
 
 **Scope:** Strategic narrative and risks—not **tactical marketing** (channel plans, post drafts). Put those in a **gitignored** `private/` tree; see `**docs/private-local-notes.md`**.
 
@@ -37,7 +37,7 @@
 
 1. **CLI-first is the long-term “wow.”** Rich output, `gittan`, JSON truth payload, automation—this is the core experience worth amplifying.
 2. **Cursor / IDE extension** is **not** the hero path; companion GUI work may be **deprioritized or dropped** in favor of engine + terminal story.
-3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in `**docs/ai-assisted-config.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
+3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in `**docs/sources/ai-assisted-config.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
 
@@ -65,7 +65,7 @@ enterprise-grade multi-tenant auth/permission systems.
 
 ## Risks (product)
 
-- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/sources-and-flags.md`, `docs/manual-test-matrix-0-2-x.md`). Mitigation is tied to the **simplify project configuration** bet above and to `**docs/ai-assisted-config.md`** over time.
+- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/sources/sources-and-flags.md`, `docs/runbooks/manual-test-matrix-0-2-x.md`). Mitigation is tied to the **simplify project configuration** bet above and to `**docs/sources/ai-assisted-config.md`** over time.
 - **Collector maintenance:** App vendors change log paths and formats; quality depends on **fixtures** and **clear disable reasons** in reports.
 - **Expectation gap:** “Automatic” is **reconstruction + rules**, not mind-reading; calendar and chat integrations would **change** the story when shipped.
 
@@ -74,10 +74,10 @@ enterprise-grade multi-tenant auth/permission systems.
 ## Funding and sustainability (high level)
 
 - The repo ships under **GNU GPL-3.0-or-later** (see `LICENSE`).
-- **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/patreon-positioning.md` is non-binding positioning material.
+- **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/business/patreon-positioning.md` is non-binding positioning material.
 - **Planned — GitHub Funding / Sponsors wiring:** Use GitHub’s flow to add **Sponsor** button metadata (typically `.github/FUNDING.yml` on `main`): [open funding setup for this repo](https://github.com/mbjorke/timelog-extract/new/main?repository_funding=1). Align listed URLs with live Patreon/Sponsors pages before merging.
 - **GitHub Discussions:** **[Discussions home](https://github.com/mbjorke/timelog-extract/discussions)** — default **General** / **Q&A** for community feedback and install questions (replaces the old in-repo pilot feedback file). **Announcements** for rare maintainer posts: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
-- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with `**CONTRIBUTING.md`** and what CI / `docs/ci.md` actually checks.
+- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with `**CONTRIBUTING.md`** and what CI / `docs/runbooks/ci.md` actually checks.
 - **Planned — Social preview (GitHub repo):** When links to **this repository** are shared, GitHub can show a **repository card image**. Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Start from in-repo `**repository-open-graph-template.png`**, export a final PNG, and upload in Settings (GitHub stores it; not read live from the repo).
 - **Brand assets (in-repo):** Canonical masters `**docs/brand/gittan-brand-mark.png`** + `**gittan-og-card.png`**; experiments in `**docs/brand/drafts/**`; snapshots in `**docs/brand/archive/**`. Derived `**favicon.ico**`, `**gittan-readme-icon.png**`, root `**gittan-logo.png**` (landing nav/hero), `**og-image.png**` via `**scripts/build_brand_assets.sh**`. `gittan.html` uses `**/gittan-logo.png**`; meta uses `https://gittan.sh/og-image.png` after Pages deploy.
 

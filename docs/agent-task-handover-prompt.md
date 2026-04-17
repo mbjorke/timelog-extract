@@ -9,7 +9,7 @@ Copy everything under **“Prompt (copy from here)”** into any AI agent (Claud
 ## Prompt (copy from here)
 
 **Role**  
-You work in the **timelog-extract** repository (CLI entry point `gittan`, product name Gittan). Read `README.md`, `docs/v1-scope.md`, and `docs/versioning.md`. Inspect existing setup and diagnostics code (`core/global_timelog_setup_lib.py`, `core/cli_global_timelog_setup.py`, `core/cli_doctor_sources_projects.py`). Respect **local-first** behavior: do not add mandatory cloud upload paths for user data.
+You work in the **timelog-extract** repository (CLI entry point `gittan`, product name Gittan). Read `README.md`, `docs/product/v1-scope.md`, and `docs/runbooks/versioning.md`. Inspect existing setup and diagnostics code (`core/global_timelog_setup_lib.py`, `core/cli_global_timelog_setup.py`, `core/cli_doctor_sources_projects.py`). Respect **local-first** behavior: do not add mandatory cloud upload paths for user data.
 
 **Primary goal (product)**  
 Deliver **easier project setup**: fewer manual steps from install to a useful first run, clearer errors, and obvious next actions. **Before writing new systems:** discover what already exists — e.g. `gittan setup`, `gittan doctor`, and reporting flags that already summarize environment, sources, or patterns. Prefer **composing or strengthening** existing commands into one well-documented path rather than duplicating behavior.
@@ -18,7 +18,7 @@ Deliver **easier project setup**: fewer manual steps from install to a useful fi
 The maintainer may want **AI-assisted** explanations or suggestions inside the tool. Treat this as **optional**: do **not** add an LLM integration unless it clearly adds value beyond existing CLI behavior. Prefer simplicity and transparency.
 
 **Release candidate deliverable**  
-Prepare the **next release candidate** per `docs/versioning.md`: update `CHANGELOG.md` and version fields where required (`pyproject.toml`, `core/cli_options.py` dev fallback per checklist).
+Prepare the **next release candidate** per `docs/runbooks/versioning.md`: update `CHANGELOG.md` and version fields where required (`pyproject.toml`, `core/cli_options.py` dev fallback per checklist).
 
 **Git tag pattern for RC (mandatory when tagging an RC)**  
 When you create a **test/release tag** for this candidate, use:
@@ -32,10 +32,10 @@ Examples: `v0.2.5rc1-Codex-version`, `v0.2.5rc1-Claude-version`.
 - `<Agent>` = the tool or environment name (e.g. `Codex`, `Cursor`, `Claude`), **PascalCase**, no spaces.  
 - The literal suffix **`-version`** is always part of the tag name.  
 - Bump **`rc<NUM>`** (`rc1`, `rc2`, …) if you need another RC at the same patch level.  
-- Align `<MAJOR>.<MINOR>.<PATCH>` with the intended release line. If the Python package version cannot include the agent name (PEP 440), keep the **package** version as a normal pre-release (e.g. `0.2.5rc1`) while the **git tag** still follows the pattern above — resolve consistently with `docs/versioning.md`.
+- Align `<MAJOR>.<MINOR>.<PATCH>` with the intended release line. If the Python package version cannot include the agent name (PEP 440), keep the **package** version as a normal pre-release (e.g. `0.2.5rc1`) while the **git tag** still follows the pattern above — resolve consistently with `docs/runbooks/versioning.md`.
 
 **PyPI workflow warning (important)**  
-This repository’s **Publish to PyPI** workflow (`.github/workflows/pypi.yml`) runs on `push` of tags matching `v*.*.*`. That pattern **also matches** tags like `v0.2.5rc1-Codex-version`. Pushing such a tag to `origin` may **trigger the publish workflow**. Coordinate with the maintainer before pushing RC tags. The **official** release tag `vX.Y.Z` after merge to `main` is described in `docs/versioning.md`.
+This repository’s **Publish to PyPI** workflow (`.github/workflows/pypi.yml`) runs on `push` of tags matching `v*.*.*`. That pattern **also matches** tags like `v0.2.5rc1-Codex-version`. Pushing such a tag to `origin` may **trigger the publish workflow**. Coordinate with the maintainer before pushing RC tags. The **official** release tag `vX.Y.Z` after merge to `main` is described in `docs/runbooks/versioning.md`.
 
 **Working directory and worktrees**  
 If the maintainer uses a **git worktree**, operate in the **worktree directory that has your branch checked out**, not another clone by mistake. Run `git status` and confirm you are on the intended branch before committing.

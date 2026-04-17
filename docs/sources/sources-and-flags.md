@@ -47,5 +47,5 @@ If **no** events survive deduplication and inclusion filters, or every collector
 
 ## Related docs
 
-- `docs/manual-test-matrix-0-2-x.md` — manual scenarios (including “no config file” vs minimal JSON).
-- `docs/versioning.md` — package version vs JSON payload `version` field.
+- `docs/runbooks/manual-test-matrix-0-2-x.md` — manual scenarios (including “no config file” vs minimal JSON).
+- `docs/runbooks/versioning.md` — package version vs JSON payload `version` field.

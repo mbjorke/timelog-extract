@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Green check on PRs; GitHub may still show "not deployed" on the branch — see docs/ci.md
+  # Green check on PRs; GitHub may still show "not deployed" on the branch — see docs/runbooks/ci.md
   verify-static-site:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

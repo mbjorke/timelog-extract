@@ -14,4 +14,4 @@ Companion to `docs/specs/live-terminal-sandbox-demo.md`. Use this folder for **b
 ## Notes
 
 - Production report generation from visitor machines remains a **non-goal** (spec).
-- Keep demo traffic separate from PyPI install analytics; document host boundary in `docs/ci.md` when wiring deploy.
+- Keep demo traffic separate from PyPI install analytics; document host boundary in `docs/runbooks/ci.md` when wiring deploy.

@@ -22,5 +22,5 @@
 
 ## References
 
-- Maintainer checklist: [`docs/versioning.md`](VERSIONING.md)
+- Maintainer checklist: [`docs/runbooks/versioning.md`](VERSIONING.md)
 - Incident that informed config backup + agent rules: [`docs/incidents/2026-04-13-project-config-backup-gap.md`](incidents/2026-04-13-project-config-backup-gap.md)

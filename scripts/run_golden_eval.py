@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Golden dataset eval (docs/accuracy-plan.md iteration 1).
+"""Golden dataset eval (docs/product/accuracy-plan.md iteration 1).
 
 Loads tests/fixtures/golden_dataset.json, runs run_timelog_report with fixture config,
 compares per-(date, project) hours. Writes docs/evals/latest.md on success.

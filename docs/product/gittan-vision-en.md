@@ -59,11 +59,11 @@ Clearer client-facing and review-ready outputs.
 ## Scope note
 
 This document is a narrative companion to:
-- `docs/gittan-vision.md`
-- `docs/gittan-northstar-metrics.md`
-- `docs/v1-scope.md`
+- `docs/product/gittan-vision.md`
+- `docs/product/gittan-northstar-metrics.md`
+- `docs/product/v1-scope.md`
 - `VISION.md` (repository root) — short public one-pager; not authoritative on scope
 
-See `docs/vision-documents.md` for the full hierarchy.
+See `docs/product/vision-documents.md` for the full hierarchy.
 
 If there is wording conflict, product behavior and guardrails in `GITTAN_VISION.md`, `GITTAN_NORTHSTAR_METRICS.md`, and `V1_SCOPE.md` take precedence over this file and over root `VISION.md`.

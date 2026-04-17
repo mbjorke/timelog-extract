@@ -143,7 +143,7 @@ Gittan should influence these Blueberry metric families:
 
 Use these as working product-health indicators:
 
-1. Accuracy KPI trend from `docs/accuracy-plan.md`
+1. Accuracy KPI trend from `docs/product/accuracy-plan.md`
 2. Time-to-report/export in real pilot usage
 3. Pilot-to-active usage conversion
 4. User-reported confidence in customer-facing reporting

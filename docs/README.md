@@ -11,7 +11,7 @@ For **code and script layout** (not doc taxonomy), see [`structure.md`](structur
 | `decisions/` | Stable policy and architecture decisions (how we work, gates, routines). |
 | `specs/` | Active implementation specs: goals, non-goals, acceptance criteria, test plan. |
 | `task-prompts/` | Execution prompts and checklists for implementation and validation tasks. |
-| `runbooks/` | Operational how-tos: CI, versioning, release checklists, manual QA matrices. |
+| `runbooks/` | Operational how-tos: CI, versioning, release checklists, manual QA matrices. Optional dev-only tooling (e.g. [optional-caveman-agent-setup.md](runbooks/optional-caveman-agent-setup.md)) lives here too. |
 | `product/` | Vision, scope, strategy, north-star metrics, accuracy plans. |
 | `roadmaps/` | Time-phased goals across horizons (near-term and long-term); plural because multiple documents or themes are expected. See [`roadmaps/README.md`](roadmaps/README.md). |
 | `business/` | Sponsorship, positioning, channel copy drafts (non-binding unless stated). |

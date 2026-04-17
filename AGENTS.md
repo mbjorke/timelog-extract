@@ -52,7 +52,7 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Never commit `TIMELOG.md`.
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
-- Do not commit a `**private/`** directory or other gitignored local business notes (see `**docs/private-local-notes.md`**).
+- Do not commit a `**private/`** directory or other gitignored local business notes — including **revenue, detailed metrics, and sponsor-specific numbers** (see `**docs/private-local-notes.md`**).
 
 ## Local data safety (destructive commands)
 

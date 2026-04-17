@@ -2,6 +2,8 @@
 
 Some material is **too sensitive or premature** for the public repository (pitch decks, unpublished pricing, raw LinkedIn drafts, investor-only narrative). The codebase and docs should still stay **reviewable** and **honest**.
 
+**Default rule:** anything about **money, metrics, or personal/business performance** that you would not put on a public slide belongs in **`private/`**, not in committed markdown. That includes **revenue, runway, targets, conversion, cohorts, sponsor-specific numbers**, and **internal dashboards** — even if anonymized, aggregates can still be sensitive.
+
 ## Recommended pattern
 
 1. Add a **`private/`** directory **next to or inside** your clone (see `.gitignore` — the name `private/` is ignored).
@@ -23,6 +25,7 @@ Some material is **too sensitive or premature** for the public repository (pitch
 | **LinkedIn / social** post drafts, hooks, posting calendar | Only high-level notes if needed for context | **Full drafts**, dates, A/B variants |
 | **Test rabbit** / beta recruitment wording | One honest line in `OPPORTUNITIES` is enough | Concrete DMs, names, commitments |
 | Revenue targets, runway, investor-only narrative | — | **Always private** until you choose to publish |
+| **Metrics** (KPIs, MAE calibration raw sheets, sponsor hours, internal scorecards) | High-level **product** metrics that define the tool (e.g. north-star *definitions* in `docs/product/gittan-northstar-metrics.md`) — without live numbers | **Actual values**, trends, experiments, or anything tied to real customers |
 | Competitor notes, pricing experiments, Patreon tier experiments | Illustrative drafts may live in `docs/business/patreon-positioning.md` (already marked draft) | **Numbers and promises** you are not ready to stand behind |
 
 **Later**, when you "move business to private," you can **shorten** `ideas/opportunities.md` to thesis + risks + pointers, and keep **richer** business notes only under `private/`.

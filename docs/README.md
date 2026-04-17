@@ -4,6 +4,8 @@ This folder is the **single map** for where to put and find docs. Prefer this fi
 
 For **code and script layout** (not doc taxonomy), see [`structure.md`](structure.md).
 
+**Sensitive business data** (revenue, detailed metrics, unpublished numbers): keep under **gitignored `private/`** — see [`private-local-notes.md`](private-local-notes.md).
+
 ## Top-level categories
 
 | Path | Purpose |

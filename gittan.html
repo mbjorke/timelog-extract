@@ -13,6 +13,7 @@
   <meta name="twitter:title" content="Gittan — Reconstruct your day. Locally." />
   <meta name="twitter:description" content="Privacy-first, local-first CLI for automatic time tracking in the AI coding era." />
   <meta name="twitter:image" content="https://gittan.sh/og-image.png" />
+  <meta name="gittan-demo-api-base" content="" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -369,6 +370,30 @@
       font-family: var(--mono);
       font-size: 0.74rem;
       line-height: 1.75;
+      min-height: 320px;
+      max-height: 360px;
+      overflow: auto;
+    }
+    .terminal-screen {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .terminal-input-line {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-top: 0.3rem;
+    }
+    .terminal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      line-height: 1.75;
+      caret-color: var(--berry);
     }
 
     .t-prompt { color: var(--berry); }
@@ -1155,53 +1180,20 @@
       <div class="terminal-dot td-green-dot"></div>
       <div class="terminal-title">~/dev/my-project — gittan report --today</div>
     </div>
-    <div class="terminal-body">
-<pre class="t-berry">   (\/)
-   (..)   &lt;- review rabbit
-    &gt;&lt;       (well-fed on good traces)
-     \
-  .----------.
-  |  GITTAN  |  local timeline → review-ready
-  '----------'</pre>
-<br>
-<span class="t-dim">Scanning local signals...</span>
-<br>
-<span class="t-green">✓</span> <span class="t-dim">cursor   </span>  <span class="t-amber">48 checkpoints</span>
-<span class="t-green">✓</span> <span class="t-dim">chrome   </span>  <span class="t-amber">31 relevant tabs</span>
-<span class="t-green">✓</span> <span class="t-dim">ai_logs  </span>  <span class="t-amber">12 claude sessions</span>
-<span class="t-green">✓</span> <span class="t-dim">timelog  </span>  <span class="t-amber">3 manual entries</span>
-<br>
-<table class="t-table">
-  <thead>
-    <tr>
-      <th>Project</th>
-      <th>Hours</th>
-      <th>Sources</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="t-project">api-v2</td>
-      <td class="t-hours">3h 40m</td>
-      <td class="t-src">cursor, chrome, ai</td>
-    </tr>
-    <tr>
-      <td class="t-project">client-portal</td>
-      <td class="t-hours">2h 15m</td>
-      <td class="t-src">cursor, timelog</td>
-    </tr>
-    <tr>
-      <td class="t-project">infra / devops</td>
-      <td class="t-hours">1h 05m</td>
-      <td class="t-src">chrome, ai</td>
-    </tr>
-  </tbody>
-</table>
-<br>
-<span class="t-green">✔</span> <span class="t-dim">Total </span><span class="t-amber">7h 00m</span> <span class="t-dim">· 3 projects</span>
-<span class="t-dim">  Invoice PDF → </span><span class="t-blue">output/timelog-2026-04-13.pdf</span>
-<br>
-<span class="t-berry">❯ </span><span class="cursor-blink">▋</span>
+    <div class="terminal-body" id="hero-terminal-demo" aria-live="polite">
+      <div class="terminal-screen" id="hero-terminal-screen"></div>
+      <div class="terminal-input-line">
+        <span class="t-berry">❯</span>
+        <input
+          class="terminal-input"
+          id="hero-terminal-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Gittan live demo terminal input"
+          placeholder="Type: help"
+        />
+      </div>
     </div>
   </div>
   </div>
@@ -1637,5 +1629,88 @@
   </div>
 </footer>
 
+<script>
+  (function configureDemoApiBase() {
+    if (window.GITTAN_DEMO_API_BASE) return;
+    const meta = document.querySelector('meta[name="gittan-demo-api-base"]');
+    if (!meta) return;
+    const value = (meta.getAttribute('content') || '').trim();
+    if (value) window.GITTAN_DEMO_API_BASE = value;
+  }());
+</script>
+<script>
+  (function initHeroTerminalDemo() {
+    const screen = document.getElementById('hero-terminal-screen');
+    const input = document.getElementById('hero-terminal-input');
+    const body = document.getElementById('hero-terminal-demo');
+    if (!screen || !input || !body) return;
+
+    const apiBase = (window.GITTAN_DEMO_API_BASE || '').replace(/\/$/, '');
+    const endpoint = apiBase || '';
+    let sessionId = '';
+
+    function appendLine(text, cls) {
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = text;
+      screen.appendChild(line);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    async function createSession() {
+      const resp = await fetch(endpoint + '/demo/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!resp.ok) throw new Error('session init failed');
+      const data = await resp.json();
+      sessionId = data.session_id || '';
+      if (!sessionId) throw new Error('no session id');
+    }
+
+    async function runCommand(line) {
+      if (!sessionId) await createSession();
+      const resp = await fetch(endpoint + '/demo/sessions/' + encodeURIComponent(sessionId) + '/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ line }),
+      });
+      const text = await resp.text();
+      if (!resp.ok) {
+        try {
+          const parsed = JSON.parse(text);
+          appendLine(parsed.error || 'command failed', 't-red');
+        } catch (_error) {
+          appendLine(text || 'command failed', 't-red');
+        }
+        return;
+      }
+      for (const outputLine of text.replace(/\r/g, '').split('\n')) {
+        if (outputLine.length > 0) appendLine(outputLine, 't-dim');
+      }
+    }
+
+    input.addEventListener('keydown', async (event) => {
+      if (event.key !== 'Enter') return;
+      const line = input.value.trim();
+      if (!line) return;
+      appendLine('❯ ' + line, 't-cmd');
+      input.value = '';
+      if (line.toLowerCase() === 'clear') {
+        screen.textContent = '';
+        return;
+      }
+      try {
+        await runCommand(line);
+      } catch (_error) {
+        appendLine('Demo backend unavailable. Start scripts/live_terminal_demo_server.py', 't-red');
+      }
+    });
+
+    appendLine('Live demo sandbox ready.', 't-green');
+    appendLine('Type "help" and press Enter.', 't-dim');
+  }());
+</script>
 </body>
 </html>

@@ -192,6 +192,19 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Gittan Global Timelog", completed.stdout)
         self.assertIn("Gittan Report", completed.stdout)
 
+    def test_jira_sync_help_includes_manual_confirmation(self):
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "jira-sync", "--help"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        self.assertIn("Sync TIMELOG-derived hours to Jira worklogs", completed.stdout)
+        self.assertIn("--require-confirm", completed.stdout)
+        self.assertIn("--dry-run", completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

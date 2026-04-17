@@ -19,6 +19,8 @@ Examples include `--chrome-source`, `--mail-source`, `--github-source` (see CLI 
 
 Toggl follows the same pattern with **auto-detection**: when `TOGGL_API_TOKEN` exists, the Toggl source is enabled; otherwise it is disabled with a clear reason in `collector_status`.
 
+Jira worklog posting is available via `gittan jira-sync` (separate from source collection). It uses `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`, and supports dry-run plus per-worklog confirmation before posting.
+
 ## Per-collector status in JSON output
 
 When you use `--format json`, the truth payload includes **`collector_status`**: for each named source, whether it was **enabled**, a **reason** string when disabled or failed, and **how many raw events** that collector returned (`core/truth_payload.py`).
@@ -51,3 +53,4 @@ If **no** events survive deduplication and inclusion filters, or every collector
 
 - `docs/runbooks/manual-test-matrix-0-2-x.md` — manual scenarios (including “no config file” vs minimal JSON).
 - `docs/runbooks/versioning.md` — package version vs JSON payload `version` field.
+- `docs/runbooks/jira-worklog-sync.md` — setup and usage for Jira worklog posting.

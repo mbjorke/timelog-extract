@@ -4,6 +4,7 @@ CURSOR_CHECKPOINTS_SOURCE = "Cursor checkpoints"
 WORKLOG_SOURCE = "TIMELOG.md"
 GITHUB_SOURCE = "GitHub"
 TOGGL_SOURCE = "Toggl"
+JIRA_SOURCE = "Jira"
 
 SOURCE_ORDER = [
     "Claude Code CLI",

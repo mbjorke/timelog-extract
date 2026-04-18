@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, Optional
 
 import typer
 
-from collectors.jira import jira_sync_enabled, resolve_jira_credentials
+from core.jira_client import jira_sync_enabled, resolve_jira_credentials
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.jira_sync import JiraSyncSummary, build_jira_worklog_candidates, post_candidate
@@ -63,29 +65,21 @@ def jira_sync(
     )
 
     enabled, reason = jira_sync_enabled(
-        type(
-            "Args",
-            (),
-            {
-                "jira_sync": jira_sync,
-                "jira_base_url": jira_base_url,
-                "jira_email": jira_email,
-                "jira_api_token": jira_api_token,
-            },
-        )()
+        SimpleNamespace(
+            jira_sync=jira_sync,
+            jira_base_url=jira_base_url,
+            jira_email=jira_email,
+            jira_api_token=jira_api_token,
+        )
     )
     if not enabled:
         raise typer.BadParameter(reason or "Jira sync is not enabled")
 
-    args_obj = type(
-        "Args",
-        (),
-        {
-            "jira_base_url": jira_base_url,
-            "jira_email": jira_email,
-            "jira_api_token": jira_api_token,
-        },
-    )()
+    args_obj = SimpleNamespace(
+        jira_base_url=jira_base_url,
+        jira_email=jira_email,
+        jira_api_token=jira_api_token,
+    )
     creds = resolve_jira_credentials(args_obj)
     if creds is None:
         raise typer.BadParameter("Missing Jira credentials")
@@ -115,8 +109,9 @@ def jira_sync(
             worklog_id = post_candidate(creds, candidate)
             summary.posted += 1
             typer.echo(f"Posted Jira worklog id={worklog_id}")
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             summary.failed += 1
+            logging.exception("Failed to post worklog for %s (%s)", candidate.issue_key, candidate.day)
             typer.echo(f"Failed to post {candidate.issue_key} ({candidate.day}): {exc}")
 
     typer.echo(

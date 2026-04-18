@@ -47,7 +47,7 @@ def main() -> int:
         include_uncategorized=True,
         quiet=True,
     )
-    report = run_timelog_report(args.projects_config, args.date_from, args.date_to, options)
+    report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = evaluate_reconciliation(
         report,
         {str(k): float(v) for k, v in projects.items()},

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Dict, Final, Tuple
@@ -24,20 +25,23 @@ class DemoSession:
 
 @dataclass
 class DemoSessionStore:
-    """In-memory sessions with lazy TTL expiry."""
+    """In-memory sessions with lazy TTL expiry (thread-safe)."""
 
     _sessions: Dict[str, DemoSession] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock)
     ttl_seconds: int = SESSION_TTL_SECONDS
 
     def create(self) -> str:
-        self._purge_expired()
-        sid = secrets.token_urlsafe(16)
-        self._sessions[sid] = DemoSession(created=time.monotonic())
-        return sid
+        with self._lock:
+            self._purge_expired()
+            sid = secrets.token_urlsafe(16)
+            self._sessions[sid] = DemoSession(created=time.monotonic())
+            return sid
 
     def valid(self, session_id: str) -> bool:
-        self._purge_expired()
-        return session_id in self._sessions
+        with self._lock:
+            self._purge_expired()
+            return session_id in self._sessions
 
     def _purge_expired(self) -> None:
         now = time.monotonic()

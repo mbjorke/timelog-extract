@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 
-from collectors.jira import JiraCredentials, post_jira_worklog
+from core.jira_client import JiraCredentials, post_jira_worklog
 from core.jira_sync import (
     build_jira_worklog_candidates,
     extract_issue_key,
@@ -55,8 +55,8 @@ class JiraSyncTests(unittest.TestCase):
             "core.jira_sync.load_current_branch_issue_key"
         ) as load_branch:
             load_commits.return_value = [
-                SimpleNamespace(authored_at=start, subject="ABC-101 kickoff"),
-                SimpleNamespace(authored_at=mid, subject="ABC-101 continue"),
+                SimpleNamespace(committed_at=start, subject="ABC-101 kickoff"),
+                SimpleNamespace(committed_at=mid, subject="ABC-101 continue"),
             ]
             load_branch.return_value = "ABC-999"
             candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))

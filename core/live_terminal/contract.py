@@ -41,3 +41,11 @@ def validate_demo_command(line: str) -> Tuple[bool, str]:
         return True, ""
     return False, DEMO_SANDBOX_DENIED_MESSAGE
 
+
+__all__ = [
+    "DEMO_SANDBOX_DENIED_MESSAGE",
+    "normalize_demo_command_line",
+    "is_allowlisted_demo_command",
+    "validate_demo_command",
+]
+

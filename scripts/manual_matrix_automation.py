@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automate checks from docs/runbooks/manual-test-matrix-0-2-x.md.
+"""Automate checks from docs/runbooks/manual-test-matrix-0-2-x.md (matrix spec).
 
   * Deterministic block (seeded worklog, fixed dates) — CI-safe, no real Chrome/Mail needed.
   * Optional --last-month: previous calendar month, real data (your machine / repo).

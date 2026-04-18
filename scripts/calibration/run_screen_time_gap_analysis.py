@@ -20,11 +20,13 @@ from core.report_service import run_timelog_report
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--projects-config", default="timelog_projects.json")
-    parser.add_argument("--date-from", default="2026-03-01")
-    parser.add_argument("--date-to", default="2026-03-31")
+    parser.add_argument("--date-from")
+    parser.add_argument("--date-to")
     parser.add_argument("--out-json", default="out/reconciliation/screen_time_gap.json")
     parser.add_argument("--out-md", default="out/reconciliation/screen_time_gap.md")
     args = parser.parse_args()
+    if not args.date_from or not args.date_to:
+        parser.error("--date-from and --date-to are required (e.g. 2026-03-01 to 2026-03-31)")
     options = TimelogRunOptions(
         date_from=args.date_from,
         date_to=args.date_to,

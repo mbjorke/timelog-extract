@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Optional
 
@@ -24,6 +25,8 @@ def toggl_source_enabled(args: Any) -> tuple[bool, Optional[str]]:
     mode = str(getattr(args, "toggl_source", "auto") or "auto").strip().lower()
     if mode == "off":
         return False, "Toggl source disabled via toggl_source=off"
+    if mode not in ("off", "on", "auto"):
+        return False, f"Unknown toggl_source mode: {mode!r} (expected: auto/on/off)"
     token = resolve_toggl_api_token(args)
     if mode == "on" and not token:
         return False, "Toggl on but no API token (set TOGGL_API_TOKEN)"
@@ -39,5 +42,8 @@ def collect_workspace_events(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
     Placeholder for Toggl API event collection.
 
     The auto-detect toggle is wired now; collector logic can be expanded later.
+
+    TODO: implement actual Toggl time entry collection
     """
+    logging.warning("Toggl collector is a placeholder stub; returning no events")
     return []

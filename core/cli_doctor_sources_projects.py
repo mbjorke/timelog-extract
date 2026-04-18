@@ -31,6 +31,7 @@ from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
+from rich import markup
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 @app.command()
@@ -47,6 +48,13 @@ def doctor(
         typer.Option(
             "--github-source",
             help="GitHub source mode: auto, on, or off (doctor visibility only).",
+        ),
+    ] = "auto",
+    toggl_source: Annotated[
+        str,
+        typer.Option(
+            "--toggl-source",
+            help="Toggl source mode: auto, on, or off (doctor visibility only).",
         ),
     ] = "auto",
     github_user: Annotated[
@@ -215,20 +223,21 @@ def doctor(
                 OK_ICON,
                 f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
             )
-        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source="auto"))
+        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source=toggl_source))
         toggl_token_present = bool((os.getenv("TOGGL_API_TOKEN") or "").strip())
         if toggl_enabled:
             token_note = "token present" if toggl_token_present else "no token"
             table.add_row(
                 "Toggl Source",
                 OK_ICON,
-                f"[{STYLE_MUTED}]Enabled (auto) — {token_note}[/{STYLE_MUTED}]",
+                f"[{STYLE_MUTED}]Enabled ({toggl_source}) — {token_note}[/{STYLE_MUTED}]",
             )
         else:
+            escaped_reason = markup.escape(toggl_reason or "unknown")
             table.add_row(
                 "Toggl Source",
                 NA_ICON,
-                f"[{STYLE_MUTED}]Not configured (auto); {toggl_reason}[/{STYLE_MUTED}]",
+                f"[{STYLE_MUTED}]Not configured ({toggl_source}); {escaped_reason}[/{STYLE_MUTED}]",
             )
     console.print(table)
     console.print(

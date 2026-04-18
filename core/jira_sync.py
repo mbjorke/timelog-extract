@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import subprocess
 from dataclasses import dataclass
@@ -9,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List, Optional
 
-from collectors.jira import JiraCredentials, post_jira_worklog
+from core.jira_client import JiraCredentials, post_jira_worklog
 
 if TYPE_CHECKING:
     from core.report_service import ReportPayload
@@ -19,7 +20,7 @@ ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 
 @dataclass
 class GitCommit:
-    authored_at: datetime
+    committed_at: datetime
     subject: str
 
 
@@ -95,7 +96,7 @@ def load_commit_tags(repo_path: Path, dt_from: datetime, dt_to: datetime) -> Lis
             ts = datetime.fromtimestamp(int(epoch_s), tz=timezone.utc).astimezone()
         except (ValueError, OSError):
             continue
-        commits.append(GitCommit(authored_at=ts, subject=subject))
+        commits.append(GitCommit(committed_at=ts, subject=subject))
     return commits
 
 
@@ -105,9 +106,15 @@ def _issue_key_for_session(
     commits: Iterable[GitCommit],
     branch_key: Optional[str],
 ) -> tuple[Optional[str], str]:
+    """
+    Resolve issue key for a session from commits or branch name.
+    
+    Commit ordering: git log produces reverse-chronological order, so session_keys[0]
+    is the most recent commit in the session (most-recent-wins policy).
+    """
     session_keys: List[str] = []
     for commit in commits:
-        if start <= commit.authored_at <= end:
+        if start <= commit.committed_at <= end:
             key = extract_issue_key(commit.subject)
             if key:
                 session_keys.append(key)
@@ -152,8 +159,8 @@ def build_jira_worklog_candidates(
                         * 3600
                     )
                 )
-            except Exception:
-                pass
+            except (ValueError, AttributeError, KeyError) as exc:
+                logging.warning("Failed to calculate session duration for %s: %s", issue_key, exc)
             key = (issue_key, day)
             projects = sorted({str(evt.get("project") or "Uncategorized") for evt in session_events})
             if key not in buckets:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -50,7 +51,7 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
         if screen_hours > 0:
             coverage = estimated_hours / screen_hours
         else:
-            coverage = 1.0 if estimated_hours == 0 else 999.0
+            coverage = 1.0 if estimated_hours == 0 else math.inf
         unexplained = max(screen_hours - estimated_hours, 0.0)
         over = max(estimated_hours - screen_hours, 0.0)
         rows.append(

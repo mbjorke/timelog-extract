@@ -65,6 +65,8 @@ def setup_wizard(
     from rich.console import Console
 
     console = Console()
+    if interactive and one_click:
+        raise typer.BadParameter("Cannot use --interactive and --one-click together; choose one mode")
     auto_yes = not interactive
     if yes or one_click:
         auto_yes = True

@@ -22,3 +22,4 @@ Use this folder for **short** notes that help contributors and agents **orient f
 
 - [`slay-zone.md`](slay-zone.md) — SlayZone docs and local-first agent workflow inspiration.
 - [`similar-repos-checklist.md`](similar-repos-checklist.md) — comparable tools and ecosystems (working list).
+- [`effective-commands-for-agents.md`](effective-commands-for-agents.md) — how other projects phrase human → agent work to reduce errors (links + patterns; not a second `AGENTS.md`).

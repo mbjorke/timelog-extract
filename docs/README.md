@@ -40,6 +40,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **What Gittan is and should ship** → `product/`
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)
 - **TIL the maintainer taught the agent (by month, short bullets)** → [`ideas/til/`](ideas/til/) (see `AGENTS.md` → *Maintainer TIL*)
+- **Phrasing work for agents (external patterns, reduce misreads)** → [`inspiration/effective-commands-for-agents.md`](inspiration/effective-commands-for-agents.md)
 - **Committed timeline / milestones (short or long horizon)** → `roadmaps/`
 - **Fundraising / positioning copy** → `business/`
 - **Privacy and licensing posture** → `security/`

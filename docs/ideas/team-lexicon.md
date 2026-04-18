@@ -6,6 +6,8 @@ Kulturella värderingar (produkt + open source) finns i [`../brand/values.md`](.
 
 Dagliga **TIL** från underhållare (för agenter) skrivs i [`til/`](til/) — en fil per månad, se [`til/README.md`](til/README.md) och `AGENTS.md` → *Maintainer TIL*.
 
+**Hur du formulerar uppdrag** (för att undvika feltolkning) — mönster från andra projekt, på engelska: [`../inspiration/effective-commands-for-agents.md`](../inspiration/effective-commands-for-agents.md) — *föredra tydliga meningar framför sifferabbtreviationer*.
+
 ## Liten ordlista (förkortningar, smeknamn, praktik)
 
 Förkortningar här under är **muntliga / chat-förkortningar** i teamet, inte nya tekniska namn i CI. I kod och offentlig PR-engelska: använd ordinarie namn (CodeRabbit, GitHub, m.m.).
@@ -18,7 +20,6 @@ Förkortningar här under är **muntliga / chat-förkortningar** i teamet, inte 
 | **full** vs **incremental** (CR) | `@coderabbitai full review` vs `@coderabbitai review` | *Full* = heltäckande; *incremental* = mest nytt sen sist. I chat: “Kör en full, inte snack-incremental tre gånger i rad.” Se `AGENTS.md` för bästa praxis (batcha, max 1–2 cykler/PR där det går). |
 | **local CR** / **CR CLI** | `coderabbit` i terminalen | Exempel: `coderabbit review --base main --type committed` — samma *AGENTS* under *CodeRabbit CLI.* |
 | **Gittan** (framtidsläge) | Produkt/ton, ev. egen *agent* som representerar timelog-extract | Tänk “om Gittan blir vår bot, kan den använda samma korta ord som vi redan använder mot människor, så bottar kör med samma nätverksspråk som teamet.” Ingen hård spec här. |
-| **CP** | **C**ommit + **P**ush — “det är in-checkat *och* upp till `origin`” | *Endast* i vårt snabbspråk. I kod/PR-engelska, skriv ut *commit* och *push*. (I andra sammanhang betyder “CP” saker vi **inte** avser; här: **C**ommit + **P**ush, i den ordningen.) I chat: *“Efter grönt CI: CP på task-grenen.”* |
 
 ## TIL: checklista slår siffermiss
 

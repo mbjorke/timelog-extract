@@ -35,7 +35,7 @@ diff tail (last lines of --stat or note "large; see issue"):
 - Old `dev` is **addressable** via a tag.
 - `origin/dev` matches **`origin/main`** for **C1** (same `git rev-parse` after fetch).
 - Documented in repo TIL or issue **in English** (brief) for external contributors.
-- **CP** in team lexicon sense: the orchestrating agent (or human) has **commit**+**push** or equivalent **gh**-documented **merge**; see [`../ideas/team-lexicon.md`](../ideas/team-lexicon.md).
+- **Done** when the orchestrating agent (or human) has **committed and pushed** (or equivalent `gh` merge) as described in the runbook; use explicit words, not internal abbreviations (see [`../inspiration/effective-commands-for-agents.md`](../inspiration/effective-commands-for-agents.md)).
 
 ## Non-goals
 

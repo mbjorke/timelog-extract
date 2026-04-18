@@ -8,7 +8,6 @@ This document operationalizes:
 
 - `docs/product/gittan-vision.md`
 - `docs/product/accuracy-plan.md`
-- Blueberry strategic context in `blueberry/private/northstar.md` and `blueberry/private/metrics.md`
 
 **Index:** How this file relates to root `VISION.md` and other vision docs — see `docs/product/vision-documents.md`.
 
@@ -116,7 +115,7 @@ Use one stack with three levels:
 - **Target:** `>= 4.0 / 5`
 - **Cadence:** Per pilot cycle
 
-### 3.4 Inbound Signal Lift (Blueberry-facing)
+### 3.4 Inbound signal lift
 
 - **Definition:** Change in qualified inbound conversations linked to Gittan content/case posts.
 - **Formula:** period-over-period difference in qualified DMs/inquiries

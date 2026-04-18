@@ -2,8 +2,6 @@
 
 *Culture and product posture for this repo. Machine-facing rules stay in [`AGENTS.md`](../../AGENTS.md). Visual and metaphor: [`identity.md`](identity.md).*
 
-*Inspired in part by the culture sections of [Blueberry Maybe](https://blueberry.ax) (parent company; internal source: `values` in the Blueberry repo) — adapted here for an open-source, local-trust product.*
-
 ---
 
 ## Craft over noise

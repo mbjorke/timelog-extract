@@ -80,34 +80,25 @@ Gittan is fast-moving.
 The extension UX is evolving.  
 The core local reporting engine is already used in pilot workflows.
 
-## Mapping to Blueberry north star and metrics
+## Strategic themes and metrics (repo-local)
 
-This document is intentionally aligned with:
+These themes stay **in this repository** — no external corporate doc set is required for contributors.
 
-- `blueberry/private/northstar.md`
-- `blueberry/private/metrics.md`
+### Mission themes
 
-### Mission mapping
+- Turn fast, fragmented AI-assisted work into **review-ready reporting truth**.
+- Keep **privacy and trust** first (consent, local-first baseline).
+- Help teams move quickly **without** losing accountability.
 
-Blueberry mission: bridge rapid AI prototyping with production-ready, GDPR-compliant systems.
+### Vision themes
 
-Gittan mapping:
-- turns fast, fragmented AI-assisted work into production-usable reporting truth,
-- keeps privacy/trust constraints first (consent, local-first baseline),
-- helps teams move quickly without losing accountability.
-
-### Vision mapping
-
-Blueberry vision: be the Nordic go-to partner for speed without broken trust.
-
-Gittan mapping:
-- provides a concrete "trust layer" for delivery evidence,
-- strengthens customer-facing reporting quality,
-- supports Blueberry's positioning as practical, compliance-aware AI implementation.
+- Provide a concrete **trust layer** for delivery evidence.
+- Strengthen **customer-facing** reporting quality.
+- Stay **practical and compliance-aware** in how data is handled and surfaced.
 
 ### R2-D2 mentality mapping
 
-Northstar says: focused, loyal, willing to protest bad judgment.
+Focused, loyal, willing to protest bad judgment.
 
 Gittan mapping:
 - focused scope (avoid "track everything" creep),
@@ -116,28 +107,21 @@ Gittan mapping:
 
 ### Experiment culture mapping
 
-Northstar says: do not guess, experiment/measure/iterate.
+Do not guess — experiment, measure, iterate.
 
 Gittan mapping:
 - accuracy loop in `ACCURACY_PLAN.md`,
 - KPI-driven improvement rather than intuition-only feature work,
 - weekly review rhythm tied to measurable deltas.
 
-### Metrics mapping (from `private/metrics.md`)
+### Metric families to watch
 
-Gittan should influence these Blueberry metric families:
+Gittan should influence:
 
-- **Pipeline metrics**  
-  Better reporting clarity should improve conversion trust in late-stage conversations.
-
-- **Website metrics**  
-  Clear Gittan narrative should lift inquiry rate and close rate on productized offers.
-
-- **Content/social metrics**  
-  Case-study + pilot posts should increase inbound DMs and qualified conversations.
-
-- **Health metrics**  
-  Gittan directly supports billable vs non-billable clarity by reducing reporting reconstruction time.
+- **Pipeline metrics** — better reporting clarity supports trust in late-stage conversations.
+- **Website / narrative metrics** — clear story should lift inquiry and close rates where productized offers exist.
+- **Content/social metrics** — case-study and pilot posts should lift qualified inbound conversations.
+- **Health metrics** — billable vs non-billable clarity by reducing reporting reconstruction time.
 
 ### Practical scoreboard for Gittan (derived)
 
@@ -189,7 +173,7 @@ Not hype-heavy, not vague, not over-claiming.
 
 ## Short external framing
 
-Blueberry built Gittan because modern work is fragmented but accountability is not.  
+Modern work is fragmented, but accountability is not optional.  
 When teams move fast across tools, they still need a trustworthy way to explain what was done.
 
 Gittan gives that explanation from real traces, with local-first control.

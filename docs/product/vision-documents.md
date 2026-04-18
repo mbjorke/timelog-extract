@@ -6,7 +6,7 @@ Use this file as the **index** when updating marketing copy or root `VISION.md` 
 
 If wording conflicts, use this order:
 
-1. **`docs/product/gittan-vision.md`** — product soul, promises, decision filter, Blueberry/strategic mapping where applicable.
+1. **`docs/product/gittan-vision.md`** — product soul, promises, decision filter, strategic themes where applicable.
 2. **`docs/product/v1-scope.md`** — what ships in which version; feature boundaries.
 3. **`docs/product/gittan-northstar-metrics.md`** — measurable outcomes and KPIs tied to the vision.
 4. **`docs/security/privacy-security.md`** — consent and data-handling guardrails.

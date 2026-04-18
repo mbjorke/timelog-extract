@@ -2,7 +2,7 @@
 
 **Legacy note:** The repository now uses **GNU GPL-3.0-or-later**. This file is no longer a legal license gate; it remains as non-binding historical/fundraising notes.
 
-**Licensor:** Blueberry Maybe AB  
+**Licensor:** Named in [`LICENSE`](../../LICENSE).  
 **Not legal advice.** Update this file when Patreon tiers or URLs change; **tag releases** so users and automated checks can pin terms to a revision.
 
 ## Where to subscribe (optional support)

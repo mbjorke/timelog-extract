@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## 0.2.11 - 2026-04-18
+
 - Docs: Screen Time gap runbook ([`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md)); working notes ([`docs/product/future-notes-2026-04.md`](docs/product/future-notes-2026-04.md)) — AI help scope, calibration staging, Jira-style timestamp / analytics ideas, integration-layer licensing notes; [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md) and [`docs/product/vision-documents.md`](docs/product/vision-documents.md) updated; README documentation map extended.
 - CLI / UX: Realign [`outputs/terminal_theme.py`](outputs/terminal_theme.py), [`outputs/terminal.py`](outputs/terminal.py), [`outputs/cli_heroes.py`](outputs/cli_heroes.py) with [`docs/product/terminal-style-guide.md`](docs/product/terminal-style-guide.md) — calm lavender hierarchy and shared tokens; table `header_style` and doctor status line use [`STYLE_LABEL`](outputs/terminal_theme.py) instead of hardcoded accent hex; command heroes use `STYLE_LABEL` + `STYLE_MUTED` tagline.
+- Docs: agent review contract ([`docs/decisions/agent-review-contract.md`](docs/decisions/agent-review-contract.md)) — CodeRabbit vs executor scope, Gittan path bounds, GitHub Copilot CLI remote (`copilot --remote`) pointers; [`AGENTS.md`](AGENTS.md) cross-link.
+- Changelog: backfill missing [**0.2.5**](https://github.com/mbjorke/timelog-extract/pull/48) section for **0.2.x** continuity.
 
 ## 0.2.10 - 2026-04-16
 

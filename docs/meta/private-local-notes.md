@@ -10,19 +10,9 @@ Some material is **too sensitive or premature** for the public repository (pitch
 2. Store files there; **never** `git add` them. If something is accidentally staged, unstage before commit.
 3. Open the same folder in Cursor if you want agents to **read** context during a session—there is no persistent cross-session “memory” unless you save it in **committed** docs or **Cursor rules** you control.
 
-## GitHub `FUNDING.yml` (local only)
+## GitHub funding metadata
 
-GitHub reads **Sponsor** / funding metadata from **`.github/FUNDING.yml` in the tracked repository** (or from **Repository Settings**). A copy under gitignored **`private/`** is **not** picked up by GitHub.
-
-If you want a personal checklist or YAML draft without committing it, keep something like `private/github-funding.yml` (never `git add`). Example shape (replace placeholders):
-
-```yaml
-# github: [your-github-org-or-user]
-# patreon: yourname
-# custom: ["https://example.com/support"]
-```
-
-To show funding links on the public repo **without** committing `FUNDING.yml`, configure **Settings → General → Sponsorships** on GitHub.
+Public **Sponsor** links for this repo are defined in **`.github/FUNDING.yml`** (tracked). You can still use **Repository Settings → Sponsorships** if you prefer UI-only configuration, but there is no need to keep a separate funding YAML under **`private/`** unless you are experimenting with drafts you do not want to commit yet.
 
 ## What stays in the repo instead
 

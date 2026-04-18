@@ -1,7 +1,8 @@
 # Decision: Agent review contract (CodeRabbit signal → human or Cursor execution)
 
-Status: Draft (process template)  
+Status: Draft (process template); **Gittan bounds below are active for this repo**  
 Date: 2026-04-18  
+Last updated: 2026-04-18  
 Owner: Maintainer + active agents
 
 ## Why
@@ -30,13 +31,32 @@ Adjust labels to match your tracker; default mapping:
 |----------|---------------------|---------------------------------------------|----------------------|
 | **Critical** | Secret exposure, auth bypass, data loss risk | **Nothing automatic.** Open a focused fix or revert; page maintainer if needed. | Dependency with legal review, production creds |
 | **High** | CI broken, test wrong, clear bug with bounded patch | Fix **only** the cited files/lines; add/adjust tests proving the fix; one logical commit per batch. | API/behavior change affecting users without spec |
-| **Medium** | Style, maintainability, missing edge-case test | Same as high if change is **≤ N files** (set N in team practice, e.g. 3) and tests pass. | Refactors that broaden scope |
+| **Medium** | Style, maintainability, missing edge-case test | Same as high if change is **≤ 5 tracked files** in this repo (see below) and `./scripts/run_autotests.sh` passes. | Refactors that broaden scope |
 | **Low** | Nit, doc typo, optional cleanup | Batch in a single “chore” commit if desired; or defer. | — |
 
-**Repo-specific add-ons** (fill in as needed):
+### Gittan / `timelog-extract` — concrete bounds
 
-- Allowed to touch: `tests/`, `docs/runbooks/`, …
-- Forbidden without PR description: `pyproject.toml` deps, license headers, `timelog_projects.json` schema.
+**`N` files (medium):** at most **5** tracked files touched in a single response batch (not counting generated noise). If CodeRabbit spans more, split commits or defer part.
+
+**Usually safe for executor (high/medium)** — fix review findings here when the finding explicitly points at these areas:
+
+- `core/`, `collectors/`, `outputs/`, `tests/`, `scripts/` (scripts that only read repo state; no destructive defaults).
+- `docs/` including `docs/runbooks/`, `docs/decisions/`, `docs/product/`, `docs/specs/`.
+- `.cursor/rules/` for rule text aligned with existing `AGENTS.md` / style guides.
+- Refactors **only** to satisfy the **500-line policy** for tracked Python (split/move) when the review or CI requires it.
+
+**Needs explicit maintainer nod or dedicated PR description** (do **not** do as a silent drive-by):
+
+- **`pyproject.toml`** — dependencies, `requires-python`, classifiers, version string.
+- **`LICENSE`**, copyright headers, SPDX, or **license classifiers** that affect distribution.
+- **Versioned release artifacts** — `CHANGELOG.md` section for a **numbered release**, `pyproject` version bump, git tags (release workflow).
+- **`.github/workflows/`** — anything that changes **secrets**, **deploy keys**, **trusted publishing**, or **CI security posture**.
+- **`private/`** — do not stage or commit (gitignored); never paste real user paths into committed docs.
+- **`timelog_projects.json` at repo root** — treat as **user data** if present locally; **tests** may use fixtures under `tests/` only. Do not ship schema changes without a spec/decision note.
+
+**Critical / security findings:** same as global table — **no** autonomous dependency or secret changes; maintainer reviews before merge.
+
+**Verification before push:** `./scripts/run_autotests.sh` (and `bash scripts/cli_impact_smoke.sh` for CLI-facing edits per `AGENTS.md`).
 
 ## Hand-off protocol (practical)
 

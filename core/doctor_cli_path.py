@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from rich.table import Table
 
-from outputs.terminal_theme import WARN_ICON, STYLE_MUTED
+from outputs.terminal_theme import OK_ICON, WARN_ICON, STYLE_MUTED
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def add_cli_path_rows(table: Table, *, home: Path) -> bool:
     """Warn when gittan exists but user script dirs are not on PATH."""
     gittan_exe = shutil.which("gittan")
     if gittan_exe:
-        table.add_row("CLI (gittan on PATH)", "✓", f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
+        table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
         return True
     if sys.platform == "win32":
         table.add_row(

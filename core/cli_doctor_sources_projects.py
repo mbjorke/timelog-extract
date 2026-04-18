@@ -99,7 +99,7 @@ def doctor(
 
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
     table.border_style = STYLE_BORDER
-    table.header_style = "bold #f0abfc"
+    table.header_style = "bold #e879f9"
     table.add_column("Source / Path", style=STYLE_LABEL)
     table.add_column("Status", justify="center")
     table.add_column("Details", style=STYLE_MUTED)
@@ -143,7 +143,7 @@ def doctor(
             if os.path.exists(tmp.name):
                 os.unlink(tmp.name)
 
-    with console.status("[bold #f0abfc]Running diagnostics..."):
+    with console.status("[bold #e879f9]Running diagnostics..."):
         cli_on_path = add_cli_path_rows(table, home=home)
         project_config_ok = check_file(projects_cfg, "Project Config")
         worklog_ok = check_file(worklog_path, "Worklog (Local)")

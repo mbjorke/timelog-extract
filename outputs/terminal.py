@@ -11,21 +11,22 @@ from rich.tree import Tree
 
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
+    CLR_ACCENT,
+    CLR_BERRY,
     CLR_BERRY_BRIGHT,
-    CLR_DIM,
     CLR_GREEN,
     CLR_SOURCE_BLUE,
     CLR_TEXT_SOFT,
     CLR_VALUE_ORANGE,
-    CLR_MUTED,
+    STYLE_DIM,
 )
 
 console = Console()
 
-STYLE_HEADING = f"bold {CLR_BERRY_BRIGHT}"
-STYLE_LABEL = f"bold {CLR_MUTED}"
+STYLE_HEADING = f"bold {CLR_ACCENT}"
+STYLE_LABEL = f"bold {CLR_BERRY}"
 STYLE_BODY = CLR_TEXT_SOFT
-STYLE_META = CLR_DIM
+STYLE_META = STYLE_DIM
 STYLE_ACCENT = CLR_BERRY_BRIGHT
 STYLE_POSITIVE = CLR_GREEN
 
@@ -141,7 +142,7 @@ def print_report(
             ("  ", ""),
             (f"{day_payload['hours']:.1f}h", f"bold {CLR_VALUE_ORANGE}"),
             (" | ", STYLE_META),
-            (f"{len(day_payload['sessions'])} sessions", STYLE_LABEL),
+            (f"{len(day_payload['sessions'])} sessions", STYLE_META),
         )
         day_tree = Tree(day_title, guide_style=STYLE_META)
 

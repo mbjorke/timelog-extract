@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
-# Report palette — vibrant berry family, aligned with gittan.html :root (cousin to Blueberry Maybe / blueberry.ax).
-# Void/background for “terminal” is #0a0714 on the site; CLI inherits these accents on the user’s terminal theme.
+# Berry family — vivid accents (cousin to Blueberry / blueberry.ax).
+# Secondary lines use darker hues + Rich `dim` so they read as *lighter weight*, not washed-out pastel.
 CLR_BERRY = "#d946ef"
 CLR_BERRY_BRIGHT = "#f0abfc"
-CLR_MUTED = "#c4b5fd"
-CLR_DIM = "#a78bfa"
-CLR_TEXT_SOFT = "#faf5ff"
+CLR_ACCENT = "#e879f9"
+
+CLR_TEXT_SOFT = "#f3e8ff"
+CLR_MUTED = "#b0a0d0"
+CLR_DIM = "#7f6b96"
+
 CLR_GREEN = "#4ade80"
 CLR_SOURCE_BLUE = "#60a5fa"
 CLR_VALUE_ORANGE = "#fbbf24"
 
-# Doctor/status semantic tokens
-STYLE_LABEL = "#e9d5ff"
-STYLE_MUTED = "#a78bfa"
-STYLE_BORDER = "#6d28d9"
-OK_ICON = f"[{CLR_GREEN}]✓[/{CLR_GREEN}]"
-WARN_ICON = "[#f5a623]![/#f5a623]"
-# Standardized icon set uses ! for failures/warnings.
-FAIL_ICON = "[#e26d85]![/#e26d85]"
-NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"
+# Tables / doctor: headers & labels
+STYLE_LABEL = "#e879f9"
+STYLE_MUTED = "#b0a0d0"
+STYLE_BORDER = "#7c3aed"
+
+# Tree guides, meta tails, taglines — dim = visually thinner on terminals
+STYLE_DIM = "dim #8b7a9e"
+
+OK_ICON = f"[bold {CLR_GREEN}]✓[/bold {CLR_GREEN}]"
+WARN_ICON = f"[bold {CLR_VALUE_ORANGE}]![/bold {CLR_VALUE_ORANGE}]"
+FAIL_ICON = "[bold #fb7185]![/bold #fb7185]"
+NA_ICON = f"[{CLR_DIM}]•[/{CLR_DIM}]"

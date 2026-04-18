@@ -65,7 +65,7 @@ enterprise-grade multi-tenant auth/permission systems.
 
 ## Risks (product)
 
-- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/sources/sources-and-flags.md`, `docs/runbooks/manual-test-matrix-0-2-x.md`). Mitigation is tied to the **simplify project configuration** bet above and to `**docs/sources/ai-assisted-config.md`** over time.
+- **Keyword / profile burden:** Good coverage may require thoughtful `match_terms`; **zero-config** can feel empty until users understand Chrome pre-filtering and Uncategorized behavior (see `docs/sources/sources-and-flags.md`, `docs/runbooks/manual-test-matrix-0-2-x.md`). Mitigation is tied to the **simplify project configuration** bet above and to **`docs/sources/ai-assisted-config.md`** over time.
 - **Collector maintenance:** App vendors change log paths and formats; quality depends on **fixtures** and **clear disable reasons** in reports.
 - **Expectation gap:** “Automatic” is **reconstruction + rules**, not mind-reading; calendar and chat integrations would **change** the story when shipped.
 
@@ -77,15 +77,15 @@ enterprise-grade multi-tenant auth/permission systems.
 - **Go-to-market** should lead with **product value**; **sustainability** can be multiple channels over time (not a single fixed playbook). Draft fundraising copy in `docs/business/patreon-positioning.md` is non-binding positioning material.
 - **GitHub Funding / Sponsors:** `.github/FUNDING.yml` is **not** committed (maintainer-only funding links live under local `private/`; see `docs/meta/private-local-notes.md`). To surface a **Sponsor** button on GitHub without committing that file, use **Repository Settings → General → Sponsorships** (or GitHub’s funding setup flow), which stores links in GitHub rather than in git.
 - **GitHub Discussions:** **[Discussions home](https://github.com/mbjorke/timelog-extract/discussions)** — default **General** / **Q&A** for community feedback and install questions (replaces the old in-repo pilot feedback file). **Announcements** for rare maintainer posts: [new discussion — announcements + welcome text](https://github.com/mbjorke/timelog-extract/discussions/new?category=announcements&welcome_text=true).
-- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with `**CONTRIBUTING.md`** and what CI / `docs/runbooks/ci.md` actually checks.
-- **Planned — Social preview (GitHub repo):** When links to **this repository** are shared, GitHub can show a **repository card image**. Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Start from in-repo `**repository-open-graph-template.png`**, export a final PNG, and upload in Settings (GitHub stores it; not read live from the repo).
-- **Brand assets (in-repo):** Canonical masters `**docs/brand/gittan-brand-mark.png`** + `**gittan-og-card.png`**; experiments in `**docs/brand/drafts/**`; snapshots in `**docs/brand/archive/**`. Derived `**favicon.ico**`, `**gittan-readme-icon.png**`, root `**gittan-logo.png**` (landing nav/hero), `**og-image.png**` via `**scripts/build_brand_assets.sh**`. `gittan.html` uses `**/gittan-logo.png**`; meta uses `https://gittan.sh/og-image.png` after Pages deploy.
+- **Planned — GitHub issue templates:** Configure **issue templates** (bug report, feature, etc.) in the web UI: [edit issue templates](https://github.com/mbjorke/timelog-extract/issues/templates/edit). Keep prompts aligned with **`CONTRIBUTING.md`** and what CI / `docs/runbooks/ci.md` actually checks.
+- **Planned — Social preview (GitHub repo):** When links to **this repository** are shared, GitHub can show a **repository card image**. Upload under **Settings → General → Social preview** in the [repository settings](https://github.com/mbjorke/timelog-extract/settings). **Minimum 640×320px**; **1280×640px recommended.** Start from in-repo **`repository-open-graph-template.png`**, export a final PNG, and upload in Settings (GitHub stores it; not read live from the repo).
+- **Brand assets (in-repo):** Canonical masters **`docs/brand/gittan-brand-mark.png`** + **`gittan-og-card.png`**; experiments in **`docs/brand/drafts/`**; snapshots in **`docs/brand/archive/`**. Derived **`favicon.ico`**, **`gittan-readme-icon.png`**, root **`gittan-logo.png`** (landing nav/hero), **`og-image.png`** via **`scripts/build_brand_assets.sh`**. `gittan.html` uses **`/gittan-logo.png`**; meta uses `https://gittan.sh/og-image.png` after Pages deploy.
 
 ---
 
 ## Sensitive material (not in git)
 
-Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see `**docs/meta/private-local-notes.md`**. That keeps the public repo reviewable while preserving a private working surface.
+Business plans, unpublished pricing experiments, and **LinkedIn drafts** that are not ready to share should live in a **local-only** place—see **`docs/meta/private-local-notes.md`**. That keeps the public repo reviewable while preserving a private working surface.
 
 ---
 

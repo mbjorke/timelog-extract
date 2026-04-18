@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Repo hygiene: restored **`.github/FUNDING.yml`** in version control (public funding metadata is not sensitive; optional drafts may still live under gitignored **`private/`** only if you choose not to commit them).
+- Funding: set **Buy Me a Coffee** username in **`.github/FUNDING.yml`** (`mbjorke`) so GitHub shows [the public support page](https://buymeacoffee.com/mbjorke).
 - Setup UX: added `gittan setup --one-click` for a no-prompt onboarding path that applies recommended defaults (same automation path as `--yes`, but clearer for first-time users).
 - **Setup UX (behavior change):** `gittan setup` now defaults to one-click no-prompt behavior; use `gittan setup --interactive` when you explicitly want prompts. Scripts expecting interactive prompts must pass `--interactive` explicitly.
 - Refactor: split global timelog hook setup out of `core/global_timelog_setup_lib.py` into `core/global_timelog_machine_setup.py` to satisfy the 500-line policy for tracked Python files.

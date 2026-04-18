@@ -63,3 +63,11 @@ For each expected item:
 - Review top mismatch rows
 - Implement one targeted rule improvement
 - Re-run eval and log KPI delta
+
+## Screen Time vs estimated hours (reconciliation)
+
+When Screen Time is enabled for a report window, you can **measure how estimated hours relate to measured screen time** (coverage, unexplained screen time, over-attribution) and export structured JSON for calibration.
+
+**How to run:** [`docs/runbooks/screen-time-gap-analysis.md`](../runbooks/screen-time-gap-analysis.md).
+
+**Ideas and staging notes** (not release-blocking): [`docs/product/future-notes-2026-04.md`](future-notes-2026-04.md).

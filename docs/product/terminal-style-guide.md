@@ -22,11 +22,13 @@ Use these roles consistently:
 
 ## Color semantics
 
-- **Base palette** is purple/neutral; **accents** use saturated berry/magenta (`CLR_BERRY`, `CLR_ACCENT`). **Secondary** copy uses darker violets plus Rich **`dim`** (`STYLE_DIM`) so it reads *lighter weight*, not pale-on-pale.
-- **Source names** use a single blue tone (avoid rainbow source coloring).
-- **Values** use muted orange.
-- **Time stamps** use muted green.
-- **Details** (for example long event payload tails or doctor “Accessible”) should be muted/dim.
+Implementation: **`outputs/terminal_theme.py`** (canonical hex tokens). The site (`gittan.html`) may use a slightly brighter marketing palette; the **CLI defaults to softer lavender table chrome** so long sessions stay readable.
+
+- **Base**: purple-neutral **lavender greys** — `STYLE_LABEL` (headers / first column), `CLR_TEXT_SOFT` (body), `STYLE_MUTED` / `STYLE_DIM` (details and tails). Avoid saturating every line with `CLR_BERRY` / `CLR_BERRY_BRIGHT`; reserve those for rare emphasis if needed.
+- **Source names**: a single blue tone (`CLR_SOURCE_BLUE`) — no rainbow per tool.
+- **Values**: muted orange (`CLR_VALUE_ORANGE`).
+- **Time stamps / success ticks**: muted green (`CLR_GREEN`) — keep this the clearest non-neutral accent where status matters.
+- **Details** (long event tails, doctor “Accessible”, etc.): `STYLE_MUTED` or `STYLE_DIM` so labels stay visually primary.
 
 ## Structural rules
 
@@ -43,11 +45,12 @@ Use these roles consistently:
 - **Don't** assign unique saturated colors to every source/tool.
 - **Don't** mix multiple unrelated accent colors in the same line.
 - **Don't** reintroduce strong borders/background blocks without a semantic reason.
+- **Don't** hardcode hex colors in command modules when `terminal_theme` already defines a token — use **`STYLE_LABEL`**, **`STYLE_MUTED`**, **`STYLE_BORDER`**, etc.
 
 ## Implementation touchpoints
 
-- `outputs/terminal_theme.py` — **canonical hex tokens** for CLI (keep aligned with **`gittan.html` `:root`**; void for “terminal” is **`#0a0714`** on the site).
-- `gittan.html` — marketing / demo terminal chrome (same berry family, more vibrant than a literal copy of blueberry.ax).
+- `outputs/terminal_theme.py` — **canonical hex tokens** for CLI (void for “terminal” on the site is **`#0a0714`**).
+- `gittan.html` — marketing / demo terminal chrome (berry family; need not be a literal copy of every CLI hex).
 - `outputs/terminal.py` (report rendering)
 - `core/cli_doctor_sources_projects.py` (doctor table semantics)
 

@@ -173,7 +173,7 @@ Questions, install friction, or “does this match your workflow?” — use **[
 
 ## Documentation map
 
-Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/product/vision-documents.md`](docs/product/vision-documents.md)** for an index (e.g. [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md), [`docs/security/privacy-security.md`](docs/security/privacy-security.md), [`docs/product/terminal-style-guide.md`](docs/product/terminal-style-guide.md), [`docs/runbooks/cli-first-v1-release-checklist.md`](docs/runbooks/cli-first-v1-release-checklist.md)).
+Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/product/vision-documents.md`](docs/product/vision-documents.md)** for an index (e.g. [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md), [`docs/security/privacy-security.md`](docs/security/privacy-security.md), [`docs/product/terminal-style-guide.md`](docs/product/terminal-style-guide.md), [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md), [`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md), [`docs/runbooks/cli-first-v1-release-checklist.md`](docs/runbooks/cli-first-v1-release-checklist.md)).
 
 ---
 

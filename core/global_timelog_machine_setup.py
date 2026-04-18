@@ -188,7 +188,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     console.print("This will configure global git hooks so each commit appends an entry to repo-local `TIMELOG.md`.")
     table = Table(title="Current global git status", box=box.ROUNDED)
     table.border_style = STYLE_BORDER
-    table.header_style = "bold #e879f9"
+    table.header_style = f"bold {STYLE_LABEL}"
     table.add_column("Setting", style=STYLE_LABEL)
     table.add_column("Current value", style=STYLE_MUTED)
     table.add_row("core.hooksPath", current_hooks_path or "(not set)")

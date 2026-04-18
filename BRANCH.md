@@ -1,50 +1,36 @@
-# Branching model (`main` + `dev`)
+# Branching model (`main` + short-lived `task/*`)
 
-The repository uses two protected branches on GitHub:
+The **default branch** on GitHub is **`main`**. It is **branch-protected**: no direct pushes; changes land via pull requests. CI runs on PRs (see `docs/runbooks/ci.md`).
 
-- `dev`: protected integration branch for `task/*` work.
-- `main`: protected release/integration branch.
-
-Direct pushes are blocked on both; changes land via pull requests. CI runs on PRs (see `docs/runbooks/ci.md`).
-
-Use a two-level flow:
-
-- `main`: release-ready history only.
-- `dev`: integration branch for ongoing agent work.
+There is **no standing integration branch** named `dev` on `origin` — day-to-day work merges into **`main`** when ready.
 
 ## Recommended workflow
 
-1. Sync base branches:
+1. Sync:
    - `git fetch origin`
    - `git switch main && git pull origin main`
-   - `git switch dev && git pull origin dev` (if `dev` exists)
-2. Create a short-lived task branch from `dev`:
-   - `git switch -c task/<short-scope> dev`
+2. Create a short-lived branch from **`main`**:
+   - `git switch -c task/<short-scope> main`
 3. Implement a small-scoped change, run tests, commit, push.
-4. Open PR `task/<short-scope> -> dev`.
-5. Merge and **delete task branch** immediately (local + remote).
-6. When `dev` is stable, open PR `dev -> main`.
+4. Open PR **`task/<short-scope> -> main`**.
+5. Merge and **delete the task branch** immediately (local + remote).
 
-## Review intent by branch
+## Review intent
 
-- `task/* -> dev`: feature/incremental review.
-- `dev -> main`: release/integration review (final quality gate before release).
+- **`task/* -> main`:** feature, docs, and incremental review in one step. Keep PRs narrow so review stays light.
 
 ## Release flow
 
-- Normal release path: **`dev -> main`**, then tag from `main`.
-- Use `release/X.Y.Z` only when you need explicit isolation for:
-  - version bump files (`pyproject.toml`, `CHANGELOG.md`, release chores),
-  - packaging/publish handoff steps.
-- Before version edits, always verify branch intent:
-  - `git branch --show-current`
+- **Normal path:** merge work to **`main`**, then tag from **`main`** when releasing (see `docs/runbooks/versioning.md`).
+- Use **`release/X.Y.Z`** only when you need explicit isolation for version bumps (`pyproject.toml`, `CHANGELOG.md`, packaging chores).
+- Before version edits, verify branch intent: `git branch --show-current`
 
 ## Branch hygiene rules
 
 - Prefer ephemeral branch names: `task/*`.
 - Avoid long-lived branch families unless explicitly required:
   - `feat/*`, `fix/*`, `docs/*`, `cursor/*`.
-- Keep PR scope narrow and merge quickly to reduce cross-branch drift.
+- Keep PR scope narrow and merge quickly to reduce drift.
 
 ## Naming migration note
 
@@ -53,12 +39,12 @@ Use a two-level flow:
 - Keep `release/X.Y.Z` only for explicit release isolation.
 - Documentation/process artifacts still using `rc-` should be renamed gradually to `task-` equivalents as they are touched.
 
-## When `dev` has diverged from `main`
+## If a separate `dev` branch exists again (forks / policy change)
 
-If `dev` and `main` have **long split histories** (both sides with many unique commits), do **not** “wing it” in the merge UI. Follow **`docs/runbooks/dev-main-alignment.md`**, use **`docs/task-prompts/dev-main-alignment-handoff.md`** to hand off to another agent (e.g. cloud) with a filled-in diagnosis block, and prefer aligning **`dev` to the canonical `main` tree** after a maintainer says **no** unique product work must be salvaged from `dev`.
+A long-lived second line (often called `dev`) can **diverge** from `main`. Do **not** “wing it” in the merge UI — follow **`docs/runbooks/dev-main-alignment.md`** and use **`docs/task-prompts/dev-main-alignment-handoff.md`** when you need a careful reset or handoff.
 
 ## Agents
 
 - **Never push directly to `main`**.
-- Default agent target is `dev` via short-lived `task/*` branches.
+- Default: short-lived **`task/*` branches from `main`**, PR into **`main`**.
 - For release/version operations, follow `AGENTS.md` and `docs/runbooks/versioning.md`.

@@ -46,7 +46,7 @@ can be included in reports, source summaries, and diagnostics.
 
 ## Branch and workflow defaults
 
-- Branch from latest `dev` using a short-lived `task/<short-scope>` branch.
+- Branch from latest `main` using a short-lived `task/<short-scope>` branch.
 - Keep PR scope focused on source support only.
 - Do not include unrelated docs cleanup in this task.
 

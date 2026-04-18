@@ -18,7 +18,7 @@ smoke checks, not only at PR end.
 - validation.decision: `NO-GO`
 - changelog:
   - `2026-04-15: Initial task prompt created.`
-  - `2026-04-15: Added mandatory traceability metadata and dev branch-flow defaults.`
+  - `2026-04-15: Added mandatory traceability metadata and branch-flow defaults.`
 
 ## Goal
 
@@ -31,7 +31,7 @@ This task is priority #1.
 
 ## Branch and mode defaults
 
-- Branch: create `task/<short-scope>` from latest `dev`.
+- Branch: create `task/<short-scope>` from latest `main`.
 - Mode: implementation-first, minimal ceremony.
 - Keep scope small and incremental; avoid broad refactors.
 

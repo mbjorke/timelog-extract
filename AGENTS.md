@@ -72,20 +72,17 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Scenario testing and “quick cleanup” are common ways to lose data; treat `**timelog_projects.json`** as **critical** even though it is gitignored.
 - **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): **`docs/incidents/2026-04-13-project-config-backup-gap.md`**.
 
-## Branch policy (`main` + `dev`)
+## Branch policy (`main` + short-lived `task/*`)
 
 - **`main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
-- **`dev` is also branch-protected** (no direct push). Use it as the integration branch for day-to-day agent work.
-- Agents should create **short-lived task branches from `dev`** (for example `task/<scope>`), merge back quickly, then delete the task branch.
+- Agents should create **short-lived task branches from `main`** (for example `task/<scope>`), open PR **`task/* -> main`**, merge, then delete the task branch.
 - Avoid long-lived branch families (`feat/*`, `fix/*`, `docs/*`, `cursor/*`) unless explicitly requested for a special case.
 - Release flow:
-  1. Stabilize scope on `dev`.
-  2. Open PR `dev -> main` for normal releases.
-  3. Use `release/X.Y.Z` only when versioning/release chores need explicit isolation.
-- Review intent:
-  - `task/* -> dev`: feature/incremental review.
-  - `dev -> main`: release/integration review gate (final check before release).
+  1. Merge ordinary work to **`main`** via PR when ready.
+  2. Use **`release/X.Y.Z`** when versioning/release chores need explicit isolation; PR **`release/* -> main`** when that line is ready.
+- Review intent: **`task/* -> main`** carries feature/docs review; keep PRs small enough to review in one pass.
 - **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
+- If a **separate `dev`** branch exists (fork or policy), divergence handling lives in **`docs/runbooks/dev-main-alignment.md`** — default upstream is **`main` only**.
 - See **`BRANCH.md`** for the operational workflow and **`docs/runbooks/ci.md`** for CI behavior.
 
 ## Naming migration (`rc-` -> `task-`)
@@ -114,7 +111,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 1. Work on `**release/X.Y.Z`** (or create it from latest `**origin/main`** for a **new** version line). Confirm branch name matches the version being bumped.
 2. Apply the **version bump checklist** in `**docs/runbooks/versioning.md`** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
-3. Run `**./scripts/run_autotests.sh`**; when packaging changes, also `**python -m build`** locally if appropriate.
+3. Run `**bash scripts/run_autotests.sh**` (repo root); when packaging changes, also `**python -m build`** locally if appropriate.
 4. Commit, `**git push origin <branch>**`, and keep the maintainer informed in **non-jargon** terms (“PR is ready”, “CI should run”, “after you merge, tag vX.Y.Z”).
 5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by `**git fetch origin`** and `**git merge origin/main`** into the release branch, resolve conflicts (often `**CHANGELOG.md`**, `**README.md**`), commit the merge, push — see `**docs/runbooks/versioning.md**` and `**BRANCH.md**`.
 

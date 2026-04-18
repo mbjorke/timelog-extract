@@ -7,7 +7,7 @@
 ## Checklist
 
 - **PR title and description are in English** (required for reviewers and tools such as CodeRabbit).
-- **Branch/target follows workflow** (`task/* -> dev` by default; release exceptions are explicit).
+- **Branch/target follows workflow** (`task/* -> main` by default; `release/*` when versioning is isolated).
 - **Scope matches the branch**; unrelated changes are split out or noted.
 - **`bash scripts/run_autotests.sh`** (or equivalent) passes locally when relevant.
 - If the maintainer **taught a preference** worth handing off, a short TIL in [`docs/ideas/til/`](docs/ideas/til/) (same month’s `YYYY-MM.md`) helps the next session; see [`AGENTS.md`](AGENTS.md) → *Maintainer TIL*.

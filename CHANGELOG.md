@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: branch workflow is **`task/* -> main`** (no standing `dev` on `origin`); updated [`BRANCH.md`](BRANCH.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/runbooks/ci.md`](docs/runbooks/ci.md), [`AGENTS.md`](AGENTS.md), task prompts; [`docs/decisions/main-dev-branch-protection-and-release-gate.md`](docs/decisions/main-dev-branch-protection-and-release-gate.md) marked superseded in part; [`docs/runbooks/dev-main-alignment.md`](docs/runbooks/dev-main-alignment.md) scoped to forks / if `dev` is reintroduced.
+
 ## 0.2.11 - 2026-04-18
 
 - Docs: Screen Time gap runbook ([`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md)); working notes ([`docs/product/future-notes-2026-04.md`](docs/product/future-notes-2026-04.md)) — AI help scope, calibration staging, Jira-style timestamp / analytics ideas, integration-layer licensing notes; [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md) and [`docs/product/vision-documents.md`](docs/product/vision-documents.md) updated; README documentation map extended.

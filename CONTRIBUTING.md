@@ -5,7 +5,7 @@ Thanks for helping improve Timelog Extract / Gittan. This document is the single
 **Many editors and AI tools** (Claude Code, Codex, Cursor, VS Code, Zed, Lovable, etc.) share the same repo rules: read **`AGENTS.md` first**. For a tool-by-tool map, inspiration vs ideas, and how we avoid duplicating policy, see **[`docs/contributing/ai-assisted-work.md`](docs/contributing/ai-assisted-work.md)**. Quick links and external sparks live under **[`docs/inspiration/`](docs/inspiration/)**.
 
 **`main` is branch-protected** — no direct pushes; use a branch and PR.  
-Default contributor flow is **`task/* -> dev -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
+Default contributor flow is **`task/* -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
 
 ## User feedback (not code)
 
@@ -19,13 +19,13 @@ Experience reports, setup confusion, and product questions belong in **[GitHub D
 
 ## Branch and naming conventions
 
-1. Start from `dev`:
+1. Start from `main`:
    - `git fetch origin`
-   - `git switch dev`
-   - `git pull origin dev`
+   - `git switch main`
+   - `git pull origin main`
 2. Create a short-lived branch: `task/<short-scope>`
    - Example: `task/doctor-github-note`
-3. Open PR into `dev` (not directly into `main`, except maintainers for explicit release work).
+3. Open PR into **`main`** (use **`release/X.Y.Z`** only for explicit release/version isolation — see [`BRANCH.md`](BRANCH.md)).
 4. After merge, delete the task branch (local and remote).
 
 Naming notes:

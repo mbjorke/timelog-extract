@@ -36,7 +36,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Approved work to build** → `specs/`
 - **Implementation checklist / agent prompt** → `task-prompts/`
 - **How to run CI, release, or QA** → `runbooks/`
-- **Diverged `dev` / `main` (safe alignment, tags, handoff to cloud agent)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md)
+- **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/`
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)
 - **TIL the maintainer taught the agent (by month, short bullets)** → [`ideas/til/`](ideas/til/) (see `AGENTS.md` → *Maintainer TIL*)

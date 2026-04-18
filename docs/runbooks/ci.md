@@ -1,29 +1,19 @@
 # CI and repository gates
 
-## Branch protection model (`dev` + `main`)
+## Branch protection model (`main`)
 
-The repository uses two protected branches with different review intent:
+The repository uses **`main`** as the protected default branch:
 
-- **`dev`**: day-to-day integration quality gate (`task/* -> dev`).
-- **`main`**: release/integration gate (`dev -> main`), release-ready history only.
+- **No direct pushes** to `main` — changes land via pull request.
+- **Typical path:** `task/* -> main` for everyday work; **`release/X.Y.Z`** when versioning/chores need isolation.
 
-Both branches block direct pushes and require pull requests.
-
-## Integration branch (`dev`)
-
-The repository now uses **`dev`** as the default integration branch for contributor/agent work:
-
-- new work starts on `task/*` branches from `dev`,
-- PRs merge into `dev`,
-- stable `dev` is promoted via PR into `main`.
-
-`release/X.Y.Z` remains available for explicit version-isolation work.
+CI runs on **pull requests** and on **pushes** to `main` after merge (see workflow triggers below).
 
 ## GitHub settings checklist
 
-Configure this in **GitHub -> Settings -> Branches** (or Rulesets) for both branches.
+Configure this in **GitHub → Settings → Branches** (or Rulesets) for **`main`**.
 
-### `dev` protection (integration gate)
+### `main` protection
 
 - Require a pull request before merging.
 - Require status checks to pass before merging:
@@ -35,21 +25,7 @@ Configure this in **GitHub -> Settings -> Branches** (or Rulesets) for both bran
 - Require linear history (optional but recommended).
 - Disable force pushes and branch deletion.
 
-### `main` protection (release/integration review gate)
-
-- Require a pull request before merging.
-- Restrict expected merge path to `dev -> main` for routine releases.
-- Require status checks to pass before merging:
-  - `python`
-  - `package`
-  - `extension`
-- Require conversation resolution before merging.
-- Require at least one maintainer approval for `dev -> main`.
-- Dismiss stale pull request approvals when new commits are pushed.
-- Disable force pushes and branch deletion.
-
-This keeps feature-level review load on `dev`, while preserving a final release
-gate on `main`.
+Optional: require at least one **maintainer** approval for sensitive repos — match team expectations.
 
 ## Workflow location
 
@@ -63,7 +39,7 @@ gate on `main`.
 ## GitHub Pages (`gittan.sh` / project site)
 
 | Trigger | What happens |
-|---------|----------------|
+|---------|--------------|
 | **Push to `main`** | Runs [`scripts/prepare_static_site.sh`](../scripts/prepare_static_site.sh) to build `_site`, then **deploys** to the configured Pages URL. **`deploy`** has `pages: write` + `id-token: write`; workflow default is `contents: read` only. |
 | **Pull request → `main`** | Runs **`verify-static-site`** only (same script, **no** Pages/OIDC permissions), **no** publish. |
 | **`workflow_dispatch`** | **Re-deploy** production from the current `main` tip (Actions → *Deploy static content to Pages* → *Run workflow*). Use if a deploy failed or Pages was misconfigured. |
@@ -77,7 +53,7 @@ PRs still get a **green workflow** from **verify-static-site** when site-related
 ## Jobs
 
 | Job | What it does |
-|-----|----------------|
+|-----|--------------|
 | **python** | Editable install, smoke `timelog_extract.py --today` (non-fatal), **500-line** cap per Python file (`scripts/check_file_lengths.py`), **`scripts/run_autotests.sh`**. |
 | **package** | `python -m build` (sdist + wheel), then `pip install` the wheel and run `timelog-extract -V` / `gittan -V`. |
 | **extension** | In `cursor-extension/`: `npm install`, `npm run build`. |
@@ -85,7 +61,7 @@ PRs still get a **green workflow** from **verify-static-site** when site-related
 ## PR expectations (not auto-enforced in YAML)
 
 - **PR title and description in English** — see **`AGENTS.md`** and [`.github/pull_request_template.md`](../.github/pull_request_template.md). The workflow does not detect language; it is a project rule for reviewers and bots.
-- **Branch flow:** default contributor path is `task/* -> dev`; PRs to `main` should normally be release/integration PRs.
+- **Branch flow:** default contributor path is **`task/* -> main`**. Use **`release/X.Y.Z`** when the change is explicitly a version/release line.
 
 ## Related
 

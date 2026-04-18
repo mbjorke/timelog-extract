@@ -31,7 +31,7 @@ The user must explicitly confirm before any write to `timelog_projects.json`.
 
 ## Branch and mode defaults
 
-- Work on a short-lived `task/<short-scope>` branch from latest `dev`.
+- Work on a short-lived `task/<short-scope>` branch from latest `main`.
 - Keep changes incremental and reviewable.
 - If uncertain, prefer extending existing modules over adding many new files.
 - Do not break existing `gittan review --uncategorized`.

@@ -46,6 +46,8 @@ Use these roles consistently:
 
 ## Implementation touchpoints
 
+- `outputs/terminal_theme.py` — **canonical hex tokens** for CLI (keep aligned with **`gittan.html` `:root`**; void for “terminal” is **`#0a0714`** on the site).
+- `gittan.html` — marketing / demo terminal chrome (same berry family, more vibrant than a literal copy of blueberry.ax).
 - `outputs/terminal.py` (report rendering)
 - `core/cli_doctor_sources_projects.py` (doctor table semantics)
 

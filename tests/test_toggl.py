@@ -33,11 +33,6 @@ class TogglSourceTests(unittest.TestCase):
         self.assertIsNone(reason)
 
     def test_collector_registry_includes_toggl_status(self):
-        """
-        Verify that the collector registry includes a "Toggl" spec and that it is enabled when a TOGGL_API_TOKEN is present in the environment.
-        
-        Sets up arguments with Toggl source set to "auto", patches TOGGL_API_TOKEN to "token-123", builds collector specs with empty collectors, and asserts a spec named "Toggl" exists, that its `enabled` is True, and its `reason` is None.
-        """
         class Args:
             chrome_source = "on"
             mail_source = "auto"
@@ -76,6 +71,72 @@ class TogglSourceTests(unittest.TestCase):
         assert toggl is not None
         self.assertTrue(toggl.enabled)
         self.assertIsNone(toggl.reason)
+
+
+    def test_toggl_source_invalid_mode_is_rejected(self):
+        """New in PR: invalid mode string returns (False, descriptive error)."""
+        class Args:
+            toggl_source = "bogus"
+            toggl_api_token = None
+
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=False):
+            enabled, reason = tg.toggl_source_enabled(Args())
+        self.assertFalse(enabled)
+        self.assertIsNotNone(reason)
+        self.assertIn("bogus", reason or "")
+        self.assertIn("auto/on/off", reason or "")
+
+    def test_toggl_source_off_is_disabled_even_with_token(self):
+        """Mode=off should always return disabled regardless of token presence."""
+        class Args:
+            toggl_source = "off"
+            toggl_api_token = None
+
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=False):
+            enabled, reason = tg.toggl_source_enabled(Args())
+        self.assertFalse(enabled)
+        self.assertIsNotNone(reason)
+        self.assertIn("off", reason or "")
+
+    def test_toggl_source_on_without_token_is_disabled(self):
+        """Mode=on without a token returns disabled with clear message."""
+        class Args:
+            toggl_source = "on"
+            toggl_api_token = None
+
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": ""}, clear=False):
+            enabled, reason = tg.toggl_source_enabled(Args())
+        self.assertFalse(enabled)
+        self.assertIsNotNone(reason)
+        self.assertIn("TOGGL_API_TOKEN", reason or "")
+
+    def test_toggl_source_on_with_token_is_enabled(self):
+        """Mode=on with token present returns enabled."""
+        class Args:
+            toggl_source = "on"
+            toggl_api_token = None
+
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "my-token"}, clear=False):
+            enabled, reason = tg.toggl_source_enabled(Args())
+        self.assertTrue(enabled)
+        self.assertIsNone(reason)
+
+    def test_toggl_source_invalid_mode_error_message_format(self):
+        """Error message for invalid mode includes mode value and expectation hint."""
+        class Args:
+            toggl_source = "maybe"
+            toggl_api_token = None
+
+        enabled, reason = tg.toggl_source_enabled(Args())
+        self.assertFalse(enabled)
+        self.assertIn("maybe", reason or "")
+        self.assertIn("expected", (reason or "").lower())
+
+    def test_collect_workspace_events_returns_empty_list(self):
+        """collect_workspace_events is a placeholder that returns no events."""
+        result = tg.collect_workspace_events()
+        self.assertEqual(result, [])
+        self.assertIsInstance(result, list)
 
 
 if __name__ == "__main__":

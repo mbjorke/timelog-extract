@@ -144,6 +144,8 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ## Review Cadence (CodeRabbit)
 
+- **Severity and who may fix what:** see **`docs/decisions/agent-review-contract.md`** (draft contract between review signal and human/Cursor execution).
+
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.
 - Keep CodeRabbit auto-review enabled; throttle manual review commands to at most

@@ -2,7 +2,7 @@
 
 Status: Draft (process template); **Gittan bounds below are active for this repo**  
 Date: 2026-04-18  
-Last updated: 2026-04-18  
+Last updated: 2026-04-18 (Copilot CLI remote section)  
 Owner: Maintainer + active agents
 
 ## Why
@@ -79,10 +79,21 @@ Product names and availability change — use **[CodeRabbit documentation](https
 
 **Interpretation:** CodeRabbit has been **shipping** cloud-side automation that **narrows the gap** between “findings” and “applied fixes,” but **your** contract (this doc + `AGENTS.md`) still defines **what** a Cursor agent may do **in this repository**.
 
+## GitHub Copilot CLI: remote access (`copilot --remote`)
+
+GitHub ships **remote control of Copilot CLI sessions** from the browser or GitHub Mobile (public preview as of [April 2026 changelog](https://github.blog/changelog/2026-04-13-remote-control-cli-sessions-on-web-and-mobile-in-public-preview/)): start a session with **`copilot --remote`** (or enable **`/remote`** inside a session). This is a **first-party** bridge between a **local CLI** in a repo on GitHub.com and a **web UI** — different from Cursor, but relevant to “cloud + agent + terminal” orchestration.
+
+- **How-to:** [Steering a GitHub Copilot CLI session from another device](https://docs.github.com/en/copilot/how-tos/copilot-cli/steer-remotely)
+- **Concept:** [About remote access to GitHub Copilot CLI sessions](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-remote-access)
+
+**This repository:** GitHub’s **Agents** view for the repo (e.g. `https://github.com/mbjorke/timelog-extract/agents`) lists Copilot-related agent activity **on GitHub**; it does **not** replace this doc’s rules for **who may change what** on the branch — still use PRs and the contract above.
+
+**Relation to CodeRabbit:** still separate products; remote Copilot CLI does **not** auto-sync with CodeRabbit findings unless **you** connect the workflow (e.g. review in PR → prompt Copilot CLI session with scope).
+
 ## Relation to Cursor
 
 - **Cursor agents** do not receive a formal API callback from CodeRabbit when severity = high.
-- Practical pattern: **export** findings (PR tab, or paste CLI summary) → **prompt Cursor** with: “Fix only HIGH items in scope X per `docs/decisions/agent-review-contract.md`.”
+- Practical pattern: **export** findings (PR tab, or paste CLI summary) → **prompt Cursor** (or a **Copilot CLI** session, including remote-steered) with: “Fix only HIGH items in scope X per `docs/decisions/agent-review-contract.md`.”
 - If GitHub/Cursor later adds **@mentions** or **agent triggers** on PRs, revisit this doc and add a subsection.
 
 ## Links

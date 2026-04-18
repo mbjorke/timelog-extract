@@ -77,7 +77,7 @@ def _ensure_minimal_projects_config(
 def _print_environment_status(console) -> None:
     table = Table(title="Environment checks", box=box.ROUNDED)
     table.border_style = STYLE_BORDER
-    table.header_style = "bold #f0abfc"
+    table.header_style = "bold #e879f9"
     table.add_column("Check", style=STYLE_LABEL)
     table.add_column("Status")
     table.add_column("Details", style="dim")
@@ -227,7 +227,7 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
             smoke_status = "SKIPPED"
     summary_table = Table(title="Setup summary", box=box.ROUNDED)
     summary_table.border_style = STYLE_BORDER
-    summary_table.header_style = "bold #f0abfc"
+    summary_table.header_style = "bold #e879f9"
     summary_table.add_column("Step", style=STYLE_LABEL)
     summary_table.add_column("Result")
     summary_table.add_column("Notes", style=STYLE_MUTED)

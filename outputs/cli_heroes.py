@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rich.console import Console
 from rich.text import Text
-from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
+from outputs.terminal_theme import CLR_BERRY, STYLE_DIM
 
 
 _HEROES: dict[str, tuple[list[str], str]] = {
@@ -72,8 +72,8 @@ _HEROES: dict[str, tuple[list[str], str]] = {
 def print_command_hero(console: Console, command: str) -> None:
     """Print a command-specific ASCII hero and one-line tagline."""
     lines, tagline = _HEROES.get(command, _HEROES["status"])
-    console.print(Text("\n".join(lines), style=f"bold {STYLE_LABEL}"))
-    console.print(f"[{STYLE_MUTED}]{tagline}[/{STYLE_MUTED}]")
+    console.print(Text("\n".join(lines), style=f"bold {CLR_BERRY}"))
+    console.print(Text(tagline, style=STYLE_DIM))
 
 
 def hero_commands() -> list[str]:

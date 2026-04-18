@@ -22,7 +22,7 @@ Use these roles consistently:
 
 ## Color semantics
 
-- **Base palette** is purple/neutral.
+- **Base palette** is purple/neutral; **accents** use saturated berry/magenta (`CLR_BERRY`, `CLR_ACCENT`). **Secondary** copy uses darker violets plus Rich **`dim`** (`STYLE_DIM`) so it reads *lighter weight*, not pale-on-pale.
 - **Source names** use a single blue tone (avoid rainbow source coloring).
 - **Values** use muted orange.
 - **Time stamps** use muted green.

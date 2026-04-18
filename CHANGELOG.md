@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CLI / UX: stronger **berry accents** and **`dim`** meta text (`outputs/terminal_theme.py`, `outputs/terminal.py`); command **heroes** use bold **`CLR_BERRY`** with dim taglines; **OK_ICON** / warn icons use **bold** marks; doctor PATH row uses **`OK_ICON`** like other rows; table headers aligned to **`#e879f9`**. Site: slightly higher-contrast **`--muted` / `--dim`**, **`--berry-bright`** matches accent.
 - Brand: **vibrant berry palette** — **`gittan.html`** CSS variables and **`outputs/terminal_theme.py`** Rich tokens bumped for a clearer family resemblance to Blueberry Maybe / [blueberry.ax](https://blueberry.ax) without matching exactly; **void / terminal background** stays **`#0a0714`** everywhere. Docs: **`docs/brand/identity.md`** (palette rules + future “humle” PR micro-copy intent), **`docs/product/terminal-style-guide.md`**.
 - Brand: core metaphor is now **a bumblebee pollinating berries** (see **`docs/brand/identity.md`**); ASCII banner constant renamed to **`GITTAN_BUMBLEBEE_BERRIES`** in **`outputs/gittan_banner.py`**.
 - CLI: **`outputs/cli_heroes.py`** command heroes now use the same **bumblebee + berries** panel art as the main banner (75-char width), replacing the old rabbit ASCII.

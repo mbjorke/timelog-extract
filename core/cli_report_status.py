@@ -207,7 +207,7 @@ def status(
 
         table = Table(title=f"Hours Summary ({title_date})", box=box.ROUNDED)
         table.border_style = STYLE_BORDER
-        table.header_style = "bold #f0abfc"
+        table.header_style = "bold #e879f9"
         table.add_column("Project", style=STYLE_LABEL)
         table.add_column("Hours", justify="right", style=CLR_VALUE_ORANGE)
         table.add_column("Sessions", justify="right", style=STYLE_MUTED)

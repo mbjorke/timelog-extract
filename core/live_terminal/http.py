@@ -9,6 +9,8 @@ from typing import Optional
 
 from core.live_terminal.service import DemoSessionStore, demo_exec_line
 
+__all__ = ["make_demo_handler", "serve_demo"]
+
 _EXEC_PATH = re.compile(r"^/demo/sessions/([^/]+)/exec/?$")
 _MAX_BODY_BYTES = 64 * 1024
 

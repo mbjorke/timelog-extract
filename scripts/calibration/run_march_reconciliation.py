@@ -41,13 +41,13 @@ def main() -> int:
     projects = truth.get("projects") or {}
     invoice_groups = truth.get("invoice_groups") or {}
     options = TimelogRunOptions(
+        projects_config=args.projects_config,
         date_from=args.date_from,
         date_to=args.date_to,
-        projects_config=args.projects_config,
         include_uncategorized=True,
         quiet=True,
     )
-    report = run_timelog_report(args.projects_config, args.date_from, args.date_to, options)
+    report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = evaluate_reconciliation(
         report,
         {str(k): float(v) for k, v in projects.items()},

@@ -16,7 +16,7 @@ class TogglSourceTests(unittest.TestCase):
             toggl_source = "auto"
             toggl_api_token = None
 
-        with patch.dict("os.environ", {}, clear=True):
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": ""}, clear=False):
             enabled, reason = tg.toggl_source_enabled(Args())
         self.assertFalse(enabled)
         self.assertIsNotNone(reason)
@@ -27,7 +27,7 @@ class TogglSourceTests(unittest.TestCase):
             toggl_source = "auto"
             toggl_api_token = None
 
-        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=True):
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=False):
             enabled, reason = tg.toggl_source_enabled(Args())
         self.assertTrue(enabled)
         self.assertIsNone(reason)
@@ -42,7 +42,7 @@ class TogglSourceTests(unittest.TestCase):
             toggl_source = "auto"
             toggl_api_token = None
 
-        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=True):
+        with patch.dict("os.environ", {"TOGGL_API_TOKEN": "token-123"}, clear=False):
             specs = build_collector_specs(
                 Args(),
                 Path("TIMELOG.md"),

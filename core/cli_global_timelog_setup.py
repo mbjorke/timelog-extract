@@ -64,6 +64,9 @@ def setup_wizard(
     """Run full onboarding: environment, timelog automation, config, doctor, and smoke test."""
     from rich.console import Console
 
+    if interactive and one_click:
+        raise typer.BadParameter("Cannot use both --interactive and --one-click; choose one")
+
     console = Console()
     auto_yes = not interactive
     if yes or one_click:

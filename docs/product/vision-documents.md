@@ -6,13 +6,13 @@ Use this file as the **index** when updating marketing copy or root `VISION.md` 
 
 If wording conflicts, use this order:
 
-1. `**docs/product/gittan-vision.md`** — product soul, promises, decision filter, Blueberry/strategic mapping where applicable.
-2. `**docs/product/v1-scope.md`** — what ships in which version; feature boundaries.
-3. `**docs/product/gittan-northstar-metrics.md`** — measurable outcomes and KPIs tied to the vision.
-4. `**docs/security/privacy-security.md`** — consent and data-handling guardrails.
-5. `**VISION.md**` (repository root) — **short public manifesto** (e.g. Patreon, one-pagers). It must not contradict 1–4; when 1–4 change, refresh the root manifesto.
+1. **`docs/product/gittan-vision.md`** — product soul, promises, decision filter, Blueberry/strategic mapping where applicable.
+2. **`docs/product/v1-scope.md`** — what ships in which version; feature boundaries.
+3. **`docs/product/gittan-northstar-metrics.md`** — measurable outcomes and KPIs tied to the vision.
+4. **`docs/security/privacy-security.md`** — consent and data-handling guardrails.
+5. **`VISION.md`** (repository root) — **short public manifesto** (e.g. Patreon, one-pagers). It must not contradict 1–4; when 1–4 change, refresh the root manifesto.
 
-`**docs/product/gittan-vision-en.md`** is an English narrative companion to `GITTAN_VISION.md`; on conflict, `GITTAN_VISION.md` wins.
+**`docs/product/gittan-vision-en.md`** is an English narrative companion to `docs/product/gittan-vision.md`; on conflict, `docs/product/gittan-vision.md` wins.
 
 ## Roles
 
@@ -62,6 +62,6 @@ Product docs describe **local reporting engine first**; the **Cursor extension**
 
 ## When you edit one, check the others
 
-- Change **trust / local-first / scope** → update `GITTAN_VISION.md` first, then `VISION.md` and `GITTAN_VISION_EN.md` if needed.
-- Change **metrics or targets** → `GITTAN_NORTHSTAR_METRICS.md` (+ `ACCURACY_PLAN.md` where linked).
+- Change **trust / local-first / scope** → update `docs/product/gittan-vision.md` first, then `VISION.md` and `docs/product/gittan-vision-en.md` if needed.
+- Change **metrics or targets** → `docs/product/gittan-northstar-metrics.md` (+ `docs/product/accuracy-plan.md` where linked).
 - Change **fundraising or public pitch only** → update `docs/business/patreon-positioning.md` (draft details) and/or `VISION.md` (short manifesto); both must stay consistent with 1–4.

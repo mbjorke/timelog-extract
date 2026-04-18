@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.calibration.reconciliation import evaluate_reconciliation
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 
+if TYPE_CHECKING:
+    from core.report_service import ReportPayload
+
 
 def build_march_calibration_payload(
-    report,
+    report: ReportPayload,
     ground_truth_hours: dict[str, float],
     invoice_groups: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:

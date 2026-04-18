@@ -37,7 +37,7 @@ Use one stack with three levels:
 - **Definition:** Percentage of events/sessions correctly attributed to the intended project.
 - **Formula:** `correct_attributions / total_attributions`
 - **Source:** `docs/evals/latest.md` generated from golden dataset runs.
-- **Target:** `>= 85%` (from `ACCURACY_PLAN.md`)
+- **Target:** `>= 85%` (from `docs/product/accuracy-plan.md`)
 - **Cadence:** Weekly
 
 ### 1.2 Uncategorized Rate

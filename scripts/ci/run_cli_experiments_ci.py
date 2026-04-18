@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run deterministic A/B/C CLI experiment fixtures for CI."""
+"""Run deterministic A/B/C CLI experiment fixtures for CI.
+
+Runs A/B/C CLI experiments with deterministic fixtures for automated testing.
+"""
 
 from __future__ import annotations
 
@@ -40,11 +43,14 @@ def _markdown_report(payload: dict) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--fixtures-dir", default="tests/fixtures/experiments")
-    parser.add_argument("--out-json", default="out/cli-experiments/scorecard.json")
-    parser.add_argument("--out-md", default="out/cli-experiments/scorecard.md")
-    parser.add_argument("--strict", action="store_true")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--fixtures-dir", default="tests/fixtures/experiments", help="Directory containing test fixtures")
+    parser.add_argument("--out-json", default="out/cli-experiments/scorecard.json", help="Output JSON scorecard path")
+    parser.add_argument("--out-md", default="out/cli-experiments/scorecard.md", help="Output markdown scorecard path")
+    parser.add_argument("--strict", action="store_true", help="Exit with non-zero if any variant fails threshold")
     args = parser.parse_args()
 
     payload = run_fixtures(Path(args.fixtures_dir))

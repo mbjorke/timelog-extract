@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Automate checks from docs/runbooks/manual-test-matrix-0-2-x.md.
 
-  * Deterministic block (seeded worklog, fixed dates) — CI-safe, no real Chrome/Mail needed.
-  * Optional --last-month: previous calendar month, real data (your machine / repo).
+Runs checks defined in the manual test matrix runbook.
 
 Examples:
-
   python3 scripts/manual_matrix_automation.py --deterministic
   python3 scripts/manual_matrix_automation.py --last-month --repo-root .
   QA_MATRIX_MIN_EVENTS=10 python3 scripts/manual_matrix_automation.py --last-month

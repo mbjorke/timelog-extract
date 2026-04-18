@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, Optional
 
 import typer
@@ -63,30 +64,23 @@ def jira_sync(
     )
 
     enabled, reason = jira_sync_enabled(
-        type(
-            "Args",
-            (),
-            {
-                "jira_sync": jira_sync,
-                "jira_base_url": jira_base_url,
-                "jira_email": jira_email,
-                "jira_api_token": jira_api_token,
-            },
-        )()
+        SimpleNamespace(
+            jira_sync=jira_sync,
+            jira_base_url=jira_base_url,
+            jira_email=jira_email,
+            jira_api_token=jira_api_token,
+        )
     )
     if not enabled:
         raise typer.BadParameter(reason or "Jira sync is not enabled")
 
-    args_obj = type(
-        "Args",
-        (),
-        {
-            "jira_base_url": jira_base_url,
-            "jira_email": jira_email,
-            "jira_api_token": jira_api_token,
-        },
-    )()
-    creds = resolve_jira_credentials(args_obj)
+    creds = resolve_jira_credentials(
+        SimpleNamespace(
+            jira_base_url=jira_base_url,
+            jira_email=jira_email,
+            jira_api_token=jira_api_token,
+        )
+    )
     if creds is None:
         raise typer.BadParameter("Missing Jira credentials")
 
@@ -116,8 +110,11 @@ def jira_sync(
             summary.posted += 1
             typer.echo(f"Posted Jira worklog id={worklog_id}")
         except Exception as exc:
+            import logging
+            import traceback
             summary.failed += 1
             typer.echo(f"Failed to post {candidate.issue_key} ({candidate.day}): {exc}")
+            logging.error(f"Jira worklog post failed for {candidate.issue_key}: {traceback.format_exc()}")
 
     typer.echo(
         "Jira sync summary: "

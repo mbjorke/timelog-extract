@@ -18,6 +18,8 @@ import questionary
 import typer
 from typing import Annotated, Optional
 
+from rich import markup
+
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
@@ -56,6 +58,13 @@ def doctor(
             help="GitHub username for public events (doctor visibility only).",
         ),
     ] = None,
+    toggl_source: Annotated[
+        str,
+        typer.Option(
+            "--toggl-source",
+            help="Toggl source mode: auto, on, or off (doctor visibility only).",
+        ),
+    ] = "auto",
 ):
     """Check health and permissions of all local data sources."""
     from rich.console import Console
@@ -215,20 +224,21 @@ def doctor(
                 OK_ICON,
                 f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
             )
-        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source="auto"))
+        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source=toggl_source))
         toggl_token_present = bool((os.getenv("TOGGL_API_TOKEN") or "").strip())
         if toggl_enabled:
             token_note = "token present" if toggl_token_present else "no token"
             table.add_row(
                 "Toggl Source",
                 OK_ICON,
-                f"[{STYLE_MUTED}]Enabled (auto) — {token_note}[/{STYLE_MUTED}]",
+                f"[{STYLE_MUTED}]Enabled ({toggl_source}) — {token_note}[/{STYLE_MUTED}]",
             )
         else:
+            escaped_reason = markup.escape(toggl_reason or "")
             table.add_row(
                 "Toggl Source",
                 NA_ICON,
-                f"[{STYLE_MUTED}]Not configured (auto); {toggl_reason}[/{STYLE_MUTED}]",
+                f"[{STYLE_MUTED}]Not configured ({toggl_source}); {escaped_reason}[/{STYLE_MUTED}]",
             )
     console.print(table)
     console.print(

@@ -272,7 +272,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
             console.print(f"- repo scope = selected list ({repo_count} repos)")
         else:
             console.print("- repo scope = all git repositories")
-            console.print("\nReference: `docs/runbooks/global-timelog-setup.md`")
+        console.print("\nReference: `docs/runbooks/global-timelog-setup.md`")
 
 
 def _ensure_minimal_projects_config(

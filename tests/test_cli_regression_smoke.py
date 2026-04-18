@@ -21,12 +21,12 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
+    """Minimal subprocess/import checks."""
+
     @staticmethod
     def _plain_text(output: str) -> str:
         """Strip ANSI color/style escapes from Rich-rendered CLI output."""
         return ANSI_ESCAPE_RE.sub("", output)
-
-    """Minimal subprocess/import checks."""
 
     def _run_doctor(self, args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as tmp:
@@ -57,7 +57,9 @@ class CliRegressionSmokeTests(unittest.TestCase):
 
     def test_doctor_runs_from_foreign_cwd(self):
         """Regression: ModuleNotFoundError: outputs when cwd != repo (gittan from PATH)."""
-        completed = self._run_doctor([])
+        env = dict(os.environ)
+        env.pop("TOGGL_API_TOKEN", None)
+        completed = self._run_doctor([], env=env)
         self.assertIn("Next steps", completed.stdout)
         self.assertIn("Toggl Source", completed.stdout)
         self.assertIn("Not configured (auto)", completed.stdout)

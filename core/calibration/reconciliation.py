@@ -8,6 +8,7 @@ from typing import Any
 
 from core.calibration.experiments import variant_c_rules
 from core.cli_ab_rule_suggestions import gather_ab_suggestions
+from core.rule_suggestions import preview_suggestion_impact
 
 UNCATEGORIZED = "Uncategorized"
 
@@ -59,7 +60,7 @@ def _group_rows_for_variant(
         if not projects:
             continue
         actual = float(config.get("actual_hours", 0.0))
-        predicted = sum(float(by_project.get(name).predicted_hours) for name in projects if name in by_project)
+        predicted = sum(by_project.get(name).predicted_hours for name in projects if name in by_project)
         out.append(
             GroupReconciliationResult(
                 group=group_name,
@@ -112,8 +113,6 @@ def evaluate_reconciliation(
 
         _opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, project_name)
         opt_c = variant_c_rules(opt_b)
-        from core.rule_suggestions import preview_suggestion_impact
-
         exclude_list = [k.strip() for k in str(report.args.exclude or "").split(",") if k.strip()]
         prev_c = preview_suggestion_impact(
             uncategorized_events,

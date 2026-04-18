@@ -2,15 +2,8 @@
 
 ## Unreleased
 
-- CLI / UX: stronger **berry accents** and **`dim`** meta text (`outputs/terminal_theme.py`, `outputs/terminal.py`); command **heroes** use bold **`CLR_BERRY`** with dim taglines; **OK_ICON** / warn icons use **bold** marks; doctor PATH row uses **`OK_ICON`** like other rows; table headers aligned to **`#e879f9`**. Site: slightly higher-contrast **`--muted` / `--dim`**, **`--berry-bright`** matches accent.
-- Brand: **vibrant berry palette** — **`gittan.html`** CSS variables and **`outputs/terminal_theme.py`** Rich tokens bumped for a clearer family resemblance to Blueberry Maybe / [blueberry.ax](https://blueberry.ax) without matching exactly; **void / terminal background** stays **`#0a0714`** everywhere. Docs: **`docs/brand/identity.md`** (palette rules + future “humle” PR micro-copy intent), **`docs/product/terminal-style-guide.md`**.
-- Brand: core metaphor is now **a bumblebee pollinating berries** (see **`docs/brand/identity.md`**); ASCII banner constant renamed to **`GITTAN_BUMBLEBEE_BERRIES`** in **`outputs/gittan_banner.py`**.
-- CLI: **`outputs/cli_heroes.py`** command heroes now use the same **bumblebee + berries** panel art as the main banner (75-char width), replacing the old rabbit ASCII.
-- Repo hygiene: restored **`.github/FUNDING.yml`** in version control (public funding metadata is not sensitive; optional drafts may still live under gitignored **`private/`** only if you choose not to commit them).
-- Funding: set **Buy Me a Coffee** username in **`.github/FUNDING.yml`** (`mbjorke`) so GitHub shows [the public support page](https://buymeacoffee.com/mbjorke).
-- Setup UX: added `gittan setup --one-click` for a no-prompt onboarding path that applies recommended defaults (same automation path as `--yes`, but clearer for first-time users).
-- **Setup UX (behavior change):** `gittan setup` now defaults to one-click no-prompt behavior; use `gittan setup --interactive` when you explicitly want prompts. Scripts expecting interactive prompts must pass `--interactive` explicitly.
-- Refactor: split global timelog hook setup out of `core/global_timelog_setup_lib.py` into `core/global_timelog_machine_setup.py` to satisfy the 500-line policy for tracked Python files.
+- Docs: Screen Time gap runbook ([`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md)); working notes ([`docs/product/future-notes-2026-04.md`](docs/product/future-notes-2026-04.md)) — AI help scope, calibration staging, Jira-style timestamp / analytics ideas, integration-layer licensing notes; [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md) and [`docs/product/vision-documents.md`](docs/product/vision-documents.md) updated; README documentation map extended.
+- CLI / UX: Realign [`outputs/terminal_theme.py`](outputs/terminal_theme.py), [`outputs/terminal.py`](outputs/terminal.py), [`outputs/cli_heroes.py`](outputs/cli_heroes.py) with [`docs/product/terminal-style-guide.md`](docs/product/terminal-style-guide.md) — calm lavender hierarchy and shared tokens; table `header_style` and doctor status line use [`STYLE_LABEL`](outputs/terminal_theme.py) instead of hardcoded accent hex; command heroes use `STYLE_LABEL` + `STYLE_MUTED` tagline.
 
 ## 0.2.10 - 2026-04-16
 

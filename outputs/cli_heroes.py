@@ -1,13 +1,16 @@
 """Small themed ASCII heroes for key CLI commands.
 
 Art matches the bumblebee + berries metaphor in ``outputs/gittan_banner.py`` (75-char panels).
+Styling follows ``docs/product/terminal-style-guide.md``: one calm frame + ``STYLE_LABEL``,
+tagline in ``STYLE_MUTED`` — no extra accent colors here.
 """
 
 from __future__ import annotations
 
 from rich.console import Console
 from rich.text import Text
-from outputs.terminal_theme import CLR_BERRY, STYLE_DIM
+
+from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
 
 
 _HEROES: dict[str, tuple[list[str], str]] = {
@@ -72,8 +75,8 @@ _HEROES: dict[str, tuple[list[str], str]] = {
 def print_command_hero(console: Console, command: str) -> None:
     """Print a command-specific ASCII hero and one-line tagline."""
     lines, tagline = _HEROES.get(command, _HEROES["status"])
-    console.print(Text("\n".join(lines), style=f"bold {CLR_BERRY}"))
-    console.print(Text(tagline, style=STYLE_DIM))
+    console.print(Text("\n".join(lines), style=f"bold {STYLE_LABEL}"))
+    console.print(f"[{STYLE_MUTED}]{tagline}[/{STYLE_MUTED}]")
 
 
 def hero_commands() -> list[str]:

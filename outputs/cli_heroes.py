@@ -1,4 +1,7 @@
-"""Small themed ASCII heroes for key CLI commands."""
+"""Small themed ASCII heroes for key CLI commands.
+
+Art matches the bumblebee + berries metaphor in ``outputs/gittan_banner.py`` (75-char panels).
+"""
 
 from __future__ import annotations
 
@@ -11,10 +14,10 @@ _HEROES: dict[str, tuple[list[str], str]] = {
     "status": (
         [
             "+-------------------------------------------------------------------------+",
-            "|  /\\_/\\   Gittan Status                                                  |",
-            "| ( o.o )  Choose timeframe to get started.                               |",
-            "|  > ^ <   Tip: run `gittan status --today` for a fast check.             |",
-            "|          AI-assisted estimates: always verify before reporting/invoicing.|",
+            "|    __      Gittan Status                                                |",
+            "|   /oo\\     Choose timeframe to get started.                             |",
+            "|   \\__/     Tip: run `gittan status --today` for a fast check.           |",
+            "|  o    o    Estimates: verify before reporting or invoicing.             |",
             "+-------------------------------------------------------------------------+",
         ],
         "Local timeline -> review-ready.",
@@ -22,10 +25,10 @@ _HEROES: dict[str, tuple[list[str], str]] = {
     "doctor": (
         [
             "+-------------------------------------------------------------------------+",
-            "|  /\\_/\\   Gittan Doctor                                                  |",
-            "| ( O.O )  Quick health scan: sources, permissions, and config.           |",
-            "|  > ^ <   Doctor tip: fix one warning at a time, then rerun doctor.      |",
-            "|          Safety: doctor is read-only and will not modify project files. |",
+            "|    __      Gittan Doctor                                                |",
+            "|   /oo\\     Quick scan: sources, permissions, and config.                |",
+            "|   \\__/     Fix one warning at a time, then rerun doctor.                |",
+            "|  o    o    Read-only: does not modify project files.                    |",
             "+-------------------------------------------------------------------------+",
         ],
         "Diagnose first, then optimize.",
@@ -33,10 +36,10 @@ _HEROES: dict[str, tuple[list[str], str]] = {
     "setup": (
         [
             "+-------------------------------------------------------------------------+",
-            "|  /\\_/\\   Gittan Setup                                                   |",
-            "| ( ^-^ )  Welcome! Guided onboarding for local-first timelog reporting.  |",
-            "|  > u <   Setup tip: dry-run first when changing machine-wide settings.  |",
-            "|          You approve prompts before any write operations run.           |",
+            "|    __      Gittan Setup                                                 |",
+            "|   /oo\\     Welcome: guided onboarding for local-first reporting.        |",
+            "|   \\__/     Tip: `--dry-run` before machine-wide settings.               |",
+            "|  o    o    You approve prompts before any write operations.             |",
             "+-------------------------------------------------------------------------+",
         ],
         "Calm setup, clear next steps.",
@@ -44,10 +47,10 @@ _HEROES: dict[str, tuple[list[str], str]] = {
     "setup-global-timelog": (
         [
             "+-------------------------------------------------------------------------+",
-            "|  /\\_/\\   Gittan Global Timelog                                          |",
-            "| ( o.o )  Configure machine-wide commit -> TIMELOG automation.           |",
-            "|  > ^ <   Tip: use --dry-run to preview hook and git config actions.     |",
-            "|          Designed to be safe, explicit, and reversible.                 |",
+            "|    __      Gittan Global Timelog                                        |",
+            "|   /oo\\     Machine-wide commit -> TIMELOG.md automation.                |",
+            "|   \\__/     Tip: `--dry-run` previews hooks and git config.              |",
+            "|  o    o    Designed to be explicit, safe, and reversible.               |",
             "+-------------------------------------------------------------------------+",
         ],
         "Global automation with local control.",
@@ -55,10 +58,10 @@ _HEROES: dict[str, tuple[list[str], str]] = {
     "report": (
         [
             "+-------------------------------------------------------------------------+",
-            "|  /\\_/\\   Gittan Report                                                  |",
-            "| ( o.o )  Scanning local activity signals for timeline and sessions.     |",
-            "|  > ^ <   Report tip: start with `--today --source-summary`.             |",
-            "|          Output is estimate-oriented: review before sharing or invoicing.|",
+            "|    __      Gittan Report                                                |",
+            "|   /oo\\     Scanning local signals for timelines and sessions.           |",
+            "|   \\__/     Tip: start with `--today --source-summary`.                  |",
+            "|  o    o    Estimate-oriented: review before sharing or invoicing.       |",
             "+-------------------------------------------------------------------------+",
         ],
         "Collect, classify, summarize.",
@@ -76,4 +79,3 @@ def print_command_hero(console: Console, command: str) -> None:
 def hero_commands() -> list[str]:
     """Return stable command keys with dedicated hero variants."""
     return list(_HEROES.keys())
-

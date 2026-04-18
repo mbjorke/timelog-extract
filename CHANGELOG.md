@@ -4,6 +4,7 @@
 
 - Brand: **vibrant berry palette** — **`gittan.html`** CSS variables and **`outputs/terminal_theme.py`** Rich tokens bumped for a clearer family resemblance to Blueberry Maybe / [blueberry.ax](https://blueberry.ax) without matching exactly; **void / terminal background** stays **`#0a0714`** everywhere. Docs: **`docs/brand/identity.md`** (palette rules + future “humle” PR micro-copy intent), **`docs/product/terminal-style-guide.md`**.
 - Brand: core metaphor is now **a bumblebee pollinating berries** (see **`docs/brand/identity.md`**); ASCII banner constant renamed to **`GITTAN_BUMBLEBEE_BERRIES`** in **`outputs/gittan_banner.py`**.
+- CLI: **`outputs/cli_heroes.py`** command heroes now use the same **bumblebee + berries** panel art as the main banner (75-char width), replacing the old rabbit ASCII.
 - Repo hygiene: restored **`.github/FUNDING.yml`** in version control (public funding metadata is not sensitive; optional drafts may still live under gitignored **`private/`** only if you choose not to commit them).
 - Funding: set **Buy Me a Coffee** username in **`.github/FUNDING.yml`** (`mbjorke`) so GitHub shows [the public support page](https://buymeacoffee.com/mbjorke).
 - Setup UX: added `gittan setup --one-click` for a no-prompt onboarding path that applies recommended defaults (same automation path as `--yes`, but clearer for first-time users).

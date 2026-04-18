@@ -59,6 +59,12 @@
 - Site: `**gittan.html`** quick start aligned with `**README.md**` (PyPI `pip install`, pipx / editable fallback, `setup --dry-run`, first report `--source-summary`); removed misleading “under 60 seconds” vs 2-minute wizard contradiction. Tests: `**test_quick_start_cli_commands_finish_within_60_seconds_each**` (`tests/test_cli_regression_smoke.py`) — after install, `-V`, `setup --dry-run`, and `doctor` each complete within **60s** (pip install timed separately via CI **package** job).
 - Removed **Phase 0 friend trial** scaffolding: `**scripts/friend_trial.py`**, `**friend_trial/FEEDBACK_TEMPLATE.md**`, and the `**timelog-friend-trial**` console script entry (`pyproject.toml`). README / `**docs/product/terminal-i18n.md**` updated.
 
+## 0.2.5 - 2026-04-14
+
+- Historical release backfill: this line tracks the tagged `v0.2.5` release point between `v0.2.3` and the later onboarding/setup series.
+- Release prep: finalized `0.2.5rc1` onboarding guidance and related docs polish before the `0.2.6` onboarding improvements.
+- PyPI/onboarding continuity: carried forward the `0.2.4` metadata and PATH guidance improvements that made installation and first-run doctor/setup flows more predictable.
+
 ## 0.2.4 - 2026-04-13
 
 - **PyPI project page:** README hero image now uses a stable `**raw.githubusercontent.com`** URL so the logo renders on [the PyPI description](https://pypi.org/project/timelog-extract/) (relative paths do not work there). Added `**[project.urls]**` — `Homepage` (**gittan.sh**), `Repository`, `Issues`.

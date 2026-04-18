@@ -9,7 +9,7 @@ Treat **push-ready** as **tests-green + consciously reviewed**, not “code save
 
 **Before `git push` to `origin`** (especially after touching many files or a long session):
 
-1. Run **`./scripts/run_autotests.sh`** on the commits you are about to push. It matches CI (line-length + unit tests). Do not push if it fails.
+1. Run **`bash scripts/run_autotests.sh`** from **repository root** on the commits you are about to push (same as [`CONTRIBUTING.md`](../../CONTRIBUTING.md) and CI). Do not push if it fails.
 2. **Optional but recommended** for meaningful batches: **`coderabbit review --base main --type committed`** (local CLI; see `AGENTS.md` → CodeRabbit CLI). Uncommitted-only work: `--type uncommitted`.
 3. If you skipped either step, say **why** in the thread or PR (rare exceptions only).
 

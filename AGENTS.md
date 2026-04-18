@@ -12,7 +12,7 @@ Use this compact execution order before deep exploration:
    - implement minimal change
    - run targeted test(s)
    - after **CLI-facing** edits, also run `bash scripts/cli_impact_smoke.sh` (see `docs/decisions/agent-inline-cli-ux-validation.md`)
-   - then `./scripts/run_autotests.sh`
+   - then `bash scripts/run_autotests.sh` (repo root; same as CI)
 4. Prefer non-destructive config handling:
    - never move/delete `timelog_projects.json`
    - use explicit alternate paths (`--projects-config`) for experiments
@@ -20,7 +20,7 @@ Use this compact execution order before deep exploration:
    - feature code
    - docs/reorg
    - follow-up cleanup
-6. **Before `git push` to `origin`:** run **`./scripts/run_autotests.sh`** on what you are pushing (same gate as CI). For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
+6. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): **`bash scripts/run_autotests.sh`** from **repository root** — see [`CONTRIBUTING.md`](CONTRIBUTING.md). (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
 
 If this section conflicts with any policy below, the detailed policy below wins.
 

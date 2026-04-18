@@ -9,12 +9,13 @@ from __future__ import annotations
 
 # Compact framed hero to mirror modern CLI onboarding style.
 # ASCII letters/symbols only (see tests/test_i18n_only_english.py).
-GITTAN_FEEDING_RABBIT = r"""
+# Metaphor: bumblebee pollinating berries (see docs/brand/identity.md).
+GITTAN_BUMBLEBEE_BERRIES = r"""
 +-------------------------------------------------------------------------+
-|  /\_/\   Gittan CLI                                                     |
-| ( o.o )  Choose timeframe to get started.                               |
-|  > ^ <   Tip: run `gittan status --today` for a fast check.             |
-|          AI-assisted estimates: always verify before reporting/invoicing.|
+|    __      Gittan CLI                                                   |
+|   /oo\     Choose timeframe to get started.                             |
+|   \__/     Tip: run `gittan status --today` for a fast check.           |
+|  o    o    Verify AI-assisted estimates before reporting/invoicing.     |
 +-------------------------------------------------------------------------+
 """.strip(
     "\n"
@@ -25,7 +26,7 @@ TAGLINE = "Local timeline -> review-ready."
 
 def banner_panel_lines() -> list[str]:
     """Lines for Rich Panel / Text (no trailing empty noise)."""
-    lines = [ln.rstrip() for ln in GITTAN_FEEDING_RABBIT.splitlines()]
+    lines = [ln.rstrip() for ln in GITTAN_BUMBLEBEE_BERRIES.splitlines()]
     while lines and not lines[-1].strip():
         lines.pop()
     return lines

@@ -55,8 +55,8 @@ class JiraSyncTests(unittest.TestCase):
             "core.jira_sync.load_current_branch_issue_key"
         ) as load_branch:
             load_commits.return_value = [
-                SimpleNamespace(authored_at=start, subject="ABC-101 kickoff"),
-                SimpleNamespace(authored_at=mid, subject="ABC-101 continue"),
+                SimpleNamespace(committed_at=start, subject="ABC-101 kickoff"),
+                SimpleNamespace(committed_at=mid, subject="ABC-101 continue"),
             ]
             load_branch.return_value = "ABC-999"
             candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))

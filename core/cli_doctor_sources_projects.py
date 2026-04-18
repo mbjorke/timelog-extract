@@ -18,8 +18,6 @@ import questionary
 import typer
 from typing import Annotated, Optional
 
-from rich import markup
-
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions, split_comma_separated_list
 from core.cli_prompts import prompt_for_timeframe
@@ -27,7 +25,7 @@ from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
-from collectors.toggl import toggl_source_enabled
+from core.doctor_source_rows import add_github_doctor_row, add_toggl_doctor_row
 from collectors.lovable_desktop import lovable_desktop_history_candidates
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
@@ -203,43 +201,8 @@ def doctor(
             style_muted=STYLE_MUTED,
         )
 
-        gh_user = (github_user or os.getenv("GITHUB_USER") or "").strip()
-        gh_token_present = bool((os.getenv("GITHUB_TOKEN") or "").strip())
-        if gh_mode == "off":
-            table.add_row(
-                "GitHub Source",
-                NA_ICON,
-                f"[{STYLE_MUTED}]Disabled ({gh_mode}); enable with --github-source on[/{STYLE_MUTED}]",
-            )
-        elif not gh_user:
-            table.add_row(
-                "GitHub Source",
-                NA_ICON,
-                f"[{STYLE_MUTED}]Not configured ({gh_mode}); set --github-user or GITHUB_USER[/{STYLE_MUTED}]",
-            )
-        else:
-            token_note = "token present" if gh_token_present else "no token (public API limits apply)"
-            table.add_row(
-                "GitHub Source",
-                OK_ICON,
-                f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
-            )
-        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source=toggl_source))
-        toggl_token_present = bool((os.getenv("TOGGL_API_TOKEN") or "").strip())
-        if toggl_enabled:
-            token_note = "token present" if toggl_token_present else "no token"
-            table.add_row(
-                "Toggl Source",
-                OK_ICON,
-                f"[{STYLE_MUTED}]Enabled ({toggl_source}) — {token_note}[/{STYLE_MUTED}]",
-            )
-        else:
-            escaped_reason = markup.escape(toggl_reason or "")
-            table.add_row(
-                "Toggl Source",
-                NA_ICON,
-                f"[{STYLE_MUTED}]Not configured ({toggl_source}); {escaped_reason}[/{STYLE_MUTED}]",
-            )
+        add_github_doctor_row(table, gh_mode, github_user)
+        add_toggl_doctor_row(table, toggl_source)
     console.print(table)
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "

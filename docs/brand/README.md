@@ -5,7 +5,7 @@
 
 | File                    | Role                                             |
 | ----------------------- | ------------------------------------------------ |
-| `gittan-brand-mark.png` | Wide master (rabbit + frame + pixel **GITTAN**). |
+| `gittan-brand-mark.png` | Wide master (mascot + terminal frame + pixel **GITTAN**; moving toward bumblebee + berries — see `identity.md`). |
 | `gittan-og-card.png`    | Landscape Open Graph card.                       |
 
 
@@ -26,7 +26,7 @@
 
 Optional: `BRAND_LOGO_PX=512` for a smaller `gittan-logo.png`; `BRAND_RESIZE_FILTER=lanczos` for smoother (less pixel-crisp) scaling.
 
-**Archive:** `[archive/](archive/)` — backup copies of rabbit-v2 masters.
+**Archive:** `[archive/](archive/)` — backup copies of older masters (e.g. rabbit-v2 era).
 
 **Drafts:** `[drafts/](drafts/)` — experiments before promoting over the canonical PNGs.
 

@@ -52,7 +52,7 @@ If wording conflicts, use this order:
 | `docs/ideas/opportunities.md`                          | **Product / GTM (ideas):** opportunities, risks, audience, differentiation—English; for business-style review.                                                                                                               |
 | `docs/ideas/simple-invoicing-model.md`                 | **Solo-first integration model (idea):** export-first/push-only workflow, optional Lovable delivery layer, draft-first writes, and rollback guardrails before any broad API surface.                                        |
 | `docs/brand/README.md`                                 | **Brand:** canonical marks, `drafts/` + `archive/`, generated `**gittan-logo.png`** + favicon/README/OG, `scripts/build_brand_assets.sh`.                                                                                    |
-| `docs/brand/identity.md`                               | **Brand intent:** rabbit + terminal frame, review-rabbit copy, palette; optional drafts workflow.                                                                                                                            |
+| `docs/brand/identity.md`                               | **Brand intent:** bumblebee pollinating berries + terminal frame, palette; optional drafts workflow.                                                                                                                            |
 | `docs/meta/private-local-notes.md`                          | **Process:** where to keep gitignored `private/` business notes vs public docs.                                                                                                                                              |
 
 

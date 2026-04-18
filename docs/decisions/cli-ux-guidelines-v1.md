@@ -38,7 +38,7 @@ For setup/doctor/status terminal tables:
 - avoid long paragraphs before first interaction,
 - prefer "what happens next" phrasing over internal implementation wording.
 
-## Mascot expression policy (cat/rabbit)
+## Mascot expression policy (bumblebee / berries)
 
 Use mascot expression to signal command mode with low cognitive cost:
 

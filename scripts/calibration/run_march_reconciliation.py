@@ -28,6 +28,14 @@ def _markdown(payload: dict) -> str:
 
 
 def main() -> int:
+    """
+    CLI entrypoint that runs the March reconciliation flow and emits JSON and Markdown scorecards.
+    
+    Parses command-line arguments for project configuration, ground-truth file, date range, and output paths; loads the ground-truth JSON; generates a timelog report and evaluates reconciliation against the ground truth; writes a formatted JSON payload and a Markdown summary to the specified output files and prints the output paths.
+    
+    Returns:
+        int: 0 on successful completion.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--projects-config", default="timelog_projects.json")
     parser.add_argument("--ground-truth", required=True)

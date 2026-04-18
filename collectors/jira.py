@@ -72,6 +72,24 @@ def post_jira_worklog(
     time_spent_seconds: int,
     comment: str,
 ) -> str:
+    """
+    Create a worklog on a Jira issue and return the created worklog's id.
+    
+    Parameters:
+        creds (JiraCredentials): Jira connection and authentication information.
+        issue_key (str): Issue key to attach the worklog to (will be URL-encoded).
+        started (datetime): Timestamp when the work was started; must include a timezone offset.
+        time_spent_seconds (int): Duration of the work in seconds.
+        comment (str): Plain-text comment to include in the worklog.
+    
+    Returns:
+        worklog_id (str): The id of the created worklog.
+    
+    Raises:
+        RuntimeError: If `started` lacks timezone offset.
+        RuntimeError: If the HTTP request fails (network error or non-2xx response).
+        RuntimeError: If Jira returns a non-JSON response or the response is missing the worklog id.
+    """
     if started.tzinfo is None or started.utcoffset() is None:
         raise RuntimeError("Jira worklog 'started' must include timezone offset")
     payload = {

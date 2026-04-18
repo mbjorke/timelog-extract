@@ -61,7 +61,20 @@ def setup_wizard(
         help="Root directory to scan for nearby git repositories during project bootstrap.",
     ),
 ):
-    """Run full onboarding: environment, timelog automation, config, doctor, and smoke test."""
+    """
+    Run the full onboarding wizard covering environment setup, timelog automation, configuration, health checks, and a final smoke test.
+    
+    Parameters:
+    	one_click (bool): Use recommended defaults and suppress interactive prompts.
+    	interactive (bool): Use interactive prompts instead of default automated choices.
+    	yes (bool): Alias to proceed with recommended steps without confirmation prompts.
+    	dry_run (bool): Show planned actions without modifying files or git configuration.
+    	skip_smoke (bool): Skip the final smoke report step.
+    	bootstrap_root (str | None): Root directory to scan for nearby git repositories during project bootstrap.
+    
+    Raises:
+    	typer.BadParameter: If both `interactive` and `one_click` are enabled simultaneously.
+    """
     from rich.console import Console
 
     if interactive and one_click:

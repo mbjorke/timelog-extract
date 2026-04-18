@@ -64,7 +64,15 @@ def doctor(
         ),
     ] = "auto",
 ):
-    """Check health and permissions of all local data sources."""
+    """
+    Run a health check of local integrations and permissions and print a diagnostic table.
+    
+    Parameters:
+        worklog (Optional[str]): Path to TIMELOG.md that overrides the configured/workspace worklog.
+        github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
+        github_user (Optional[str]): GitHub username to use when evaluating public event checks (visibility only).
+        toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).
+    """
     from rich.console import Console
     from rich.table import Table
     from rich import box

@@ -33,6 +33,11 @@ class TogglSourceTests(unittest.TestCase):
         self.assertIsNone(reason)
 
     def test_collector_registry_includes_toggl_status(self):
+        """
+        Verify that the collector registry includes a "Toggl" spec and that it is enabled when a TOGGL_API_TOKEN is present in the environment.
+        
+        Sets up arguments with Toggl source set to "auto", patches TOGGL_API_TOKEN to "token-123", builds collector specs with empty collectors, and asserts a spec named "Toggl" exists, that its `enabled` is True, and its `reason` is None.
+        """
         class Args:
             chrome_source = "on"
             mail_source = "auto"

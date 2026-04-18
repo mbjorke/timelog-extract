@@ -43,6 +43,14 @@ def _markdown_report(payload: dict) -> str:
 
 
 def main() -> int:
+    """
+    Run CLI experiment fixtures, write a JSON scorecard and a Markdown report, and return an exit code.
+    
+    Parses command-line arguments to locate fixture inputs and output paths, executes fixtures via `run_fixtures`, writes the resulting payload to the specified JSON and Markdown files, and prints the written file paths. When run with `--strict`, returns a non-zero exit code if the payload indicates strict mode failure.
+    
+    Returns:
+        int: Process exit code: `0` on success; `1` if `--strict` is set and the payload's `strict_pass` is false.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,

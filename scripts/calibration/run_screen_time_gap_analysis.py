@@ -18,6 +18,14 @@ from core.report_service import run_timelog_report
 
 
 def main() -> int:
+    """
+    CLI entrypoint that runs a timelog screen-time gap analysis for a specified date range and writes a JSON payload plus a minimal Markdown pointer file.
+    
+    If either `--date-from` or `--date-to` is omitted, the missing boundary defaults to the first or last day of the previous calendar month, respectively. Writes the full analysis JSON to the path given by `--out-json` and a short Markdown pointer to `--out-md`.
+    
+    Returns:
+        int: Exit code `0` on successful completion.
+    """
     parser = argparse.ArgumentParser(description="Analyze gaps between estimated hours and screen time.")
     parser.add_argument("--projects-config", default="timelog_projects.json")
     parser.add_argument("--date-from", help="Start date (YYYY-MM-DD, defaults to first day of last month)")

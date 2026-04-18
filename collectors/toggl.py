@@ -17,10 +17,15 @@ def resolve_toggl_api_token(args: Any) -> str:
 
 def toggl_source_enabled(args: Any) -> tuple[bool, Optional[str]]:
     """
-    Return (enabled, disable_reason) for Toggl API collection.
-
-    Defaults to auto mode so the source is enabled when credentials exist and
-    disabled with a clear reason otherwise.
+    Determine whether Toggl API collection should run and, if not, provide a disable reason.
+    
+    Checks the configured `toggl_source` mode (`auto`, `on`, or `off`) and whether an API token is available to decide enablement; returns a human-readable disable reason when disabled.
+    
+    Parameters:
+        args (Any): Object providing CLI/config values (expects `toggl_source` and may provide `toggl_api_token` or rely on TOGGL_API_TOKEN env).
+    
+    Returns:
+        tuple[bool, Optional[str]]: A pair where the first element is `True` when collection is enabled and `False` otherwise; the second element is a disable reason string when disabled, or `None` when enabled.
     """
     mode = str(getattr(args, "toggl_source", "auto") or "auto").strip().lower()
     if mode not in ("auto", "on", "off"):
@@ -39,10 +44,12 @@ def toggl_source_enabled(args: Any) -> tuple[bool, Optional[str]]:
 
 def collect_workspace_events(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
     """
-    Placeholder for Toggl API event collection.
-
-    The auto-detect toggle is wired now; collector logic can be expanded later.
-    TODO: Implement actual Toggl API collection logic.
+    Collect Toggl workspace events.
+    
+    Currently a placeholder that logs a warning and returns an empty list; actual Toggl API collection is not implemented.
+    
+    Returns:
+        list[dict[str, Any]]: A list of event dictionaries; currently always empty.
     """
     logging.warning("Toggl collector is a placeholder; collect_workspace_events returns no events")
     return []

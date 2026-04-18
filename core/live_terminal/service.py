@@ -32,6 +32,14 @@ class DemoSessionStore:
     ttl_seconds: int = SESSION_TTL_SECONDS
 
     def create(self) -> str:
+        """
+        Create a new demo session and return its URL-safe identifier.
+        
+        This method removes expired sessions and stores a new session timestamped with the current monotonic time. It is thread-safe (uses the instance lock) to prevent concurrent access to the session store.
+        
+        Returns:
+            str: The newly created session id (URL-safe string).
+        """
         with self._lock:
             self._purge_expired()
             sid = secrets.token_urlsafe(16)
@@ -39,11 +47,25 @@ class DemoSessionStore:
             return sid
 
     def valid(self, session_id: str) -> bool:
+        """
+        Check whether a session identifier corresponds to an active (not expired) session.
+        
+        Parameters:
+            session_id (str): Session identifier previously returned by create().
+        
+        Returns:
+            bool: `True` if the session exists and has not expired, `False` otherwise.
+        """
         with self._lock:
             self._purge_expired()
             return session_id in self._sessions
 
     def _purge_expired(self) -> None:
+        """
+        Remove expired sessions from the internal store.
+        
+        This method computes the age of each stored session using time.monotonic() and deletes any session whose age is greater than self.ttl_seconds, mutating self._sessions in-place.
+        """
         now = time.monotonic()
         dead = [sid for sid, s in self._sessions.items() if now - s.created > self.ttl_seconds]
         for sid in dead:

@@ -188,6 +188,19 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
 
 
 def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
+    """
+    Configure global git hooks and global gitignore to enable repository-level timelogging.
+    
+    Depending on user confirmation, this will set `core.hooksPath` and `core.excludesFile`, install or update a managed `post-commit` hook, write timelog filename and scope configuration, and ensure the configured timelog filename (and the default "TIMELOG.md") are present in the global gitignore. When `dry_run` is true no changes are written; when `yes` is true prompts are skipped and defaults/confirmations are accepted.
+    
+    Parameters:
+        console: Rich console-like object used for printing status and prompting the user.
+        yes (bool): When true, skip interactive confirmations and accept default actions.
+        dry_run (bool): When true, show the actions that would be taken without modifying files or git config.
+    
+    Raises:
+        typer.Exit: Raised with code 0 if the user cancels; raised with a non-zero code on git or filesystem errors.
+    """
     from rich.table import Table
     from rich import box
 
@@ -282,6 +295,22 @@ def _ensure_minimal_projects_config(
     dry_run: bool,
     bootstrap_root: str | None = None,
 ) -> tuple[str, str, list[str]]:
+    """
+    Ensure a minimal timelog projects configuration is present in the current working directory.
+    
+    This may create or validate a `timelog_projects.json` file and produce actionable notes and follow-up steps. Behavior is affected by `yes` (non-interactive confirmation), `dry_run` (preview without writing), and an optional `bootstrap_root` to seed configuration.
+    
+    Parameters:
+        console: Console-like object used for prompts and informational output.
+        yes (bool): If True, proceed without interactive confirmation.
+        dry_run (bool): If True, show what would change but do not write files.
+        bootstrap_root (str | None): Optional path used to bootstrap project discovery; when None no special bootstrap root is used.
+    
+    Returns:
+        status (str): High-level result status such as `"PASS"`, `"ACTION_REQUIRED"`, or similar.
+        notes (str): Human-readable notes or summary about actions taken or required.
+        next_steps (list[str]): Ordered list of follow-up steps the user should perform.
+    """
     result = ensure_projects_config(
         console=console,
         yes=yes,

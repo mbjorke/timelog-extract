@@ -1,10 +1,10 @@
 # Decision: Protect `dev` and keep release gate on `main`
 
-Status: Accepted (historical); **workflow superseded 2026-04-19** — see [`BRANCH.md`](../../BRANCH.md)  
+Status: Accepted (historical); **workflow superseded (April 2026)** — see [`BRANCH.md`](../../BRANCH.md)  
 Date: 2026-04-15  
 Owner: Maintainer + active agent
 
-## Status update (2026-04-19)
+## Status update (April 2026)
 
 Upstream **no longer uses a standing `dev` branch** on GitHub: default integration path is **`task/* -> main`**. The **protected `main` + PR-only** rule remains. The body below records the earlier two-branch intent; for current settings, use **`docs/runbooks/ci.md`** and **`BRANCH.md`**.
 

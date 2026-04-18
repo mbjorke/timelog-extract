@@ -34,7 +34,7 @@ gittan -V
 <details>
 <summary><b>Other install paths</b></summary>
 
-**`pip install --user`** — scripts often land outside PATH on macOS (`~/Library/Python/…/bin`). Add that directory to PATH, or run **`gittan doctor`** after install for hints.
+**`pip install --user`** — scripts may land outside your default PATH. Add the user-level `bin` directory for that Python install (OS-specific; `python3 -m site --user-base` helps locate it), or run **`gittan doctor`** after install for hints.
 
 ```bash
 python3 -m pip install --user timelog-extract
@@ -70,7 +70,7 @@ Run these from a git checkout where you want a worklog (or any folder once you k
 2. **`gittan setup`** — optional hooks and `timelog_projects.json` (use `--dry-run` or `--interactive` if you prefer).
 3. **`gittan report --today --source-summary`** — first real report.
 
-Default worklog is **`TIMELOG.md`** in the **current directory** unless you pass `--worklog` or configure otherwise.
+Default worklog is **`TIMELOG.md`** in the **working directory** where you run the command (for everyday project use, that is usually the **repository root**). Same rule as [`AGENTS.md`](AGENTS.md) / [`CONTRIBUTING.md`](CONTRIBUTING.md): override with `--worklog` or config when needed.
 
 ---
 

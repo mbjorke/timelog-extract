@@ -47,4 +47,5 @@ If we later add a **repo-level** `SKILL.md`, it should be a **thin** pointer to 
 
 Product bets and GTM thinking stay in **`docs/ideas/`** (e.g. `opportunities.md`).  
 **Ad-hoc links, patterns, and “we saw this elsewhere”** (including external products like SlayZone) belong in **`docs/inspiration/`** — see [`../inspiration/README.md`](../inspiration/README.md).  
+For **phrasing work to agents** (constraints, acceptance, examples from other codebases, links to provider docs), see [`../inspiration/effective-commands-for-agents.md`](../inspiration/effective-commands-for-agents.md).  
 Formal direction still moves to **`docs/decisions/`** or **`docs/specs/`** when we commit to it.

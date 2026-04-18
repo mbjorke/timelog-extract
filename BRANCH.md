@@ -53,6 +53,10 @@ Use a two-level flow:
 - Keep `release/X.Y.Z` only for explicit release isolation.
 - Documentation/process artifacts still using `rc-` should be renamed gradually to `task-` equivalents as they are touched.
 
+## When `dev` has diverged from `main`
+
+If `dev` and `main` have **long split histories** (both sides with many unique commits), do **not** “wing it” in the merge UI. Follow **`docs/runbooks/dev-main-alignment.md`**, use **`docs/task-prompts/dev-main-alignment-handoff.md`** to hand off to another agent (e.g. cloud) with a filled-in diagnosis block, and prefer aligning **`dev` to the canonical `main` tree** after a maintainer says **no** unique product work must be salvaged from `dev`.
+
 ## Agents
 
 - **Never push directly to `main`**.

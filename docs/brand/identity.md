@@ -1,5 +1,7 @@
 # Gittan visual identity (living notes)
 
+**Values and culture (team + product):** [`values.md`](values.md).
+
 Evolves with the product. **ASCII spirit:** `outputs/gittan_banner.py` (`GITTAN_BUMBLEBEE_BERRIES`, `TAGLINE`).
 
 ## Core metaphor

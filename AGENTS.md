@@ -32,6 +32,17 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - For GitHub follow-ups (PR comments, resolving review threads, listing checks), **use `gh` or the API in the agent session** rather than giving the maintainer a sequence of commands to paste manually.
 - When documentation must list commands, keep them **short and canonical** (one script or one doc section); avoid duplicating the same shell in both docs and chat.
 
+## Maintainer TIL (learnings from the human)
+
+*Cross-reference: **TIL** = *Today I learned*; short glossary in `docs/ideas/team-lexicon.md`.*
+
+- **Prefer, each working day,** to add at least one **TIL** when the maintainer **teaches** something: a correction, a preference, phrasing that works better with agents, product nuance, or “how we do it in this repo.”
+- **Where to write it:** `docs/ideas/til/YYYY-MM.md` — one Markdown file per calendar month (create the new month’s file when the first TIL of that month lands). Under a `## YYYY-MM-DD` heading for that day, add a **bulleted** line or two. Keep it **short and durable** — the next human or agent should get the point without the full chat transcript.
+- **What to include:** what was learned, and (if it helps) *what to do next time* — not raw chat logs.
+- **Same-day is ideal**; if a session runs past midnight, put the TIL on the day the learning happened, or the day you document it, and be consistent in that file.
+- **Commit** with normal doc/PR work, or a small `docs: til …` style commit if the learning should land before a larger feature.
+- If nothing worth recording happened that day, do **not** pad the file; this is a **useful** log, not a daily quota in an empty form.
+
 ## Standard Timelog Policy
 
 - Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).

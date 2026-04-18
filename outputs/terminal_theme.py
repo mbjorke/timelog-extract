@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-# Report palette
-CLR_BERRY = "#9f7aff"
-CLR_BERRY_BRIGHT = "#b79bff"
-CLR_MUTED = "#aaa0c8"
-CLR_DIM = "#847d9f"
-CLR_TEXT_SOFT = "#d8d0ee"
-CLR_GREEN = "#47cfa8"
-CLR_SOURCE_BLUE = "#67a8ff"
-CLR_VALUE_ORANGE = "#e7ad5a"
+# Report palette — vibrant berry family, aligned with gittan.html :root (cousin to Blueberry Maybe / blueberry.ax).
+# Void/background for “terminal” is #0a0714 on the site; CLI inherits these accents on the user’s terminal theme.
+CLR_BERRY = "#d946ef"
+CLR_BERRY_BRIGHT = "#f0abfc"
+CLR_MUTED = "#c4b5fd"
+CLR_DIM = "#a78bfa"
+CLR_TEXT_SOFT = "#faf5ff"
+CLR_GREEN = "#4ade80"
+CLR_SOURCE_BLUE = "#60a5fa"
+CLR_VALUE_ORANGE = "#fbbf24"
 
 # Doctor/status semantic tokens
-STYLE_LABEL = "#cfc8e8"
-STYLE_MUTED = "#8f86ad"
-STYLE_BORDER = "#4a4660"
-OK_ICON = "[#47cfa8]✓[/#47cfa8]"
-WARN_ICON = "[#d6b06a]![/#d6b06a]"
+STYLE_LABEL = "#e9d5ff"
+STYLE_MUTED = "#a78bfa"
+STYLE_BORDER = "#6d28d9"
+OK_ICON = f"[{CLR_GREEN}]✓[/{CLR_GREEN}]"
+WARN_ICON = "[#f5a623]![/#f5a623]"
 # Standardized icon set uses ! for failures/warnings.
 FAIL_ICON = "[#e26d85]![/#e26d85]"
 NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"

@@ -24,6 +24,8 @@ private/
 
 # Generated reports/artifacts
 output/
+# CLI default report dir (`gittan report --json-file out/...`, reconciliation scripts, CI uploads under out/cli-experiments/)
+out/
 
 # Extension dependencies
 cursor-extension/node_modules/

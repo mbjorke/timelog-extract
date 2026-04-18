@@ -8,6 +8,7 @@ from typing import Any
 
 from core.calibration.experiments import variant_c_rules
 from core.cli_ab_rule_suggestions import gather_ab_suggestions
+from core.rule_suggestions import preview_suggestion_impact
 
 UNCATEGORIZED = "Uncategorized"
 
@@ -52,6 +53,18 @@ def _group_rows_for_variant(
     variant_rows: list[ReconciliationResult],
     invoice_groups: dict[str, dict[str, Any]],
 ) -> list[GroupReconciliationResult]:
+    """
+    Builds group-level reconciliation rows by aggregating predicted hours of member projects defined in invoice_groups.
+    
+    Parameters:
+    	variant_rows (list[ReconciliationResult]): Per-project reconciliation results to draw predicted hours from.
+    	invoice_groups (dict[str, dict]): Mapping from group name to group config. Each config may contain:
+    		- "projects": iterable of project names (strings) that belong to the group
+    		- "actual_hours": numeric actual hours for the group (defaults to 0.0 if missing)
+    
+    Returns:
+    	list[GroupReconciliationResult]: One result per invoice group that has at least one valid project, where each result contains the group's name, actual hours, summed predicted hours from member projects present in variant_rows, absolute error, and the tuple of member project names.
+    """
     by_project = {row.project: row for row in variant_rows}
     out: list[GroupReconciliationResult] = []
     for group_name, config in sorted(invoice_groups.items()):
@@ -59,7 +72,7 @@ def _group_rows_for_variant(
         if not projects:
             continue
         actual = float(config.get("actual_hours", 0.0))
-        predicted = sum(float(by_project.get(name).predicted_hours) for name in projects if name in by_project)
+        predicted = sum(by_project.get(name).predicted_hours for name in projects if name in by_project)
         out.append(
             GroupReconciliationResult(
                 group=group_name,
@@ -77,7 +90,27 @@ def evaluate_reconciliation(
     ground_truth_hours: dict[str, float],
     invoice_groups: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Compare baseline + A/B/C projections against invoiced ground truth."""
+    """
+    Compare baseline and A/B/C variant time allocations against invoiced ground-truth hours and pick the best-performing variant.
+    
+    Produces per-project reconciliation rows for each variant, per-variant summary metrics (mean absolute error, totals), optional invoice-grouped reconciliation and summaries, and selects a winner by MAE at project and (if provided) group levels.
+    
+    Parameters:
+        report: Analyzer report object containing included events, project reports, profiles, and args used to generate suggestions.
+        ground_truth_hours (dict[str, float]): Mapping of project name to invoiced (ground-truth) hours.
+        invoice_groups (dict[str, dict[str, Any]] | None): Optional invoice group configuration mapping group name to group config (e.g., {"projects": [...], "hours": ...}). If provided, grouped reconciliation and grouped MAE are computed.
+    
+    Returns:
+        dict[str, Any]: Structured reconciliation results with keys:
+            - "winner": variant key with lowest project-level MAE.
+            - "winner_grouped": variant key with lowest grouped MAE (or same as "winner" if no groups).
+            - "primary_metric_mode": "grouped" if grouped summaries were computed, otherwise "project".
+            - "primary_winner": chosen winner according to the primary metric mode.
+            - "summaries": per-variant project-level metrics (mae, total_predicted, total_actual, total_delta).
+            - "group_summaries": per-variant grouped metrics (empty if no invoice_groups).
+            - "rows": per-variant list of per-project reconciliation row dicts.
+            - "group_rows": per-variant list of per-group reconciliation row dicts (empty if no invoice_groups).
+    """
     uncategorized_events = [e for e in report.included_events if e.get("project") == UNCATEGORIZED]
     baseline_hours_map = {
         str(name): round(sum(float(day.get("hours", 0.0)) for day in days.values()), 6)
@@ -112,8 +145,6 @@ def evaluate_reconciliation(
 
         _opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, project_name)
         opt_c = variant_c_rules(opt_b)
-        from core.rule_suggestions import preview_suggestion_impact
-
         exclude_list = [k.strip() for k in str(report.args.exclude or "").split(",") if k.strip()]
         prev_c = preview_suggestion_impact(
             uncategorized_events,

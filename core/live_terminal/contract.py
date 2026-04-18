@@ -9,6 +9,13 @@ from __future__ import annotations
 import re
 from typing import Final, Tuple
 
+__all__ = [
+    "DEMO_SANDBOX_DENIED_MESSAGE",
+    "normalize_demo_command_line",
+    "is_allowlisted_demo_command",
+    "validate_demo_command",
+]
+
 DEMO_SANDBOX_DENIED_MESSAGE: Final[str] = "Command not allowed in demo sandbox. Try: help"
 
 _ALLOWED_NORMALIZED: Final[frozenset[str]] = frozenset(

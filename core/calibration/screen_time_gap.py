@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -36,7 +37,31 @@ def _project_hours_by_day(report) -> dict[str, dict[str, float]]:
 
 
 def analyze_screen_time_gaps(report) -> dict[str, Any]:
-    """Analyze day-level and project-allocated gaps vs screen time."""
+    """
+    Compute per-day gaps between estimated hours and measured screen time, and distribute each day's signed gap to projects proportionally.
+    
+    Parameters:
+        report: An object providing:
+            - screen_time_days: mapping of day -> screen-seconds (may be None),
+            - overall_days: mapping of day -> payload containing an "hours" value,
+            - project_reports: mapping of project -> day -> payload with an "hours" value.
+            These fields are used to align days and compute per-day and per-project allocations.
+    
+    Returns:
+        dict[str, Any]: A dictionary with:
+            - "days": list of per-day dictionaries (from DayGap.as_dict()) containing
+              the day and numeric fields rounded to 4 decimals.
+            - "totals": dictionary with aggregated totals rounded to 4 decimals:
+                - "estimated_hours": sum of estimated hours,
+                - "screen_time_hours": sum of screen time hours,
+                - "coverage_ratio": total_estimated / total_screen when total_screen > 0,
+                  otherwise 1.0 if total_estimated == 0 else 0.0,
+                - "unexplained_screen_time_hours": sum of unexplained hours,
+                - "over_attributed_hours": sum of over-attributed hours.
+            - "project_allocated_gap_hours": mapping of project name -> signed gap in hours
+              (positive means estimated > screen), values rounded to 4 decimals; entries
+              are ordered by descending absolute gap then by project name (case-insensitive).
+    """
     screen_time_days = report.screen_time_days or {}
     all_days = sorted(set(report.overall_days.keys()) | set(screen_time_days.keys()))
     rows: list[DayGap] = []
@@ -50,7 +75,7 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
         if screen_hours > 0:
             coverage = estimated_hours / screen_hours
         else:
-            coverage = 1.0 if estimated_hours == 0 else 999.0
+            coverage = 1.0 if estimated_hours == 0 else math.inf
         unexplained = max(screen_hours - estimated_hours, 0.0)
         over = max(estimated_hours - screen_hours, 0.0)
         rows.append(

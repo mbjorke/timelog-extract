@@ -56,10 +56,10 @@ If this section conflicts with any policy below, the detailed policy below wins.
 
 ## Local data safety (destructive commands)
 
-- **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on `**timelog_projects.json`**, `**TIMELOG.md`**, dated backups, or anything under `**private/**`.
+- **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on **`timelog_projects.json`**, **`TIMELOG.md`**, dated backups, or anything under **`private/`**.
 - Before renaming, moving aside, or deleting files that are the **only copy** of configuration or work history, **confirm with the user** or use a **non-destructive** pattern first (e.g. `cp` to a timestamped path outside the repo, or document exact restore steps).
 - Scenario testing and “quick cleanup” are common ways to lose data; treat `**timelog_projects.json`** as **critical** even though it is gitignored.
-- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `**docs/incidents/2026-04-13-project-config-backup-gap.md`**.
+- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): **`docs/incidents/2026-04-13-project-config-backup-gap.md`**.
 
 ## Branch policy (`main` + `dev`)
 
@@ -94,7 +94,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 1. **Decides** the target version (e.g. patch vs minor) and what must be in scope.
 2. On **GitHub**: open or refresh the **pull request** from `release/X.Y.Z` (or the agreed branch) into `main`, wait for **CI** to pass, then **merge** the PR (squash or merge commit per repo habit).
-3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in `**docs/runbooks/versioning.md`**.
+3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in **`docs/runbooks/versioning.md`**.
 4. **Optional:** smoke-test `pip install timelog-extract` after upload.
 
 **Plain terms:** **PR** = request to merge a branch into `main`; **merge** = accept that request on GitHub; **tag** = release label on a commit (often triggers publish); **conflicts** = overlapping edits — resolved **in the branch** by the agent, then pushed, so the PR becomes mergeable again.
@@ -111,7 +111,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 - Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.
 - Prefer sibling worktrees next to the main clone via `./scripts/git_worktree.sh add <branch> [dir-name]` from the primary repo; open the printed path in a separate Cursor window for that branch only.
-- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh `**release/X.Y.Z`** branch from updated `main`.
+- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh **`release/X.Y.Z`** branch from updated `main`.
 - Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
 
 ## GitHub Pages (landing site)
@@ -148,7 +148,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - Push work in meaningful batches, not for every micro-change.
 - Keep CodeRabbit auto-review enabled; throttle manual review commands to at most
   one trigger per stable batch.
-- Trigger `**@coderabbitai full review`** when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use `**@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
+- Trigger **`@coderabbitai full review`** when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use **`@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
 - Trigger that review only when:
   - the current scope is complete enough for review,
   - CI is green (or expected to be green after the latest push),

@@ -66,4 +66,4 @@ This document is a narrative companion to:
 
 See `docs/product/vision-documents.md` for the full hierarchy.
 
-If there is wording conflict, product behavior and guardrails in `GITTAN_VISION.md`, `GITTAN_NORTHSTAR_METRICS.md`, and `V1_SCOPE.md` take precedence over this file and over root `VISION.md`.
+If there is wording conflict, product behavior and guardrails in `docs/product/gittan-vision.md`, `docs/product/gittan-northstar-metrics.md`, and `docs/product/v1-scope.md` take precedence over this file and over root `VISION.md`.

@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from rich.console import Console
 
-from core import global_timelog_setup_lib as setup_lib
+from core import global_timelog_machine_setup as machine_setup
 
 
 class SetupScopeSelectionTests(unittest.TestCase):
@@ -31,10 +31,10 @@ class SetupScopeSelectionTests(unittest.TestCase):
             solo_repo.mkdir()
             (solo_repo / ".git").mkdir()
             console = Console(record=True, width=160)
-            with patch.object(setup_lib.Path, "home", return_value=home), patch.object(
-                setup_lib.Path, "cwd", return_value=cwd
+            with patch.object(machine_setup.Path, "home", return_value=home), patch.object(
+                machine_setup.Path, "cwd", return_value=cwd
             ):
-                repos = setup_lib._discover_git_repos(console)
+                repos = machine_setup._discover_git_repos(console)
             self.assertEqual(set(repos), {shared_repo.resolve(), solo_repo.resolve()})
             output = console.export_text()
             self.assertIn("Scanning local directories for git repositories", output)
@@ -70,16 +70,16 @@ class SetupScopeSelectionTests(unittest.TestCase):
 
                 return _Prompt()
 
-            with patch.object(setup_lib, "GITTAN_CONFIG_DIR", cfg_dir), patch.object(
-                setup_lib, "GITTAN_SCOPE_FILE", scope_file
-            ), patch.object(setup_lib, "GITTAN_FILENAME_FILE", filename_file), patch.object(
-                setup_lib, "_discover_git_repos", return_value=[]
+            with patch.object(machine_setup, "GITTAN_CONFIG_DIR", cfg_dir), patch.object(
+                machine_setup, "GITTAN_SCOPE_FILE", scope_file
+            ), patch.object(machine_setup, "GITTAN_FILENAME_FILE", filename_file), patch.object(
+                machine_setup, "_discover_git_repos", return_value=[]
             ), patch.object(
-                setup_lib.questionary, "text", side_effect=_fake_text
+                machine_setup.questionary, "text", side_effect=_fake_text
             ), patch.object(
-                setup_lib.questionary, "select", side_effect=_fake_select
+                machine_setup.questionary, "select", side_effect=_fake_select
             ):
-                setup_lib._configure_timelog_scope_and_name(console, yes=False, dry_run=False)
+                machine_setup._configure_timelog_scope_and_name(console, yes=False, dry_run=False)
 
             self.assertTrue(filename_file.exists())
             self.assertEqual(filename_file.read_text(encoding="utf-8").strip(), "TIMELOG.md")

@@ -21,14 +21,29 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
-    @staticmethod
-    def _plain_text(output: str) -> str:
-        """Strip ANSI color/style escapes from Rich-rendered CLI output."""
-        return ANSI_ESCAPE_RE.sub("", output)
-
     """Minimal subprocess/import checks."""
 
+    @staticmethod
+    def _plain_text(output: str) -> str:
+        """
+        Strip ANSI color and style escape sequences from Rich-rendered CLI output.
+        
+        Returns:
+            str: The input string with ANSI escape sequences removed.
+        """
+        return ANSI_ESCAPE_RE.sub("", output)
+
     def _run_doctor(self, args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+        """
+        Run the CLI's `doctor` subcommand in a temporary working directory and assert it completed successfully and emitted expected health-check lines.
+        
+        Parameters:
+            args (list[str]): Additional arguments passed to the `doctor` subcommand.
+            env (dict[str, str] | None): Optional environment mapping for the subprocess.
+        
+        Returns:
+            subprocess.CompletedProcess: The completed subprocess result. The method asserts the process exit code is 0 and that stdout contains "Gittan Health Check" and "CLI (gittan on PATH)".
+        """
         with tempfile.TemporaryDirectory() as tmp:
             completed = subprocess.run(
                 [sys.executable, str(ENTRY), "doctor", *args],
@@ -56,8 +71,14 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertTrue(hasattr(mod, "main"))
 
     def test_doctor_runs_from_foreign_cwd(self):
-        """Regression: ModuleNotFoundError: outputs when cwd != repo (gittan from PATH)."""
-        completed = self._run_doctor([])
+        """
+        Ensure the `doctor` subcommand runs from a non-repository working directory and reports Toggl as not configured when TOGGL_API_TOKEN is absent.
+        
+        Runs the CLI `doctor` command from a temporary (foreign) cwd with `TOGGL_API_TOKEN` removed from the environment and asserts the output includes "Next steps", "Toggl Source", and "Not configured (auto)".
+        """
+        env = dict(os.environ)
+        env.pop("TOGGL_API_TOKEN", None)
+        completed = self._run_doctor([], env=env)
         self.assertIn("Next steps", completed.stdout)
         self.assertIn("Toggl Source", completed.stdout)
         self.assertIn("Not configured (auto)", completed.stdout)

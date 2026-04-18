@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
@@ -71,6 +72,24 @@ def post_jira_worklog(
     time_spent_seconds: int,
     comment: str,
 ) -> str:
+    """
+    Create a worklog on a Jira issue and return the created worklog's id.
+    
+    Parameters:
+        creds (JiraCredentials): Jira connection and authentication information.
+        issue_key (str): Issue key to attach the worklog to (will be URL-encoded).
+        started (datetime): Timestamp when the work was started; must include a timezone offset.
+        time_spent_seconds (int): Duration of the work in seconds.
+        comment (str): Plain-text comment to include in the worklog.
+    
+    Returns:
+        worklog_id (str): The id of the created worklog.
+    
+    Raises:
+        RuntimeError: If `started` lacks timezone offset.
+        RuntimeError: If the HTTP request fails (network error or non-2xx response).
+        RuntimeError: If Jira returns a non-JSON response or the response is missing the worklog id.
+    """
     if started.tzinfo is None or started.utcoffset() is None:
         raise RuntimeError("Jira worklog 'started' must include timezone offset")
     payload = {
@@ -78,7 +97,7 @@ def post_jira_worklog(
         "timeSpentSeconds": int(time_spent_seconds),
         "comment": {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": comment}]}]},
     }
-    url = f"{creds.base_url}/rest/api/3/issue/{issue_key}/worklog"
+    url = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
     req = Request(url, data=json.dumps(payload).encode("utf-8"), method="POST")
     req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
     req.add_header("Content-Type", "application/json")

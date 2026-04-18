@@ -8,179 +8,134 @@
 
 **Local time reports from how you actually work.**
 
-Aggregate IDE, browser, mail, and worklog signals—plus optional GitHub activity—into **project hours** and optional **invoice PDFs**.  
-Core reporting is **local-first**; there is no built-in cloud upload path.
-
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![PyPI package](https://img.shields.io/badge/pypi-timelog--extract-006DAD?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/timelog-extract/)
+
+</div>
+
+Aggregate IDE, browser, mail, and worklog signals—plus optional GitHub activity—into **project hours** and optional **invoice PDFs**. Reporting is **local-first**; there is no built-in cloud upload path.
 
 ---
 
 ## Install
 
-**Requirements:** Python **3.9+**. You do **not** need a PyPI account to install—only maintainers need PyPI access to publish.  
-If the shell says `command not found: pip`, use **`python3 -m pip`** instead of a bare `pip` command (common on macOS).
+**Requires Python 3.9+.** If `pip` is missing or confusing on your system, use **`python3 -m pip`** (common on macOS).
 
-### Recommended: **pipx** (macOS / Linux — keeps `gittan` on your PATH)
-
-`pip install --user` puts scripts under `~/Library/Python/…/bin` (macOS), which is **often not on PATH**, so `gittan` can look “missing” until you edit shell config. **pipx** installs CLI tools into `~/.local/bin` and is easier to get right:
+**Recommended:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` lands on your PATH:
 
 ```bash
-brew install pipx
-pipx ensurepath
-```
-
-**Important:** open a **new terminal tab**, or run `source ~/.zshrc`, so `PATH` picks up `pipx ensurepath`. Then:
-
-```bash
+brew install pipx && pipx ensurepath
+# open a new shell, then:
 pipx install timelog-extract
 gittan -V
 ```
 
-### Alternative: **pip install --user** (PyPI)
+<details>
+<summary><b>Other install paths</b></summary>
+
+**`pip install --user`** — scripts often land outside PATH on macOS (`~/Library/Python/…/bin`). Add that directory to PATH, or run **`gittan doctor`** after install for hints.
 
 ```bash
 python3 -m pip install --user timelog-extract
 ```
 
-Add the user script directory to **PATH** (macOS example — version may differ):
-
-```bash
-export PATH="$HOME/Library/Python/3.9/bin:$PATH"
-```
-
-Put that line in `~/.zshrc` (or run `gittan doctor` — it will hint if it detects this issue).
-
-<sub>Until PyPI has the package for your environment, use **from source** below.</sub>
-
-<br/>
-
-<details>
-<summary><b>More install options</b></summary>
-
-<div align="left">
-
-**Virtual environment**
+**Virtualenv**
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install timelog-extract
 ```
 
-**From source** <span id="from-source"></span>
+**From source**
 
 ```bash
 git clone https://github.com/mbjorke/timelog-extract.git
 cd timelog-extract
 python3 -m pip install -e .
-```
-
-Verify:
-
-```bash
-gittan --help
 gittan -V
 ```
 
-Publishing checklist: [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md).
+Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md).
 
-</div>
 </details>
-
-<br/>
-
-</div>
-
-## Get started
-
-1. **Health check** — from a git repo that should have (or will have) a worklog:
-   ```bash
-   gittan doctor
-   ```
-   `gittan doctor` ends with the most useful next command to run for your current setup.
-2. **First-time setup** — wizard for environment, optional global `TIMELOG.md` hooks, and `timelog_projects.json`:
-   ```bash
-   gittan setup              # default: one click, no prompts
-   gittan setup --dry-run    # preview
-   gittan setup --interactive
-   ```
-   `gittan setup` now closes with copyable next steps so the first real report is obvious.
-3. **First report** — today’s activity:
-   ```bash
-   gittan report --today --source-summary
-   ```
-
-`TIMELOG.md` in the **repository root** (where you run the command) is the default worklog unless you pass `--worklog` or set a path in config. See **Timelog vs config** below.
 
 ---
 
-## Everyday commands
+## First run
+
+Run these from a git checkout where you want a worklog (or any folder once you know what you’re doing):
+
+1. **`gittan doctor`** — see what the tool can see on your machine.
+2. **`gittan setup`** — optional hooks and `timelog_projects.json` (use `--dry-run` or `--interactive` if you prefer).
+3. **`gittan report --today --source-summary`** — first real report.
+
+Default worklog is **`TIMELOG.md`** in the **current directory** unless you pass `--worklog` or configure otherwise.
+
+---
+
+## Commands you’ll use
 
 | Goal | Command |
 |------|---------|
-| Full report (prompts for range if you omit dates) | `gittan report` |
-| Today / last week / custom range | `gittan report --today` · `--last-week` · `--from 2026-04-01 --to 2026-04-30` |
-| Guided cleanup of uncategorized activity | `gittan review --today --uncategorized` |
-| Quick hours overview | `gittan status --today` |
-| Source mix / empty collectors | `gittan sources` (and `docs/sources/sources-and-flags.md`) |
-| Edit projects JSON | `gittan projects` |
-| Machine-wide commit → `TIMELOG.md` hooks | `gittan setup-global-timelog` |
+| Interactive report (asks for dates if you omit them) | `gittan report` |
+| Today / last week / range | `gittan report --today` · `--last-week` · `--from YYYY-MM-DD --to YYYY-MM-DD` |
+| Clean up uncategorized time | `gittan review --today --uncategorized` |
+| Quick totals | `gittan status --today` |
+| Collector status | `gittan sources` |
+| Edit project rules | `gittan projects` |
+| Repo-wide git → worklog hooks | `gittan setup-global-timelog` |
 
-**JSON or HTML export** (quiet, script-friendly):
+**JSON / HTML export** (for scripts or archiving):
 
 ```bash
 gittan report --today --format json
-gittan report --from 2026-04-01 --to 2026-04-30 --format json --json-file out/truth.json --report-html out/report.html
+gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/truth.json --report-html out/report.html
 ```
 
-**Optional GitHub activity:** set `GITHUB_USER` or `--github-user`; optional `GITHUB_TOKEN` for rate limits. Details: `docs/sources/sources-and-flags.md`.
-
----
-
-## What else is in the repo
-
-- **Cursor extension** (companion, beta) — `cursor-extension/README.md`.
-- **Engine script** (same API as the extension): `python3 scripts/run_engine_report.py --today --pdf`.
+`out/` is local output (gitignored by default). **Optional GitHub activity:** `GITHUB_USER` / `--github-user`, optional `GITHUB_TOKEN` — see [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md).
 
 ---
 
 ## Timelog vs config
 
-- **`TIMELOG.md`** — human-readable work journal; safe to treat as a diary.
-- **`timelog_projects.json`** — machine config; **back it up** (e.g. under `~/.gittan/`). Setup creates timestamped backups before replacing invalid JSON.
+| | |
+|--|--|
+| **`TIMELOG.md`** | Human-readable journal; safe to treat as a diary. |
+| **`timelog_projects.json`** | Machine rules; **back it up**. Setup writes timestamped backups before replacing broken JSON. |
 
 ---
 
 ## Troubleshooting
 
-| Issue | Where to look |
+| Symptom | Where to look |
 |--------|----------------|
-| `command not found: gittan` after install | Install via **pipx** (above), or add `~/Library/Python/…/bin` and `~/.local/bin` to **PATH**; run **`gittan doctor`** for copy-paste hints. |
-| “0 events” / sources empty | `docs/sources/sources-and-flags.md` |
-| Missing deps / editable install | `python3 -m pip install -e .` from clone |
-| Invalid project config | `gittan setup`; backups named `timelog_projects.backup-*.json` |
-| Paths / permissions | `--worklog`, browser DBs, Mail / Screen Time access |
-| Global timelog automation | `gittan setup-global-timelog`, [`docs/runbooks/global-timelog-setup.md`](docs/runbooks/global-timelog-setup.md) |
+| `gittan` not found | PATH (pipx `~/.local/bin`, or pip `--user` bin); then **`gittan doctor`**. |
+| No events / empty sources | [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md) |
+| Bad or missing config | `gittan setup` · backups `timelog_projects.backup-*.json` |
+| Permissions / paths | `--worklog`, browser DB access, Mail / Screen Time |
+| Global hooks | [`docs/runbooks/global-timelog-setup.md`](docs/runbooks/global-timelog-setup.md) |
 
 ---
 
-## Feedback
+## Documentation
 
-Questions, install friction, or “does this match your workflow?” — use **[GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions)** (e.g. **General** or **Q&A**). For **bugs** or small reproducible issues, open an **[issue](https://github.com/mbjorke/timelog-extract/issues)** instead.
-
----
-
-## Documentation map
-
-Vision, privacy, CLI flags, style, and release checklists live under **`docs/`**. Start with **[`docs/product/vision-documents.md`](docs/product/vision-documents.md)** for an index (e.g. [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md), [`docs/security/privacy-security.md`](docs/security/privacy-security.md), [`docs/product/terminal-style-guide.md`](docs/product/terminal-style-guide.md), [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md), [`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md), [`docs/runbooks/cli-first-v1-release-checklist.md`](docs/runbooks/cli-first-v1-release-checklist.md)).
+- **Index of all doc categories:** [`docs/README.md`](docs/README.md)  
+- **Product and vision index:** [`docs/product/vision-documents.md`](docs/product/vision-documents.md)  
+- **Cursor extension (optional):** [`cursor-extension/README.md`](cursor-extension/README.md)  
+- **Engine script (same API as the extension):** `python3 scripts/run_engine_report.py --today --pdf`
 
 ---
 
 ## Contributing · tests · license
 
-- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — PR titles/descriptions in **English**; run tests before pushing.
-- **Maintainers (repo hygiene):** issue templates, Discussions, **Social preview** in GitHub Settings; **brand** — canonical PNGs in `docs/brand/`, then [`scripts/build_brand_assets.sh`](scripts/build_brand_assets.sh) -> root **`gittan-logo.png`** (site), favicon, README icon, `og-image.png`. See [`docs/brand/README.md`](docs/brand/README.md), [`docs/ideas/opportunities.md`](docs/ideas/opportunities.md).
-- **`main` is branch-protected** — use a branch and PR; see **[`BRANCH.md`](BRANCH.md)** and **[`docs/runbooks/ci.md`](docs/runbooks/ci.md)**.
-- Tests: `./scripts/run_autotests.sh` (also enforced in CI).
-- **License:** GNU **GPL-3.0-or-later** — [`LICENSE`](LICENSE). Changelog: [`CHANGELOG.md`](CHANGELOG.md).
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — branches, PR language (**English**), how to run checks.  
+- **`main` is protected** — use a PR; see [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md).  
+- **Tests (same as CI):** `bash scripts/run_autotests.sh` from the **repository root**.  
+- **License:** [GNU GPL-3.0-or-later](LICENSE) · **Changelog:** [`CHANGELOG.md`](CHANGELOG.md). Brand assets for maintainers: [`docs/brand/README.md`](docs/brand/README.md).
+
+---
+
+## Feedback
+
+**Ideas and setup questions:** [GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions). **Bugs** (reproducible): [Issues](https://github.com/mbjorke/timelog-extract/issues).

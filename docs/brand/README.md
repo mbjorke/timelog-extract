@@ -30,7 +30,7 @@ Optional: `BRAND_LOGO_PX=512` for a smaller `gittan-logo.png`; `BRAND_RESIZE_FIL
 
 **Drafts:** `[drafts/](drafts/)` — experiments before promoting over the canonical PNGs.
 
-**Intent:** `[IDENTITY.md](IDENTITY.md)`.
+**Intent:** `[identity.md](identity.md)`.
 
 **Tooling:** ImageMagick (`magick`) preferred for multi-size `.ico` and pipeline; Pillow fallback squares and uses `NEAREST`.
 

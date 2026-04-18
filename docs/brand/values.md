@@ -1,6 +1,6 @@
 # Values — timelog-extract / Gittan
 
-*Culture and product posture for this repo. Machine-facing rules stay in [`AGENTS.md`](../../AGENTS.md). Visual and metaphor: [`IDENTITY.md`](IDENTITY.md).*
+*Culture and product posture for this repo. Machine-facing rules stay in [`AGENTS.md`](../../AGENTS.md). Visual and metaphor: [`identity.md`](identity.md).*
 
 *Inspired in part by the culture sections of [Blueberry Maybe](https://blueberry.ax) (parent company; internal source: `values` in the Blueberry repo) — adapted here for an open-source, local-trust product.*
 
@@ -46,7 +46,7 @@ We trust good product sense — and we **verify** with tests, evals, and real CL
 - Mislead about data handling or “what gets sent where.”
 - Take shortcuts that create **compliance or recovery debt** for users’ local work history.
 - Pretend a broken edge case is fine “for now” on critical paths without tracking it.
-- **Oversell** in marketing copy relative to what the current release actually does (see [IDENTITY](IDENTITY.md) and changelogs).
+- **Oversell** in marketing copy relative to what the current release actually does (see [identity.md](identity.md) and changelogs).
 
 ---
 

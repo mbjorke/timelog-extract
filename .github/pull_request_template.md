@@ -15,5 +15,5 @@
 ## See also (optional)
 
 - [`AGENTS.md`](AGENTS.md) — test gate, branches, review cadence
-- [`docs/brand/values.md`](docs/brand/values.md) · [`docs/brand/IDENTITY.md`](docs/brand/IDENTITY.md) — values and visual voice when copy or UX touches users
+- [`docs/brand/values.md`](docs/brand/values.md) · [`docs/brand/identity.md`](docs/brand/identity.md) — values and visual voice when copy or UX touches users
 - [`docs/ideas/team-lexicon.md`](docs/ideas/team-lexicon.md) — shorthand and TIL for human ↔ agent chat

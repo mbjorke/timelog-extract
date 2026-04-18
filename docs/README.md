@@ -25,7 +25,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 | `inspiration/` | Short external links and patterns before they become specs; see [`inspiration/README.md`](inspiration/README.md). |
 | `incidents/` | Postmortems and corrective actions after concrete incidents. |
 | `legacy/` | Old docs kept for reference only — **not** maintained like active docs; not a curated “museum,” just stuff we do not delete yet. |
-| `brand/` | Brand assets, visual identity ([`IDENTITY.md`](brand/IDENTITY.md)), and team/product [`values.md`](brand/values.md). |
+| `brand/` | Brand assets, visual identity ([`identity.md`](brand/identity.md)), and team/product [`values.md`](brand/values.md). |
 | `evals/` | Golden eval and similar evaluation artifacts. |
 | `live-terminal-sandbox/` | Build tracking for the public live-terminal demo. |
 | `marketing/` | Marketing drafts. |

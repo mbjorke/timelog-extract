@@ -42,6 +42,8 @@ Prefer **combining** unrelated follow-up work into **one** PR per version when p
 
 ## Checklist when bumping the package version
 
+There is **no single automated `release` command** in this repository — follow the steps below (and run **`./scripts/run_autotests.sh`** before pushing the version bump). Tagging and PyPI are separate steps after **`main`** contains the bump commit.
+
 1. Set **`pyproject.toml`** → `[project] version` to `X.Y.Z`.
 2. Update the **dev fallback** in **`core/cli_options.py`** (`package_version()`) to `X.Y.Z-dev` so runs without an editable install still report a sensible string.
 3. **GitHub HTTP `User-Agent`** is built from `package_version()` in `collectors/github.py` — no separate version string to edit.

@@ -7,6 +7,7 @@ arbitrary directories, or when edits broke core/cli.py syntax.
 import ast
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -16,9 +17,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ENTRY = ROOT / "timelog_extract.py"
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
+    @staticmethod
+    def _plain_text(output: str) -> str:
+        """Strip ANSI color/style escapes from Rich-rendered CLI output."""
+        return ANSI_ESCAPE_RE.sub("", output)
+
     """Minimal subprocess/import checks."""
 
     def _run_doctor(self, args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
@@ -52,6 +59,8 @@ class CliRegressionSmokeTests(unittest.TestCase):
         """Regression: ModuleNotFoundError: outputs when cwd != repo (gittan from PATH)."""
         completed = self._run_doctor([])
         self.assertIn("Next steps", completed.stdout)
+        self.assertIn("Toggl Source", completed.stdout)
+        self.assertIn("Not configured (auto)", completed.stdout)
 
     def test_doctor_github_source_off_row_is_shown(self):
         completed = self._run_doctor(["--github-source", "off", "--github-user", "mbjorke"])
@@ -108,9 +117,9 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Gittan Global Timelog", completed.stdout)
 
     def test_setup_wizard_dry_run(self):
-        """Full setup wizard should support non-interactive dry-run execution."""
+        """Default setup should run non-interactive dry-run execution."""
         completed = subprocess.run(
-            [sys.executable, str(ENTRY), "setup", "--yes", "--dry-run", "--skip-smoke"],
+            [sys.executable, str(ENTRY), "setup", "--dry-run", "--skip-smoke"],
             cwd=str(ROOT),
             capture_output=True,
             text=True,
@@ -124,6 +133,35 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Next steps", completed.stdout)
         self.assertIn("Setup wizard completed.", completed.stdout)
         self.assertIn("GitHub env bootstrap", completed.stdout)
+        self.assertIn("Gittan Setup", completed.stdout)
+
+    def test_setup_wizard_interactive_dry_run_flag_exists(self):
+        """Interactive flag should remain available for prompt-driven setup."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--help"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        self.assertIn("--interactive", self._plain_text(completed.stdout))
+
+    def test_setup_one_click_dry_run(self):
+        """One-click setup should run non-interactive with recommended defaults."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--one-click", "--dry-run", "--skip-smoke"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=completed.stderr or completed.stdout,
+        )
+        self.assertIn("Setup wizard completed.", completed.stdout)
         self.assertIn("Gittan Setup", completed.stdout)
 
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
@@ -189,6 +227,20 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Gittan Setup", completed.stdout)
         self.assertIn("Gittan Global Timelog", completed.stdout)
         self.assertIn("Gittan Report", completed.stdout)
+
+    def test_jira_sync_help_includes_manual_confirmation(self):
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "jira-sync", "--help"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        output = self._plain_text(completed.stdout)
+        self.assertIn("Sync TIMELOG-derived hours to Jira worklogs", output)
+        self.assertIn("--require-confirm", output)
+        self.assertIn("--dry-run", output)
 
 
 if __name__ == "__main__":

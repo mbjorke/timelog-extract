@@ -1,7 +1,7 @@
 # Simple Invoicing Model (solo-first)
 
 Status: Working model for near-term product decisions. Keep this aligned with
-`docs/PRIVACY_SECURITY.md` and shipped CLI behavior.
+`docs/security/privacy-security.md` and shipped CLI behavior.
 
 ## Why this model
 

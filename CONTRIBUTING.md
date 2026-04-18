@@ -2,8 +2,10 @@
 
 Thanks for helping improve Timelog Extract / Gittan. This document is the single entry point for contributors; agent-specific habits (timelog files, worktrees) live in [`AGENTS.md`](AGENTS.md).
 
+**Many editors and AI tools** (Claude Code, Codex, Cursor, VS Code, Zed, Lovable, etc.) share the same repo rules: read **`AGENTS.md` first**. For a tool-by-tool map, inspiration vs ideas, and how we avoid duplicating policy, see **[`docs/contributing/ai-assisted-work.md`](docs/contributing/ai-assisted-work.md)**. Quick links and external sparks live under **[`docs/inspiration/`](docs/inspiration/)**.
+
 **`main` is branch-protected** — no direct pushes; use a branch and PR.  
-Default contributor flow is **`task/* -> dev -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/CI.md`](docs/CI.md) for CI and merge flow.
+Default contributor flow is **`task/* -> dev -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
 
 ## User feedback (not code)
 
@@ -70,10 +72,10 @@ If you change `cursor-extension/`, run `npm install` and `npm run build` there (
 
 ## Releases and versioning
 
-The installable **package version** lives in `pyproject.toml` and is shown by `gittan -V` / `timelog-extract -V`. When you cut a release or bump that number, follow the checklist in **[`docs/VERSIONING.md`](docs/VERSIONING.md)** (including `CHANGELOG.md` and the dev fallback in `core/cli_options.py`).
+The installable **package version** lives in `pyproject.toml` and is shown by `gittan -V` / `timelog-extract -V`. When you cut a release or bump that number, follow the checklist in **[`docs/runbooks/versioning.md`](docs/runbooks/versioning.md)** (including `CHANGELOG.md` and the dev fallback in `core/cli_options.py`).
 
 ## License
 
 Copyright © Blueberry Maybe AB. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
 
-For background on the license direction, see **`docs/LICENSE_GOALS.md`**.
+For background on the license direction, see **`docs/security/license-goals.md`**.

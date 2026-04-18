@@ -2,7 +2,7 @@
 
 Raster brand assets (favicon, README icon, ``gittan-logo.png`` for the site, OG image)
 are derived from canonical ``docs/brand/gittan-brand-mark.png`` / ``gittan-og-card.png``;
-see ``docs/brand/IDENTITY.md`` and ``scripts/build_brand_assets.sh``.
+see ``docs/brand/identity.md`` and ``scripts/build_brand_assets.sh``.
 """
 
 from __future__ import annotations

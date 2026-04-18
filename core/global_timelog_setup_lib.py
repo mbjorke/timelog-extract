@@ -272,7 +272,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
             console.print(f"- repo scope = selected list ({repo_count} repos)")
         else:
             console.print("- repo scope = all git repositories")
-    console.print("\nReference: `docs/archive/global-timelog-automation-legacy.md`")
+            console.print("\nReference: `docs/runbooks/global-timelog-setup.md`")
 
 
 def _ensure_minimal_projects_config(
@@ -345,9 +345,12 @@ def _print_setup_environment_loaded(console) -> None:
 
 def _run_doctor_check(console, *, dry_run: bool) -> str:
     if dry_run:
+        console.print("\n[bold]Doctor output[/bold]")
         console.print("[yellow]Dry run:[/yellow] would run `gittan doctor`.")
         return "PASS (dry-run)"
     entry = REPO_ROOT / "timelog_extract.py"
+    console.print("\n[bold]Doctor output[/bold]")
+    console.print("[dim]Running `gittan doctor` inside setup...[/dim]")
     completed = subprocess.run([sys.executable, str(entry), "doctor"], check=False, capture_output=True, text=True, cwd=str(Path.cwd()))
     console.print("[green]Doctor check completed.[/green]" if completed.returncode == 0 else "[yellow]Doctor check reported issues.[/yellow]")
     if completed.stdout:

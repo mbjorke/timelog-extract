@@ -25,6 +25,7 @@ from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
+from collectors.toggl import toggl_source_enabled
 from collectors.lovable_desktop import lovable_desktop_history_candidates
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
@@ -214,7 +215,21 @@ def doctor(
                 OK_ICON,
                 f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
             )
-
+        toggl_enabled, toggl_reason = toggl_source_enabled(argparse.Namespace(toggl_source="auto"))
+        toggl_token_present = bool((os.getenv("TOGGL_API_TOKEN") or "").strip())
+        if toggl_enabled:
+            token_note = "token present" if toggl_token_present else "no token"
+            table.add_row(
+                "Toggl Source",
+                OK_ICON,
+                f"[{STYLE_MUTED}]Enabled (auto) — {token_note}[/{STYLE_MUTED}]",
+            )
+        else:
+            table.add_row(
+                "Toggl Source",
+                NA_ICON,
+                f"[{STYLE_MUTED}]Not configured (auto); {toggl_reason}[/{STYLE_MUTED}]",
+            )
     console.print(table)
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "

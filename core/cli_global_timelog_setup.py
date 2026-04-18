@@ -30,10 +30,20 @@ def setup_global_timelog(
 
 @app.command("setup")
 def setup_wizard(
+    one_click: bool = typer.Option(
+        False,
+        "--one-click",
+        help="Run one-click setup with recommended defaults and no prompts (default behavior).",
+    ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Use interactive prompts instead of default one-click behavior.",
+    ),
     yes: bool = typer.Option(
         False,
         "--yes",
-        help="Run recommended setup steps without interactive confirmation prompts.",
+        help="Run recommended setup steps without interactive confirmation prompts (legacy alias for default).",
     ),
     dry_run: bool = typer.Option(
         False,
@@ -55,4 +65,7 @@ def setup_wizard(
     from rich.console import Console
 
     console = Console()
-    run_setup_wizard(console, yes=yes, dry_run=dry_run, skip_smoke=skip_smoke, bootstrap_root=bootstrap_root)
+    auto_yes = not interactive
+    if yes or one_click:
+        auto_yes = True
+    run_setup_wizard(console, yes=auto_yes, dry_run=dry_run, skip_smoke=skip_smoke, bootstrap_root=bootstrap_root)

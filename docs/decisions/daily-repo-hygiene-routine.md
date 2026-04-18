@@ -34,7 +34,7 @@ in docs/config/process files.
 5. **Docs/link hygiene (1-2 min)**
    - Ensure moved/renamed docs still have valid references.
    - Keep docs in correct folders:
-     - `docs/decisions`, `docs/roadmap`, `docs/ideas`, `docs/specs`, `docs/rc-prompts`, `docs/archive`.
+     - `docs/decisions`, `docs/roadmaps`, `docs/ideas`, `docs/specs`, `docs/task-prompts`, `docs/legacy`.
 
 6. **Local safety guard (1 min)**
    - Verify no accidental destructive handling of `timelog_projects.json`.

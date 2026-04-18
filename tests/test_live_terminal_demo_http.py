@@ -8,8 +8,8 @@ import unittest
 import urllib.request
 from http.server import HTTPServer
 
-from core.live_terminal_demo_http import make_demo_handler
-from core.live_terminal_demo_service import DemoSessionStore
+from core.live_terminal.http import make_demo_handler
+from core.live_terminal.service import DemoSessionStore
 
 
 class LiveTerminalDemoHttpTests(unittest.TestCase):

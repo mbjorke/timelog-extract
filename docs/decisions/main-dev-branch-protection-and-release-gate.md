@@ -30,6 +30,6 @@ review expectations needed to be explicit for both protected branches.
 
 ## Implementation notes
 
-- Branch protection details and checklist are documented in `docs/CI.md`.
+- Branch protection details and checklist are documented in `docs/runbooks/ci.md`.
 - Branch intent and workflow are documented in `BRANCH.md`.
 - Agent behavior and review cadence are documented in `AGENTS.md`.

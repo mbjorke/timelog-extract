@@ -15,6 +15,7 @@ from collectors import cursor as cursor_collector
 from collectors import github as github_collector
 from collectors import mail as mail_collector
 from collectors import timelog as timelog_collector
+from collectors import toggl as toggl_collector
 from core.collector_registry import build_collector_specs
 from core.pipeline import collect_all_events
 from core.runtime_collectors import RuntimeCollectors
@@ -172,6 +173,7 @@ def collect_runtime_events(
         mail_collector=mail_collector,
         timelog_collector=timelog_collector,
         github_collector=github_collector,
+        toggl_collector=toggl_collector,
         github_token=os.environ.get("GITHUB_TOKEN"),
     )
     return collect_all_events(
@@ -198,6 +200,7 @@ def collect_runtime_events(
         collect_apple_mail=runtime_collectors.collect_apple_mail,
         collect_worklog=runtime_collectors.collect_worklog,
         collect_github=runtime_collectors.collect_github,
+        collect_toggl=runtime_collectors.collect_toggl,
     )
 
 

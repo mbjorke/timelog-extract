@@ -1,12 +1,12 @@
 # Gittan Vision (English Reference)
 
-## Why Blueberry built Gittan
+## Why Gittan exists
 
 Automatic time reporting has been a long-standing dream for many developers.
 
 Now it is practical.
 
-Blueberry built Gittan to solve the real gap between how people actually work and how time reporting usually gets reconstructed afterward.
+Gittan exists to close the gap between how people actually work and how time reporting usually gets reconstructed afterward.
 
 ## The real-world problem
 

@@ -2,10 +2,12 @@
 
 Thanks for helping improve Timelog Extract / Gittan. This document is the single entry point for contributors; agent-specific habits (timelog files, worktrees) live in [`AGENTS.md`](AGENTS.md).
 
+**Product direction and doc precedence** (vision, scope, metrics, public manifesto): [`docs/product/vision-documents.md`](docs/product/vision-documents.md).
+
 **Many editors and AI tools** (Claude Code, Codex, Cursor, VS Code, Zed, Lovable, etc.) share the same repo rules: read **`AGENTS.md` first**. For a tool-by-tool map, inspiration vs ideas, and how we avoid duplicating policy, see **[`docs/contributing/ai-assisted-work.md`](docs/contributing/ai-assisted-work.md)**. Quick links and external sparks live under **[`docs/inspiration/`](docs/inspiration/)**.
 
 **`main` is branch-protected** — no direct pushes; use a branch and PR.  
-Default contributor flow is **`task/* -> dev -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
+Default contributor flow is **`task/* -> main`**. See [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md) for CI and merge flow.
 
 ## User feedback (not code)
 
@@ -19,13 +21,13 @@ Experience reports, setup confusion, and product questions belong in **[GitHub D
 
 ## Branch and naming conventions
 
-1. Start from `dev`:
+1. Start from `main`:
    - `git fetch origin`
-   - `git switch dev`
-   - `git pull origin dev`
+   - `git switch main`
+   - `git pull origin main`
 2. Create a short-lived branch: `task/<short-scope>`
    - Example: `task/doctor-github-note`
-3. Open PR into `dev` (not directly into `main`, except maintainers for explicit release work).
+3. Open PR into **`main`** (use **`release/X.Y.Z`** only for explicit release/version isolation — see [`BRANCH.md`](BRANCH.md)).
 4. After merge, delete the task branch (local and remote).
 
 Naming notes:
@@ -76,6 +78,6 @@ The installable **package version** lives in `pyproject.toml` and is shown by `g
 
 ## License
 
-Copyright © Blueberry Maybe AB. The project is distributed under **[GNU GPL-3.0-or-later](LICENSE)**.
+Copyright and terms: see **[`LICENSE`](LICENSE)** (GNU **GPL-3.0-or-later**).
 
 For background on the license direction, see **`docs/security/license-goals.md`**.

@@ -1,38 +1,30 @@
-# GitHub Sponsors Profile Copy
+# GitHub Sponsors — optional profile copy
 
-Canonical copy for the `blueberry-maybe` GitHub Sponsors profile.
+Short copy you can reuse for a **GitHub Sponsors** profile. The repository’s funding entry points live in [`.github/FUNDING.yml`](../../.github/FUNDING.yml) (Sponsors button on the repo).
 
 ## Short bio
 
-Small software company from Aland. We build local-first developer tools for the AI era - privacy by design, no cloud by default. Currently: Gittan, a CLI that reconstructs your billable day from local signals.
+Local-first developer tooling: privacy by design, no cloud by default. **Gittan** reconstructs your billable day from signals already on your machine.
 
 ## Introduction
 
 ## Who we are
 
-Blueberry Maybe AB is a small software company based in Aland -
-an autonomous archipelago in the Baltic Sea, between Sweden and Finland.
-
-We build tools for developers who work with AI: local-first,
-privacy-first, and designed to stay out of your way.
+Independent open-source work focused on **trustworthy, local-first** workflows — built for developers who live in terminals, browsers, and AI-assisted sessions.
 
 ## What we're building
 
-**Gittan** is a CLI that reconstructs your billable day from the signals
-you already leave behind - Cursor checkpoints, Claude sessions, Chrome history,
-git commits. Everything runs on your machine. Nothing leaves it by default.
+**Gittan** is a CLI that reconstructs your billable day from the signals you already leave behind — editor checkpoints, AI sessions, browser history, git commits. Everything runs on your machine by default; nothing is uploaded as part of core reporting.
 
-Open source under GPL-3.0-or-later. Free to use.
+Open source under **GPL-3.0-or-later**. Free to use.
 
 ## Why sponsor?
 
-Gittan is built and maintained by one person, in between client work.
+Maintenance happens alongside other work. Sponsorships help:
 
-Sponsorships free up time to:
-
-- Ship new collector integrations as AI tooling evolves
-- Publish to PyPI and Homebrew for easier installation
-- Build out the Cursor/VS Code extension
-- Keep the project independent
+- Ship new collector integrations as tooling evolves
+- Publish to PyPI and improve install ergonomy
+- Build out editor integrations
+- Keep the project sustainable
 
 Every sponsor makes the next release more likely.

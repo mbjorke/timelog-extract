@@ -8,9 +8,9 @@ Evolves with the product. **ASCII spirit:** `outputs/gittan_banner.py` (`GITTAN_
 
 **A bumblebee pollinating berries** — local activity traces are like flowers along a branch; Gittan moves signal between them so **fruit** (review-ready output) can form. The **berry palette** in the UI is part of the story, not decoration for its own sake.
 
-## Palette: Blueberry kinship, Gittan vibrancy
+## Palette: Gittan vibrancy
 
-- **Family:** Gittan should **feel related** to [Blueberry Maybe](https://blueberry.ax) and the public face of the company (berry violets, deep void, warm accents). **Gittan does not need pixel-perfect parity** with blueberry.ax — clarity and energy come first.
+- **Family:** **Berry violets**, **deep void**, and **warm accents** — one coherent terminal-and-web story. Clarity and energy first; avoid decorative saturation.
 - **Canonical void / terminal background:** **`#0a0714`** — this is the **single anchor** for “terminal window” on the site (`gittan.html`) and the mental model for CLI sessions. Do not drift to a different near-black without updating both docs and CSS together.
 - **Berry accents (vibrant):** implemented in **`gittan.html` `:root`** and mirrored for Rich in **`outputs/terminal_theme.py`** — saturated fuchsia/violet berries, brighter rose, readable cream text. When you change the web palette, update the CLI tokens in the same PR so reports and marketing still feel like one product.
 

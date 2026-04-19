@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Docs: [`docs/marketing/stage-demo-speaker-notes.md`](docs/marketing/stage-demo-speaker-notes.md) — short stage script (three sentences + install one-liners) for large-audience demos.
+- Docs: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md) + [`packaging/homebrew/README.md`](packaging/homebrew/README.md) — sketch for a custom Homebrew tap (`brew tap …/gittan`) before PyPI-first demos; `brew create --python` workflow and presentation fallback.
+- Docs: [`README.md`](README.md) — clearer narrative flow (intro, Documentation, Contributing, Feedback); Contributing keeps seven parallel bullets + AGENTS pointer; less telegraphic tone.
+- Docs: cross-link [`docs/product/vision-documents.md`](docs/product/vision-documents.md) from [`docs/README.md`](docs/README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`AGENTS.md`](AGENTS.md) so product precedence is discoverable from contributor entry points.
+- Docs: removed **Blueberry** / parent-site references from `docs/` and neutralized [`CONTRIBUTING.md`](CONTRIBUTING.md) license line (canonical names remain in [`LICENSE`](LICENSE)); funding accounts stay in [`.github/FUNDING.yml`](.github/FUNDING.yml) only.
+- Docs: branch workflow is **`task/* -> main`** (no standing `dev` on `origin`); updated [`BRANCH.md`](BRANCH.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/runbooks/ci.md`](docs/runbooks/ci.md), [`AGENTS.md`](AGENTS.md), task prompts; [`docs/decisions/main-dev-branch-protection-and-release-gate.md`](docs/decisions/main-dev-branch-protection-and-release-gate.md) marked superseded in part; [`docs/runbooks/dev-main-alignment.md`](docs/runbooks/dev-main-alignment.md) scoped to forks / if `dev` is reintroduced.
+- Docs: [`README.md`](README.md) — tighter structure (quick install, first run, docs index); test gate `bash scripts/run_autotests.sh`; no sponsor/parent-company copy (funding remains in [`.github/FUNDING.yml`](.github/FUNDING.yml) only).
+
 ## 0.2.11 - 2026-04-18
 
 - Docs: Screen Time gap runbook ([`docs/runbooks/screen-time-gap-analysis.md`](docs/runbooks/screen-time-gap-analysis.md)); working notes ([`docs/product/future-notes-2026-04.md`](docs/product/future-notes-2026-04.md)) — AI help scope, calibration staging, Jira-style timestamp / analytics ideas, integration-layer licensing notes; [`docs/product/accuracy-plan.md`](docs/product/accuracy-plan.md) and [`docs/product/vision-documents.md`](docs/product/vision-documents.md) updated; README documentation map extended.

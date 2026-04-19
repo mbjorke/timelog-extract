@@ -1,5 +1,7 @@
 # Aligning `dev` with `main` (after long divergence)
 
+**When this applies:** Use when a **`dev`** branch **exists** and has **split history** with **`main`** (forks, or if the project reintroduces a second integration line). **Default upstream** workflow is **`task/* → main`** only — see [`BRANCH.md`](../../BRANCH.md).
+
 ## Purpose / when to use
 
 Use when `dev` and `main` have **split histories** (many unique commits on each side) and **policy is that `main` is canonical** (releases, PyPI) while `dev` was an integration line that **must not** stay a parallel universe. Branching intent for day-to-day work stays in [`BRANCH.md`](../../BRANCH.md).
@@ -68,7 +70,7 @@ git push origin dev --force-with-lease
 - **`--force-with-lease`** reduces the risk of clobbering a surprise update to `dev` between fetch and push.
 - If **push is rejected** by rules, use **Settings → Branches** to allow a one-time force, or an admin **GitHub Action** (with approval) that performs the reset — *do not* bypass security without the maintainer.
 
-After success: `origin/dev` and `origin/main` should **point to the same commit**; future `task/*` branches are cut from a **sane** `dev` again.
+After success: `origin/dev` and `origin/main` should **point to the same commit**; future `task/*` branches can track that tip from **`dev`** (or from **`main`** if you retire `dev`).
 
 #### Verification checklist (after C1 push)
 

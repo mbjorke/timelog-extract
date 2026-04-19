@@ -6,7 +6,7 @@ Use this file as the **index** when updating marketing copy or root `VISION.md` 
 
 If wording conflicts, use this order:
 
-1. **`docs/product/gittan-vision.md`** — product soul, promises, decision filter, Blueberry/strategic mapping where applicable.
+1. **`docs/product/gittan-vision.md`** — product soul, promises, decision filter, strategic themes where applicable.
 2. **`docs/product/v1-scope.md`** — what ships in which version; feature boundaries.
 3. **`docs/product/gittan-northstar-metrics.md`** — measurable outcomes and KPIs tied to the vision.
 4. **`docs/security/privacy-security.md`** — consent and data-handling guardrails.
@@ -51,6 +51,7 @@ If wording conflicts, use this order:
 | `docs/product/terminal-style-guide.md`                         | **UX semantics:** terminal typography, color roles, and low-noise output conventions for CLI commands.                                                                                                                       |
 | `docs/sources/ai-assisted-config.md`                           | **Vision:** built-in assistant for `timelog_projects.json`; project names first; opt-in LLM; Jira-native vs solo workflows.                                                                                                  |
 | `docs/runbooks/ci.md`                                           | **CI:** branch-protected `main`, workflow jobs, link to `.github/workflows/ci.yml`.                                                                                                                                          |
+| `docs/runbooks/homebrew-tap.md`                                 | **Optional distribution:** custom Homebrew tap sketch for `brew install gittan` (separate tap repo; PyPI remains canonical).                                                                                                    |
 | `docs/legacy/release-scope-0.2.3.md`                 | **Release plan (historical):** must/should/nice scope for the **0.2.3** PyPI-first-upload milestone; linked from `docs/runbooks/versioning.md`.                                                                                       |
 | `docs/ideas/opportunities.md`                          | **Product / GTM (ideas):** opportunities, risks, audience, differentiation—English; for business-style review.                                                                                                               |
 | `docs/ideas/simple-invoicing-model.md`                 | **Solo-first integration model (idea):** export-first/push-only workflow, optional Lovable delivery layer, draft-first writes, and rollback guardrails before any broad API surface.                                        |

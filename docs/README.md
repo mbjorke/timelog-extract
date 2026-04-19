@@ -2,6 +2,8 @@
 
 This folder is the **single map** for where to put and find docs. Prefer this file when routing new material; keep it updated when you add top-level categories.
 
+**How product docs relate (precedence, manifesto vs depth):** [`product/vision-documents.md`](product/vision-documents.md) — read this before large edits to vision, scope, or public copy.
+
 For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](meta/structure.md).
 
 **Sensitive business data** (revenue, detailed metrics, unpublished numbers): keep under **gitignored `private/`** — see [`meta/private-local-notes.md`](meta/private-local-notes.md).
@@ -37,7 +39,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Implementation checklist / agent prompt** → `task-prompts/`
 - **How to run CI, release, or QA** → `runbooks/`
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
-- **What Gittan is and should ship** → `product/`
+- **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)
 - **TIL the maintainer taught the agent (by month, short bullets)** → [`ideas/til/`](ideas/til/) (see `AGENTS.md` → *Maintainer TIL*)
 - **Phrasing work for agents (external patterns, reduce misreads)** → [`inspiration/effective-commands-for-agents.md`](inspiration/effective-commands-for-agents.md)

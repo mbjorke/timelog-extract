@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: [`docs/marketing/stage-demo-speaker-notes.md`](docs/marketing/stage-demo-speaker-notes.md) — short stage script (three sentences + install one-liners) for large-audience demos.
 - Docs: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md) + [`packaging/homebrew/README.md`](packaging/homebrew/README.md) — sketch for a custom Homebrew tap (`brew tap …/gittan`) before PyPI-first demos; `brew create --python` workflow and presentation fallback.
 - Docs: [`README.md`](README.md) — clearer narrative flow (intro, Documentation, Contributing, Feedback); Contributing keeps seven parallel bullets + AGENTS pointer; less telegraphic tone.
 - Docs: cross-link [`docs/product/vision-documents.md`](docs/product/vision-documents.md) from [`docs/README.md`](docs/README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`AGENTS.md`](AGENTS.md) so product precedence is discoverable from contributor entry points.

@@ -14,15 +14,15 @@
 
 </div>
 
-Aggregate IDE, browser, mail, and worklog signals—plus optional GitHub activity—into **project hours** and optional **invoice PDFs**. Reporting is **local-first**; there is no built-in cloud upload path.
+Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns those signals into **project hours** and optional **invoice PDFs**, without sending your raw activity to our servers by default. Everything runs **local-first**; you stay in control.
 
 ---
 
 ## Install
 
-**Requires Python 3.9+.** If `pip` is missing or confusing on your system, use **`python3 -m pip`** (common on macOS).
+You need **Python 3.9+**. If `pip` is awkward on your machine, prefer **`python3 -m pip`** (common on macOS).
 
-**Recommended:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` lands on your PATH:
+**Fast path:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` is on your PATH:
 
 ```bash
 brew install pipx && pipx ensurepath
@@ -34,7 +34,7 @@ gittan -V
 <details>
 <summary><b>Other install paths</b></summary>
 
-**`pip install --user`** — scripts may land outside your default PATH. Add the user-level `bin` directory for that Python install (OS-specific; `python3 -m site --user-base` helps locate it), or run **`gittan doctor`** after install for hints.
+**`pip install --user`** — scripts may land outside your default PATH. Add the user-level `bin` for that Python install (OS-specific; `python3 -m site --user-base` helps locate it), or run **`gittan doctor`** after install for hints.
 
 ```bash
 python3 -m pip install --user timelog-extract
@@ -64,13 +64,13 @@ Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/ver
 
 ## First run
 
-Run these from a git checkout where you want a worklog (or any folder once you know what you’re doing):
+Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you expect:
 
-1. **`gittan doctor`** — see what the tool can see on your machine.
-2. **`gittan setup`** — optional hooks and `timelog_projects.json` (use `--dry-run` or `--interactive` if you prefer).
-3. **`gittan report --today --source-summary`** — first real report.
+1. **`gittan doctor`** — see what collectors can see on this machine.  
+2. **`gittan setup`** — wire optional hooks and `timelog_projects.json` (`--dry-run` / `--interactive` if you want previews).  
+3. **`gittan report --today --source-summary`** — your first real report from real traces.
 
-Default worklog is **`TIMELOG.md`** in the **working directory** where you run the command (for everyday project use, that is usually the **repository root**). Same rule as [`AGENTS.md`](AGENTS.md) / [`CONTRIBUTING.md`](CONTRIBUTING.md): override with `--worklog` or config when needed.
+By default, **`TIMELOG.md`** follows the **working directory** you run from—most often the **repository root**. Same rule as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md); override with `--worklog` or config when you need to.
 
 ---
 
@@ -93,7 +93,7 @@ gittan report --today --format json
 gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/truth.json --report-html out/report.html
 ```
 
-`out/` is local output (gitignored by default). **Optional GitHub activity:** `GITHUB_USER` / `--github-user`, optional `GITHUB_TOKEN` — see [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md).
+`out/` is local output (gitignored by default). **Optional GitHub activity:** set `GITHUB_USER` / `--github-user`, optional `GITHUB_TOKEN` — details in [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md).
 
 ---
 
@@ -120,25 +120,29 @@ gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/tr
 
 ## Documentation
 
-- **Index of all doc categories:** [`docs/README.md`](docs/README.md)  
-- **Product and vision index:** [`docs/product/vision-documents.md`](docs/product/vision-documents.md)  
-- **Cursor extension (optional):** [`cursor-extension/README.md`](cursor-extension/README.md)  
-- **Engine script (same API as the extension):** `python3 scripts/run_engine_report.py --today --pdf`
+Layered docs so you can go shallow or deep:
+
+- **Find any category of doc** — [`docs/README.md`](docs/README.md) is the map.  
+- **See how vision, scope, and metrics fit together** — [`docs/product/vision-documents.md`](docs/product/vision-documents.md).  
+- **Use the Cursor companion (optional)** — [`cursor-extension/README.md`](cursor-extension/README.md).  
+- **Call the same engine from a script** — `python3 scripts/run_engine_report.py --today --pdf`.
 
 ---
 
 ## Contributing · tests · license
 
-- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — contributor entry: branches, PR language (**English**), local checks.  
-- **Branches:** short-lived `task/*` → PR into **`main`**; details in [`BRANCH.md`](BRANCH.md).  
-- **CI:** what GitHub enforces — [`docs/runbooks/ci.md`](docs/runbooks/ci.md).  
-- **Tests (same as CI):** `bash scripts/run_autotests.sh` from the **repository root**.  
-- **License:** [GNU GPL-3.0-or-later](LICENSE).  
-- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md).  
-- **Brand assets (maintainers):** [`docs/brand/README.md`](docs/brand/README.md) — generated logos / favicon from canonical marks.
+If you want to change the tool, **start with [`CONTRIBUTING.md`](CONTRIBUTING.md)** — it covers branch names, **English** PR titles and descriptions, and what to run locally before review.
+
+- **Branch like this:** short-lived `task/<scope>` from **`main`**, then open a PR — spelled out in [`BRANCH.md`](BRANCH.md).  
+- **Understand CI:** what GitHub runs on every push is in [`docs/runbooks/ci.md`](docs/runbooks/ci.md).  
+- **Match CI before you push:** `bash scripts/run_autotests.sh` from the **repository root**.  
+- **Deeper rules for humans and agents:** [`AGENTS.md`](AGENTS.md) — timelog policy, push gates, review cadence.  
+- **License:** [GNU GPL-3.0-or-later](LICENSE) — copyleft; share improvements on the same terms.  
+- **What shipped when:** [`CHANGELOG.md`](CHANGELOG.md).  
+- **Logos, favicon, social preview:** [`docs/brand/README.md`](docs/brand/README.md) for maintainers building assets from canonical marks.
 
 ---
 
 ## Feedback
 
-**Ideas and setup questions:** [GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions). **Bugs** (reproducible): [Issues](https://github.com/mbjorke/timelog-extract/issues).
+**Questions and rough edges** → [GitHub Discussions](https://github.com/mbjorke/timelog-extract/discussions). **Bugs you can reproduce** → [Issues](https://github.com/mbjorke/timelog-extract/issues).

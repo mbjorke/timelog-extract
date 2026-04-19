@@ -70,7 +70,12 @@ Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you e
 2. **`gittan setup`** — wire optional hooks and `timelog_projects.json` (`--dry-run` / `--interactive` if you want previews).  
 3. **`gittan report --today --source-summary`** — your first real report from real traces.
 
-By default, **`TIMELOG.md`** follows the **working directory** you run from—most often the **repository root**. Same rule as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md); override with `--worklog` or config when you need to.
+**Where `TIMELOG.md` is resolved** (same order as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md)):
+
+1. **`--worklog PATH`** if you pass it.  
+2. Else the top-level **`worklog`** field in `timelog_projects.json`, if set.  
+3. Else **`TIMELOG.md` in the current working directory**, if that file exists.  
+4. Else **`<current_repo_root>/TIMELOG.md`**, with `<current_repo_root>` from Git (`git rev-parse --show-toplevel`) when you are inside a repository, otherwise the current directory.
 
 ---
 

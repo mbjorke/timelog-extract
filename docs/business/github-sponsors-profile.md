@@ -23,7 +23,7 @@ Open source under **GPL-3.0-or-later**. Free to use.
 Maintenance happens alongside other work. Sponsorships help:
 
 - Ship new collector integrations as tooling evolves
-- Publish to PyPI and improve install ergonomy
+- Publish to PyPI and improve install ergonomics
 - Build out editor integrations
 - Keep the project sustainable
 

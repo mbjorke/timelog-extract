@@ -30,7 +30,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 | `brand/` | Brand assets, visual identity ([`identity.md`](brand/identity.md)), and team/product [`values.md`](brand/values.md). |
 | `evals/` | Golden eval and similar evaluation artifacts. |
 | `live-terminal-sandbox/` | Build tracking for the public live-terminal demo. |
-| `marketing/` | Marketing drafts. |
+| `marketing/` | Marketing drafts (e.g. [DAIS Substack long-form](marketing/dais-substack-article-gittan-origin.md)). |
 
 ## Quick routing
 

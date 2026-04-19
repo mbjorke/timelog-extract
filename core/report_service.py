@@ -27,6 +27,7 @@ from core.report_runtime import (
     collect_runtime_events,
     collect_screen_time_status,
 )
+from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import aggregate_report
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
@@ -266,7 +267,7 @@ def run_timelog_report(
         date_to=date_to,
         options=options,
         local_tz=LOCAL_TZ,
-        repo_root=REPO_ROOT,
+        repo_root=runtime_workspace_root(),
         as_run_options_fn=as_run_options,
         get_date_range_fn=_get_date_range,
         load_profiles_fn=load_profiles,

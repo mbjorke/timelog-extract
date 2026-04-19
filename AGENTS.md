@@ -47,18 +47,18 @@ If this section conflicts with any policy below, the detailed policy below wins.
 
 ## Standard Timelog Policy
 
-- Use exactly one local timelog file by default: `<current_repo_root>/TIMELOG.md` (the repository where the command is being run).
-- If CLI option `--worklog PATH` is provided, that path overrides the default for that run.
-- If `TIMELOG.md` does not exist, create it before logging work.
+- **Worklog path resolution** (matches [`core/config.py`](core/config.py) `resolve_worklog_path` / `default_worklog_path`, [`README.md`](README.md), and report runs that pass [`core/workspace_root.py`](core/workspace_root.py) `runtime_workspace_root()` as the repo root):
+  1. If `--worklog PATH` is provided, use that path — **overrides the default** resolution for that run.
+  2. Else if `timelog_projects.json` sets a top-level `worklog` string, resolve it (relative paths are relative to the config file’s directory).
+  3. Else if `TIMELOG.md` exists in the **current working directory**, use that file.
+  4. Else use `<current_repo_root>/TIMELOG.md`, where `<current_repo_root>` is the Git repository root from `git rev-parse --show-toplevel` when that succeeds, otherwise the current working directory. If the file does not exist yet, create it at this path before logging work.
+- **By default** (no `--worklog` and no config `worklog`), resolution uses steps 3–4 above.
 - Add entries during/after meaningful work using this format:
   - `## YYYY-MM-DD HH:MM`
   - `- <short summary of what was done>`
 - **Clock time must be real local wall time** when the entry is written. Do not invent, round to a “nice” hour, or default to placeholder times (for example `18:00`). Wrong timestamps defeat the purpose of the log.
 - **How to get the time:** run `date '+%Y-%m-%d %H:%M'` in the repo environment and use that for `YYYY-MM-DD HH:MM`, or use a time the user explicitly stated in the thread. If neither is available, ask the user before appending an entry.
-- **Resolution order (for agents):**
-  1. If user/command includes `--worklog PATH`, use that path.
-  2. Else use `<current_repo_root>/TIMELOG.md`.
-  3. If the chosen file does not exist, create it before appending.
+- **Resolution order (for agents):** use the numbered list above (same four steps).
 
 ## Git Safety
 

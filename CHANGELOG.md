@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: [`README.md`](README.md) — Contributing section split into seven short bullets (entry, branches, CI, tests, license, changelog, brand).
 - Docs: cross-link [`docs/product/vision-documents.md`](docs/product/vision-documents.md) from [`docs/README.md`](docs/README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`AGENTS.md`](AGENTS.md) so product precedence is discoverable from contributor entry points.
 - Docs: removed **Blueberry** / parent-site references from `docs/` and neutralized [`CONTRIBUTING.md`](CONTRIBUTING.md) license line (canonical names remain in [`LICENSE`](LICENSE)); funding accounts stay in [`.github/FUNDING.yml`](.github/FUNDING.yml) only.
 - Docs: branch workflow is **`task/* -> main`** (no standing `dev` on `origin`); updated [`BRANCH.md`](BRANCH.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/runbooks/ci.md`](docs/runbooks/ci.md), [`AGENTS.md`](AGENTS.md), task prompts; [`docs/decisions/main-dev-branch-protection-and-release-gate.md`](docs/decisions/main-dev-branch-protection-and-release-gate.md) marked superseded in part; [`docs/runbooks/dev-main-alignment.md`](docs/runbooks/dev-main-alignment.md) scoped to forks / if `dev` is reintroduced.

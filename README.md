@@ -129,10 +129,13 @@ gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/tr
 
 ## Contributing · tests · license
 
-- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — branches, PR language (**English**), how to run checks.  
-- **`main` is protected** — use a PR; see [`BRANCH.md`](BRANCH.md) and [`docs/runbooks/ci.md`](docs/runbooks/ci.md).  
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — contributor entry: branches, PR language (**English**), local checks.  
+- **Branches:** short-lived `task/*` → PR into **`main`**; details in [`BRANCH.md`](BRANCH.md).  
+- **CI:** what GitHub enforces — [`docs/runbooks/ci.md`](docs/runbooks/ci.md).  
 - **Tests (same as CI):** `bash scripts/run_autotests.sh` from the **repository root**.  
-- **License:** [GNU GPL-3.0-or-later](LICENSE) · **Changelog:** [`CHANGELOG.md`](CHANGELOG.md). Brand assets for maintainers: [`docs/brand/README.md`](docs/brand/README.md).
+- **License:** [GNU GPL-3.0-or-later](LICENSE).  
+- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md).  
+- **Brand assets (maintainers):** [`docs/brand/README.md`](docs/brand/README.md) — generated logos / favicon from canonical marks.
 
 ---
 

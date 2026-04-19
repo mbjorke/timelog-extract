@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md) + [`packaging/homebrew/README.md`](packaging/homebrew/README.md) — sketch for a custom Homebrew tap (`brew tap …/gittan`) before PyPI-first demos; `brew create --python` workflow and presentation fallback.
 - Docs: [`README.md`](README.md) — clearer narrative flow (intro, Documentation, Contributing, Feedback); Contributing keeps seven parallel bullets + AGENTS pointer; less telegraphic tone.
 - Docs: cross-link [`docs/product/vision-documents.md`](docs/product/vision-documents.md) from [`docs/README.md`](docs/README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`AGENTS.md`](AGENTS.md) so product precedence is discoverable from contributor entry points.
 - Docs: removed **Blueberry** / parent-site references from `docs/` and neutralized [`CONTRIBUTING.md`](CONTRIBUTING.md) license line (canonical names remain in [`LICENSE`](LICENSE)); funding accounts stay in [`.github/FUNDING.yml`](.github/FUNDING.yml) only.

@@ -37,7 +37,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Defines a current rule** → `decisions/`
 - **Approved work to build** → `specs/`
 - **Implementation checklist / agent prompt** → `task-prompts/`
-- **How to run CI, release, or QA** → `runbooks/`
+- **How to run CI, release, or QA** → `runbooks/` (optional **Homebrew tap** sketch for `brew install gittan`: [`runbooks/homebrew-tap.md`](runbooks/homebrew-tap.md))
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)

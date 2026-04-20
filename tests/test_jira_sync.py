@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 
 from collectors.jira import JiraCredentials, post_jira_worklog
+from core.cli import app
 from core.jira_sync import (
+    JiraWorklogCandidate,
     build_jira_worklog_candidates,
     extract_issue_key,
 )
 from core.report_service import ReportPayload
+from typer.testing import CliRunner
+
+TEST_API_PLACEHOLDER = "fake-token"
 
 
 class JiraSyncTests(unittest.TestCase):
@@ -70,7 +75,7 @@ class JiraSyncTests(unittest.TestCase):
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",
             email="fake@example.com",
-            api_token="fake-token",
+            api_token=TEST_API_PLACEHOLDER,
         )
         with self.assertRaises(RuntimeError):
             post_jira_worklog(
@@ -80,6 +85,104 @@ class JiraSyncTests(unittest.TestCase):
                 time_spent_seconds=3600,
                 comment="sync test",
             )
+
+    def test_branch_key_used_when_no_commit_key_in_window(self):
+        start = datetime(2026, 4, 10, 10, 0)
+        end = datetime(2026, 4, 10, 11, 0)
+        payload = ReportPayload(
+            dt_from=start,
+            dt_to=end,
+            profiles=[],
+            config_path=None,
+            worklog_path=None,  # type: ignore[arg-type]
+            all_events=[],
+            included_events=[],
+            grouped={},
+            overall_days={"2026-04-10": {"sessions": [(start, end, [{"project": "Demo"}])], "hours": 1.0}},
+            project_reports={},
+            screen_time_days=None,
+            collector_status={},
+            args=Namespace(min_session=15, min_session_passive=5),
+            source_strategy_effective="worklog-first",
+        )
+        with patch("core.jira_sync.load_commit_tags") as load_commits, patch(
+            "core.jira_sync.load_current_branch_issue_key"
+        ) as load_branch:
+            load_commits.return_value = [
+                SimpleNamespace(committed_at=datetime(2026, 4, 9, 8, 0), subject="KAN-1 old")
+            ]
+            load_branch.return_value = "KAN-2"
+            candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))
+        self.assertEqual(unresolved, 0)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].issue_key, "KAN-2")
+        self.assertEqual(candidates[0].source, "branch")
+
+    def test_cli_jira_sync_hides_branch_candidate_when_commit_exists_same_day(self):
+        runner = CliRunner()
+        candidate_branch = JiraWorklogCandidate(
+            issue_key="GIT-123",
+            day="2026-04-20",
+            started=datetime(2026, 4, 20, 9, 0, tzinfo=timezone.utc),
+            seconds=3600,
+            projects=["Demo"],
+            source="branch",
+        )
+        candidate_commit = JiraWorklogCandidate(
+            issue_key="KAN-1",
+            day="2026-04-20",
+            started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
+            seconds=7200,
+            projects=["Demo"],
+            source="commit",
+        )
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates",
+            return_value=([candidate_branch, candidate_commit], 0),
+        ), patch("core.cli_jira_sync.post_candidate", return_value="10001"):
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on", "--dry-run"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertNotIn("GIT-123", result.output)
+        self.assertIn("KAN-1", result.output)
+        self.assertIn("Jira sync summary: posted=0, skipped=2, unresolved=0, failed=0", result.output)
+        self.assertIn("Next: rerun with confirmation", result.output)
+
+    def test_cli_jira_sync_summary_counts_failure_hint(self):
+        runner = CliRunner()
+        candidate = JiraWorklogCandidate(
+            issue_key="KAN-1",
+            day="2026-04-20",
+            started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
+            seconds=7200,
+            projects=["Demo"],
+            source="commit",
+        )
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates",
+            return_value=([candidate], 0),
+        ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
+            "core.cli_jira_sync.post_candidate", side_effect=RuntimeError("Jira HTTP 404")
+        ):
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Jira sync summary: posted=0, skipped=0, unresolved=0, failed=1", result.output)
+        self.assertIn("Next: verify Jira credentials and issue visibility", result.output)
 
 
 class PathLike:

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import unittest
+import urllib.error
 import urllib.request
 from http.server import HTTPServer
 
@@ -22,9 +24,20 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
         thread.start()
         try:
             base = f"http://127.0.0.1:{port}"
-            with urllib.request.urlopen(f"{base}/demo/health", timeout=2) as r:  # noqa: S310
-                self.assertEqual(r.status, 200)
-                self.assertEqual(json.loads(r.read().decode())["status"], "ok")
+            # Retry connection until server is ready
+            for attempt in range(10):
+                try:
+                    with urllib.request.urlopen(f"{base}/demo/health", timeout=2) as r:  # noqa: S310
+                        self.assertEqual(r.status, 200)
+                        self.assertEqual(json.loads(r.read().decode())["status"], "ok")
+                    break
+                except (ConnectionRefusedError, urllib.error.URLError) as e:
+                    if isinstance(e, urllib.error.HTTPError):
+                        raise
+                    if attempt < 9:
+                        time.sleep(0.05 * (attempt + 1))
+                        continue
+                    raise
 
             req = urllib.request.Request(f"{base}/demo/sessions", method="POST", data=b"")  # noqa: S310
             with urllib.request.urlopen(req, timeout=2) as r:  # noqa: S310

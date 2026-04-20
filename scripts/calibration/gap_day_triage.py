@@ -49,6 +49,18 @@ class DayTopSite:
     sample_title: str
 
 
+@dataclass(frozen=True)
+class ProjectSuggestion:
+    canonical: str
+    score: int
+    aliases: list[str]
+    explicit_domain_hits: int
+    term_hits: int
+    alias_or_name_hits: int
+    ticket_mode: str
+    default_client: str
+
+
 def load_gap_payload(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -114,15 +126,32 @@ def _domain_is_generic(domain: str) -> bool:
     return any(value.endswith(f".{root}") for root in GENERIC_DOMAINS)
 
 
-def score_projects_for_sites(profiles: list[dict], top_sites: list[DayTopSite]) -> list[tuple[str, int, list[str]]]:
+def score_projects_for_sites(
+    profiles: list[dict],
+    top_sites: list[DayTopSite],
+    *,
+    scoring_mode: str = "site-first",
+) -> list[ProjectSuggestion]:
+    if scoring_mode not in {"balanced", "site-first"}:
+        raise ValueError(f"unsupported scoring mode: {scoring_mode}")
     site_counts = {site.domain: site.visits for site in top_sites}
     scores_by_canonical: dict[str, int] = {}
     aliases_by_canonical: dict[str, set[str]] = {}
+    explicit_hits_by_canonical: dict[str, int] = {}
+    term_hits_by_canonical: dict[str, int] = {}
+    alias_hits_by_canonical: dict[str, int] = {}
+    ticket_mode_by_canonical: dict[str, str] = {}
+    default_client_by_canonical: dict[str, str] = {}
     for profile in profiles:
         name = str(profile.get("name", "")).strip()
         if not name:
             continue
         canonical = str(profile.get("canonical_project", "")).strip() or name
+        ticket_mode_by_canonical.setdefault(canonical, str(profile.get("ticket_mode", "optional")))
+        default_client_by_canonical.setdefault(
+            canonical,
+            str(profile.get("default_client", "")).strip() or str(profile.get("customer", "")).strip() or canonical,
+        )
         tracked = [str(url).strip().lower() for url in profile.get("tracked_urls", []) if url]
         terms = [str(term).strip().lower() for term in profile.get("match_terms", []) if term]
         alias_tokens = [str(alias).strip().lower() for alias in profile.get("aliases", []) if alias]
@@ -130,23 +159,49 @@ def score_projects_for_sites(profiles: list[dict], top_sites: list[DayTopSite]) 
         score = 0
         for domain, visits in site_counts.items():
             is_generic = _domain_is_generic(domain)
+            if scoring_mode == "site-first":
+                tracked_weight = 8
+                term_weight = 1 if not is_generic else 0
+                alias_weight = 1 if not is_generic else 0
+                name_weight = 1 if not is_generic else 0
+            else:
+                tracked_weight = 6
+                term_weight = 1 if is_generic else 2
+                alias_weight = max(1, visits // 2) if is_generic else visits
+                name_weight = max(1, visits // 2) if is_generic else visits
             if any(domain in value or value in domain for value in tracked):
                 # Explicit domain anchors from --map should dominate generic inference.
-                score += visits * 6
+                score += visits * tracked_weight
+                explicit_hits_by_canonical[canonical] = explicit_hits_by_canonical.get(canonical, 0) + 1
                 continue
             if any(term and term in domain for term in terms):
-                score += visits if is_generic else visits * 2
+                score += visits * term_weight
+                term_hits_by_canonical[canonical] = term_hits_by_canonical.get(canonical, 0) + 1
                 continue
             if any(token and token in domain for token in alias_tokens):
-                score += max(1, visits // 2) if is_generic else visits
+                score += visits * alias_weight
+                alias_hits_by_canonical[canonical] = alias_hits_by_canonical.get(canonical, 0) + 1
                 continue
             if name_token and name_token in domain:
-                score += max(1, visits // 2) if is_generic else visits
+                score += visits * name_weight
+                alias_hits_by_canonical[canonical] = alias_hits_by_canonical.get(canonical, 0) + 1
         if score > 0:
             scores_by_canonical[canonical] = scores_by_canonical.get(canonical, 0) + score
             aliases_by_canonical.setdefault(canonical, set()).add(name)
     ranked = sorted(scores_by_canonical.items(), key=lambda item: (-item[1], item[0].lower()))
-    return [(canonical, score, sorted(aliases_by_canonical.get(canonical, set()))) for canonical, score in ranked]
+    return [
+        ProjectSuggestion(
+            canonical=canonical,
+            score=score,
+            aliases=sorted(aliases_by_canonical.get(canonical, set())),
+            explicit_domain_hits=explicit_hits_by_canonical.get(canonical, 0),
+            term_hits=term_hits_by_canonical.get(canonical, 0),
+            alias_or_name_hits=alias_hits_by_canonical.get(canonical, 0),
+            ticket_mode=ticket_mode_by_canonical.get(canonical, "optional"),
+            default_client=default_client_by_canonical.get(canonical, canonical),
+        )
+        for canonical, score in ranked
+    ]
 
 
 def fetch_chrome_rows_for_day(day: str, *, home: Path) -> list[tuple[int, str, str]]:
@@ -168,7 +223,7 @@ def render_report(
     day: str,
     gap_row: dict,
     top_sites: list[DayTopSite],
-    project_suggestions: list[tuple[str, int, list[str]]],
+    project_suggestions: list[ProjectSuggestion],
     projects_config: str,
 ) -> str:
     unexplained = float(gap_row.get("unexplained_screen_time_hours", 0.0))
@@ -193,18 +248,36 @@ def render_report(
         lines.append("- None (no Chrome history rows for this day)")
     lines.extend(["", "Suggested projects to review:"])
     if project_suggestions:
-        for canonical, score, aliases in project_suggestions[:5]:
+        for suggestion in project_suggestions[:5]:
+            canonical = suggestion.canonical
+            score = suggestion.score
+            aliases = suggestion.aliases
             alias_suffix = f" | aliases: {', '.join(aliases)}" if aliases else ""
-            lines.append(f"- {canonical} (signal score: {score}){alias_suffix}")
-        target = project_suggestions[0][0]
+            reason_bits: list[str] = []
+            if suggestion.explicit_domain_hits:
+                reason_bits.append(f"domain anchors={suggestion.explicit_domain_hits}")
+            if suggestion.term_hits:
+                reason_bits.append(f"term matches={suggestion.term_hits}")
+            if suggestion.alias_or_name_hits:
+                reason_bits.append(f"alias/name matches={suggestion.alias_or_name_hits}")
+            reasons = f" | why: {', '.join(reason_bits)}" if reason_bits else ""
+            lines.append(f"- {canonical} (signal score: {score}){alias_suffix}{reasons}")
+        top = project_suggestions[0]
+        target = top.canonical
+        ticket_policy = top.ticket_mode
+        default_client = top.default_client
     else:
         lines.append("- No strong match from current profile rules")
         target = "<project-name>"
+        ticket_policy = "optional"
+        default_client = "<client>"
     lines.extend(
         [
             "",
             "Next action (record mapping):",
             f"- gittan suggest-rules --project \"{target}\" --from {day} --to {day} --projects-config {projects_config}",
+            f"- Project policy: ticket_mode={ticket_policy}, default_client={default_client}",
+            "- If no ticket exists and ticket_mode is optional/none, map directly to project.",
             "- If needed, update project terms/URLs with: gittan projects --config timelog_projects.json",
         ]
     )
@@ -227,6 +300,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to project profile config",
     )
     parser.add_argument("--limit", type=int, default=5, help="Number of top sites to print")
+    parser.add_argument(
+        "--scoring-mode",
+        default="site-first",
+        choices=["balanced", "site-first"],
+        help="Scoring strategy for project suggestions (default: site-first).",
+    )
     parser.add_argument(
         "--map",
         action="append",
@@ -331,7 +410,11 @@ def main() -> int:
             + (f" ({created_count} new project(s) created)." if created_count else ".")
         )
     profiles = load_profiles_for_projects_config(args.projects_config)
-    suggestions = score_projects_for_sites(profiles, top_sites)
+    suggestions = score_projects_for_sites(
+        profiles,
+        top_sites,
+        scoring_mode=str(args.scoring_mode),
+    )
     print(
         render_report(
             day=args.day,

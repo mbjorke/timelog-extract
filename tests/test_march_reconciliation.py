@@ -27,14 +27,14 @@ class MarchReconciliationTests(unittest.TestCase):
                 },
             ],
             project_reports={
-                "Time Log Genius": {"2026-03-10": {"hours": 2.0}},
+                "Product Suite": {"2026-03-10": {"hours": 2.0}},
                 "Internal Ops": {"2026-03-10": {"hours": 1.0}},
             },
             profiles=[
                 {
-                    "name": "Time Log Genius",
-                    "match_terms": ["time log genius", "timelog"],
-                    "tracked_urls": ["app.timeloggenius.dev"],
+                    "name": "Product Suite",
+                    "match_terms": ["product suite", "tracker"],
+                    "tracked_urls": ["app.productsuite.dev"],
                 },
                 {
                     "name": "Internal Ops",
@@ -50,7 +50,7 @@ class MarchReconciliationTests(unittest.TestCase):
             ),
         )
         ground_truth = {
-            "Time Log Genius": 3.0,
+            "Product Suite": 3.0,
             "Internal Ops": 1.5,
         }
         payload = evaluate_reconciliation(report, ground_truth)
@@ -66,7 +66,7 @@ class MarchReconciliationTests(unittest.TestCase):
             included_events=[
                 {
                     "source": "Chrome",
-                    "detail": "https://app.timeloggenius.dev/onboarding",
+                    "detail": "https://app.productsuite.dev/onboarding",
                     "project": "Uncategorized",
                     "timestamp": ts,
                 }

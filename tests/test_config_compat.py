@@ -32,15 +32,31 @@ class ConfigCompatibilityTests(unittest.TestCase):
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(
             {
-                "name": "timelog-extract",
-                "canonical_project": "Gittan",
-                "aliases": ["briox-buddy", "Time Log Genius"],
+                "name": "project-core",
+                "canonical_project": "ProductSuite",
+                "aliases": ["project-ui", "project-cli"],
             }
         )
-        self.assertEqual(profile["canonical_project"], "Gittan")
-        self.assertIn("timelog-extract", profile["aliases"])
-        self.assertIn("Gittan", profile["aliases"])
-        self.assertIn("briox-buddy", profile["aliases"])
+        self.assertEqual(profile["canonical_project"], "ProductSuite")
+        self.assertIn("project-core", profile["aliases"])
+        self.assertIn("ProductSuite", profile["aliases"])
+        self.assertIn("project-ui", profile["aliases"])
+        self.assertEqual(profile["ticket_mode"], "optional")
+        self.assertEqual(profile["project_id"], "project-core")
+        self.assertEqual(profile["default_client"], profile["customer"])
+
+    def test_normalize_profile_accepts_ticket_policy_fields(self):
+        profile = normalize_profile(
+            {
+                "name": "project-core",
+                "project_id": "prod-core",
+                "ticket_mode": "none",
+                "default_client": "Internal Platform",
+            }
+        )
+        self.assertEqual(profile["project_id"], "prod-core")
+        self.assertEqual(profile["ticket_mode"], "none")
+        self.assertEqual(profile["default_client"], "Internal Platform")
 
     def test_classify_project_works_with_match_terms(self):
         """Classifies text to the project whose match term appears in input."""

@@ -30,7 +30,7 @@ class SetupGithubEnvTests(unittest.TestCase):
         ) as q_confirm, patch.object(
             ghe, "_gh_read_token", return_value="tok"
         ), patch.object(
-            ghe, "_gh_read_user", return_value="mbjorke"
+            ghe, "_gh_read_user", return_value="example-user"
         ):
             q_confirm.return_value.ask.return_value = True
             status, note, steps = ghe.configure_github_env_for_setup(console, yes=False, dry_run=True)
@@ -54,7 +54,7 @@ class SetupGithubEnvTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True), patch.object(
             ghe, "_gh_read_token", return_value="tok"
         ), patch.object(
-            ghe, "_gh_read_user", return_value="mbjorke"
+            ghe, "_gh_read_user", return_value="example-user"
         ), patch.object(ghe, "_upsert_export") as upsert:
             status, note, _steps = ghe.configure_github_env_for_setup(console, yes=True, dry_run=False)
         self.assertEqual(status, "PASS")
@@ -62,7 +62,7 @@ class SetupGithubEnvTests(unittest.TestCase):
         self.assertEqual(upsert.call_count, 1)
         _profile_path, key, value = upsert.call_args.args
         self.assertEqual(key, "GITHUB_USER")
-        self.assertEqual(value, "mbjorke")
+        self.assertEqual(value, "example-user")
         self.assertEqual(upsert.call_args.kwargs.get("dry_run"), False)
 
     def test_configure_github_env_missing_user_adds_actionable_step(self):

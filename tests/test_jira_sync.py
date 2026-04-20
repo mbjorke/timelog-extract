@@ -109,19 +109,19 @@ class JiraSyncTests(unittest.TestCase):
             "core.jira_sync.load_current_branch_issue_key"
         ) as load_branch:
             load_commits.return_value = [
-                SimpleNamespace(committed_at=datetime(2026, 4, 9, 8, 0), subject="KAN-1 old")
+                SimpleNamespace(committed_at=datetime(2026, 4, 9, 8, 0), subject="ABC-1 old")
             ]
-            load_branch.return_value = "KAN-2"
+            load_branch.return_value = "ABC-2"
             candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))
         self.assertEqual(unresolved, 0)
         self.assertEqual(len(candidates), 1)
-        self.assertEqual(candidates[0].issue_key, "KAN-2")
+        self.assertEqual(candidates[0].issue_key, "ABC-2")
         self.assertEqual(candidates[0].source, "branch")
 
     def test_cli_jira_sync_hides_branch_candidate_when_commit_exists_same_day(self):
         runner = CliRunner()
         candidate_branch = JiraWorklogCandidate(
-            issue_key="GIT-123",
+            issue_key="XYZ-123",
             day="2026-04-20",
             started=datetime(2026, 4, 20, 9, 0, tzinfo=timezone.utc),
             seconds=3600,
@@ -129,7 +129,7 @@ class JiraSyncTests(unittest.TestCase):
             source="branch",
         )
         candidate_commit = JiraWorklogCandidate(
-            issue_key="KAN-1",
+            issue_key="ABC-1",
             day="2026-04-20",
             started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
             seconds=7200,
@@ -150,15 +150,15 @@ class JiraSyncTests(unittest.TestCase):
         ), patch("core.cli_jira_sync.post_candidate", return_value="10001"):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on", "--dry-run"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertNotIn("GIT-123", result.output)
-        self.assertIn("KAN-1", result.output)
+        self.assertNotIn("XYZ-123", result.output)
+        self.assertIn("ABC-1", result.output)
         self.assertIn("Jira sync summary: posted=0, skipped=2, unresolved=0, failed=0", result.output)
         self.assertIn("Next: rerun with confirmation", result.output)
 
     def test_cli_jira_sync_summary_counts_failure_hint(self):
         runner = CliRunner()
         candidate = JiraWorklogCandidate(
-            issue_key="KAN-1",
+            issue_key="ABC-1",
             day="2026-04-20",
             started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
             seconds=7200,

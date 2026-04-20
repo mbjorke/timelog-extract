@@ -27,6 +27,11 @@ def normalize_profile(raw):
     tracked_urls = as_list(raw.get("tracked_urls"))
     email = str(raw.get("email", "")).strip()
     customer = str(raw.get("customer", "")).strip() or name
+    project_id = str(raw.get("project_id", "")).strip() or name
+    ticket_mode = str(raw.get("ticket_mode", "")).strip().lower() or "optional"
+    if ticket_mode not in {"required", "optional", "none"}:
+        raise ValueError("ticket_mode must be one of: required, optional, none")
+    default_client = str(raw.get("default_client", "")).strip() or customer
     invoice_title = str(raw.get("invoice_title", "")).strip()
     invoice_description = str(raw.get("invoice_description", "")).strip()
     enabled = bool(raw.get("enabled", True))
@@ -43,7 +48,10 @@ def normalize_profile(raw):
     merged_tracked_urls = sorted({url for url in tracked_urls if url})
     return {
         "name": name,
+        "project_id": project_id,
         "enabled": enabled,
+        "ticket_mode": ticket_mode,
+        "default_client": default_client,
         "match_terms": terms,
         "tracked_urls": merged_tracked_urls,
         "canonical_project": canonical_project,
@@ -198,7 +206,10 @@ def apply_rule_to_project(
         created = True
         target = {
             "name": cleaned_name,
+            "project_id": cleaned_name,
             "customer": cleaned_name,
+            "ticket_mode": "optional",
+            "default_client": cleaned_name,
             "match_terms": [cleaned_name],
             "tracked_urls": [],
             "canonical_project": cleaned_name,
@@ -216,6 +227,13 @@ def apply_rule_to_project(
 
     normalized = normalize_profile(target)
     normalized["enabled"] = bool(target.get("enabled", True))
+    normalized["project_id"] = str(target.get("project_id", "")).strip() or cleaned_name
+    normalized["ticket_mode"] = str(target.get("ticket_mode", "")).strip().lower() or "optional"
+    if normalized["ticket_mode"] not in {"required", "optional", "none"}:
+        normalized["ticket_mode"] = "optional"
+    normalized["default_client"] = str(target.get("default_client", "")).strip() or str(
+        target.get("customer", "")
+    ).strip() or cleaned_name
     normalized["email"] = str(target.get("email", "")).strip()
     normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
     normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()

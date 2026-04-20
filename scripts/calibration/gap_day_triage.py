@@ -29,7 +29,7 @@ from core.config import (
     load_projects_config_payload,
     save_projects_config_payload,
 )
-from core.report_service import CHROME_EPOCH_DELTA_US
+from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 
 GENERIC_DOMAINS = {
     "google.com",

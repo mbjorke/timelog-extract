@@ -11,7 +11,6 @@ import typer
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import as_list
-from core.report_service import run_timelog_report
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
@@ -73,6 +72,9 @@ def triage(
 ):
     """Guided loop: confirm/correct project mapping on top unexplained days."""
     from rich.console import Console
+
+    # Deferred import: core.report_service imports core.cli, which loads this module first.
+    from core.report_service import run_timelog_report
 
     console = Console()
     if scoring_mode not in {"balanced", "site-first"}:

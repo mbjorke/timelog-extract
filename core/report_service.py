@@ -14,6 +14,7 @@ from core.analytics import (
     get_date_range as core_get_date_range,
     group_by_day as core_group_by_day,
 )
+from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli import TimelogRunOptions, as_run_options
 from core.config import load_profiles, resolve_worklog_path as core_resolve_worklog_path
 from core.events import (
@@ -39,7 +40,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HOME = Path.home()
 LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 APPLE_EPOCH = 978307200
-CHROME_EPOCH_DELTA_US = 11_644_473_600 * 1_000_000
 UNCATEGORIZED = "Uncategorized"
 
 

@@ -84,7 +84,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Not configured (auto)", completed.stdout)
 
     def test_doctor_github_source_off_row_is_shown(self):
-        completed = self._run_doctor(["--github-source", "off", "--github-user", "mbjorke"])
+        completed = self._run_doctor(["--github-source", "off", "--github-user", "example-user"])
         self.assertIn("GitHub Source", completed.stdout)
         self.assertIn("Disabled (off)", completed.stdout)
 
@@ -99,9 +99,9 @@ class CliRegressionSmokeTests(unittest.TestCase):
     def test_doctor_github_source_on_with_user_reports_token_state(self):
         env = dict(os.environ)
         env.pop("GITHUB_TOKEN", None)
-        completed = self._run_doctor(["--github-source", "on", "--github-user", "mbjorke"], env=env)
+        completed = self._run_doctor(["--github-source", "on", "--github-user", "example-user"], env=env)
         self.assertIn("GitHub Source", completed.stdout)
-        self.assertIn("Enabled (on) for user 'mbjorke'", completed.stdout)
+        self.assertIn("Enabled (on) for user 'example-user'", completed.stdout)
         self.assertIn("public API limits apply", completed.stdout)
 
     def test_doctor_rejects_invalid_github_source(self):

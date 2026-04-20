@@ -32,15 +32,15 @@ class ConfigCompatibilityTests(unittest.TestCase):
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(
             {
-                "name": "timelog-extract",
-                "canonical_project": "Gittan",
-                "aliases": ["briox-buddy", "Time Log Genius"],
+                "name": "project-core",
+                "canonical_project": "ProductSuite",
+                "aliases": ["project-ui", "project-cli"],
             }
         )
-        self.assertEqual(profile["canonical_project"], "Gittan")
-        self.assertIn("timelog-extract", profile["aliases"])
-        self.assertIn("Gittan", profile["aliases"])
-        self.assertIn("briox-buddy", profile["aliases"])
+        self.assertEqual(profile["canonical_project"], "ProductSuite")
+        self.assertIn("project-core", profile["aliases"])
+        self.assertIn("ProductSuite", profile["aliases"])
+        self.assertIn("project-ui", profile["aliases"])
 
     def test_classify_project_works_with_match_terms(self):
         """Classifies text to the project whose match term appears in input."""

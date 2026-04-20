@@ -33,8 +33,8 @@ class GapDayTriageTests(unittest.TestCase):
 
     def test_summarize_day_sites_aggregates_domains(self):
         rows = [
-            (1, "https://github.com/mbjorke/timelog-extract", "Repo"),
-            (2, "https://github.com/mbjorke/briox-buddy", "PR"),
+            (1, "https://github.com/example/project-core", "Repo"),
+            (2, "https://github.com/example/project-ui", "PR"),
             (3, "https://www.notion.so/workspace", "Notion"),
         ]
         sites = summarize_day_sites(rows, limit=5)
@@ -45,17 +45,17 @@ class GapDayTriageTests(unittest.TestCase):
     def test_score_projects_rolls_up_to_canonical_project(self):
         profiles = [
             {
-                "name": "timelog-extract",
-                "canonical_project": "Gittan",
-                "aliases": ["timelog-extract", "briox-buddy"],
-                "tracked_urls": ["github.com/mbjorke/timelog-extract"],
+                "name": "project-core",
+                "canonical_project": "ProductSuite",
+                "aliases": ["project-core", "project-ui"],
+                "tracked_urls": ["github.com/example/project-core"],
                 "match_terms": [],
             },
             {
-                "name": "briox-buddy",
-                "canonical_project": "Gittan",
-                "aliases": ["timelog-extract", "briox-buddy"],
-                "tracked_urls": ["github.com/mbjorke/briox-buddy"],
+                "name": "project-ui",
+                "canonical_project": "ProductSuite",
+                "aliases": ["project-core", "project-ui"],
+                "tracked_urls": ["github.com/example/project-ui"],
                 "match_terms": [],
             },
             {"name": "Beta", "canonical_project": "Beta", "aliases": ["Beta"], "tracked_urls": [], "match_terms": ["notion"]},
@@ -65,8 +65,8 @@ class GapDayTriageTests(unittest.TestCase):
             DayTopSite(domain="notion.so", visits=2, share=0.4, sample_title="Notes"),
         ]
         scores = score_projects_for_sites(profiles, top_sites)
-        self.assertEqual(scores[0][0], "Gittan")
-        self.assertIn("briox-buddy", scores[0][2])
+        self.assertEqual(scores[0][0], "ProductSuite")
+        self.assertIn("project-ui", scores[0][2])
         self.assertGreater(scores[0][1], scores[1][1])
 
     def test_render_report_includes_next_action_hint(self):
@@ -78,13 +78,13 @@ class GapDayTriageTests(unittest.TestCase):
                 "unexplained_screen_time_hours": 1.0,
             },
             top_sites=[DayTopSite(domain="github.com", visits=3, share=1.0, sample_title="Repo")],
-            project_suggestions=[("Gittan", 9, ["timelog-extract", "briox-buddy"])],
+            project_suggestions=[("ProductSuite", 9, ["project-core", "project-ui"])],
             projects_config="timelog_projects.json",
         )
         self.assertIn("Gap Day Triage (Internal)", report)
         self.assertIn("github.com", report)
-        self.assertIn("aliases: timelog-extract, briox-buddy", report)
-        self.assertIn("gittan suggest-rules --project \"Gittan\" --from 2026-04-02 --to 2026-04-02", report)
+        self.assertIn("aliases: project-core, project-ui", report)
+        self.assertIn("gittan suggest-rules --project \"ProductSuite\" --from 2026-04-02 --to 2026-04-02", report)
 
     def test_parse_map_assignments_accepts_domain_project_pairs(self):
         parsed = parse_map_assignments(["github.com=Gittan", "notion.so=ClientA"])
@@ -180,6 +180,40 @@ class GapDayTriageTests(unittest.TestCase):
         top_sites = [DayTopSite(domain="github.com", visits=30, share=1.0, sample_title="GH")]
         scores = score_projects_for_sites(profiles, top_sites)
         self.assertEqual(scores[0][0], "Mapped")
+
+    def test_alias_cluster_rolls_up_under_one_canonical(self):
+        profiles = [
+            {
+                "name": "Product CLI",
+                "canonical_project": "ProductSuite",
+                "aliases": ["Product CLI", "Product Web", "repo-core", "repo-ledger", "repo-ui"],
+                "tracked_urls": ["github.com/example/repo-core"],
+                "match_terms": ["product", "tracker"],
+            },
+            {
+                "name": "Product Web",
+                "canonical_project": "ProductSuite",
+                "aliases": ["Product CLI", "Product Web", "repo-core", "repo-ledger", "repo-ui"],
+                "tracked_urls": ["product.example.app"],
+                "match_terms": ["product-web"],
+            },
+            {
+                "name": "ClientOps",
+                "canonical_project": "ClientOps",
+                "aliases": ["ClientOps"],
+                "tracked_urls": ["clientops.example.com"],
+                "match_terms": ["clientops"],
+            },
+        ]
+        top_sites = [
+            DayTopSite(domain="github.com", visits=40, share=0.5, sample_title="PR"),
+            DayTopSite(domain="product.example.app", visits=20, share=0.25, sample_title="Product App"),
+            DayTopSite(domain="clientops.example.com", visits=20, share=0.25, sample_title="ClientOps"),
+        ]
+        scores = score_projects_for_sites(profiles, top_sites)
+        self.assertEqual(scores[0][0], "ProductSuite")
+        self.assertIn("Product CLI", scores[0][2])
+        self.assertIn("Product Web", scores[0][2])
 
 
 if __name__ == "__main__":

@@ -15,19 +15,19 @@ class MarchCalibrationTests(unittest.TestCase):
             included_events=[
                 {
                     "source": "Chrome",
-                    "detail": "https://app.timeloggenius.dev/onboarding",
+                    "detail": "https://app.productsuite.dev/onboarding",
                     "project": "Uncategorized",
                     "timestamp": ts,
                 }
             ],
             overall_days={"2026-03-10": {"hours": 2.0}},
             screen_time_days={"2026-03-10": 3.0 * 3600.0},
-            project_reports={"Time Log Genius": {"2026-03-10": {"hours": 2.0}}},
+            project_reports={"Product Suite": {"2026-03-10": {"hours": 2.0}}},
             profiles=[
                 {
-                    "name": "Time Log Genius",
-                    "match_terms": ["time log genius", "timelog"],
-                    "tracked_urls": ["app.timeloggenius.dev"],
+                    "name": "Product Suite",
+                    "match_terms": ["product suite", "tracker"],
+                    "tracked_urls": ["app.productsuite.dev"],
                 }
             ],
             args=Namespace(
@@ -39,9 +39,9 @@ class MarchCalibrationTests(unittest.TestCase):
         )
         payload = build_march_calibration_payload(
             report,
-            {"Time Log Genius": 3.0},
+            {"Product Suite": 3.0},
             invoice_groups={
-                "Internal": {"actual_hours": 3.0, "projects": ["Time Log Genius"]}
+                "Internal": {"actual_hours": 3.0, "projects": ["Product Suite"]}
             },
         )
         self.assertIn("reconciliation", payload)

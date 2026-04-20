@@ -22,6 +22,8 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
         port = server.server_address[1]
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
+        # Give server thread time to bind and start listening
+        time.sleep(0.1)
         try:
             base = f"http://127.0.0.1:{port}"
             # Retry connection until server is ready
@@ -35,7 +37,7 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
                     if isinstance(e, urllib.error.HTTPError):
                         raise
                     if attempt < 9:
-                        time.sleep(0.05 * (attempt + 1))
+                        time.sleep(0.1)
                         continue
                     raise
 

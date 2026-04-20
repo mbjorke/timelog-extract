@@ -23,6 +23,8 @@ from scripts.calibration.gap_day_triage import (
 
 
 def select_triage_days(payload: dict, *, max_days: int) -> list[dict]:
+    if int(max_days) < 1:
+        raise ValueError(f"max_days must be at least 1, got {max_days}")
     rows = [
         row
         for row in payload.get("days", [])
@@ -32,7 +34,7 @@ def select_triage_days(payload: dict, *, max_days: int) -> list[dict]:
         key=lambda row: float(row.get("unexplained_screen_time_hours", 0.0)),
         reverse=True,
     )
-    return rows[: max(1, int(max_days))]
+    return rows[: int(max_days)]
 
 
 def resolve_target_project_name(profiles: list[dict], canonical: str) -> str:
@@ -80,6 +82,9 @@ def triage(
     if scoring_mode not in {"balanced", "site-first"}:
         console.print(f"[red]Invalid --scoring-mode:[/red] {scoring_mode!r} (use balanced or site-first)")
         raise typer.Exit(code=1)
+    if int(max_days) < 1:
+        console.print(f"[red]Invalid --max-days:[/red] must be at least 1, got {max_days}")
+        raise typer.Exit(code=1)
     options = TimelogRunOptions(
         date_from=date_from,
         date_to=date_to,
@@ -118,6 +123,9 @@ def triage(
         suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical)
         if yes:
             target = suggested_project
+            if target not in all_names:
+                console.print(f"[yellow]Skipping {day}: suggested project '{target}' not found in config[/yellow]")
+                continue
             selected_domains = [site.domain for site in top_sites[:2]]
         else:
             project_choice = questionary.select(
@@ -147,5 +155,4 @@ def triage(
         console.print(f"[green]Applied[/green] {applied} mapping(s) for {day} -> {target}")
         profiles = load_profiles_for_projects_config(projects_config)
     console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
-
 

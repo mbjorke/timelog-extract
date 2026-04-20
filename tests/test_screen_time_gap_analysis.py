@@ -38,6 +38,7 @@ class ScreenTimeGapAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(payload["totals"]["screen_time_hours"], 7.0, places=4)
         self.assertIn("A", payload["project_allocated_gap_hours"])
         self.assertIn("B", payload["project_allocated_gap_hours"])
+        self.assertEqual(payload["totals"]["missing_reference_day_count"], 0)
 
 
     def test_coverage_is_inf_when_screen_time_zero_but_estimated_nonzero(self):
@@ -120,6 +121,7 @@ class ScreenTimeGapAnalysisTests(unittest.TestCase):
         day = payload["days"][0]
         self.assertAlmostEqual(day["screen_time_hours"], 0.0, places=4)
         self.assertTrue(math.isinf(day["coverage_ratio"]))
+        self.assertTrue(day["missing_reference_data"])
 
     def test_gap_script_writes_internal_only_marker_to_markdown(self):
         fake_payload = {"days": [], "totals": {"estimated_hours": 0.0, "screen_time_hours": 0.0}}
@@ -157,7 +159,12 @@ class ScreenTimeGapAnalysisTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertTrue(out_json.is_file())
             self.assertTrue(out_md.is_file())
-            self.assertIn("INTERNAL_ONLY", out_md.read_text(encoding="utf-8"))
+            markdown = out_md.read_text(encoding="utf-8")
+            self.assertIn("INTERNAL_ONLY", markdown)
+            self.assertIn("Date range: 2026-03-01 -> 2026-03-31", markdown)
+            self.assertIn("## Totals", markdown)
+            self.assertIn("Missing reference-data days", markdown)
+            self.assertIn("## Days with missing screen-time reference data", markdown)
             self.assertEqual(
                 json.loads(out_json.read_text(encoding="utf-8")),
                 fake_payload,

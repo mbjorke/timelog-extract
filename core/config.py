@@ -30,6 +30,9 @@ def normalize_profile(raw):
     invoice_title = str(raw.get("invoice_title", "")).strip()
     invoice_description = str(raw.get("invoice_description", "")).strip()
     enabled = bool(raw.get("enabled", True))
+    canonical_project = str(raw.get("canonical_project", "")).strip() or name
+    aliases = as_list(raw.get("aliases"))
+    merged_aliases = sorted({alias for alias in aliases + [name, canonical_project] if alias})
     terms = sorted(
         {
             t.lower()
@@ -43,6 +46,8 @@ def normalize_profile(raw):
         "enabled": enabled,
         "match_terms": terms,
         "tracked_urls": merged_tracked_urls,
+        "canonical_project": canonical_project,
+        "aliases": merged_aliases,
         "email": email,
         "customer": customer,
         "invoice_title": invoice_title,
@@ -196,6 +201,8 @@ def apply_rule_to_project(
             "customer": cleaned_name,
             "match_terms": [cleaned_name],
             "tracked_urls": [],
+            "canonical_project": cleaned_name,
+            "aliases": [cleaned_name],
             "email": "",
             "invoice_title": "",
             "invoice_description": "",

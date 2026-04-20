@@ -29,6 +29,19 @@ class ConfigCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(profile["tracked_urls"], ["https://example.com/a"])
 
+    def test_normalize_profile_supports_canonical_project_and_aliases(self):
+        profile = normalize_profile(
+            {
+                "name": "timelog-extract",
+                "canonical_project": "Gittan",
+                "aliases": ["briox-buddy", "Time Log Genius"],
+            }
+        )
+        self.assertEqual(profile["canonical_project"], "Gittan")
+        self.assertIn("timelog-extract", profile["aliases"])
+        self.assertIn("Gittan", profile["aliases"])
+        self.assertIn("briox-buddy", profile["aliases"])
+
     def test_classify_project_works_with_match_terms(self):
         """Classifies text to the project whose match term appears in input."""
         profiles = [

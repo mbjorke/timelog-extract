@@ -3,6 +3,8 @@
   "projects": [
     {
       "name": "example-project-alpha",
+      "canonical_project": "Example Internal Platform",
+      "aliases": ["example-project-alpha", "alpha-ui", "example-desktop"],
       "customer": "Example Customer A",
       "invoice_title": "Technical integration and optimization",
       "invoice_description": "Ongoing implementation and iterative improvements for the project's core workflows.",

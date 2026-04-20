@@ -61,7 +61,12 @@ def main() -> int:
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    out_md.write_text("See JSON payload for full details.\n", encoding="utf-8")
+    out_md.write_text(
+        "# Screen Time Gap Analysis (Internal)\n\n"
+        "Status: INTERNAL_ONLY (reconciliation artifact, not stage-demo surface).\n\n"
+        "See JSON payload for full details.\n",
+        encoding="utf-8",
+    )
     print(f"Wrote: {out_json}")
     print(f"Wrote: {out_md}")
     return 0

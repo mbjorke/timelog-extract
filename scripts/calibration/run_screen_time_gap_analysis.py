@@ -33,13 +33,14 @@ def _json_safe(value):
 def _build_markdown_summary(payload: dict, *, date_from: str, date_to: str) -> str:
     totals = payload.get("totals", {})
     days = payload.get("days", [])
+    missing_reference_days = [row for row in days if bool(row.get("missing_reference_data", False))]
     worst_unexplained = sorted(
         days,
         key=lambda day: float(day.get("unexplained_screen_time_hours", 0.0)),
         reverse=True,
     )[:3]
     worst_over = sorted(
-        days,
+        [row for row in days if not bool(row.get("missing_reference_data", False))],
         key=lambda day: float(day.get("over_attributed_hours", 0.0)),
         reverse=True,
     )[:3]
@@ -56,6 +57,7 @@ def _build_markdown_summary(payload: dict, *, date_from: str, date_to: str) -> s
         f"- Coverage ratio: {float(totals.get('coverage_ratio', 0.0)):.4f}",
         f"- Unexplained screen time hours: {float(totals.get('unexplained_screen_time_hours', 0.0)):.2f}",
         f"- Over-attributed hours: {float(totals.get('over_attributed_hours', 0.0)):.2f}",
+        f"- Missing reference-data days: {int(totals.get('missing_reference_day_count', 0))}",
         "",
         "## Top unexplained-screen-time days",
     ]
@@ -63,6 +65,19 @@ def _build_markdown_summary(payload: dict, *, date_from: str, date_to: str) -> s
         for row in worst_unexplained:
             lines.append(
                 f"- {row.get('day')}: {float(row.get('unexplained_screen_time_hours', 0.0)):.2f}h unexplained"
+            )
+    else:
+        lines.append("- None")
+    lines.extend(["", "## Days with missing screen-time reference data"])
+    if missing_reference_days:
+        for row in sorted(
+            missing_reference_days,
+            key=lambda day: float(day.get("estimated_hours", 0.0)),
+            reverse=True,
+        )[:3]:
+            lines.append(
+                f"- {row.get('day')}: {float(row.get('estimated_hours', 0.0)):.2f}h estimated, "
+                "screen-time reference missing"
             )
     else:
         lines.append("- None")

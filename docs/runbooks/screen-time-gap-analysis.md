@@ -42,6 +42,14 @@ python3 scripts/compare_screen_time_gap.py --old out/reconciliation/screen_time_
 
 This prints totals delta and day-row delta in one command.
 
+### Day-level Top Sites triage (memory trigger)
+
+```bash
+python3 scripts/gap_day_triage.py --day 2026-04-02
+```
+
+This reads the selected day from `screen_time_gap.json`, shows top Chrome sites for that day, suggests likely project matches from your profile rules, and prints a ready-to-run `gittan suggest-rules` command.
+
 ## How to read the output (shared interpretation model)
 
 Use these four terms consistently in CLI/app/docs/demo:
@@ -63,17 +71,24 @@ These are operational heuristics for triage, not strict scientific guarantees.
 ### 3-step day triage loop
 
 1. Pick the top unexplained day from markdown summary.
-2. Apply one focused correction:
+2. Run `scripts/gap_day_triage.py --day YYYY-MM-DD` to recover context.
+3. Apply one focused correction:
    - source/collector availability,
    - project matching terms,
    - session-rule tuning.
-3. Re-run analysis and compare payloads with `scripts/compare_screen_time_gap.py`.
+4. Re-run analysis and compare payloads with `scripts/compare_screen_time_gap.py`.
 
 Aim to move unexplained hours down and coverage up with one change at a time.
 
 ## Tests
 
-Logic is covered by `tests/test_screen_time_gap_analysis.py` (part of `./scripts/run_autotests.sh`).
+Logic is covered by:
+
+- `tests/test_screen_time_gap_analysis.py`
+- `tests/test_compare_screen_time_gap.py`
+- `tests/test_gap_day_triage.py`
+
+All are included in `./scripts/run_autotests.sh`.
 
 ## See also
 

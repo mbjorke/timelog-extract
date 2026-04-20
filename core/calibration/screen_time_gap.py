@@ -15,6 +15,7 @@ class DayGap:
     coverage_ratio: float
     unexplained_screen_time_hours: float
     over_attributed_hours: float
+    missing_reference_data: bool
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -24,6 +25,7 @@ class DayGap:
             "coverage_ratio": round(self.coverage_ratio, 4),
             "unexplained_screen_time_hours": round(self.unexplained_screen_time_hours, 4),
             "over_attributed_hours": round(self.over_attributed_hours, 4),
+            "missing_reference_data": self.missing_reference_data,
         }
 
 
@@ -76,6 +78,7 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
             coverage = estimated_hours / screen_hours
         else:
             coverage = 1.0 if estimated_hours == 0 else math.inf
+        missing_reference_data = screen_hours == 0.0 and estimated_hours > 0.0
         unexplained = max(screen_hours - estimated_hours, 0.0)
         over = max(estimated_hours - screen_hours, 0.0)
         rows.append(
@@ -86,6 +89,7 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
                 coverage_ratio=coverage,
                 unexplained_screen_time_hours=unexplained,
                 over_attributed_hours=over,
+                missing_reference_data=missing_reference_data,
             )
         )
         project_map = project_by_day.get(day, {})
@@ -113,6 +117,7 @@ def analyze_screen_time_gaps(report) -> dict[str, Any]:
             ),
             "unexplained_screen_time_hours": round(total_unexplained, 4),
             "over_attributed_hours": round(total_over, 4),
+            "missing_reference_day_count": sum(1 for row in rows if row.missing_reference_data),
         },
         "project_allocated_gap_hours": {
             name: round(value, 4)

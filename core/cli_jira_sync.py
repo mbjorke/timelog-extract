@@ -15,6 +15,16 @@ from core.cli_options import TimelogRunOptions
 from core.jira_sync import JiraSyncSummary, build_jira_worklog_candidates, post_candidate
 
 
+def _next_step_hint(summary: JiraSyncSummary) -> str | None:
+    if summary.failed > 0:
+        return "Next: verify Jira credentials and issue visibility, then rerun `gittan jira-sync --dry-run`."
+    if summary.unresolved > 0:
+        return "Next: add Jira issue keys in commit subjects or branch name."
+    if summary.skipped > 0:
+        return "Next: rerun with confirmation and post the candidates you want to keep."
+    return None
+
+
 @app.command("jira-sync")
 def jira_sync(
     date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
@@ -92,7 +102,12 @@ def jira_sync(
         return
 
     summary = JiraSyncSummary(unresolved=unresolved)
+    days_with_commit_candidates = {candidate.day for candidate in candidates if candidate.source == "commit"}
     for candidate in candidates:
+        # If commit-derived keys exist for the day, hide branch fallback candidates to reduce noise.
+        if candidate.source == "branch" and candidate.day in days_with_commit_candidates:
+            summary.skipped += 1
+            continue
         typer.echo(
             f"{candidate.day} {candidate.issue_key} {candidate.hours:.2f}h "
             f"({candidate.seconds}s) source={candidate.source}"
@@ -121,3 +136,6 @@ def jira_sync(
         f"posted={summary.posted}, skipped={summary.skipped}, "
         f"unresolved={summary.unresolved}, failed={summary.failed}"
     )
+    hint = _next_step_hint(summary)
+    if hint:
+        typer.echo(hint)

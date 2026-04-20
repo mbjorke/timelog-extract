@@ -6,6 +6,7 @@ from pathlib import Path
 
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
+    ProjectSuggestion,
     apply_domain_mappings,
     day_gap_row,
     load_gap_payload,
@@ -65,9 +66,9 @@ class GapDayTriageTests(unittest.TestCase):
             DayTopSite(domain="notion.so", visits=2, share=0.4, sample_title="Notes"),
         ]
         scores = score_projects_for_sites(profiles, top_sites)
-        self.assertEqual(scores[0][0], "ProductSuite")
-        self.assertIn("project-ui", scores[0][2])
-        self.assertGreater(scores[0][1], scores[1][1])
+        self.assertEqual(scores[0].canonical, "ProductSuite")
+        self.assertIn("project-ui", scores[0].aliases)
+        self.assertGreater(scores[0].score, scores[1].score)
 
     def test_render_report_includes_next_action_hint(self):
         report = render_report(
@@ -78,12 +79,25 @@ class GapDayTriageTests(unittest.TestCase):
                 "unexplained_screen_time_hours": 1.0,
             },
             top_sites=[DayTopSite(domain="github.com", visits=3, share=1.0, sample_title="Repo")],
-            project_suggestions=[("ProductSuite", 9, ["project-core", "project-ui"])],
+            project_suggestions=[
+                ProjectSuggestion(
+                    canonical="ProductSuite",
+                    score=9,
+                    aliases=["project-core", "project-ui"],
+                    explicit_domain_hits=1,
+                    term_hits=0,
+                    alias_or_name_hits=0,
+                    ticket_mode="optional",
+                    default_client="Internal",
+                )
+            ],
             projects_config="timelog_projects.json",
         )
         self.assertIn("Gap Day Triage (Internal)", report)
         self.assertIn("github.com", report)
         self.assertIn("aliases: project-core, project-ui", report)
+        self.assertIn("why: domain anchors=1", report)
+        self.assertIn("ticket_mode=optional", report)
         self.assertIn("gittan suggest-rules --project \"ProductSuite\" --from 2026-04-02 --to 2026-04-02", report)
 
     def test_parse_map_assignments_accepts_domain_project_pairs(self):
@@ -158,7 +172,7 @@ class GapDayTriageTests(unittest.TestCase):
             DayTopSite(domain="internal.example.com", visits=20, share=0.3, sample_title="Internal"),
         ]
         scores = score_projects_for_sites(profiles, top_sites)
-        self.assertEqual(scores[0][0], "ProjectB")
+        self.assertEqual(scores[0].canonical, "ProjectB")
 
     def test_explicit_mapped_domain_beats_generic_overlap(self):
         profiles = [
@@ -179,7 +193,7 @@ class GapDayTriageTests(unittest.TestCase):
         ]
         top_sites = [DayTopSite(domain="github.com", visits=30, share=1.0, sample_title="GH")]
         scores = score_projects_for_sites(profiles, top_sites)
-        self.assertEqual(scores[0][0], "Mapped")
+        self.assertEqual(scores[0].canonical, "Mapped")
 
     def test_site_first_mode_suppresses_generic_term_only_match(self):
         profiles = [
@@ -201,9 +215,9 @@ class GapDayTriageTests(unittest.TestCase):
         top_sites = [DayTopSite(domain="github.com", visits=20, share=1.0, sample_title="Repo")]
         balanced = score_projects_for_sites(profiles, top_sites, scoring_mode="balanced")
         site_first = score_projects_for_sites(profiles, top_sites, scoring_mode="site-first")
-        self.assertEqual(balanced[0][0], "MappedProject")
-        self.assertEqual(site_first[0][0], "MappedProject")
-        self.assertTrue(all(row[0] != "TermProject" for row in site_first))
+        self.assertEqual(balanced[0].canonical, "MappedProject")
+        self.assertEqual(site_first[0].canonical, "MappedProject")
+        self.assertTrue(all(row.canonical != "TermProject" for row in site_first))
 
     def test_invalid_scoring_mode_raises(self):
         with self.assertRaises(ValueError):
@@ -239,9 +253,9 @@ class GapDayTriageTests(unittest.TestCase):
             DayTopSite(domain="clientops.example.com", visits=20, share=0.25, sample_title="ClientOps"),
         ]
         scores = score_projects_for_sites(profiles, top_sites)
-        self.assertEqual(scores[0][0], "ProductSuite")
-        self.assertIn("Product CLI", scores[0][2])
-        self.assertIn("Product Web", scores[0][2])
+        self.assertEqual(scores[0].canonical, "ProductSuite")
+        self.assertIn("Product CLI", scores[0].aliases)
+        self.assertIn("Product Web", scores[0].aliases)
 
 
 if __name__ == "__main__":

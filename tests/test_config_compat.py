@@ -41,6 +41,22 @@ class ConfigCompatibilityTests(unittest.TestCase):
         self.assertIn("project-core", profile["aliases"])
         self.assertIn("ProductSuite", profile["aliases"])
         self.assertIn("project-ui", profile["aliases"])
+        self.assertEqual(profile["ticket_mode"], "optional")
+        self.assertEqual(profile["project_id"], "project-core")
+        self.assertEqual(profile["default_client"], profile["customer"])
+
+    def test_normalize_profile_accepts_ticket_policy_fields(self):
+        profile = normalize_profile(
+            {
+                "name": "project-core",
+                "project_id": "prod-core",
+                "ticket_mode": "none",
+                "default_client": "Internal Platform",
+            }
+        )
+        self.assertEqual(profile["project_id"], "prod-core")
+        self.assertEqual(profile["ticket_mode"], "none")
+        self.assertEqual(profile["default_client"], "Internal Platform")
 
     def test_classify_project_works_with_match_terms(self):
         """Classifies text to the project whose match term appears in input."""

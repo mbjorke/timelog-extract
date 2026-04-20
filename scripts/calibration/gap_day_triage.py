@@ -114,7 +114,14 @@ def _domain_is_generic(domain: str) -> bool:
     return any(value.endswith(f".{root}") for root in GENERIC_DOMAINS)
 
 
-def score_projects_for_sites(profiles: list[dict], top_sites: list[DayTopSite]) -> list[tuple[str, int, list[str]]]:
+def score_projects_for_sites(
+    profiles: list[dict],
+    top_sites: list[DayTopSite],
+    *,
+    scoring_mode: str = "site-first",
+) -> list[tuple[str, int, list[str]]]:
+    if scoring_mode not in {"balanced", "site-first"}:
+        raise ValueError(f"unsupported scoring mode: {scoring_mode}")
     site_counts = {site.domain: site.visits for site in top_sites}
     scores_by_canonical: dict[str, int] = {}
     aliases_by_canonical: dict[str, set[str]] = {}
@@ -130,18 +137,28 @@ def score_projects_for_sites(profiles: list[dict], top_sites: list[DayTopSite]) 
         score = 0
         for domain, visits in site_counts.items():
             is_generic = _domain_is_generic(domain)
+            if scoring_mode == "site-first":
+                tracked_weight = 8
+                term_weight = 1 if not is_generic else 0
+                alias_weight = 1 if not is_generic else 0
+                name_weight = 1 if not is_generic else 0
+            else:
+                tracked_weight = 6
+                term_weight = 1 if is_generic else 2
+                alias_weight = max(1, visits // 2) if is_generic else visits
+                name_weight = max(1, visits // 2) if is_generic else visits
             if any(domain in value or value in domain for value in tracked):
                 # Explicit domain anchors from --map should dominate generic inference.
-                score += visits * 6
+                score += visits * tracked_weight
                 continue
             if any(term and term in domain for term in terms):
-                score += visits if is_generic else visits * 2
+                score += visits * term_weight
                 continue
             if any(token and token in domain for token in alias_tokens):
-                score += max(1, visits // 2) if is_generic else visits
+                score += visits * alias_weight
                 continue
             if name_token and name_token in domain:
-                score += max(1, visits // 2) if is_generic else visits
+                score += visits * name_weight
         if score > 0:
             scores_by_canonical[canonical] = scores_by_canonical.get(canonical, 0) + score
             aliases_by_canonical.setdefault(canonical, set()).add(name)
@@ -227,6 +244,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to project profile config",
     )
     parser.add_argument("--limit", type=int, default=5, help="Number of top sites to print")
+    parser.add_argument(
+        "--scoring-mode",
+        default="site-first",
+        choices=["balanced", "site-first"],
+        help="Scoring strategy for project suggestions (default: site-first).",
+    )
     parser.add_argument(
         "--map",
         action="append",
@@ -331,7 +354,11 @@ def main() -> int:
             + (f" ({created_count} new project(s) created)." if created_count else ".")
         )
     profiles = load_profiles_for_projects_config(args.projects_config)
-    suggestions = score_projects_for_sites(profiles, top_sites)
+    suggestions = score_projects_for_sites(
+        profiles,
+        top_sites,
+        scoring_mode=str(args.scoring_mode),
+    )
     print(
         render_report(
             day=args.day,

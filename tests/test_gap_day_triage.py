@@ -181,6 +181,34 @@ class GapDayTriageTests(unittest.TestCase):
         scores = score_projects_for_sites(profiles, top_sites)
         self.assertEqual(scores[0][0], "Mapped")
 
+    def test_site_first_mode_suppresses_generic_term_only_match(self):
+        profiles = [
+            {
+                "name": "TermProject",
+                "canonical_project": "TermProject",
+                "aliases": ["TermProject"],
+                "tracked_urls": [],
+                "match_terms": ["github"],
+            },
+            {
+                "name": "MappedProject",
+                "canonical_project": "MappedProject",
+                "aliases": ["MappedProject"],
+                "tracked_urls": ["github.com/example/repo-core"],
+                "match_terms": [],
+            },
+        ]
+        top_sites = [DayTopSite(domain="github.com", visits=20, share=1.0, sample_title="Repo")]
+        balanced = score_projects_for_sites(profiles, top_sites, scoring_mode="balanced")
+        site_first = score_projects_for_sites(profiles, top_sites, scoring_mode="site-first")
+        self.assertEqual(balanced[0][0], "MappedProject")
+        self.assertEqual(site_first[0][0], "MappedProject")
+        self.assertTrue(all(row[0] != "TermProject" for row in site_first))
+
+    def test_invalid_scoring_mode_raises(self):
+        with self.assertRaises(ValueError):
+            score_projects_for_sites([], [], scoring_mode="unknown")
+
     def test_alias_cluster_rolls_up_under_one_canonical(self):
         profiles = [
             {

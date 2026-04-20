@@ -50,6 +50,20 @@ python3 scripts/gap_day_triage.py --day 2026-04-02
 
 This reads the selected day from `screen_time_gap.json`, shows top Chrome sites for that day, suggests likely project matches from your profile rules, and prints a ready-to-run `gittan suggest-rules` command.
 
+By default, `gap_day_triage.py` uses `site-first` scoring to prioritize domain anchors over broad term matching.
+
+To force the legacy balanced behavior:
+
+```bash
+python3 scripts/gap_day_triage.py --day 2026-04-02 --scoring-mode balanced
+```
+
+To explicitly request site-first:
+
+```bash
+python3 scripts/gap_day_triage.py --day 2026-04-02 --scoring-mode site-first
+```
+
 ### Canonical project rollup (recommended)
 
 If multiple repositories/apps are effectively one product line, set a shared `canonical_project` and shared `aliases` so triage suggestions roll up to one business identity.

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
+from scripts.calibration import run_screen_time_gap_analysis as gap_script
 
 
 class ScreenTimeGapAnalysisTests(unittest.TestCase):
@@ -115,6 +120,48 @@ class ScreenTimeGapAnalysisTests(unittest.TestCase):
         day = payload["days"][0]
         self.assertAlmostEqual(day["screen_time_hours"], 0.0, places=4)
         self.assertTrue(math.isinf(day["coverage_ratio"]))
+
+    def test_gap_script_writes_internal_only_marker_to_markdown(self):
+        fake_payload = {"days": [], "totals": {"estimated_hours": 0.0, "screen_time_hours": 0.0}}
+        with tempfile.TemporaryDirectory() as tmp:
+            out_json = Path(tmp) / "screen_time_gap.json"
+            out_md = Path(tmp) / "screen_time_gap.md"
+            fake_report = SimpleNamespace(
+                overall_days={},
+                screen_time_days={},
+                project_reports={},
+            )
+            with patch(
+                "scripts.calibration.run_screen_time_gap_analysis.run_timelog_report",
+                return_value=fake_report,
+            ), patch(
+                "scripts.calibration.run_screen_time_gap_analysis.analyze_screen_time_gaps",
+                return_value=fake_payload,
+            ), patch(
+                "sys.argv",
+                [
+                    "run_screen_time_gap_analysis.py",
+                    "--projects-config",
+                    "timelog_projects.json",
+                    "--date-from",
+                    "2026-03-01",
+                    "--date-to",
+                    "2026-03-31",
+                    "--out-json",
+                    str(out_json),
+                    "--out-md",
+                    str(out_md),
+                ],
+            ):
+                rc = gap_script.main()
+            self.assertEqual(rc, 0)
+            self.assertTrue(out_json.is_file())
+            self.assertTrue(out_md.is_file())
+            self.assertIn("INTERNAL_ONLY", out_md.read_text(encoding="utf-8"))
+            self.assertEqual(
+                json.loads(out_json.read_text(encoding="utf-8")),
+                fake_payload,
+            )
 
 
 if __name__ == "__main__":

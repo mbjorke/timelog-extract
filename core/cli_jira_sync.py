@@ -99,6 +99,10 @@ def jira_sync(
         typer.echo("No Jira worklog candidates found.")
         if unresolved:
             typer.echo(f"Unresolved sessions (no issue key): {unresolved}")
+            summary = JiraSyncSummary(unresolved=unresolved)
+            hint = _next_step_hint(summary)
+            if hint:
+                typer.echo(hint)
         return
 
     summary = JiraSyncSummary(unresolved=unresolved)
@@ -106,7 +110,8 @@ def jira_sync(
     for candidate in candidates:
         # If commit-derived keys exist for the day, hide branch fallback candidates to reduce noise.
         if candidate.source == "branch" and candidate.day in days_with_commit_candidates:
-            summary.skipped += 1
+            if dry_run:
+                summary.skipped += 1
             continue
         typer.echo(
             f"{candidate.day} {candidate.issue_key} {candidate.hours:.2f}h "

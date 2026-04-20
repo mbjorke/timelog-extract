@@ -68,18 +68,17 @@ python3 scripts/gap_day_triage.py --day 2026-04-02 --scoring-mode site-first
 
 If multiple repositories/apps are effectively one product line, set a shared `canonical_project` and shared `aliases` so triage suggestions roll up to one business identity.
 
-Example for a single "Gittan" cluster:
+Example for a single product cluster:
 
 ```json
 {
-  "name": "Gittan CLI",
-  "canonical_project": "Gittan",
+  "name": "project-core",
+  "canonical_project": "ProductSuite",
   "aliases": [
-    "Gittan CLI",
-    "Time Log Genius",
-    "timelog-extract",
-    "prompt-ledger-private",
-    "briox-buddy"
+    "project-core",
+    "project-ui",
+    "project-cli",
+    "Product Suite"
   ]
 }
 ```

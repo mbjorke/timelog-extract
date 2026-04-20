@@ -31,7 +31,9 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
                         self.assertEqual(r.status, 200)
                         self.assertEqual(json.loads(r.read().decode())["status"], "ok")
                     break
-                except (ConnectionRefusedError, urllib.error.URLError):
+                except (ConnectionRefusedError, urllib.error.URLError) as e:
+                    if isinstance(e, urllib.error.HTTPError):
+                        raise
                     if attempt < 9:
                         time.sleep(0.05 * (attempt + 1))
                         continue

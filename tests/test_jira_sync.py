@@ -18,7 +18,7 @@ from core.jira_sync import (
 from core.report_service import ReportPayload
 from typer.testing import CliRunner
 
-TEST_API_TOKEN = "fake-token"
+TEST_API_PLACEHOLDER = "fake-token"
 
 
 class JiraSyncTests(unittest.TestCase):
@@ -75,7 +75,7 @@ class JiraSyncTests(unittest.TestCase):
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",
             email="fake@example.com",
-            api_token=TEST_API_TOKEN,
+            api_token=TEST_API_PLACEHOLDER,
         )
         with self.assertRaises(RuntimeError):
             post_jira_worklog(
@@ -140,7 +140,7 @@ class JiraSyncTests(unittest.TestCase):
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",
             email="fake@example.com",
-            api_token=TEST_API_TOKEN,
+            api_token=TEST_API_PLACEHOLDER,
         )
         with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
             "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
@@ -169,7 +169,7 @@ class JiraSyncTests(unittest.TestCase):
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",
             email="fake@example.com",
-            api_token=TEST_API_TOKEN,
+            api_token=TEST_API_PLACEHOLDER,
         )
         with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
             "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")

@@ -157,7 +157,10 @@ class ScreenTimeGapAnalysisTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertTrue(out_json.is_file())
             self.assertTrue(out_md.is_file())
-            self.assertIn("INTERNAL_ONLY", out_md.read_text(encoding="utf-8"))
+            markdown = out_md.read_text(encoding="utf-8")
+            self.assertIn("INTERNAL_ONLY", markdown)
+            self.assertIn("Date range: 2026-03-01 -> 2026-03-31", markdown)
+            self.assertIn("## Totals", markdown)
             self.assertEqual(
                 json.loads(out_json.read_text(encoding="utf-8")),
                 fake_payload,

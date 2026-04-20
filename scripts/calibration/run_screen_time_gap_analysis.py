@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -15,6 +16,66 @@ if str(ROOT_DIR) not in sys.path:
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from core.cli import TimelogRunOptions
 from core.report_service import run_timelog_report
+
+
+def _json_safe(value):
+    if isinstance(value, float):
+        if math.isinf(value) or math.isnan(value):
+            return None
+        return value
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _build_markdown_summary(payload: dict, *, date_from: str, date_to: str) -> str:
+    totals = payload.get("totals", {})
+    days = payload.get("days", [])
+    worst_unexplained = sorted(
+        days,
+        key=lambda day: float(day.get("unexplained_screen_time_hours", 0.0)),
+        reverse=True,
+    )[:3]
+    worst_over = sorted(
+        days,
+        key=lambda day: float(day.get("over_attributed_hours", 0.0)),
+        reverse=True,
+    )[:3]
+    lines = [
+        "# Screen Time Gap Analysis (Internal)",
+        "",
+        "Status: INTERNAL_ONLY (reconciliation artifact, not stage-demo surface).",
+        "",
+        f"Date range: {date_from} -> {date_to}",
+        "",
+        "## Totals",
+        f"- Estimated hours: {float(totals.get('estimated_hours', 0.0)):.2f}",
+        f"- Screen time hours: {float(totals.get('screen_time_hours', 0.0)):.2f}",
+        f"- Coverage ratio: {float(totals.get('coverage_ratio', 0.0)):.4f}",
+        f"- Unexplained screen time hours: {float(totals.get('unexplained_screen_time_hours', 0.0)):.2f}",
+        f"- Over-attributed hours: {float(totals.get('over_attributed_hours', 0.0)):.2f}",
+        "",
+        "## Top unexplained-screen-time days",
+    ]
+    if worst_unexplained:
+        for row in worst_unexplained:
+            lines.append(
+                f"- {row.get('day')}: {float(row.get('unexplained_screen_time_hours', 0.0)):.2f}h unexplained"
+            )
+    else:
+        lines.append("- None")
+    lines.extend(["", "## Top over-attributed days"])
+    if worst_over:
+        for row in worst_over:
+            lines.append(
+                f"- {row.get('day')}: {float(row.get('over_attributed_hours', 0.0)):.2f}h over-attributed"
+            )
+    else:
+        lines.append("- None")
+    lines.extend(["", "See JSON payload for full details."])
+    return "\n".join(lines) + "\n"
 
 
 def main() -> int:
@@ -56,15 +117,14 @@ def main() -> int:
     )
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = analyze_screen_time_gaps(report)
+    payload_safe = _json_safe(payload)
     out_json = Path(args.out_json)
     out_md = Path(args.out_md)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    out_json.write_text(json.dumps(payload_safe, indent=2), encoding="utf-8")
     out_md.write_text(
-        "# Screen Time Gap Analysis (Internal)\n\n"
-        "Status: INTERNAL_ONLY (reconciliation artifact, not stage-demo surface).\n\n"
-        "See JSON payload for full details.\n",
+        _build_markdown_summary(payload_safe, date_from=date_from, date_to=date_to),
         encoding="utf-8",
     )
     print(f"Wrote: {out_json}")

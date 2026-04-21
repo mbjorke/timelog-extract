@@ -1,8 +1,10 @@
 ---
-description: Deep review for gittan triage, CLI agent flows, and JSON plan output
+description: Gittan triage / JSON agent contract review (not a generic "superreview")
 ---
 
-# Ultrareview (gittan / triage)
+# `/gittan-triage-review` (gittan / triage)
+
+**Scope:** This is a **repo-specific** review prompt for **`gittan triage`**, **`--json`**, and related CLI. It is **not** the same as other tools’ branded “superreview” or similar features.
 
 Use this when reviewing **triage**, **gap mapping**, or **agent-facing CLI** changes.
 

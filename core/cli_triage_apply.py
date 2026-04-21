@@ -97,7 +97,9 @@ def triage_apply(
                 f"Decision #{idx}: project '{project_name}' not in config (use --allow-create to create)"
             )
             continue
-        key = (project_name.lower(), rule_type, rule_value.lower())
+        # match_terms are lowercased downstream; tracked_urls preserve case for paths
+        deduped_value = rule_value.lower() if rule_type == "match_terms" else rule_value
+        key = (project_name.lower(), rule_type, deduped_value)
         if key in seen:
             continue
         seen.add(key)

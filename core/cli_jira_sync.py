@@ -15,14 +15,17 @@ from core.cli_options import TimelogRunOptions
 from core.jira_sync import JiraSyncSummary, build_jira_worklog_candidates, post_candidate
 
 
-def _next_step_hint(summary: JiraSyncSummary) -> str | None:
+def _next_step_hint(summary: JiraSyncSummary) -> str:
+    """One concise line after the summary for every outcome (demo + ops clarity)."""
     if summary.failed > 0:
         return "Next: verify Jira credentials and issue visibility, then rerun `gittan jira-sync --dry-run`."
     if summary.unresolved > 0:
         return "Next: add Jira issue keys in commit subjects or branch name."
+    if summary.posted > 0:
+        return "Next: verify worklogs in Jira for the posted issue(s)."
     if summary.skipped > 0:
         return "Next: rerun with confirmation and post the candidates you want to keep."
-    return None
+    return "Next: nothing to post — sync complete."
 
 
 @app.command("jira-sync")
@@ -99,10 +102,11 @@ def jira_sync(
         typer.echo("No Jira worklog candidates found.")
         if unresolved:
             typer.echo(f"Unresolved sessions (no issue key): {unresolved}")
-            summary = JiraSyncSummary(unresolved=unresolved)
-            hint = _next_step_hint(summary)
-            if hint:
-                typer.echo(hint)
+            typer.echo(_next_step_hint(JiraSyncSummary(unresolved=unresolved)))
+        else:
+            typer.echo(
+                "Next: widen the date range or ensure commits/branch include a Jira issue key (e.g. ABC-123)."
+            )
         return
 
     summary = JiraSyncSummary(unresolved=unresolved)
@@ -141,6 +145,4 @@ def jira_sync(
         f"posted={summary.posted}, skipped={summary.skipped}, "
         f"unresolved={summary.unresolved}, failed={summary.failed}"
     )
-    hint = _next_step_hint(summary)
-    if hint:
-        typer.echo(hint)
+    typer.echo(_next_step_hint(summary))

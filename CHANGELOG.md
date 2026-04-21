@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- CLI / UX: `gittan jira-sync` always prints one **`Next:`** line after the summary (including successful posts and empty candidate runs); no-candidate / no-unresolved runs hint to widen the range or add issue keys in git metadata.
+- Docs: [`README.md`](README.md) — optional Homebrew tap path + link to [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md); [`docs/runbooks/cli-polish-backlog-for-apr29.md`](docs/runbooks/cli-polish-backlog-for-apr29.md) — recorded Apr 29 decision answers for Q1–Q4.
+
 ## 0.2.12 - 2026-04-19
 
 - Docs: [`AGENTS.md`](AGENTS.md) + [`README.md`](README.md) — document full **worklog path resolution** (`--worklog`, config `worklog`, cwd `TIMELOG.md`, then `<current_repo_root>/TIMELOG.md` via Git); [`core/report_service.py`](core/report_service.py) uses [`runtime_workspace_root()`](core/workspace_root.py) for that repo root in reports (aligned with `gittan doctor`).

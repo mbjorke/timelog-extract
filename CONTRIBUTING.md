@@ -67,6 +67,7 @@ Naming notes:
 - If a file approaches the line limit, **split by responsibility** rather than raising the limit (see `README.md` “File Size Policy”).
 - Do **not** commit local timelog files (`TIMELOG.md` is gitignored by policy).
 - Do **not** commit local backup/config artifacts (for example `timelog_projects*.json` generated during local experimentation).
+- Intentional tracked artifacts: keep `gittan.html` (landing page) and `march_invoice_ground_truth.json` (encrypted owner data) unless a maintainer explicitly decides otherwise.
 
 ## Cursor extension
 

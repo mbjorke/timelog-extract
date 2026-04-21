@@ -20,14 +20,27 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
         handler = make_demo_handler(store)
         server = HTTPServer(("127.0.0.1", 0), handler)
         port = server.server_address[1]
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
+
+        # Track server thread exceptions
+        server_error = []
+        def run_server():
+            try:
+                server.serve_forever()
+            except Exception as e:
+                server_error.append(e)
+
+        thread = threading.Thread(target=run_server, daemon=True)
         thread.start()
         # Give server thread time to bind and start listening
-        time.sleep(0.1)
+        time.sleep(0.5)
+
+        # Check if server encountered an error during startup
+        if server_error:
+            raise RuntimeError(f"Server failed to start: {server_error[0]}")
         try:
             base = f"http://127.0.0.1:{port}"
             # Retry connection until server is ready
-            for attempt in range(10):
+            for attempt in range(20):
                 try:
                     with urllib.request.urlopen(f"{base}/demo/health", timeout=2) as r:  # noqa: S310
                         self.assertEqual(r.status, 200)
@@ -36,8 +49,8 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
                 except (ConnectionRefusedError, urllib.error.URLError) as e:
                     if isinstance(e, urllib.error.HTTPError):
                         raise
-                    if attempt < 9:
-                        time.sleep(0.1)
+                    if attempt < 19:
+                        time.sleep(0.15)
                         continue
                     raise
 

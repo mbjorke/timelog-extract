@@ -1,6 +1,6 @@
 # I Used My Browser History as a Diary for Decades—Then AI Made My Weaknesses My Superpower
 
-### Introduction: The Illusion of Control
+## Introduction: The Illusion of Control
 
 We like to believe someone is in charge. We imagine that the CEOs earning billions each year have a steady hand on the wheel of AI.  
 **In practice, no single person fully controls the system-level behavior.**
@@ -17,7 +17,7 @@ Nerd footnote: Chrome's public beta shipped on September 2, 2008 (stable followe
 
 ---
 
-### The Naive Superpower
+## The Naive Superpower
 
 Why can people with basic programming experience suddenly build complex systems?
 
@@ -33,7 +33,7 @@ Not because everything is easier, but because iteration loops are radically shor
 
 ---
 
-### From Chaos to Proof: Why Gittan Exists
+## From Chaos to Proof: Why Gittan Exists
 
 If no one fully controls AI behavior end-to-end, the real question is not control.  
 The real question is trust.
@@ -54,7 +54,7 @@ Think of it as a practical recorder for modern knowledge work: not perfect truth
 
 ---
 
-### The Burden of the "Easy" Task
+## The Burden of the "Easy" Task
 
 The irony of this era is that the hardest tasks are often the "easy" ones: low-friction tasks with no real deadline, no risk, and no knot to untangle.
 
@@ -66,7 +66,7 @@ This is why observability matters beyond engineering hygiene. It creates structu
 
 ---
 
-### Conclusion: Trusting the Mess
+## Conclusion: Trusting the Mess
 
 We are moving from a world where expertise was mainly about deep specialization to one where leverage comes from orchestration.
 
@@ -77,7 +77,7 @@ I do not need to be the best coder in the room if I can build the most trustwort
 
 ---
 
-### Question for the Community
+## Question for the Community
 
 If "knowing how to code" is no longer the only gatekeeper to building software, what is your new superpower?
 
@@ -85,7 +85,7 @@ Are your old weaknesses turning into strategic advantages in this new AI landsca
 
 ---
 
-### Links
+## Links
 
 - Main site: [https://gittan.sh/](https://gittan.sh/)
 - Sales/demo draft URL: [https://gittan-sales.lovable.app/](https://gittan-sales.lovable.app/)

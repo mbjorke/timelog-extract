@@ -155,6 +155,54 @@ class JiraSyncTests(unittest.TestCase):
         self.assertIn("Jira sync summary: posted=0, skipped=2, unresolved=0, failed=0", result.output)
         self.assertIn("Next: rerun with confirmation", result.output)
 
+    def test_cli_jira_sync_no_candidates_no_unresolved_shows_hint(self):
+        runner = CliRunner()
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates",
+            return_value=([], 0),
+        ):
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on", "--dry-run"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("No Jira worklog candidates found.", result.output)
+        self.assertIn("widen the date range", result.output)
+
+    def test_cli_jira_sync_success_posts_next_step_hint(self):
+        runner = CliRunner()
+        candidate = JiraWorklogCandidate(
+            issue_key="ABC-1",
+            day="2026-04-20",
+            started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
+            seconds=7200,
+            projects=["Demo"],
+            source="commit",
+        )
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates",
+            return_value=([candidate], 0),
+        ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
+            "core.cli_jira_sync.post_candidate", return_value="10001"
+        ):
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Jira sync summary: posted=1, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("Next: verify worklogs in Jira for the posted issue(s).", result.output)
+
     def test_cli_jira_sync_summary_counts_failure_hint(self):
         runner = CliRunner()
         candidate = JiraWorklogCandidate(

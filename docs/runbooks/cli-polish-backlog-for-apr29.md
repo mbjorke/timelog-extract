@@ -39,10 +39,10 @@ Scope rule:
 
 Record decisions here before implementation:
 
-- Q1:
-- Q2:
-- Q3:
-- Q4:
+- Q1: **Hide** branch-derived candidates for a day when commit-derived candidates exist for that day (implemented in `core/cli_jira_sync.py`; keeps one clear path in dry-run output).
+- Q2: **Always** print one `Next:` line after the summary (including successful posts and empty runs).
+- Q3: **Deferred** — no `--advanced` for `setup` in this batch; reduce default density later if needed.
+- Q4: **P0 only** for this pass; P1.2 copy polish only if tests stay green and time allows.
 
 ---
 

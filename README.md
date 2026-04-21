@@ -31,6 +31,8 @@ pipx install timelog-extract
 gittan -V
 ```
 
+**Homebrew (optional):** when a maintainer tap is published, the preferred demo line is `brew tap <org>/gittan && brew install gittan` then `gittan -V`. Until then, use pipx above. Setup and formula notes: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md).
+
 <details>
 <summary><b>Other install paths</b></summary>
 

@@ -130,6 +130,63 @@ class TriageJsonExtensionTests(unittest.TestCase):
         self.assertEqual(len(choices), 1)
         self.assertIsNone(choices[0]["canonical"])
 
+    def test_question_single_suggestion(self):
+        """Single suggestion yields a question mentioning only that project."""
+        suggestions = [_make_suggestion("MyProject")]
+        gap = {"day": "2026-04-10", "unexplained_screen_time_hours": 1.5}
+        q = _build_question(gap, suggestions)
+        self.assertIsNotNone(q)
+        self.assertIn("MyProject", q)
+        self.assertIn("1.5h", q)
+        self.assertIn("2026-04-10", q)
+        # Single-suggestion question should not reference a second project
+        self.assertNotIn(" or ", q)
+
+    def test_suggestion_to_plan_dict_with_empty_tags(self):
+        """_suggestion_to_plan_dict with an empty tags list emits an empty list."""
+        s = _make_suggestion("NoTagProject")
+        d = _suggestion_to_plan_dict(s, [])
+        self.assertEqual(d["tags"], [])
+        self.assertEqual(d["canonical"], "NoTagProject")
+
+    def test_build_choices_label_uses_proj_prefix_when_no_tags(self):
+        """When a suggestion has no tags, label uses generic #PROJ prefix (no tag dash suffix)."""
+        suggestions = [_make_suggestion("Orphan")]
+        choices = _build_choices(suggestions, {})
+        # First entry should be the suggestion, last is skip
+        self.assertEqual(choices[0]["canonical"], "Orphan")
+        self.assertIn("#PROJ ·", choices[0]["label"])
+        # No tag-specific prefix like #PROJ-TECH when there are no tags
+        self.assertNotIn("#PROJ-", choices[0]["label"])
+
+    def test_build_choices_max_choices_limits_suggestions(self):
+        """max_choices=2 means only 1 suggestion + the skip sentinel."""
+        suggestions = [_make_suggestion(f"P{i}") for i in range(5)]
+        choices = _build_choices(suggestions, {}, max_choices=2)
+        self.assertEqual(len(choices), 2)
+        self.assertEqual(choices[0]["canonical"], "P0")
+        self.assertIsNone(choices[-1]["canonical"])
+
+    def test_build_choices_always_ends_with_skip_sentinel(self):
+        """The last choice is always the 'None of these / skip' sentinel."""
+        suggestions = [_make_suggestion("A"), _make_suggestion("B"), _make_suggestion("C")]
+        choices = _build_choices(suggestions, {})
+        self.assertIsNone(choices[-1]["canonical"])
+        self.assertIn("skip", choices[-1]["label"].lower())
+
+    def test_build_question_hours_formatted_correctly(self):
+        """Hours in the question are formatted to one decimal place."""
+        suggestions = [_make_suggestion("Alpha")]
+        gap = {"day": "2026-04-20", "unexplained_screen_time_hours": 3.0}
+        q = _build_question(gap, suggestions)
+        self.assertIn("3.0h", q)
+
+    def test_build_choices_tag_prefix_uppercased(self):
+        """Tag in the label prefix is uppercased."""
+        suggestions = [_make_suggestion("Dev")]
+        choices = _build_choices(suggestions, {"Dev": ["backend"]})
+        self.assertIn("BACKEND", choices[0]["label"])
+
 
 if __name__ == "__main__":
     unittest.main()

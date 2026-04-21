@@ -46,6 +46,7 @@ def normalize_profile(raw):
         }
     )
     merged_tracked_urls = sorted({url for url in tracked_urls if url})
+    tags = sorted({str(t).strip().lower() for t in as_list(raw.get("tags")) if str(t).strip()})
     return {
         "name": name,
         "project_id": project_id,
@@ -60,6 +61,7 @@ def normalize_profile(raw):
         "customer": customer,
         "invoice_title": invoice_title,
         "invoice_description": invoice_description,
+        "tags": tags,
     }
 
 

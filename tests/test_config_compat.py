@@ -3,6 +3,7 @@
 import unittest
 
 from timelog_extract import UNCATEGORIZED, classify_project, normalize_profile
+from core.config import apply_rule_to_project, load_projects_config_payload
 
 
 class ConfigCompatibilityTests(unittest.TestCase):
@@ -92,6 +93,37 @@ class ConfigCompatibilityTests(unittest.TestCase):
         ]
         result = classify_project("https://app.clientx.io/checkout Other noise", profiles)
         self.assertEqual(result, "ClientX")
+
+
+class TagsFieldTests(unittest.TestCase):
+    """Validates the optional 'tags' field on project profiles."""
+
+    def test_normalize_profile_tags_optional(self):
+        """Missing tags field normalizes to empty list."""
+        profile = normalize_profile({"name": "Demo"})
+        self.assertEqual(profile["tags"], [])
+
+    def test_normalize_profile_tags_preserved(self):
+        """Tags are sorted and lowercased."""
+        profile = normalize_profile({"name": "Demo", "tags": ["OPS", "tech", "Tech"]})
+        self.assertEqual(profile["tags"], ["ops", "tech"])
+
+    def test_apply_rule_preserves_tags(self):
+        """apply_rule_to_project does not drop existing tags."""
+        payload = {
+            "projects": [
+                {
+                    "name": "Demo",
+                    "tags": ["tech"],
+                    "match_terms": ["demo"],
+                    "tracked_urls": [],
+                    "enabled": True,
+                }
+            ]
+        }
+        apply_rule_to_project(payload, project_name="Demo", rule_type="match_terms", rule_value="newterm")
+        project = payload["projects"][0]
+        self.assertEqual(project.get("tags"), ["tech"])
 
 
 if __name__ == "__main__":

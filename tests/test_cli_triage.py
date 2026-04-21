@@ -11,10 +11,14 @@ from unittest.mock import patch
 
 from core.cli_triage import (
     AGENT_TRIAGE_SCHEMA_VERSION,
+    _build_choices,
+    _build_question,
+    _suggestion_to_plan_dict,
     build_triage_plan_dict,
     resolve_target_project_name,
     select_triage_days,
 )
+from scripts.calibration.gap_day_triage import ProjectSuggestion
 
 
 class CliTriageHelpersTests(unittest.TestCase):
@@ -82,6 +86,49 @@ class CliTriageHelpersTests(unittest.TestCase):
         )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Cannot combine", r.stdout + r.stderr)
+
+
+def _make_suggestion(canonical: str, score: int = 10) -> ProjectSuggestion:
+    return ProjectSuggestion(
+        canonical=canonical,
+        score=score,
+        aliases=[canonical],
+        explicit_domain_hits=1,
+        term_hits=0,
+        alias_or_name_hits=0,
+        ticket_mode="optional",
+        default_client=canonical,
+    )
+
+
+class TriageJsonExtensionTests(unittest.TestCase):
+    def test_tags_field_in_suggestion_dict(self):
+        s = _make_suggestion("Briox Dev")
+        d = _suggestion_to_plan_dict(s, ["tech"])
+        self.assertEqual(d["tags"], ["tech"])
+        self.assertEqual(d["canonical"], "Briox Dev")
+
+    def test_question_and_choices_present(self):
+        suggestions = [_make_suggestion("Briox Dev"), _make_suggestion("Maintenance")]
+        gap = {"day": "2026-04-15", "unexplained_screen_time_hours": 2.5}
+        q = _build_question(gap, suggestions)
+        self.assertIsNotNone(q)
+        self.assertIn("Briox Dev", q)
+        self.assertIn("Maintenance", q)
+
+        choices = _build_choices(suggestions, {"Briox Dev": ["tech"], "Maintenance": ["ops"]})
+        self.assertEqual(len(choices), 3)
+        self.assertIsNone(choices[-1]["canonical"])
+        self.assertEqual(choices[0]["canonical"], "Briox Dev")
+        self.assertEqual(choices[0]["tags"], ["tech"])
+        self.assertIn("TECH", choices[0]["label"])
+
+    def test_question_is_none_when_no_suggestions(self):
+        gap = {"day": "2026-04-15", "unexplained_screen_time_hours": 1.0}
+        self.assertIsNone(_build_question(gap, []))
+        choices = _build_choices([], {})
+        self.assertEqual(len(choices), 1)
+        self.assertIsNone(choices[0]["canonical"])
 
 
 if __name__ == "__main__":

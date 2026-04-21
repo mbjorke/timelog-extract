@@ -1,0 +1,14 @@
+---
+description: When editing gittan triage code, run the triage review checklist (Cursor /gittan-triage-review)
+globs: '**/*cli_triage*.py'
+alwaysApply: false
+---
+
+# Gittan triage changes
+
+If you are editing **`cli_triage`** (implementation or tests), before treating the work as done:
+
+1. In **Cursor**, start a chat and run **`/gittan-triage-review`**, with the diff or `@` files attached.
+2. Or open and follow **`.cursor/commands/gittan-triage-review.md`** (same checklist as the slash command).
+
+Canonical contract: **`docs/runbooks/gittan-triage-agents.md`**. Keep **`gittan triage --json`** read-only; watch import edges vs **`core/report_service`**.

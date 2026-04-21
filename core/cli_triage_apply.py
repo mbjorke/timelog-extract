@@ -38,16 +38,20 @@ def _load_decisions(input_path: Optional[str]) -> list[dict]:
     return decisions
 
 
-def _validate_decision(d: dict, idx: int) -> tuple[str, str, str]:
-    for key in ("project_name", "rule_type", "rule_value"):
-        if not d.get(key):
-            raise ValueError(f"Decision #{idx}: missing required field '{key}'")
-    rule_type = str(d["rule_type"]).strip()
+def _validate_decision(d: object, idx: int) -> tuple[str, str, str]:
+    if not isinstance(d, dict):
+        raise ValueError(f"Decision #{idx}: must be a JSON object")
+    project_name = str(d.get("project_name", "")).strip()
+    rule_type = str(d.get("rule_type", "")).strip()
+    rule_value = str(d.get("rule_value", "")).strip()
+    for field, val in (("project_name", project_name), ("rule_type", rule_type), ("rule_value", rule_value)):
+        if not val:
+            raise ValueError(f"Decision #{idx}: missing required field '{field}'")
     if rule_type not in _VALID_RULE_TYPES:
         raise ValueError(
             f"Decision #{idx}: rule_type '{rule_type}' must be one of {sorted(_VALID_RULE_TYPES)}"
         )
-    return str(d["project_name"]).strip(), rule_type, str(d["rule_value"]).strip()
+    return project_name, rule_type, rule_value
 
 
 def _project_exists(payload: dict, project_name: str) -> bool:
@@ -60,7 +64,7 @@ def _project_exists(payload: dict, project_name: str) -> bool:
 
 @app.command("triage-apply")
 def triage_apply(
-    input: Annotated[
+    input_path: Annotated[
         Optional[str],
         typer.Option("--input", "-i", help="Path to decisions JSON file (or - for stdin)"),
     ] = None,
@@ -70,17 +74,17 @@ def triage_apply(
 ):
     """Apply categorization decisions from mobile to timelog_projects.json."""
     try:
-        decisions = _load_decisions(input)
+        decisions = _load_decisions(input_path)
     except (ValueError, OSError) as e:
         typer.echo(json.dumps({"error": str(e)}))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     config_path = Path(projects_config)
     try:
         payload = load_projects_config_payload(config_path)
     except (OSError, ValueError) as e:
         typer.echo(json.dumps({"error": f"Cannot load config: {e}"}))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     seen: set[tuple[str, str, str]] = set()
     validated: list[tuple[str, str, str]] = []
@@ -125,9 +129,6 @@ def triage_apply(
         )
         return
 
-    if not dry_run and validated:
-        backup_projects_config_if_exists(config_path)
-
     applied = 0
     for project_name, rule_type, rule_value in validated:
         apply_rule_to_project(
@@ -139,6 +140,7 @@ def triage_apply(
         applied += 1
 
     if applied:
+        backup_projects_config_if_exists(config_path)
         save_projects_config_payload(config_path, payload)
 
     typer.echo(

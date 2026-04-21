@@ -35,7 +35,7 @@ Per-day object:
 - `yes_automation` — what `--yes` would do: `would_apply`, optional `target_project`, `domains`, or `reason` if it would skip.
 - `skip_reason` — why a human/agent might skip this day (`no_chrome_sites`, `no_suggestions`, etc.) or `null`.
 
-## Review workflow (including `/ultrareview`)
+## Review workflow (including Cursor `/gittan-triage-review`)
 
 1. Run `gittan triage --json --from … --to … --projects-config <path>` in a **copy** of config if needed.
 2. Paste the JSON (or file path) into the review session.

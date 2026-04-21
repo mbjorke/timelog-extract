@@ -20,7 +20,7 @@ Keep these **short**: duplicate only orientation, not policy.
 | Tool / context | Practical entry |
 | -------------- | ---------------- |
 | **Claude Code** | [`CLAUDE.md`](../../CLAUDE.md) → points at `AGENTS.md`. |
-| **Cursor** | [`.cursor/rules/`](../../.cursor/rules/) for workspace rules; still read `AGENTS.md`. Optional slash command [`.cursor/commands/ultrareview.md`](../../.cursor/commands/ultrareview.md) for triage/CLI agent reviews (see [`../runbooks/gittan-triage-agents.md`](../runbooks/gittan-triage-agents.md)). |
+| **Cursor** | [`.cursor/rules/`](../../.cursor/rules/) for workspace rules; still read `AGENTS.md`. Optional slash command [`.cursor/commands/gittan-triage-review.md`](../../.cursor/commands/gittan-triage-review.md) (`/gittan-triage-review`) for triage/CLI agent reviews (see [`../runbooks/gittan-triage-agents.md`](../runbooks/gittan-triage-agents.md)). |
 | **Codex / ChatGPT / other chat UIs** | Paste or attach **`AGENTS.md`** (and `CONTRIBUTING.md` for first PR). No separate file required unless we add a one-line stub later. |
 | **VS Code / Zed (no agent)** | Open `AGENTS.md` + `CONTRIBUTING.md` in editor; same content. |
 | **SlayZone** | Point project/task context at **`AGENTS.md`**. Ecosystem notes: [`../inspiration/slay-zone.md`](../inspiration/slay-zone.md). |

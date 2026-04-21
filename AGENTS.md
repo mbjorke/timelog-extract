@@ -16,7 +16,7 @@ Use this compact execution order before deep exploration:
 4. Prefer non-destructive config handling:
    - never move/delete `timelog_projects.json`
    - use explicit alternate paths (`--projects-config`) for experiments
-   - for **gap / domain triage automation**, use `gittan triage --json` (read-only plan) before `--yes`; contract in **`docs/runbooks/gittan-triage-agents.md`**. Cursor **`/ultrareview`** references the same runbook via **`.cursor/commands/ultrareview.md`**.
+   - for **gap / domain triage automation**, use `gittan triage --json` (read-only plan) before `--yes`; contract in **`docs/runbooks/gittan-triage-agents.md`**. For triage code reviews: in **Cursor** use **`/gittan-triage-review`** (or read **`.cursor/commands/gittan-triage-review.md`** — same checklist in any editor).
 5. Keep commits scoped by intent:
    - feature code
    - docs/reorg

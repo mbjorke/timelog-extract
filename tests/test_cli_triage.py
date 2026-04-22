@@ -11,10 +11,14 @@ from unittest.mock import patch
 
 from core.cli_triage import (
     AGENT_TRIAGE_SCHEMA_VERSION,
+    _build_choices,
+    _build_question,
+    _suggestion_to_plan_dict,
     build_triage_plan_dict,
     resolve_target_project_name,
     select_triage_days,
 )
+from scripts.calibration.gap_day_triage import ProjectSuggestion
 
 
 class CliTriageHelpersTests(unittest.TestCase):
@@ -82,6 +86,106 @@ class CliTriageHelpersTests(unittest.TestCase):
         )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Cannot combine", r.stdout + r.stderr)
+
+
+def _make_suggestion(canonical: str, score: int = 10) -> ProjectSuggestion:
+    return ProjectSuggestion(
+        canonical=canonical,
+        score=score,
+        aliases=[canonical],
+        explicit_domain_hits=1,
+        term_hits=0,
+        alias_or_name_hits=0,
+        ticket_mode="optional",
+        default_client=canonical,
+    )
+
+
+class TriageJsonExtensionTests(unittest.TestCase):
+    def test_tags_field_in_suggestion_dict(self):
+        s = _make_suggestion("Briox Dev")
+        d = _suggestion_to_plan_dict(s, ["tech"])
+        self.assertEqual(d["tags"], ["tech"])
+        self.assertEqual(d["canonical"], "Briox Dev")
+
+    def test_question_and_choices_present(self):
+        suggestions = [_make_suggestion("Briox Dev"), _make_suggestion("Maintenance")]
+        gap = {"day": "2026-04-15", "unexplained_screen_time_hours": 2.5}
+        q = _build_question(gap, suggestions)
+        self.assertIsNotNone(q)
+        self.assertIn("Briox Dev", q)
+        self.assertIn("Maintenance", q)
+
+        choices = _build_choices(suggestions, {"Briox Dev": ["tech"], "Maintenance": ["ops"]})
+        self.assertEqual(len(choices), 3)
+        self.assertIsNone(choices[-1]["canonical"])
+        self.assertEqual(choices[0]["canonical"], "Briox Dev")
+        self.assertEqual(choices[0]["tags"], ["tech"])
+        self.assertIn("TECH", choices[0]["label"])
+
+    def test_question_is_none_when_no_suggestions(self):
+        gap = {"day": "2026-04-15", "unexplained_screen_time_hours": 1.0}
+        self.assertIsNone(_build_question(gap, []))
+        choices = _build_choices([], {})
+        self.assertEqual(len(choices), 1)
+        self.assertIsNone(choices[0]["canonical"])
+
+    def test_question_single_suggestion(self):
+        """Single suggestion yields a question mentioning only that project."""
+        suggestions = [_make_suggestion("MyProject")]
+        gap = {"day": "2026-04-10", "unexplained_screen_time_hours": 1.5}
+        q = _build_question(gap, suggestions)
+        self.assertIsNotNone(q)
+        self.assertIn("MyProject", q)
+        self.assertIn("1.5h", q)
+        self.assertIn("2026-04-10", q)
+        # Single-suggestion question should not reference a second project
+        self.assertNotIn(" or ", q)
+
+    def test_suggestion_to_plan_dict_with_empty_tags(self):
+        """_suggestion_to_plan_dict with an empty tags list emits an empty list."""
+        s = _make_suggestion("NoTagProject")
+        d = _suggestion_to_plan_dict(s, [])
+        self.assertEqual(d["tags"], [])
+        self.assertEqual(d["canonical"], "NoTagProject")
+
+    def test_build_choices_label_uses_proj_prefix_when_no_tags(self):
+        """When a suggestion has no tags, label uses generic #PROJ prefix (no tag dash suffix)."""
+        suggestions = [_make_suggestion("Orphan")]
+        choices = _build_choices(suggestions, {})
+        # First entry should be the suggestion, last is skip
+        self.assertEqual(choices[0]["canonical"], "Orphan")
+        self.assertIn("#PROJ ·", choices[0]["label"])
+        # No tag-specific prefix like #PROJ-TECH when there are no tags
+        self.assertNotIn("#PROJ-", choices[0]["label"])
+
+    def test_build_choices_max_choices_limits_suggestions(self):
+        """max_choices=2 means only 1 suggestion + the skip sentinel."""
+        suggestions = [_make_suggestion(f"P{i}") for i in range(5)]
+        choices = _build_choices(suggestions, {}, max_choices=2)
+        self.assertEqual(len(choices), 2)
+        self.assertEqual(choices[0]["canonical"], "P0")
+        self.assertIsNone(choices[-1]["canonical"])
+
+    def test_build_choices_always_ends_with_skip_sentinel(self):
+        """The last choice is always the 'None of these / skip' sentinel."""
+        suggestions = [_make_suggestion("A"), _make_suggestion("B"), _make_suggestion("C")]
+        choices = _build_choices(suggestions, {})
+        self.assertIsNone(choices[-1]["canonical"])
+        self.assertIn("skip", choices[-1]["label"].lower())
+
+    def test_build_question_hours_formatted_correctly(self):
+        """Hours in the question are formatted to one decimal place."""
+        suggestions = [_make_suggestion("Alpha")]
+        gap = {"day": "2026-04-20", "unexplained_screen_time_hours": 3.0}
+        q = _build_question(gap, suggestions)
+        self.assertIn("3.0h", q)
+
+    def test_build_choices_tag_prefix_uppercased(self):
+        """Tag in the label prefix is uppercased."""
+        suggestions = [_make_suggestion("Dev")]
+        choices = _build_choices(suggestions, {"Dev": ["backend"]})
+        self.assertIn("BACKEND", choices[0]["label"])
 
 
 if __name__ == "__main__":

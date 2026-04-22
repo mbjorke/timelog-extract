@@ -167,8 +167,13 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
   - CI is green (or expected to be green after the latest push),
   - no immediate follow-up commit is expected.
 - Resolve review feedback in one consolidated commit when possible.
-- When feedback is fixed, reply in the same thread with a short note like
-  `Addressed in <sha>: <what changed>`, then resolve the thread.
+- **Review close-out routine (3 steps — do these once per review cycle, not per comment):**
+  1. **Read all comments first.** Categorise each as: fix, explain (not an issue / pre-existing), or escalate (needs maintainer decision). Do not start committing until you have read every thread.
+  2. **Fix valid findings in one consolidated commit** (or two if the scope is clearly different). Run `bash scripts/run_autotests.sh` before pushing.
+  3. **Reply to every open thread** — even ones you are not fixing — with one of:
+     - Fixed: `Addressed in <sha>: <what changed>`
+     - Explained: `Not applicable — <reason>` (e.g. pre-existing on main, misread, accepted trade-off)
+     - Escalated: `Needs maintainer decision — <why>`
 - Do not silently resolve threads: always leave a short commit-linked note first.
 - Keep a thread open only when verification or product decision is still pending.
 - Aim for at most 1-2 CodeRabbit review cycles per PR.

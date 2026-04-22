@@ -28,7 +28,8 @@ AGENT_TRIAGE_SCHEMA_VERSION = 1
 NOTES_FOR_AGENTS = [
     "JSON mode omits Chrome page titles to reduce accidental PII in logs; domains and counts remain.",
     "Primary mapping signal is tracked_urls / site-first scoring; match_terms is secondary.",
-    "Use --json for plans only; --yes applies mappings. Never pipe --json output back into config blindly.",
+    "Use --json for plans only; --yes applies mappings on this machine. Never pipe raw --json output into config.",
+    "To apply decisions from mobile/offline UIs, use `gittan triage-apply` with a decisions JSON (see docs/runbooks/gittan-triage-agents.md) — not the triage --json plan.",
 ]
 
 
@@ -40,7 +41,7 @@ def _site_to_plan_dict(site: DayTopSite) -> dict[str, Any]:
     }
 
 
-def _suggestion_to_plan_dict(s: ProjectSuggestion) -> dict[str, Any]:
+def _suggestion_to_plan_dict(s: ProjectSuggestion, tags: list[str]) -> dict[str, Any]:
     return {
         "canonical": s.canonical,
         "score": s.score,
@@ -50,7 +51,32 @@ def _suggestion_to_plan_dict(s: ProjectSuggestion) -> dict[str, Any]:
         "alias_or_name_hits": s.alias_or_name_hits,
         "ticket_mode": s.ticket_mode,
         "default_client": s.default_client,
+        "tags": tags,
     }
+
+
+def _build_choices(
+    suggestions: list[ProjectSuggestion],
+    tags_by_canonical: dict[str, list[str]],
+    max_choices: int = 3,
+) -> list[dict[str, Any]]:
+    choices: list[dict[str, Any]] = []
+    for s in suggestions[: max(0, max_choices - 1)]:
+        tags = tags_by_canonical.get(s.canonical, [])
+        tag_prefix = f"#PROJ-{tags[0].upper()} · " if tags else "#PROJ · "
+        choices.append({"canonical": s.canonical, "tags": tags, "label": f"{tag_prefix}{s.canonical}"})
+    choices.append({"canonical": None, "tags": [], "label": "None of these / skip"})
+    return choices
+
+
+def _build_question(gap: dict[str, Any], suggestions: list[ProjectSuggestion]) -> Optional[str]:
+    hours = float(gap.get("unexplained_screen_time_hours", 0.0))
+    day = gap.get("day", "?")
+    if not suggestions:
+        return None
+    if len(suggestions) == 1:
+        return f"Does this {hours:.1f}h on {day} belong to {suggestions[0].canonical}?"
+    return f"Does this {hours:.1f}h on {day} belong to {suggestions[0].canonical} or {suggestions[1].canonical}?"
 
 
 def _yes_automation_plan(
@@ -109,6 +135,12 @@ def build_triage_plan_dict(
             if str(profile.get("name", "")).strip()
         }
     )
+    tags_by_canonical: dict[str, list[str]] = {}
+    for p in profiles:
+        c = str(p.get("canonical_project", p.get("name", ""))).strip()
+        for tag in p.get("tags", []):
+            if tag not in tags_by_canonical.get(c, []):
+                tags_by_canonical.setdefault(c, []).append(tag)
     out_days: list[dict[str, Any]] = []
     empty_reason: Optional[str] = None
     if not day_rows:
@@ -142,16 +174,22 @@ def build_triage_plan_dict(
         else:
             yes_automation = {"would_apply": False, "reason": "no_suggestions"}
 
+        gap_data = {
+            "estimated_hours": float(row.get("estimated_hours", 0.0)),
+            "screen_time_hours": float(row.get("screen_time_hours", 0.0)),
+            "unexplained_screen_time_hours": float(row.get("unexplained_screen_time_hours", 0.0)),
+        }
         out_days.append(
             {
                 "day": day,
-                "gap": {
-                    "estimated_hours": float(row.get("estimated_hours", 0.0)),
-                    "screen_time_hours": float(row.get("screen_time_hours", 0.0)),
-                    "unexplained_screen_time_hours": float(row.get("unexplained_screen_time_hours", 0.0)),
-                },
+                "gap": gap_data,
                 "top_sites": [_site_to_plan_dict(s) for s in top_sites],
-                "suggestions": [_suggestion_to_plan_dict(s) for s in suggestions],
+                "suggestions": [
+                    _suggestion_to_plan_dict(s, tags_by_canonical.get(s.canonical, []))
+                    for s in suggestions
+                ],
+                "question": _build_question({**gap_data, "day": day}, suggestions),
+                "choices": _build_choices(suggestions, tags_by_canonical),
                 "resolved_project_for_top_suggestion": resolved,
                 "resolved_in_config": resolved_ok,
                 "yes_automation": yes_automation,

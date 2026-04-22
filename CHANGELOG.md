@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Triage JSON: `gittan triage --json` `top_sites` now include optional local timestamp anchors (`first_seen_local`, `last_seen_local`, `sample_window_local`) for faster onboarding decisions without exposing page titles/paths.
 - CLI / UX: `gittan jira-sync` always prints one **`Next:`** line after the summary (including successful posts and empty candidate runs); no-candidate / no-unresolved runs hint to widen the range or add issue keys in git metadata.
 - Docs: [`README.md`](README.md) — optional Homebrew tap path + link to [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md); [`docs/runbooks/cli-polish-backlog-for-apr29.md`](docs/runbooks/cli-polish-backlog-for-apr29.md) — recorded Apr 29 decision answers for Q1–Q4.
 

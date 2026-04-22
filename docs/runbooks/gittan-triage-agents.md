@@ -29,6 +29,8 @@ Per-day object:
 - `day` — `YYYY-MM-DD`.
 - `gap` — `estimated_hours`, `screen_time_hours`, `unexplained_screen_time_hours` (numbers).
 - `top_sites` — domains with visits and share; **page titles are omitted** in JSON to reduce accidental PII in logs.
+  - Optional timestamp anchors (local time): `first_seen_local`, `last_seen_local`, `sample_window_local.start`, `sample_window_local.end`.
+  - These are guidance hints for onboarding confidence, not hard evidence by themselves.
 - `suggestions` — ranked `ProjectSuggestion` fields (canonical, score, hit counts, `ticket_mode`, `default_client`).
 - `resolved_project_for_top_suggestion` — string from `resolve_target_project_name`.
 - `resolved_in_config` — whether that string is a known `project_names` entry.

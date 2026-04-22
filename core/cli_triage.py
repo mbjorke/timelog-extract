@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from datetime import timedelta
 from typing import Annotated, Any, Optional
+from urllib.parse import urlparse
 
 import questionary
 import typer
 
+from collectors.chrome import chrome_ts
+from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import as_list
@@ -29,15 +33,57 @@ NOTES_FOR_AGENTS = [
     "JSON mode omits Chrome page titles to reduce accidental PII in logs; domains and counts remain.",
     "Primary mapping signal is tracked_urls / site-first scoring; match_terms is secondary.",
     "Use --json for plans only; --yes applies mappings. Never pipe --json output back into config blindly.",
+    "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
 ]
 
 
-def _site_to_plan_dict(site: DayTopSite) -> dict[str, Any]:
-    return {
+def _extract_domain(url: str) -> str:
+    if not url:
+        return ""
+    try:
+        host = urlparse(url).netloc.lower().strip()
+    except Exception:
+        return ""
+    return host[4:] if host.startswith("www.") else host
+
+
+def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str, dict[str, Any]]:
+    # Domain-level timing anchors for faster mapping decisions in onboarding UIs.
+    by_domain: dict[str, list[int]] = {}
+    for visit_time_cu, url, _title in chrome_rows:
+        domain = _extract_domain(url)
+        if not domain:
+            continue
+        by_domain.setdefault(domain, []).append(int(visit_time_cu))
+    out: dict[str, dict[str, Any]] = {}
+    for domain, times in by_domain.items():
+        if not times:
+            continue
+        times.sort()
+        first_dt = chrome_ts(times[0], CHROME_EPOCH_DELTA_US).astimezone()
+        last_dt = chrome_ts(times[-1], CHROME_EPOCH_DELTA_US).astimezone()
+        sample_end = min(last_dt, first_dt + timedelta(minutes=15))
+        out[domain] = {
+            "first_seen_local": first_dt.isoformat(timespec="seconds"),
+            "last_seen_local": last_dt.isoformat(timespec="seconds"),
+            "sample_window_local": {
+                "start": first_dt.isoformat(timespec="seconds"),
+                "end": sample_end.isoformat(timespec="seconds"),
+            },
+        }
+    return out
+
+
+def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    payload = {
         "domain": site.domain,
         "visits": site.visits,
         "share": round(float(site.share), 6),
     }
+    timing = site_time_hints.get(site.domain)
+    if timing:
+        payload.update(timing)
+    return payload
 
 
 def _suggestion_to_plan_dict(s: ProjectSuggestion) -> dict[str, Any]:
@@ -116,10 +162,9 @@ def build_triage_plan_dict(
 
     for row in day_rows:
         day = str(row.get("day"))
-        top_sites = summarize_day_sites(
-            fetch_chrome_rows_for_day(day, home=root_home),
-            limit=max_sites,
-        )
+        chrome_rows = fetch_chrome_rows_for_day(day, home=root_home)
+        top_sites = summarize_day_sites(chrome_rows, limit=max_sites)
+        site_time_hints = _build_site_time_hints(chrome_rows)
         suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
         skip_reason: Optional[str] = None
         if not top_sites:
@@ -150,7 +195,7 @@ def build_triage_plan_dict(
                     "screen_time_hours": float(row.get("screen_time_hours", 0.0)),
                     "unexplained_screen_time_hours": float(row.get("unexplained_screen_time_hours", 0.0)),
                 },
-                "top_sites": [_site_to_plan_dict(s) for s in top_sites],
+                "top_sites": [_site_to_plan_dict(s, site_time_hints) for s in top_sites],
                 "suggestions": [_suggestion_to_plan_dict(s) for s in suggestions],
                 "resolved_project_for_top_suggestion": resolved,
                 "resolved_in_config": resolved_ok,

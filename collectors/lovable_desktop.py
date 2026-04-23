@@ -127,7 +127,7 @@ def _storage_signal_files(home: Path) -> List[Path]:
 def _extract_lovable_urls(raw: bytes) -> List[str]:
     seen: set[str] = set()
     urls: list[str] = []
-    markers = ("lovable.dev", "lovable.app", "lovableproject", ".lov")
+    markers = ("lovable.dev", "lovable.app", "lovableproject", ".lovable")
     for m in _URL_RE.finditer(raw):
         url = m.group(0).decode("utf-8", "ignore")
         lowered = url.lower()
@@ -233,7 +233,7 @@ def _collect_lovable_desktop_from_storage(
     files = _storage_signal_files(home)
     results = []
     profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
-    per_file_limit = 20 if profile == "normal" else 8 if profile == "balanced" else 20
+    per_file_limit = 20 if profile == "normal" else 8 if profile == "balanced" else 5
     for path in files:
         try:
             ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)

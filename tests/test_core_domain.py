@@ -103,6 +103,22 @@ class CoreDomainTests(unittest.TestCase):
         result = domain.classify_project("any text here", [], "Uncategorized")
         self.assertEqual(result, "Uncategorized")
 
+    def test_classify_project_prefers_repo_path_over_generic_tool_term(self):
+        profiles = [
+            {"name": "AX Finans", "match_terms": ["ax-finans", "/users/me/ax-finans"]},
+            {"name": "Akturo", "match_terms": ["cloudflare", "akturo"]},
+        ]
+        text = "Cloudflare Dashboard /Users/me/ax-finans"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "AX Finans")
+
+    def test_classify_project_prefers_tracked_url_over_generic_tool_term(self):
+        profiles = [
+            {"name": "AX Finans", "match_terms": ["cloudflare"], "tracked_urls": ["dash.cloudflare.com/accounts/ax"]},
+            {"name": "Akturo", "match_terms": ["cloudflare"], "tracked_urls": []},
+        ]
+        text = "https://dash.cloudflare.com/accounts/ax overview"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "AX Finans")
+
 
 if __name__ == "__main__":
     unittest.main()

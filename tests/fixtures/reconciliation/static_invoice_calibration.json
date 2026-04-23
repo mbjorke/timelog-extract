@@ -1,0 +1,21 @@
+{
+  "day": "2026-03-31",
+  "project_reports": {
+    "Project Alpha": { "2026-03-31": { "hours": 10.0, "sessions": [], "entries": [] } },
+    "Project Beta": { "2026-03-31": { "hours": 1.0, "sessions": [], "entries": [] } }
+  },
+  "ground_truth": {
+    "Project Alpha": 8.0,
+    "Project Beta": 10.75
+  },
+  "invoice_groups": {
+    "Verified Group": {
+      "actual_hours": 18.75,
+      "projects": ["Project Alpha", "Project Beta"]
+    }
+  },
+  "mock_reconciliation_rows_a": [
+    { "project": "Project Alpha", "predicted_hours": 13.95 },
+    { "project": "Project Beta", "predicted_hours": 4.92 }
+  ]
+}

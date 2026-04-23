@@ -39,7 +39,7 @@ No silent mixed semantics.
 
 ### 3) Classifier ties
 
-Add unit tests in `tests/test_domain.py` (or equivalent):
+Add unit tests in `tests/test_core_domain.py` (or equivalent):
 
 - equal score among projects should follow explicit rule (e.g. priority field or deterministic policy),
 - tracked URL hits outrank weak generic term hits.

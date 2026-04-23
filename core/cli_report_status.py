@@ -368,6 +368,7 @@ def status(
         shown_project_hours = 0.0
         shown_project_sessions = 0
         if additive:
+            uncategorized_label = "Uncategorized"
             project_hours: dict[str, float] = defaultdict(float)
             project_sessions: dict[str, int] = defaultdict(int)
             for day_data in report.overall_days.values():
@@ -377,9 +378,6 @@ def status(
                         name = str(event.get("project") or "").strip()
                         if name:
                             counts[name] += 1
-                    if not counts:
-                        continue
-                    primary_project = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
                     h = session_duration_hours(
                         session_events,
                         start_ts,
@@ -388,6 +386,11 @@ def status(
                         report.args.min_session_passive,
                         AI_SOURCES,
                     )
+                    if not counts:
+                        project_hours[uncategorized_label] += h
+                        project_sessions[uncategorized_label] += 1
+                        continue
+                    primary_project = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
                     project_hours[primary_project] += h
                     project_sessions[primary_project] += 1
             for project_name in sorted(project_hours.keys(), key=lambda n: (-project_hours[n], n.lower())):

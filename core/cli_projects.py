@@ -91,7 +91,12 @@ def projects(
                     console.print("[yellow]No projects to edit.[/yellow]")
                     continue
                 target_name = questionary.select("Select project to edit:", choices=names).ask()
-                project = next(p for p in data["projects"] if p["name"] == target_name)
+                if not target_name:
+                    continue
+                project = next((p for p in data["projects"] if p["name"] == target_name), {})
+                if not project:
+                    console.print("[yellow]Selected project was not found.[/yellow]")
+                    continue
 
             name = project.get("name", "")
             if not is_edit:
@@ -156,7 +161,10 @@ def projects(
                 console.print("[yellow]No projects to remove.[/yellow]")
                 continue
             target_name = questionary.select("Select project to remove:", choices=names).ask()
-            if questionary.confirm(f"Are you sure you want to remove '{target_name}'?").ask():
+            if not target_name:
+                continue
+            should_remove = questionary.confirm(f"Are you sure you want to remove '{target_name}'?").ask()
+            if should_remove is True:
                 data["projects"] = [p for p in data["projects"] if p["name"] != target_name]
                 console.print("[red]Project removed from memory.[/red]")
 

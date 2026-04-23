@@ -21,9 +21,10 @@ class LiveTerminalMockDataTests(unittest.TestCase):
         fixture = load_demo_mock_data()
         out = demo_stub_output("gittan report --today --source-summary")
         self.assertIn("Source summary (demo fixture)", out)
+        lines = out.splitlines()
         for source, count in fixture["source_summary"]["rows"]:
-            self.assertIn(f"{source}", out)
-            self.assertIn(str(count), out)
+            expected_line = f"{source:<20} {int(count)}"
+            self.assertIn(expected_line, lines)
         self.assertIn(f"Total: {fixture['source_summary']['total']}", out)
 
     def test_stub_json_matches_fixture_payload(self):

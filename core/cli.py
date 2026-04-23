@@ -18,6 +18,7 @@ from core.cli_options import (
 from core import cli_doctor_sources_projects  # noqa: F401
 from core import cli_global_timelog_setup  # noqa: F401
 from core import cli_jira_sync  # noqa: F401
+from core import cli_projects  # noqa: F401
 from core import cli_report_status  # noqa: F401
 from core import cli_ab_rule_suggestions  # noqa: F401
 from core import cli_review  # noqa: F401

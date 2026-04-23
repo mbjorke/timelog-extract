@@ -7,6 +7,41 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 
+def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> bool:
+    text = (line or "").lower()
+    # Frequent Cursor diagnostics that are operational noise, not user work intent.
+    base_markers = (
+        "error getting submodules",
+        "[error] enoent",
+        "[error] enotempty",
+        "file not found - git:/",
+        "[git][revparse] unable to read file: enoent",
+    )
+    strict_markers = (
+        # Background heartbeats that can keep sessions alive without real work.
+        "git_status: true",
+        "git_status: false",
+        "candidate index",
+        "exthostsearch [cursorignore] internal filesearch start",
+    )
+    ultra_strict_markers = (
+        # Extra aggressive filtering for repository churn and diagnostics floods.
+        "cursor_agent_exec.startup.workspace_paths",
+        "[model][openrepository] opened repository",
+        "bootstrapping repository index at",
+        "skipping acquiring lock for",
+        "[vscodediagnosticsexecutor] execute:",
+        "> git --git-dir ",
+    )
+    profile = (noise_profile or "strict").strip().lower()
+    markers = list(base_markers)
+    if profile in {"strict", "ultra-strict"}:
+        markers.extend(strict_markers)
+    if profile == "ultra-strict":
+        markers.extend(ultra_strict_markers)
+    return any(marker in text for marker in markers)
+
+
 def load_cursor_workspaces(home: Path):
     storage_dir = home / "Library" / "Application Support" / "Cursor" / "User" / "workspaceStorage"
     workspace_map = {}
@@ -27,7 +62,7 @@ def load_cursor_workspaces(home: Path):
     return workspace_map
 
 
-def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event):
+def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
     logs_dir = home / "Library" / "Application Support" / "Cursor" / "logs"
     if not logs_dir.exists():
@@ -61,6 +96,8 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                 for line in fh:
                     ts = _parse_cursor_log_ts(line)
                     if not ts or not (dt_from <= ts <= dt_to):
+                        continue
+                    if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
                         continue
                     workspace_path = None
                     m_id = workspace_id_pattern.search(line)

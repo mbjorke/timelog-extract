@@ -10,6 +10,7 @@ import typer
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
+from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 
 
 @app.command()
@@ -53,8 +54,49 @@ def report(
     quiet: Annotated[bool, typer.Option(help="Suppress progress")] = False,
     json_file: Annotated[Optional[str], typer.Option(help="Write JSON to path")] = None,
     report_html: Annotated[Optional[str], typer.Option(help="Write HTML to path")] = None,
+    noise_profile: Annotated[
+        str,
+        typer.Option(
+            "--noise-profile",
+            "--global-noise-profile",
+            help="Noise filtering profile for collector diagnostics: lenient, strict, or ultra-strict.",
+        ),
+    ] = DEFAULT_NOISE_PROFILE,
+    lovable_noise_profile: Annotated[
+        str,
+        typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
+    ] = DEFAULT_LOVABLE_NOISE_PROFILE,
+    additive_summary: Annotated[
+        bool,
+        typer.Option(
+            "--additive-summary",
+            help="Use one primary project per session in report breakdown so rows add up to total.",
+        ),
+    ] = False,
+    invoice_mode: Annotated[
+        str,
+        typer.Option(
+            "--invoice-mode",
+            help="Invoice reconciliation mode: baseline or calibrated-a.",
+        ),
+    ] = "baseline",
+    invoice_ground_truth: Annotated[
+        Optional[str],
+        typer.Option(
+            "--invoice-ground-truth",
+            help="Path to reconciliation ground-truth JSON used with --invoice-mode calibrated-a.",
+        ),
+    ] = None,
 ):
-    """Detailed activity scanning and reporting."""
+    """Detailed activity scanning and reporting.
+
+    Common use cases:
+    - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
+    - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
+    - Conservative reporting baseline: `gittan report --today --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Additive breakdown in summary: add `--additive-summary`
+    - Invoice calibration against approved hours: add `--invoice-mode calibrated-a --invoice-ground-truth <path>`
+    """
     from core.report_cli import run_timelog_cli
 
     df_s, dt_s = None, None
@@ -120,6 +162,90 @@ def report(
         quiet=quiet,
         json_file=json_file,
         report_html=report_html,
+        noise_profile=noise_profile,
+        lovable_noise_profile=lovable_noise_profile,
+        additive_summary=additive_summary,
+        invoice_mode=invoice_mode,
+        invoice_ground_truth=invoice_ground_truth,
+    )
+    run_timelog_cli(options)
+
+
+@app.command()
+def search(
+    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
+    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
+    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
+    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
+    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
+    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
+    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
+    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
+    customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
+    source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
+    output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
+    noise_profile: Annotated[
+        str,
+        typer.Option("--noise-profile", "--global-noise-profile", help="Noise filtering profile for collector diagnostics: lenient, strict, or ultra-strict."),
+    ] = DEFAULT_NOISE_PROFILE,
+    lovable_noise_profile: Annotated[
+        str,
+        typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
+    ] = DEFAULT_LOVABLE_NOISE_PROFILE,
+    quiet: Annotated[bool, typer.Option(help="Suppress progress")] = False,
+):
+    """Search timeline quickly with all events shown (wrapper around report).
+
+    Common use cases:
+    - Why did project X get time? `gittan search --today --project "X" --noise-profile lenient --lovable-noise-profile balanced`
+    - Conservative audit view: `gittan search --today --project "X" --noise-profile ultra-strict --lovable-noise-profile strict`
+    """
+    from core.report_cli import run_timelog_cli
+
+    df_s, dt_s = None, None
+    if not (
+        today
+        or yesterday
+        or last_3_days
+        or last_week
+        or last_14_days
+        or last_month
+        or date_from
+        or date_to
+    ):
+        picked = prompt_for_timeframe()
+        today = picked.get("today", False)
+        yesterday = picked.get("yesterday", False)
+        last_3_days = picked.get("last_3_days", False)
+        last_week = picked.get("last_week", False)
+        last_14_days = picked.get("last_14_days", False)
+        last_month = picked.get("last_month", False)
+        df_s = picked.get("date_from")
+        dt_s = picked.get("date_to")
+    else:
+        df_s = date_from.strftime("%Y-%m-%d") if date_from else None
+        dt_s = date_to.strftime("%Y-%m-%d") if date_to else None
+
+    options = TimelogRunOptions(
+        date_from=df_s,
+        date_to=dt_s,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        projects_config=projects_config,
+        only_project=project,
+        customer=customer,
+        source_summary=source_summary,
+        all_events=True,
+        output_format=output_format,
+        noise_profile=noise_profile,
+        lovable_noise_profile=lovable_noise_profile,
+        quiet=quiet,
     )
     run_timelog_cli(options)
 
@@ -132,9 +258,33 @@ def status(
     last_week: Annotated[bool, typer.Option(help="Last 7 days status.")] = False,
     last_14_days: Annotated[bool, typer.Option(help="Last 14 days status.")] = False,
     last_month: Annotated[bool, typer.Option(help="Last 30 days status.")] = False,
+    additive: Annotated[
+        bool,
+        typer.Option(
+            "--additive",
+            help="Partition sessions by one primary project so project rows add up exactly to Total.",
+        ),
+    ] = False,
+    noise_profile: Annotated[
+        str,
+        typer.Option("--noise-profile", "--global-noise-profile", help="Noise filtering profile for collector diagnostics: lenient, strict, or ultra-strict."),
+    ] = DEFAULT_NOISE_PROFILE,
+    lovable_noise_profile: Annotated[
+        str,
+        typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
+    ] = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
-    """Quick high-level hours summary."""
-    from core.report_service import run_timelog_report
+    """Quick high-level hours summary.
+
+    Common use cases:
+    - Daily check (recommended default): `gittan status --today --additive --noise-profile strict --lovable-noise-profile balanced`
+    - Conservative reporting view: `gittan status --today --additive --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Strict totals per project: use `--additive` (project rows sum exactly to Total)
+    """
+    from collections import defaultdict
+
+    from core.domain import session_duration_hours
+    from core.report_service import AI_SOURCES, run_timelog_report
     from outputs.cli_heroes import print_command_hero
     from rich import box
     from rich.console import Console
@@ -193,6 +343,8 @@ def status(
         date_to=dt_s,
         projects_config="timelog_projects.json",
         quiet=True,
+        noise_profile=noise_profile,
+        lovable_noise_profile=lovable_noise_profile,
     )
 
     print_command_hero(console, "status")
@@ -205,22 +357,62 @@ def status(
             console.print("[yellow]No activity tracked for this period.[/yellow]")
             return
 
-        table = Table(title=f"Hours Summary ({title_date})", box=box.ROUNDED)
+        title_suffix = " — additive (primary project per session)" if additive else ""
+        table = Table(title=f"Hours Summary ({title_date}){title_suffix}", box=box.ROUNDED)
         table.border_style = STYLE_BORDER
         table.header_style = f"bold {STYLE_LABEL}"
         table.add_column("Project", style=STYLE_LABEL)
         table.add_column("Hours", justify="right", style=CLR_VALUE_ORANGE)
         table.add_column("Sessions", justify="right", style=STYLE_MUTED)
 
-        for project_name, days_data in report.project_reports.items():
-            proj_hours = sum(d["hours"] for d in days_data.values())
-            proj_sessions = sum(len(d["sessions"]) for d in days_data.values())
-            if proj_hours > 0:
-                table.add_row(
-                    project_name,
-                    f"{proj_hours:.1f}h",
-                    str(proj_sessions),
-                )
+        shown_project_hours = 0.0
+        shown_project_sessions = 0
+        if additive:
+            uncategorized_label = "Uncategorized"
+            project_hours: dict[str, float] = defaultdict(float)
+            project_sessions: dict[str, int] = defaultdict(int)
+            for day_data in report.overall_days.values():
+                for start_ts, end_ts, session_events in day_data.get("sessions", []):
+                    counts: dict[str, int] = defaultdict(int)
+                    for event in session_events:
+                        name = str(event.get("project") or "").strip()
+                        if name:
+                            counts[name] += 1
+                    h = session_duration_hours(
+                        session_events,
+                        start_ts,
+                        end_ts,
+                        report.args.min_session,
+                        report.args.min_session_passive,
+                        AI_SOURCES,
+                    )
+                    if not counts:
+                        project_hours[uncategorized_label] += h
+                        project_sessions[uncategorized_label] += 1
+                        continue
+                    primary_project = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
+                    project_hours[primary_project] += h
+                    project_sessions[primary_project] += 1
+            for project_name in sorted(project_hours.keys(), key=lambda n: (-project_hours[n], n.lower())):
+                proj_hours = project_hours[project_name]
+                proj_sessions = project_sessions.get(project_name, 0)
+                if proj_hours <= 0:
+                    continue
+                shown_project_hours += proj_hours
+                shown_project_sessions += proj_sessions
+                table.add_row(project_name, f"{proj_hours:.1f}h", str(proj_sessions))
+        else:
+            for project_name, days_data in report.project_reports.items():
+                proj_hours = sum(d["hours"] for d in days_data.values())
+                proj_sessions = sum(len(d["sessions"]) for d in days_data.values())
+                if proj_hours > 0:
+                    shown_project_hours += proj_hours
+                    shown_project_sessions += proj_sessions
+                    table.add_row(
+                        project_name,
+                        f"{proj_hours:.1f}h",
+                        str(proj_sessions),
+                    )
 
         total_h = sum(d.get("hours", 0.0) for d in report.overall_days.values())
         total_sessions = sum(len(d.get("sessions", [])) for d in report.overall_days.values())
@@ -232,6 +424,17 @@ def status(
         )
 
         console.print(table)
+        if str(getattr(report.args, "noise_profile", "strict") or "strict").lower() == "ultra-strict":
+            console.print(
+                "[dim]Note: ultra-strict removes extra diagnostic/repository churn noise. "
+                "Total hours may decrease and session boundaries/primary project attribution can shift.[/dim]"
+            )
+        if (not additive) and (shown_project_hours > total_h + 0.01 or shown_project_sessions > total_sessions):
+            console.print(
+                f"[dim]Note: project rows can overlap attribution. "
+                f"Shown rows sum to {shown_project_hours:.1f}h/{shown_project_sessions} sessions; "
+                f"Total is unique timeline time: {total_h:.1f}h/{total_sessions} sessions.[/dim]"
+            )
 
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")

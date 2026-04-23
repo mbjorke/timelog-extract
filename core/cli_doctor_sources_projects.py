@@ -1,9 +1,8 @@
-"""Typer commands: doctor, sources, projects."""
+"""Typer commands: doctor, sources."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import shutil
@@ -14,12 +13,11 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-import questionary
 import typer
 from typing import Annotated, Optional
 
 from core.cli_app import app
-from core.cli_options import TimelogRunOptions, split_comma_separated_list
+from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import load_profiles, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
@@ -332,150 +330,3 @@ def sources():
         "\n[dim]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
         "specific source.[/dim]\n"
     )
-
-
-@app.command()
-def projects(
-    config: Annotated[str, typer.Option(help="Path to projects config file")] = "timelog_projects.json",
-):
-    """Manage project profiles interactively."""
-    from rich.console import Console
-    from rich.table import Table
-
-    console = Console()
-    config_path = Path(config)
-
-    if config_path.exists():
-        try:
-            data = json.loads(config_path.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                data = {"projects": data}
-        except Exception as e:
-            console.print(f"[red]Error reading config: {e}[/red]")
-            raise typer.Exit(code=1) from e
-    else:
-        data = {"projects": [], "worklog": "TIMELOG.md"}
-
-    def save():
-        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        console.print(f"[green]Saved to {config_path}[/green]")
-
-    while True:
-        action = questionary.select(
-            "Project Management",
-            choices=[
-                "List Projects",
-                "Add New Project",
-                "Edit Project",
-                "Remove Project",
-                "Set Worklog Path",
-                "Save & Exit",
-                "Cancel",
-            ],
-        ).ask()
-
-        if action == "Cancel" or not action:
-            break
-
-        if action == "Save & Exit":
-            save()
-            break
-
-        if action == "List Projects":
-            table = Table(title="Project Profiles")
-            table.add_column("Name (ID)", style="cyan")
-            table.add_column("Customer", style="magenta")
-            table.add_column("Match Terms", style="dim")
-
-            for p in data.get("projects", []):
-                table.add_row(
-                    p.get("name", "N/A"),
-                    p.get("customer", p.get("name", "N/A")),
-                    ", ".join(p.get("match_terms", [])),
-                )
-            console.print(table)
-
-        if action == "Set Worklog Path":
-            current_wl = data.get("worklog", "TIMELOG.md")
-            new_wl = questionary.text("Worklog path:", default=current_wl).ask()
-            if new_wl:
-                data["worklog"] = new_wl
-
-        if action == "Add New Project" or action == "Edit Project":
-            project = {}
-            is_edit = action == "Edit Project"
-
-            if is_edit:
-                names = [p["name"] for p in data.get("projects", [])]
-                if not names:
-                    console.print("[yellow]No projects to edit.[/yellow]")
-                    continue
-                target_name = questionary.select("Select project to edit:", choices=names).ask()
-                project = next(p for p in data["projects"] if p["name"] == target_name)
-
-            name = project.get("name", "")
-            if not is_edit:
-                name = questionary.text("Project Name (unique ID):").ask()
-                if not name:
-                    continue
-
-            customer = questionary.text("Customer (display name):", default=project.get("customer", name)).ask()
-            if customer is None:
-                continue
-
-            match_terms = questionary.text(
-                "Match Terms (comma separated):",
-                default=", ".join(project.get("match_terms", [])),
-            ).ask()
-            if match_terms is None:
-                continue
-
-            tracked_urls = questionary.text(
-                "Tracked AI URLs (comma separated):",
-                default=", ".join(project.get("tracked_urls", [])),
-            ).ask()
-            if tracked_urls is None:
-                continue
-
-            email = questionary.text("Email filter (sender/receiver):", default=project.get("email", "")).ask()
-            if email is None:
-                continue
-
-            title = questionary.text("Invoice Title:", default=project.get("invoice_title", "")).ask()
-            if title is None:
-                continue
-
-            desc = questionary.text("Invoice Description:", default=project.get("invoice_description", "")).ask()
-            if desc is None:
-                continue
-
-            new_project = {
-                "name": name,
-                "customer": customer,
-                "match_terms": split_comma_separated_list(match_terms),
-                "tracked_urls": split_comma_separated_list(tracked_urls),
-                "email": email,
-                "invoice_title": title,
-                "invoice_description": desc,
-                "enabled": True,
-            }
-
-            if is_edit:
-                idx = next(i for i, p in enumerate(data["projects"]) if p["name"] == target_name)
-                data["projects"][idx] = new_project
-            else:
-                if "projects" not in data:
-                    data["projects"] = []
-                data["projects"].append(new_project)
-
-            console.print("[green]Project updated in memory. Remember to 'Save & Exit'.[/green]")
-
-        if action == "Remove Project":
-            names = [p["name"] for p in data.get("projects", [])]
-            if not names:
-                console.print("[yellow]No projects to remove.[/yellow]")
-                continue
-            target_name = questionary.select("Select project to remove:", choices=names).ask()
-            if questionary.confirm(f"Are you sure you want to remove '{target_name}'?").ask():
-                data["projects"] = [p for p in data["projects"] if p["name"] != target_name]
-                console.print("[red]Project removed from memory.[/red]")

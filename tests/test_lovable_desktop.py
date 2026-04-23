@@ -58,7 +58,7 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertIn("https://lovable.dev/foo", urls)
         self.assertTrue(any("lovable.app/path" in u for u in urls))
         self.assertTrue(any("lovableproject.com/hello" in u for u in urls))
-        self.assertIn("https://id-preview--uuid.lov", urls)
+        self.assertNotIn("https://id-preview--uuid.lov", urls)
         self.assertIn("https://uuid.lovableproject.", urls)
 
     def test_filter_lovable_storage_urls_strict_drops_invalid_host_variants(self):

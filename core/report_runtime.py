@@ -8,6 +8,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+from core.noise_profiles import (
+    DEFAULT_LOVABLE_NOISE_PROFILE,
+    DEFAULT_NOISE_PROFILE,
+    LOVABLE_NOISE_PROFILES,
+    NOISE_PROFILES,
+)
 
 from collectors import ai_logs as ai_logs_collector
 from collectors import chrome as chrome_collector
@@ -19,6 +25,41 @@ from collectors import toggl as toggl_collector
 from core.collector_registry import build_collector_specs
 from core.pipeline import collect_all_events
 from core.runtime_collectors import RuntimeCollectors
+
+
+def _resolve_only_project_filter(args: argparse.Namespace, profiles: List[Dict[str, Any]]) -> None:
+    requested = str(getattr(args, "only_project", "") or "").strip()
+    if not requested:
+        return
+    by_name = {str(p.get("name", "")).strip().lower(): str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()}
+    exact = by_name.get(requested.lower())
+    if exact:
+        args.only_project = exact
+        return
+
+    candidates: list[str] = []
+    seen: set[str] = set()
+    needle = requested.lower()
+    for profile in profiles:
+        canonical = str(profile.get("name", "")).strip()
+        if not canonical:
+            continue
+        names = [canonical] + [str(a).strip() for a in (profile.get("aliases") or []) if str(a).strip()]
+        if any(needle in name.lower() for name in names):
+            key = canonical.lower()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(canonical)
+    if len(candidates) == 1:
+        args.only_project_input = requested
+        args.only_project = candidates[0]
+        args.only_project_resolved = True
+        return
+    if len(candidates) > 1:
+        args.only_project_ambiguous = sorted(candidates, key=lambda n: n.lower())
+        return
+    args.only_project_input = requested
+    args.only_project_no_match = True
 
 
 @dataclass
@@ -98,6 +139,7 @@ def build_run_context(
     worklog_path = resolve_worklog_path_fn(
         args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
     )
+    _resolve_only_project_filter(args, profiles)
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
     if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
         chosen_strategy = "auto"
@@ -111,11 +153,28 @@ def build_run_context(
     args.source_strategy = chosen_strategy
     args.source_strategy_effective = source_strategy_effective
     args.primary_source = worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
+    noise_profile = str(getattr(args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE).strip().lower()
+    if noise_profile not in NOISE_PROFILES:
+        noise_profile = DEFAULT_NOISE_PROFILE
+    args.noise_profile = noise_profile
+    lovable_noise_profile = str(
+        getattr(args, "lovable_noise_profile", DEFAULT_LOVABLE_NOISE_PROFILE) or DEFAULT_LOVABLE_NOISE_PROFILE
+    ).strip().lower()
+    if lovable_noise_profile not in LOVABLE_NOISE_PROFILES:
+        lovable_noise_profile = DEFAULT_LOVABLE_NOISE_PROFILE
+    args.lovable_noise_profile = lovable_noise_profile
 
     if want_log_fn(args):
         print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
         if args.only_project:
             print(f"Only project: {args.only_project!r}")
+        if getattr(args, "only_project_resolved", False) and getattr(args, "only_project_input", None):
+            print(f"Project filter matched: {args.only_project_input!r} -> {args.only_project!r}")
+        ambiguous_projects = getattr(args, "only_project_ambiguous", None) or []
+        if ambiguous_projects:
+            print(f"Project filter ambiguous: {args.only_project!r} matches {', '.join(ambiguous_projects)}")
+        if getattr(args, "only_project_no_match", False):
+            print(f"Project filter {args.only_project!r} matched no profiles")
         if args.customer:
             print(f"Only customer: {args.customer!r}")
         print(f"Local timezone: {local_tz}")
@@ -128,6 +187,17 @@ def build_run_context(
                 print("Source strategy: worklog-first requested, but worklog missing; using balanced fallback.")
         else:
             print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
+        print(f"Noise profile: {noise_profile}")
+        profile_hints = {
+            "lenient": "keep almost all collector diagnostics/events",
+            "strict": "filter common heartbeat/diagnostic noise",
+            "ultra-strict": "aggressively filter diagnostics/repo churn noise",
+        }
+        print(f"Noise profile hint: {profile_hints.get(noise_profile, profile_hints['strict'])}")
+        print(f"Lovable noise profile: {lovable_noise_profile}")
+        print(
+            f"Profile defaults: global={DEFAULT_NOISE_PROFILE}, lovable={DEFAULT_LOVABLE_NOISE_PROFILE}"
+        )
         print()
 
     return RunContext(

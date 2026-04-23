@@ -73,6 +73,20 @@ def report(
             help="Use one primary project per session in report breakdown so rows add up to total.",
         ),
     ] = False,
+    invoice_mode: Annotated[
+        str,
+        typer.Option(
+            "--invoice-mode",
+            help="Invoice reconciliation mode: baseline or calibrated-a.",
+        ),
+    ] = "baseline",
+    invoice_ground_truth: Annotated[
+        Optional[str],
+        typer.Option(
+            "--invoice-ground-truth",
+            help="Path to reconciliation ground-truth JSON used with --invoice-mode calibrated-a.",
+        ),
+    ] = None,
 ):
     """Detailed activity scanning and reporting.
 
@@ -81,6 +95,7 @@ def report(
     - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
     - Conservative reporting baseline: `gittan report --today --noise-profile ultra-strict --lovable-noise-profile strict`
     - Additive breakdown in summary: add `--additive-summary`
+    - Invoice calibration against approved hours: add `--invoice-mode calibrated-a --invoice-ground-truth <path>`
     """
     from core.report_cli import run_timelog_cli
 
@@ -150,6 +165,8 @@ def report(
         noise_profile=noise_profile,
         lovable_noise_profile=lovable_noise_profile,
         additive_summary=additive_summary,
+        invoice_mode=invoice_mode,
+        invoice_ground_truth=invoice_ground_truth,
     )
     run_timelog_cli(options)
 

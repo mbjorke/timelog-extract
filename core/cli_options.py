@@ -60,6 +60,8 @@ class TimelogRunOptions:
     additive_summary: bool = False
     noise_profile: str = DEFAULT_NOISE_PROFILE
     lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE
+    invoice_mode: str = "baseline"
+    invoice_ground_truth: Optional[str] = None
 
 
 def split_comma_separated_list(value: Optional[str]) -> List[str]:

@@ -52,6 +52,24 @@ class ReportAdditiveSummaryOptionTests(unittest.TestCase):
         self.assertEqual(getattr(options, "noise_profile", ""), "ultra-strict")
         self.assertEqual(getattr(options, "lovable_noise_profile", ""), "strict")
 
+    def test_report_forwards_invoice_mode(self):
+        with patch("core.report_cli.run_timelog_cli") as run_mock:
+            result = self.runner.invoke(app, ["report", "--yesterday", "--invoice-mode", "calibrated-a"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        options = run_mock.call_args[0][0]
+        self.assertEqual(getattr(options, "invoice_mode", ""), "calibrated-a")
+
+    def test_report_forwards_invoice_ground_truth(self):
+        with patch("core.report_cli.run_timelog_cli") as run_mock:
+            result = self.runner.invoke(
+                app,
+                ["report", "--yesterday", "--invoice-mode", "calibrated-a", "--invoice-ground-truth", "march_invoice_ground_truth.json"],
+            )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        options = run_mock.call_args[0][0]
+        self.assertEqual(getattr(options, "invoice_mode", ""), "calibrated-a")
+        self.assertEqual(getattr(options, "invoice_ground_truth", ""), "march_invoice_ground_truth.json")
+
 
 if __name__ == "__main__":
     unittest.main()

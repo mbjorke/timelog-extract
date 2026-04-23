@@ -198,6 +198,12 @@ def build_run_context(
         print(
             f"Profile defaults: global={DEFAULT_NOISE_PROFILE}, lovable={DEFAULT_LOVABLE_NOISE_PROFILE}"
         )
+        invoice_mode = str(getattr(args, "invoice_mode", "baseline") or "baseline").strip().lower()
+        invoice_truth = str(getattr(args, "invoice_ground_truth", "") or "").strip()
+        if invoice_mode != "baseline":
+            print(f"Invoice mode: {invoice_mode}")
+            if invoice_truth:
+                print(f"Invoice ground truth: {invoice_truth}")
         print()
 
     return RunContext(

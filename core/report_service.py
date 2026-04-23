@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Union
 
 from core import domain as core_domain
@@ -29,9 +32,10 @@ from core.report_runtime import (
     collect_screen_time_status,
 )
 from core.workspace_root import runtime_workspace_root
-from core.report_aggregate import aggregate_report
+from core.report_aggregate import AggregationResult, aggregate_report
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
+from core.calibration.reconciliation import evaluate_reconciliation
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
@@ -41,6 +45,7 @@ HOME = Path.home()
 LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 APPLE_EPOCH = 978307200
 UNCATEGORIZED = "Uncategorized"
+LOGGER = logging.getLogger(__name__)
 
 
 def _want_log(args: argparse.Namespace) -> bool:
@@ -320,6 +325,13 @@ def run_timelog_report(
         ),
     )
 
+    agg = _apply_invoice_calibration_if_requested(
+        agg=agg,
+        args=args,
+        profiles=profiles,
+        dt_to=dt_to,
+    )
+
     return ReportPayload(
         dt_from=dt_from,
         dt_to=dt_to,
@@ -336,6 +348,63 @@ def run_timelog_report(
         args=args,
         source_strategy_effective=context.source_strategy_effective,
     )
+
+
+def _apply_invoice_calibration_if_requested(
+    *,
+    agg: AggregationResult,
+    args: argparse.Namespace,
+    profiles: List[Dict[str, Any]],
+    dt_to: datetime,
+) -> AggregationResult:
+    invoice_mode = str(getattr(args, "invoice_mode", "baseline") or "baseline").strip().lower()
+    invoice_truth_path = str(getattr(args, "invoice_ground_truth", "") or "").strip()
+    if invoice_mode != "calibrated-a" or not invoice_truth_path:
+        return agg
+    truth_path = Path(invoice_truth_path).expanduser()
+    if not truth_path.is_file():
+        return agg
+    try:
+        truth = json.loads(truth_path.read_text(encoding="utf-8"))
+        project_truth = {str(k): float(v) for k, v in (truth.get("projects") or {}).items()}
+        invoice_groups = truth.get("invoice_groups") or {}
+        if not project_truth:
+            return agg
+        report_like = SimpleNamespace(
+            included_events=agg.all_events,
+            project_reports=agg.project_reports,
+            profiles=profiles,
+            args=args,
+        )
+        reconciliation = evaluate_reconciliation(
+            report_like,
+            project_truth,
+            invoice_groups={str(k): v for k, v in invoice_groups.items()} if invoice_groups else None,
+        )
+        calibrated = {
+            str(row["project"]): float(row["predicted_hours"])
+            for row in reconciliation.get("rows", {}).get("A", [])
+            if str(row.get("project", "")).strip()
+        }
+        if not calibrated:
+            return agg
+        day_key = dt_to.astimezone(LOCAL_TZ).date().isoformat()
+        adjusted = dict(agg.project_reports)
+        for project_name, predicted_hours in calibrated.items():
+            adjusted[project_name] = {
+                day_key: {"sessions": [], "entries": [], "hours": float(predicted_hours)}
+            }
+        return AggregationResult(
+            all_events=agg.all_events,
+            included_events=agg.included_events,
+            grouped=agg.grouped,
+            overall_days=agg.overall_days,
+            project_reports=adjusted,
+        )
+    except (json.JSONDecodeError, OSError, TypeError, ValueError) as exc:
+        # Keep baseline report behavior if calibration input is invalid.
+        LOGGER.warning("Invoice calibration disabled due to invalid input: %s", exc)
+        return agg
 
 
 def generate_invoice_pdf(

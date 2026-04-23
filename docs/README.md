@@ -36,6 +36,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 
 - **Defines a current rule** → `decisions/`
 - **Approved work to build** → `specs/`
+- **Triage onboarding timestamp spike spec (S1)** → [`specs/triage-onboarding-timestamp-spike-spec.md`](specs/triage-onboarding-timestamp-spike-spec.md)
 - **Implementation checklist / agent prompt** → `task-prompts/`
 - **Apr 29 live demo — CLI polish backlog (current focus)** → [`runbooks/cli-polish-backlog-for-apr29.md`](runbooks/cli-polish-backlog-for-apr29.md)
 - **How to run CI, release, or QA** → `runbooks/` (optional **Homebrew tap** sketch for `brew install gittan`: [`runbooks/homebrew-tap.md`](runbooks/homebrew-tap.md))
@@ -49,6 +50,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Privacy and licensing posture** → `security/`
 - **How data enters the tool** → `sources/`
 - **Exploratory only, team-lexicon (människa–agent, inkl. TIL)** → `ideas/` (t.ex. [`ideas/team-lexicon.md`](ideas/team-lexicon.md))
+- **Current triage onboarding spike (top-sites + timestamp)** → [`ideas/triage-onboarding-spike-2026-04.md`](ideas/triage-onboarding-spike-2026-04.md)
 - **No longer current but you still want the file in-repo** → `legacy/`
 
 ## Naming

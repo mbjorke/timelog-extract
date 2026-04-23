@@ -32,6 +32,8 @@ Per-day object:
 - `day` — `YYYY-MM-DD`.
 - `gap` — `estimated_hours`, `screen_time_hours`, `unexplained_screen_time_hours` (numbers).
 - `top_sites` — domains with visits and share; **page titles are omitted** in JSON to reduce accidental PII in logs.
+  - Optional timestamp anchors (local time): `first_seen_local`, `last_seen_local`, `sample_window_local.start`, `sample_window_local.end`.
+  - These are guidance hints for onboarding confidence, not hard evidence by themselves.
 - `suggestions` — ranked project suggestions. Each entry includes `canonical`, score/hit fields, `ticket_mode`, `default_client`, and **`tags`** (from profile `tags` / `canonical_project`, for inbox/mobile labeling).
 - **`question`** — short human-readable prompt for UIs (`null` if there are no suggestions).
 - **`choices`** — compact options for pickers: objects with `canonical` (or `null` for “skip”), `tags`, and `label` (includes a final **“None of these / skip”** row).

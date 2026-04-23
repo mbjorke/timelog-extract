@@ -2,22 +2,54 @@ from __future__ import annotations
 
 import math
 
+GENERIC_TOOL_TERMS = {
+    "cloudflare",
+    "jira",
+    "jira.com",
+    "atlassian",
+    "toggl",
+    "toggl.com",
+    "toggle",
+    "toggle.com",
+}
+
+
+def _is_path_like_term(term: str) -> bool:
+    t = (term or "").strip().lower()
+    return "/" in t or "\\" in t or t.startswith("users/") or t.startswith("workspace/")
+
 
 def classify_project(text, profiles, fallback):
     haystack = (text or "").lower()
     best_name = fallback
-    best_score = 0
+    best_rank = (0.0, 0, 0, 0)
     for profile in profiles:
         matched = {term for term in profile["match_terms"] if term and term in haystack}
-        score = len(matched)
+        weighted_score = 0.0
+        specific_hits = 0
+        generic_hits = 0
+        for term in matched:
+            clean = str(term).strip().lower()
+            if clean in GENERIC_TOOL_TERMS:
+                weighted_score += 0.25
+                generic_hits += 1
+            elif _is_path_like_term(clean):
+                weighted_score += 2.0
+                specific_hits += 1
+            else:
+                weighted_score += 1.0
+                specific_hits += 1
         if profile["name"].lower() in haystack:
-            score += 1
+            weighted_score += 1.0
+            specific_hits += 1
         for url in profile.get("tracked_urls") or []:
             fragment = str(url).strip().lower()
             if fragment and fragment in haystack:
-                score += 2
-        if score > best_score:
-            best_score = score
+                weighted_score += 2.0
+                specific_hits += 1
+        rank = (weighted_score, specific_hits, -generic_hits, len(matched))
+        if rank > best_rank:
+            best_rank = rank
             best_name = profile["name"]
     return best_name
 

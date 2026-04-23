@@ -48,7 +48,7 @@ def classify_project(text, profiles, fallback):
                 weighted_score += 2.0
                 specific_hits += 1
         rank = (weighted_score, specific_hits, -generic_hits, len(matched))
-        if rank > best_rank:
+        if (specific_hits > 0 or weighted_score >= 1.0) and rank > best_rank:
             best_rank = rank
             best_name = profile["name"]
     return best_name

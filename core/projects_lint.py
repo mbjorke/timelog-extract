@@ -39,7 +39,7 @@ def lint_projects_payload(payload: dict[str, Any]) -> list[LintWarning]:
 
     for project in enabled_projects:
         name = str(project.get("name", "")).strip()
-        customer = str(project.get("customer", "")).strip().lower()
+        customer = str(project.get("customer") or "").strip().lower()
         for term in project.get("match_terms", []) or []:
             clean = str(term).strip().lower()
             if not clean:

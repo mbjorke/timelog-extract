@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
 
+import click
 import typer
 
 from core.cli_app import app
@@ -78,6 +79,7 @@ def report(
         typer.Option(
             "--invoice-mode",
             help="Invoice reconciliation mode: baseline or calibrated-a.",
+            click_type=click.Choice(["baseline", "calibrated-a"]),
         ),
     ] = "baseline",
     invoice_ground_truth: Annotated[
@@ -424,7 +426,10 @@ def status(
         )
 
         console.print(table)
-        if str(getattr(report.args, "noise_profile", "strict") or "strict").lower() == "ultra-strict":
+        resolved_profile = str(
+            getattr(report.args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE
+        ).lower()
+        if resolved_profile == "ultra-strict":
             console.print(
                 "[dim]Note: ultra-strict removes extra diagnostic/repository churn noise. "
                 "Total hours may decrease and session boundaries/primary project attribution can shift.[/dim]"

@@ -9,6 +9,7 @@ from typing import Callable, List
 from urllib.parse import urlparse
 
 from collectors.chrome import chrome_time_range, chrome_ts, query_chrome, thin_chrome_visit_rows
+from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE
 
 SOURCE_NAME = "Lovable (desktop)"
 _URL_RE = re.compile(rb"https://[^\s\x00\"']+", re.IGNORECASE)
@@ -54,7 +55,7 @@ def collect_lovable_desktop(
     epoch_delta_us,
     classify_project: Callable,
     make_event: Callable,
-    lovable_noise_profile: str = "normal",
+    lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
     """All visits in the Lovable app Chromium History for the date range (app-local DB — not keyword-filtered).
 
@@ -194,7 +195,7 @@ def _canonicalize_lovable_storage_url(url: str) -> str:
 
 
 def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "normal") -> List[str]:
-    profile = (lovable_noise_profile or "normal").strip().lower()
+    profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
     if profile == "normal":
         return urls
     if profile == "strict":
@@ -226,12 +227,12 @@ def _collect_lovable_desktop_from_storage(
     home,
     classify_project: Callable,
     make_event: Callable,
-    lovable_noise_profile: str = "normal",
+    lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
     """Fallback when Chromium History is absent: derive Lovable activity signals from local/session storage blobs."""
     files = _storage_signal_files(home)
     results = []
-    profile = (lovable_noise_profile or "normal").strip().lower()
+    profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
     per_file_limit = 20 if profile == "normal" else 8 if profile == "balanced" else 20
     for path in files:
         try:

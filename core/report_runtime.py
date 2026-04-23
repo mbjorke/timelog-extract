@@ -34,6 +34,9 @@ def _resolve_only_project_filter(args: argparse.Namespace, profiles: List[Dict[s
     by_name = {str(p.get("name", "")).strip().lower(): str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()}
     exact = by_name.get(requested.lower())
     if exact:
+        if exact != requested:
+            args.only_project_input = requested
+            args.only_project_resolved = True
         args.only_project = exact
         return
 

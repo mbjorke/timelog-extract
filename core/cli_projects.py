@@ -37,7 +37,11 @@ def projects(
         data = {"projects": [], "worklog": "TIMELOG.md"}
 
     def save():
-        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        try:
+            config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except OSError as exc:
+            console.print(f"[red]Error writing config:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
         console.print(f"[green]Saved to {config_path}[/green]")
 
     while True:

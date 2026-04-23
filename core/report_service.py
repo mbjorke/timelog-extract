@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,7 @@ HOME = Path.home()
 LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 APPLE_EPOCH = 978307200
 UNCATEGORIZED = "Uncategorized"
+LOGGER = logging.getLogger(__name__)
 
 
 def _want_log(args: argparse.Namespace) -> bool:
@@ -399,8 +401,9 @@ def _apply_invoice_calibration_if_requested(
             overall_days=agg.overall_days,
             project_reports=adjusted,
         )
-    except Exception:
+    except (json.JSONDecodeError, OSError, TypeError, ValueError) as exc:
         # Keep baseline report behavior if calibration input is invalid.
+        LOGGER.warning("Invoice calibration disabled due to invalid input: %s", exc)
         return agg
 
 

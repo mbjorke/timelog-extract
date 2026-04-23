@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "doctor": {
+    "title": "Gittan Health Check (demo)",
+    "rows": [
+      ["Project Config", "OK"],
+      ["Worklog (Local)", "OK"],
+      ["GitHub Copilot CLI", "NA (demo)"],
+      ["Lovable (desktop)", "OK"]
+    ]
+  },
+  "source_summary": {
+    "rows": [
+      ["Cursor", 12],
+      ["Chrome", 9],
+      ["Lovable (desktop)", 7],
+      ["TIMELOG.md", 3]
+    ],
+    "total": 31
+  },
+  "truth_payload": {
+    "schema": "timelog_extract.truth_payload",
+    "version": 1,
+    "demo": true,
+    "totals": {
+      "event_count": 31,
+      "hours_estimated": 2.1
+    }
+  }
+}

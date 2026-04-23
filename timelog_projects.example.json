@@ -10,7 +10,8 @@
       "invoice_description": "Ongoing implementation and iterative improvements for the project's core workflows.",
       "match_terms": ["example-project-alpha", "alpha", "wordpress", "elementor", "snippets"],
       "tracked_urls": ["https://claude.ai/chat/example-chat-id"],
-      "email": "user@example.com"
+      "email": "user@example.com",
+      "tags": ["tech"]
     },
     {
       "name": "example-project",

@@ -10,8 +10,10 @@ import unittest
 
 from collectors.jira import JiraCredentials, post_jira_worklog
 from core.cli import app
+from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
     JiraWorklogCandidate,
+    JiraSyncSummary,
     build_jira_worklog_candidates,
     extract_issue_key,
 )
@@ -231,6 +233,50 @@ class JiraSyncTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Jira sync summary: posted=0, skipped=0, unresolved=0, failed=1", result.output)
         self.assertIn("Next: verify Jira credentials and issue visibility", result.output)
+
+
+class NextStepHintTests(unittest.TestCase):
+    """Unit tests for _next_step_hint (always returns a single concise str — see PR #85)."""
+
+    def test_hint_when_all_zero(self):
+        summary = JiraSyncSummary(posted=0, skipped=0, unresolved=0, failed=0)
+        self.assertIn("nothing to post", _next_step_hint(summary))
+
+    def test_hint_when_only_posted(self):
+        summary = JiraSyncSummary(posted=3, skipped=0, unresolved=0, failed=0)
+        self.assertIn("verify worklogs in Jira", _next_step_hint(summary))
+
+    def test_hint_for_failed(self):
+        summary = JiraSyncSummary(posted=0, skipped=0, unresolved=0, failed=1)
+        hint = _next_step_hint(summary)
+        self.assertIsNotNone(hint)
+        self.assertIn("credentials", hint)
+
+    def test_hint_for_unresolved(self):
+        summary = JiraSyncSummary(posted=0, skipped=0, unresolved=2, failed=0)
+        hint = _next_step_hint(summary)
+        self.assertIsNotNone(hint)
+        self.assertIn("issue keys", hint)
+
+    def test_hint_for_skipped(self):
+        summary = JiraSyncSummary(posted=0, skipped=1, unresolved=0, failed=0)
+        hint = _next_step_hint(summary)
+        self.assertIsNotNone(hint)
+        self.assertIn("rerun with confirmation", hint)
+
+    def test_hint_failed_takes_priority_over_unresolved(self):
+        """Failed check happens before unresolved check."""
+        summary = JiraSyncSummary(posted=0, skipped=0, unresolved=1, failed=1)
+        hint = _next_step_hint(summary)
+        self.assertIsNotNone(hint)
+        self.assertIn("credentials", hint)
+
+    def test_hint_unresolved_takes_priority_over_skipped(self):
+        """Unresolved check happens before skipped check."""
+        summary = JiraSyncSummary(posted=0, skipped=1, unresolved=1, failed=0)
+        hint = _next_step_hint(summary)
+        self.assertIsNotNone(hint)
+        self.assertIn("issue keys", hint)
 
 
 class PathLike:

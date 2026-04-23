@@ -102,6 +102,13 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
 
     if not report.included_events:
         if report.args.only_project:
+            ambiguous = getattr(report.args, "only_project_ambiguous", None) or []
+            if ambiguous:
+                print(
+                    f"Project filter {report.args.only_project!r} is ambiguous. "
+                    f"Did you mean one of: {', '.join(repr(name) for name in ambiguous)}?"
+                )
+                return
             print(f"No events for project {report.args.only_project!r} in selected range.")
         else:
             print("No events found.")

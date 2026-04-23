@@ -97,10 +97,14 @@ class RuntimeCollectors:
 
     def collect_lovable_desktop(self, profiles, dt_from, dt_to):
         collapse = 12
+        lovable_noise_profile = "normal"
         if self.cli_args is not None:
             value = getattr(self.cli_args, "chrome_collapse_minutes", None)
             if value is not None:
                 collapse = int(value)
+            lovable_noise_profile = str(
+                getattr(self.cli_args, "lovable_noise_profile", "normal") or "normal"
+            ).lower()
         return lovable_desktop_collector.collect_lovable_desktop(
             profiles,
             dt_from,
@@ -110,6 +114,7 @@ class RuntimeCollectors:
             self.chrome_epoch_delta_us,
             self.classify_project,
             self.make_event,
+            lovable_noise_profile=lovable_noise_profile,
         )
 
     def collect_apple_mail(self, profiles, dt_from, dt_to, default_email=None):
@@ -137,8 +142,18 @@ class RuntimeCollectors:
         )
 
     def collect_cursor(self, profiles, dt_from, dt_to):
+        noise_profile = "strict"
+        if self.cli_args is not None:
+            noise_profile = str(getattr(self.cli_args, "noise_profile", "strict") or "strict").lower()
         return self.cursor.collect_cursor(
-            profiles, dt_from, dt_to, self.home, self.local_tz, self.classify_project, self.make_event
+            profiles,
+            dt_from,
+            dt_to,
+            self.home,
+            self.local_tz,
+            self.classify_project,
+            self.make_event,
+            noise_profile=noise_profile,
         )
 
     def collect_cursor_checkpoints(self, profiles, dt_from, dt_to):

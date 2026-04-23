@@ -30,6 +30,16 @@ STYLE_ACCENT = CLR_BERRY_BRIGHT
 STYLE_POSITIVE = CLR_GREEN
 
 
+def _build_dynamic_legend(source_order: Sequence[str]) -> Text:
+    legend = Text()
+    legend.append("Legend: ", style=f"bold {STYLE_LABEL}")
+    for idx, source in enumerate(source_order):
+        legend.append(source, style=f"italic {get_source_color(source)}")
+        if idx < len(source_order) - 1:
+            legend.append("  ", style=STYLE_META)
+    return legend
+
+
 def pick_session_preview_events(
     session_events: Sequence[Dict[str, Any]],
     source_order: Sequence[str],
@@ -93,6 +103,40 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
 
     console.print(table)
     console.print(f"[{STYLE_LABEL}]Total:[/{STYLE_LABEL}] [{STYLE_ACCENT}]{sum(counts.values())}[/{STYLE_ACCENT}]")
+
+
+def print_project_source_mix(
+    events: List[Dict[str, Any]],
+    project_name: str,
+    source_order: Sequence[str],
+):
+    target = (project_name or "").strip().lower()
+    if not target:
+        return
+    project_events = [event for event in events if str(event.get("project", "")).strip().lower() == target]
+    if not project_events:
+        return
+
+    counts = defaultdict(int)
+    for event in project_events:
+        counts[str(event.get("source", "Unknown"))] += 1
+
+    first_event = min(project_events, key=lambda event: event["local_ts"])
+    last_event = max(project_events, key=lambda event: event["local_ts"])
+
+    console.print()
+    console.print(f"[{STYLE_HEADING}]Source mix for {project_name}[/{STYLE_HEADING}]")
+    mix_table = Table.grid(padding=(0, 2))
+    mix_table.add_column(style=STYLE_BODY)
+    mix_table.add_column(justify="right", style=STYLE_BODY)
+    for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
+        mix_table.add_row(src, str(counts[src]))
+    console.print(mix_table)
+    console.print(
+        f"[{STYLE_META}]Event span: "
+        f"{first_event['local_ts'].strftime('%H:%M')} -> {last_event['local_ts'].strftime('%H:%M')} "
+        f"({len(project_events)} events)[/{STYLE_META}]"
+    )
 
 
 def get_source_color(source: str) -> str:
@@ -219,9 +263,46 @@ def print_report(
 
     console.print(summary_table)
     console.print()
+    if getattr(args, "only_project", None):
+        flat_events: List[Dict[str, Any]] = []
+        for day_payload in overall_days.values():
+            for _start_ts, _end_ts, session_events in day_payload.get("sessions", []):
+                flat_events.extend(session_events)
+        print_project_source_mix(
+            events=flat_events,
+            project_name=str(args.only_project),
+            source_order=source_order,
+        )
+
+    additive_summary = bool(getattr(args, "additive_summary", False))
+    additive_project_hours: Dict[str, float] = {}
+    additive_project_days: Dict[str, set[str]] = {}
+    if additive_summary:
+        per_project_hours = defaultdict(float)
+        per_project_days = defaultdict(set)
+        for day, day_payload in overall_days.items():
+            for start_ts, end_ts, session_events in day_payload["sessions"]:
+                counts = defaultdict(int)
+                for event in session_events:
+                    project_name = str(event.get("project", "")).strip()
+                    if project_name:
+                        counts[project_name] += 1
+                if not counts:
+                    continue
+                primary_project = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
+                raw_dur = session_duration_hours_fn(
+                    session_events, start_ts, end_ts, args.min_session, args.min_session_passive
+                )
+                per_project_hours[primary_project] += raw_dur
+                per_project_days[primary_project].add(day)
+        additive_project_hours = dict(per_project_hours)
+        additive_project_days = dict(per_project_days)
 
     # Customer/Project Breakdown
-    console.print(f"[{STYLE_HEADING}]Hours by customer & project[/{STYLE_HEADING}]")
+    heading = "Hours by customer & project"
+    if additive_summary:
+        heading += " (additive: primary project per session)"
+    console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
     breakdown_table = Table.grid(padding=(0, 2))
     breakdown_table.add_column(style=STYLE_BODY)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
@@ -236,14 +317,17 @@ def print_report(
 
     profile_by_name = {p["name"]: p for p in profiles}
     projects_by_customer = defaultdict(list)
-    for project_name in sorted(project_reports):
+    project_names = sorted(project_reports)
+    if additive_summary:
+        project_names = sorted(additive_project_hours)
+    for project_name in project_names:
         customer = str(profile_by_name.get(project_name, {}).get("customer") or project_name)
         projects_by_customer[customer].append(project_name)
 
     for customer_name in sorted(projects_by_customer, key=lambda name: name.lower()):
         customer_projects = projects_by_customer[customer_name]
         customer_hours = sum(
-            sum(day_payload["hours"] for day_payload in project_reports[p].values())
+            (additive_project_hours[p] if additive_summary else sum(day_payload["hours"] for day_payload in project_reports[p].values()))
             for p in customer_projects
         )
 
@@ -251,7 +335,9 @@ def print_report(
         if args.billable_unit and args.billable_unit > 0:
             cust_b = sum(
                 billable_total_hours_fn(
-                    sum(day_payload["hours"] for day_payload in project_reports[p].values()),
+                    additive_project_hours[p]
+                    if additive_summary
+                    else sum(day_payload["hours"] for day_payload in project_reports[p].values()),
                     args.billable_unit,
                 )
                 for p in customer_projects
@@ -266,8 +352,16 @@ def print_report(
         )
 
         for project_name in customer_projects:
-            hours = sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
-            days = len(project_reports[project_name])
+            hours = (
+                additive_project_hours[project_name]
+                if additive_summary
+                else sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
+            )
+            days = (
+                len(additive_project_days.get(project_name, set()))
+                if additive_summary
+                else len(project_reports[project_name])
+            )
             proj_b_text = "-"
             if args.billable_unit and args.billable_unit > 0:
                 proj_b = billable_total_hours_fn(hours, args.billable_unit)
@@ -283,15 +377,8 @@ def print_report(
 
     console.print(breakdown_table)
 
-    # Footer Legend
-    legend = Text.assemble(
-        ("Legend: ", f"bold {STYLE_LABEL}"),
-        ("Claude  ", f"italic {get_source_color('Claude')}"),
-        ("Gemini  ", f"italic {get_source_color('Gemini')}"),
-        ("Cursor  ", f"italic {get_source_color('Cursor')}"),
-        ("Chrome  ", f"italic {get_source_color('Chrome')}"),
-        ("Mail  ", f"italic {get_source_color('Mail')}"),
-        ("GitHub", f"italic {get_source_color('GitHub')}"),
-    )
+    # Footer legend: derive from canonical source order so new standalone sources
+    # are automatically visible without manual output updates.
+    legend = _build_dynamic_legend(source_order)
     console.print(legend)
     console.print()

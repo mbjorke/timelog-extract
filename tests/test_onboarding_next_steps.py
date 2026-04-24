@@ -85,8 +85,9 @@ class SetupNextStepsTests(unittest.TestCase):
             smoke_status="SKIPPED",
         )
 
-        self.assertIn("gittan setup` without `--dry-run", steps[0])
+        self.assertIn("Next: run `gittan setup` without `--dry-run`", steps[0])
         self.assertIn("gittan setup-global-timelog", "\n".join(steps))
+        self.assertIn("Then: run `gittan report --today --source-summary`", "\n".join(steps))
 
     def test_setup_live_failure_points_back_to_doctor_and_report(self):
         steps = build_setup_next_steps(
@@ -110,8 +111,8 @@ class SetupNextStepsTests(unittest.TestCase):
         self.assertEqual(
             steps,
             [
-                "Run `gittan report --today --source-summary` for your first report.",
-                "Use `gittan projects` later if you want to refine project matching.",
+                "Next: run `gittan report --today --source-summary` for your first report.",
+                "Optional: use `gittan projects` later if you want to refine project matching.",
             ],
         )
 
@@ -125,6 +126,16 @@ class SetupNextStepsTests(unittest.TestCase):
         )
         joined = "\n".join(steps)
         self.assertIn("gittan setup-global-timelog", joined)
+
+    def test_setup_fast_dry_run_prefers_fast_replay_command(self):
+        steps = build_setup_next_steps(
+            dry_run=True,
+            projects_status="PASS (dry-run)",
+            doctor_status="PASS (dry-run)",
+            smoke_status="SKIPPED",
+            fast=True,
+        )
+        self.assertIn("Next: run `gittan setup --fast` without `--dry-run`", steps[0])
 
 
 if __name__ == "__main__":

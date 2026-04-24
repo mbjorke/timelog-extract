@@ -21,6 +21,8 @@ class ReportSearchRefactorTests(unittest.TestCase):
         self.assertEqual(search_result.exit_code, 0, msg=search_result.output)
         report_options = run_mock.call_args_list[0][0][0]
         search_options = run_mock.call_args_list[1][0][0]
+        self.assertTrue(getattr(report_options, "today", False))
+        self.assertTrue(getattr(search_options, "today", False))
         self.assertEqual(getattr(report_options, "today", False), getattr(search_options, "today", False))
         self.assertEqual(getattr(report_options, "yesterday", False), getattr(search_options, "yesterday", False))
         self.assertEqual(getattr(report_options, "last_3_days", False), getattr(search_options, "last_3_days", False))

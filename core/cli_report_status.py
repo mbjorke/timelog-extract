@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, Optional, cast
 
 import click
 import typer
@@ -12,6 +13,20 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
+
+
+def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
+    """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
+    return (
+        cast(Optional[str], picked.get("date_from")),
+        cast(Optional[str], picked.get("date_to")),
+        bool(picked.get("today", False)),
+        bool(picked.get("yesterday", False)),
+        bool(picked.get("last_3_days", False)),
+        bool(picked.get("last_week", False)),
+        bool(picked.get("last_14_days", False)),
+        bool(picked.get("last_month", False)),
+    )
 
 
 def _resolve_timeframe_args(
@@ -25,6 +40,14 @@ def _resolve_timeframe_args(
     last_14_days: bool,
     last_month: bool,
 ) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
+    """Normalize timeframe flags into strings + booleans shared by `report` and `search`.
+
+    If no explicit timeframe is provided, prompts via `prompt_for_timeframe()` (same behavior as before).
+
+    Returns:
+        `(date_from, date_to, today, yesterday, last_3_days, last_week, last_14_days, last_month)`
+        where `date_from`/`date_to` are `YYYY-MM-DD` strings or `None`.
+    """
     if not (
         today
         or yesterday
@@ -36,16 +59,7 @@ def _resolve_timeframe_args(
         or date_to
     ):
         picked = prompt_for_timeframe()
-        return (
-            picked.get("date_from"),
-            picked.get("date_to"),
-            picked.get("today", False),
-            picked.get("yesterday", False),
-            picked.get("last_3_days", False),
-            picked.get("last_week", False),
-            picked.get("last_14_days", False),
-            picked.get("last_month", False),
-        )
+        return _timeframe_from_prompt(picked)
     return (
         date_from.strftime("%Y-%m-%d") if date_from else None,
         date_to.strftime("%Y-%m-%d") if date_to else None,
@@ -64,6 +78,10 @@ def _build_report_options(
     option_fields: dict[str, object],
     overrides: Optional[dict[str, object]] = None,
 ) -> TimelogRunOptions:
+    """Build `TimelogRunOptions` from normalized timeframe fields + command-specific fields.
+
+    `overrides` is applied last so callers can enforce command-specific invariants (for example `search` forcing `all_events=True`).
+    """
     df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = timeframe
     payload: dict[str, object] = {
         "date_from": df_s,
@@ -332,14 +350,7 @@ def status(
     df_s, dt_s = None, None
     if not (today or yesterday or last_3_days or last_week or last_14_days or last_month):
         picked = prompt_for_timeframe()
-        today = picked.get("today", False)
-        yesterday = picked.get("yesterday", False)
-        last_3_days = picked.get("last_3_days", False)
-        last_week = picked.get("last_week", False)
-        last_14_days = picked.get("last_14_days", False)
-        last_month = picked.get("last_month", False)
-        df_s = picked.get("date_from")
-        dt_s = picked.get("date_to")
+        df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = _timeframe_from_prompt(picked)
     else:
         now = datetime.now()
         end_d = now.date()

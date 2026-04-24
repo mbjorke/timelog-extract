@@ -6,8 +6,8 @@ Latest status update (2026-04-20):
 
 - Lovable delivered strongly today; overall progress is slightly ahead of plan.
 - Install path is still pending: `brew install gittan`.
-- Demo app + design-system handoff is done: https://gittan.lovable.app/handoff
-- Sales funnel fed by design system is live (not interactive yet): https://gittan-sales.lovable.app/
+- Demo app + design-system handoff is done: [https://gittan.lovable.app/handoff](https://gittan.lovable.app/handoff)
+- Sales funnel fed by design system is live (not interactive yet): [https://gittan-sales.lovable.app/](https://gittan-sales.lovable.app/)
 - Substack update must be sent before tomorrow and should include today's new progress.
 - Product/domain naming direction:
   - `gittan-sales` -> `gittan.sh`
@@ -25,17 +25,17 @@ Scope rule:
 ## Decision Questions (answer before coding)
 
 1. For `jira-sync` candidate display, should branch-derived keys be:
-   - hidden when commit-derived keys exist for the same day, or
-   - shown but visually de-emphasized with a clear warning?
+  - hidden when commit-derived keys exist for the same day, or
+  - shown but visually de-emphasized with a clear warning?
 2. Should `jira-sync` summary tail hints be:
-   - always printed, or
-   - printed only on non-perfect outcomes (failed/skipped/unresolved)?
+  - always printed, or
+  - printed only on non-perfect outcomes (failed/skipped/unresolved)?
 3. For setup simplification, is the preferred near-term approach:
-   - introduce a new explicit `--advanced` flag, or
-   - keep current flags and only reduce default line density now?
+  - introduce a new explicit `--advanced` flag, or
+  - keep current flags and only reduce default line density now?
 4. For Apr 29 scope, do we lock to:
-   - `P0` only, or
-   - `P0 + tiny P1.2 copy polish` if tests remain green?
+  - `P0` only, or
+  - `P0 + tiny P1.2 copy polish` if tests remain green?
 
 Record decisions here before implementation:
 
@@ -150,6 +150,51 @@ bash scripts/cli_impact_smoke.sh
 
 ---
 
+### P1.1b Faster project-config onboarding (post-v0.2.12 focus)
+
+Context:
+
+- This was the intended "next morning" onboarding UX track after the release train.
+- Keep this as a small, low-risk sequence (no deep refactor in first PR).
+
+Goal:
+
+- Reduce time-to-first-meaningful report for new users (`gittan report --today`) by minimizing manual project-config steps.
+
+Proposed implementation order:
+
+1. `setup --fast` one-shot path
+  - Generate minimal repo-derived project config with safe defaults.
+  - Skip non-essential prompts for first-run users.
+2. Stronger post-setup handoff
+  - Always print exact "Next:" commands after setup (`report --today --source-summary` + fallback guidance).
+3. Smart `projects` defaults (follow-up PR)
+  - Pre-fill `match_terms` suggestions from repo name/remote cues so users mostly confirm rather than type.
+
+Acceptance criteria:
+
+- New user reaches first useful report with fewer manual steps than current baseline.
+- Existing `setup --dry-run` semantics remain unchanged.
+- No behavior regression in current report/status output paths.
+
+Validation:
+
+```bash
+python3 timelog_extract.py setup --dry-run
+python3 timelog_extract.py setup --fast
+python3 timelog_extract.py report --today --source-summary --quiet
+bash scripts/cli_impact_smoke.sh
+./scripts/run_autotests.sh
+```
+
+Scope guardrails:
+
+- PR 1: only `setup --fast` + next-step copy/handoff.
+- PR 2: `projects` smart defaults.
+- Defer any broader report/search plumbing refactor to dedicated task (`docs/specs/report-search-refactor-plan.md`).
+
+---
+
 ### P1.2 Report/status consistency polish
 
 Problem observed:
@@ -220,11 +265,11 @@ Branch:
 Commit plan:
 
 1. `test(jira-sync): cover branch/commit key display and summary outcomes`
-   - touch only `tests/test_jira_sync.py` (and tiny fixture helpers if needed)
+  - touch only `tests/test_jira_sync.py` (and tiny fixture helpers if needed)
 2. `ux(jira-sync): reduce key-noise and add one-line next-step hints`
-   - touch only `core/cli_jira_sync.py` and minimal helper logic
+  - touch only `core/cli_jira_sync.py` and minimal helper logic
 3. `docs(runbook): capture final behavior and demo-safe wording`
-   - touch only this runbook + any directly linked docs
+  - touch only this runbook + any directly linked docs
 
 Pre-review command gate:
 
@@ -234,6 +279,7 @@ python3 -m unittest tests/test_jira_sync.py tests/test_cli_regression_smoke.py
 ```
 
 PR strategy:
+
 - Open PR right after commit 1+2 (docs can be follow-up if needed).
 - Request first CodeRabbit review early; keep later changes incremental and small.
 
@@ -242,6 +288,7 @@ PR strategy:
 ## Next Focus: Gap Analysis on Real Data (after CLI polish PR is open)
 
 Goal:
+
 - Validate gap analysis with your own real dataset and target ~98% of screen-time explained before broad demo positioning.
 
 Execution:
@@ -252,18 +299,21 @@ python3 scripts/calibration/run_screen_time_gap_analysis.py
 ```
 
 Review checklist:
+
 - Is the markdown output readable to a non-author in under 30 seconds?
 - Are top deltas explained with obvious next actions?
 - Is terminology consistent with stage wording ("estimate", "reconciliation", "local-first")?
 - Is explained screen-time percentage clearly reported and trending toward 98%?
 
 If output is hard to explain:
+
 - capture 3 concrete friction points,
 - convert each into one scoped change request,
 - implement only the highest-impact wording/structure change before Apr 29.
 - keep a visible tracker for "% explained" across reruns.
 
 Status field for this cycle:
+
 - Gap analysis: `INTERNAL_ONLY` -> `DEMO_READY` (target) or `KEEP_INTERNAL` (acceptable fallback).
 - Screen-time explained: `<value>%` (target `98%`).
 
@@ -281,7 +331,7 @@ Before Apr 29, ensure all demo/release artifacts align on:
 
 Deferred note (this week, not blocking today):
 
-- Align shared CLI + app documentation with Lovable handoff package: https://gittan.lovable.app/handoff
+- Align shared CLI + app documentation with Lovable handoff package: [https://gittan.lovable.app/handoff](https://gittan.lovable.app/handoff)
 - Produce one canonical “common docs” handover artifact for:
   - collectors/source model
   - installation/onboarding flow

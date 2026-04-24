@@ -102,7 +102,9 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 )
                 self.assertEqual(status, "PASS")
                 self.assertIn("discovered=1", notes)
-                payload = json.loads((Path(tmp) / "timelog_projects.json").read_text(encoding="utf-8"))
+                from core.config import resolve_projects_config_path
+
+                payload = json.loads(resolve_projects_config_path().read_text(encoding="utf-8"))
                 project = payload["projects"][0]
                 self.assertEqual(project["name"], "acme-tools")
                 self.assertEqual(project["customer"], "example")

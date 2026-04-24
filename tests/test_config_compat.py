@@ -224,7 +224,11 @@ class ProjectsConfigPathTests(unittest.TestCase):
         self.assertEqual(source, ENV_GITTAN_HOME)
 
     def test_falls_back_to_workspace_default(self):
-        with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: ""}, clear=False):
+        with mock.patch.dict(
+            "os.environ",
+            {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
+            clear=False,
+        ):
             with mock.patch("core.config.Path.cwd", return_value=Path("/tmp/repo")):
                 with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
                     with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):

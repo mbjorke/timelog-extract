@@ -54,22 +54,23 @@ def build_setup_next_steps(
 ) -> list[str]:
     steps: list[str] = []
     if dry_run:
-        steps.append("Run `gittan setup` without `--dry-run` when you are ready to apply the recommended setup.")
-        steps.append("If you only want commit-to-worklog automation, run `gittan setup-global-timelog`.")
-        steps.append("After setup, run `gittan report --today --source-summary` for a first report.")
+        setup_cmd = "gittan setup --fast" if fast else "gittan setup"
+        steps.append(f"Next: run `{setup_cmd}` without `--dry-run` when you are ready to apply setup.")
+        steps.append("Then: run `gittan report --today --source-summary` for your first real report.")
+        steps.append("Optional: run `gittan setup-global-timelog` if you want machine-wide commit-to-worklog automation.")
         return steps
 
     if doctor_status == PROJECT_STATUS_ACTION_REQUIRED:
-        steps.append("Rerun `gittan doctor` and follow the missing-path or permission hints it prints.")
+        steps.append("Next: rerun `gittan doctor` and resolve any missing PATH, permission, or source hints.")
     if projects_status == PROJECT_STATUS_FAIL:
-        steps.append("Run `gittan projects` to repair project entries, then verify `match_terms`, worklog path, and local file permissions.")
+        steps.append("Then: run `gittan projects` to repair project entries, then verify `match_terms` and worklog path.")
     if projects_status in {PROJECT_STATUS_SKIPPED, PROJECT_STATUS_ACTION_REQUIRED}:
-        steps.append("Use `gittan projects` to review project names, match terms, and the configured worklog path.")
+        steps.append("Then: use `gittan projects` to review project names, `match_terms`, and worklog path.")
     if smoke_status in {PROJECT_STATUS_FAIL, PROJECT_STATUS_ACTION_REQUIRED, PROJECT_STATUS_SKIPPED}:
-        steps.append("Run `gittan report --today --source-summary` to confirm you get a useful local report.")
+        steps.append("Then: run `gittan report --today --source-summary` to confirm you get a useful local report.")
     if not steps:
-        steps.append("Run `gittan report --today --source-summary` for your first report.")
-        steps.append("Use `gittan projects` later if you want to refine project matching.")
+        steps.append("Next: run `gittan report --today --source-summary` for your first report.")
+        steps.append("Optional: use `gittan projects` later if you want to refine project matching.")
     if fast:
         steps.append("Optional later: run `gittan setup-global-timelog` when you want machine-wide commit-to-worklog automation.")
     return steps

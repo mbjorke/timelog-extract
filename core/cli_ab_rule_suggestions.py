@@ -16,6 +16,7 @@ from core.cli_prompts import prompt_for_timeframe
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
+    default_projects_config_option,
     load_projects_config_payload,
     save_projects_config_payload,
 )
@@ -251,7 +252,7 @@ def suggest_rules(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
 ):
     """Propose A/B match rules from uncategorized clusters (preview + state file for apply)."""
     from rich.console import Console
@@ -319,7 +320,7 @@ def apply_suggestions(
         typer.Option("--option", help="Which bundle to apply (A=safe, B=broad)."),
     ],
     confirm: Annotated[bool, typer.Option(help="Acknowledge write; use in non-interactive mode.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     state_file: Annotated[
         Optional[Path],
         typer.Option(help="Override path to suggestion state JSON."),

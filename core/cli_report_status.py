@@ -12,6 +12,7 @@ import typer
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
+from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 
 
@@ -110,7 +111,7 @@ def report(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     keywords: Annotated[str, typer.Option(help="Fallback keywords")] = "",
     project: Annotated[str, typer.Option(help="Fallback project name")] = "default-project",
     email: Annotated[str, typer.Option(help="Fallback email")] = "",
@@ -249,7 +250,7 @@ def search(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
@@ -383,7 +384,7 @@ def status(
         last_month=last_month,
         date_from=df_s,
         date_to=dt_s,
-        projects_config="timelog_projects.json",
+        projects_config=default_projects_config_option(),
         quiet=True,
         noise_profile=noise_profile,
         lovable_noise_profile=lovable_noise_profile,

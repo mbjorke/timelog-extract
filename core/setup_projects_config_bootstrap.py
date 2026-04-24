@@ -143,6 +143,7 @@ def ensure_projects_config(
             _project_bootstrap_next_steps(summary),
         )
 
+    config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(merged_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Saved merged project config:[/green] {config_path}")
     return ProjectsConfigBootstrapResult(

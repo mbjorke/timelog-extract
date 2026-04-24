@@ -12,6 +12,7 @@ import typer
 from collectors.jira import jira_sync_enabled, resolve_jira_credentials
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
+from core.config import default_projects_config_option
 from core.jira_sync import JiraSyncSummary, build_jira_worklog_candidates, post_candidate
 
 
@@ -38,7 +39,7 @@ def jira_sync(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     worklog: Annotated[Optional[str], typer.Option(help="Path to TIMELOG.md")] = None,
     worklog_format: Annotated[str, typer.Option(help="auto/md/gtimelog")] = "auto",
     jira_sync: Annotated[str, typer.Option(help="auto/on/off")] = "auto",

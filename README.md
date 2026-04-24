@@ -72,6 +72,15 @@ Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you e
 2. **`gittan setup`** — wire optional hooks and `timelog_projects.json` (`--dry-run` / `--interactive` if you want previews).  
 3. **`gittan report --today --source-summary`** — your first real report from real traces.
 
+**Projects config default path** (`--projects-config` when omitted):
+
+1. **`GITTAN_PROJECTS_CONFIG`** if set (full path to config file).  
+2. Else **`$GITTAN_HOME/timelog_projects.json`** if `GITTAN_HOME` is set.  
+3. Else **`timelog_projects.json` in current working directory** if that file already exists (legacy compatibility).  
+4. Else **`~/.gittan-<user>/timelog_projects.json`** automatically (zero-config default).
+
+You usually do not need to set any env vars; defaults are automatic per user.
+
 **Where `TIMELOG.md` is resolved** (same order as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md)):
 
 1. **`--worklog PATH`** if you pass it.  
@@ -91,6 +100,7 @@ Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you e
 | Quick totals | `gittan status --today` |
 | Collector status | `gittan sources` |
 | Edit project rules | `gittan projects` |
+| Show active config path/source | `gittan config path` |
 | Repo-wide git → worklog hooks | `gittan setup-global-timelog` |
 
 **JSON / HTML export** (for scripts or archiving):

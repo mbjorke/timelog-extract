@@ -19,6 +19,7 @@ from rich.table import Table
 
 from core.global_timelog_machine_setup import run_global_timelog_setup
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
+from core.config import resolve_projects_config_path
 from core.setup_github_env import configure_github_env_for_setup
 from core.setup_projects_config_bootstrap import ensure_projects_config
 from outputs.cli_heroes import print_command_hero
@@ -67,7 +68,7 @@ def _ensure_minimal_projects_config(
         yes=yes,
         dry_run=dry_run,
         bootstrap_root=bootstrap_root,
-        config_path=Path.cwd() / "timelog_projects.json",
+        config_path=resolve_projects_config_path(),
         timestamped_backup_path_fn=_timestamped_backup_path,
         looks_like_projects_config_fn=_looks_like_projects_config,
     )
@@ -110,7 +111,7 @@ def _print_setup_header(console, *, dry_run: bool) -> None:
 
 
 def _print_setup_environment_loaded(console) -> None:
-    projects_present = int((Path.cwd() / "timelog_projects.json").exists())
+    projects_present = int(resolve_projects_config_path().is_file())
     github_user_set = int(bool((os.environ.get("GITHUB_USER") or "").strip()))
     github_token_set = int(bool((os.environ.get("GITHUB_TOKEN") or "").strip()))
     console.print(

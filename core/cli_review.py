@@ -19,7 +19,7 @@ from core.cli_ab_rule_suggestions import (
 )
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
-from core.config import apply_rule_to_project, save_projects_config_payload
+from core.config import apply_rule_to_project, default_projects_config_option, save_projects_config_payload
 from core.uncategorized_review import build_uncategorized_clusters
 
 
@@ -42,7 +42,7 @@ def review(
         Optional[str],
         typer.Option(help="Project name for A/B suggestions (prompted if omitted with --ab-suggestions)."),
     ] = None,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     max_clusters: Annotated[int, typer.Option(help="Max clusters to review")] = 20,
     samples_per_cluster: Annotated[int, typer.Option(help="Sample events shown per cluster")] = 4,
 ):

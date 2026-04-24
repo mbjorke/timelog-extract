@@ -12,9 +12,25 @@ from pathlib import Path
 from rich.console import Console
 
 from core.global_timelog_setup_lib import _ensure_minimal_projects_config
+from core.setup_projects_config_bootstrap import ensure_projects_config
 
 
 class SetupProjectsConfigTests(unittest.TestCase):
+    def test_ensure_projects_config_creates_missing_parent_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "nested" / "profile" / "timelog_projects.json"
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=False,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            self.assertEqual(result.status, "PASS")
+            self.assertTrue(cfg.is_file())
+
     def test_existing_valid_config_is_kept(self):
         with tempfile.TemporaryDirectory() as tmp:
             prev = Path.cwd()

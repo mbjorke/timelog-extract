@@ -14,6 +14,73 @@ from core.cli_prompts import prompt_for_timeframe
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 
 
+def _resolve_timeframe_args(
+    *,
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
+    today: bool,
+    yesterday: bool,
+    last_3_days: bool,
+    last_week: bool,
+    last_14_days: bool,
+    last_month: bool,
+) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
+    if not (
+        today
+        or yesterday
+        or last_3_days
+        or last_week
+        or last_14_days
+        or last_month
+        or date_from
+        or date_to
+    ):
+        picked = prompt_for_timeframe()
+        return (
+            picked.get("date_from"),
+            picked.get("date_to"),
+            picked.get("today", False),
+            picked.get("yesterday", False),
+            picked.get("last_3_days", False),
+            picked.get("last_week", False),
+            picked.get("last_14_days", False),
+            picked.get("last_month", False),
+        )
+    return (
+        date_from.strftime("%Y-%m-%d") if date_from else None,
+        date_to.strftime("%Y-%m-%d") if date_to else None,
+        today,
+        yesterday,
+        last_3_days,
+        last_week,
+        last_14_days,
+        last_month,
+    )
+
+
+def _build_report_options(
+    *,
+    timeframe: tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool],
+    option_fields: dict[str, object],
+    overrides: Optional[dict[str, object]] = None,
+) -> TimelogRunOptions:
+    df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = timeframe
+    payload: dict[str, object] = {
+        "date_from": df_s,
+        "date_to": dt_s,
+        "today": today,
+        "yesterday": yesterday,
+        "last_3_days": last_3_days,
+        "last_week": last_week,
+        "last_14_days": last_14_days,
+        "last_month": last_month,
+    }
+    payload.update(option_fields)
+    if overrides:
+        payload.update(overrides)
+    return TimelogRunOptions(**payload)
+
+
 @app.command()
 def report(
     ctx: typer.Context,
@@ -101,74 +168,55 @@ def report(
     """
     from core.report_cli import run_timelog_cli
 
-    df_s, dt_s = None, None
-    if not (
-        today
-        or yesterday
-        or last_3_days
-        or last_week
-        or last_14_days
-        or last_month
-        or date_from
-        or date_to
-    ):
-        picked = prompt_for_timeframe()
-        today = picked.get("today", False)
-        yesterday = picked.get("yesterday", False)
-        last_3_days = picked.get("last_3_days", False)
-        last_week = picked.get("last_week", False)
-        last_14_days = picked.get("last_14_days", False)
-        last_month = picked.get("last_month", False)
-        df_s = picked.get("date_from")
-        dt_s = picked.get("date_to")
-    else:
-        df_s = date_from.strftime("%Y-%m-%d") if date_from else None
-        dt_s = date_to.strftime("%Y-%m-%d") if date_to else None
-
-    options = TimelogRunOptions(
-        date_from=df_s,
-        date_to=dt_s,
+    timeframe = _resolve_timeframe_args(
+        date_from=date_from,
+        date_to=date_to,
         today=today,
         yesterday=yesterday,
         last_3_days=last_3_days,
         last_week=last_week,
         last_14_days=last_14_days,
         last_month=last_month,
-        projects_config=projects_config,
-        keywords=keywords,
-        project=project,
-        email=email,
-        min_session=min_session,
-        min_session_passive=min_session_passive,
-        gap_minutes=gap_minutes,
-        chrome_collapse_minutes=chrome_collapse_minutes,
-        exclude=exclude,
-        worklog=worklog,
-        worklog_format=worklog_format,
-        source_strategy=source_strategy,
-        screen_time=screen_time,
-        include_uncategorized=include_uncategorized,
-        only_project=only_project,
-        customer=customer,
-        all_events=all_events,
-        source_summary=source_summary,
-        narrative=narrative,
-        invoice_pdf=invoice_pdf,
-        invoice_pdf_file=invoice_pdf_file,
-        billable_unit=billable_unit,
-        chrome_source=chrome_source,
-        mail_source=mail_source,
-        github_source=github_source,
-        github_user=github_user,
-        output_format=output_format,
-        quiet=quiet,
-        json_file=json_file,
-        report_html=report_html,
-        noise_profile=noise_profile,
-        lovable_noise_profile=lovable_noise_profile,
-        additive_summary=additive_summary,
-        invoice_mode=invoice_mode,
-        invoice_ground_truth=invoice_ground_truth,
+    )
+    options = _build_report_options(
+        timeframe=timeframe,
+        option_fields={
+            "projects_config": projects_config,
+            "keywords": keywords,
+            "project": project,
+            "email": email,
+            "min_session": min_session,
+            "min_session_passive": min_session_passive,
+            "gap_minutes": gap_minutes,
+            "chrome_collapse_minutes": chrome_collapse_minutes,
+            "exclude": exclude,
+            "worklog": worklog,
+            "worklog_format": worklog_format,
+            "source_strategy": source_strategy,
+            "screen_time": screen_time,
+            "include_uncategorized": include_uncategorized,
+            "only_project": only_project,
+            "customer": customer,
+            "all_events": all_events,
+            "source_summary": source_summary,
+            "narrative": narrative,
+            "invoice_pdf": invoice_pdf,
+            "invoice_pdf_file": invoice_pdf_file,
+            "billable_unit": billable_unit,
+            "chrome_source": chrome_source,
+            "mail_source": mail_source,
+            "github_source": github_source,
+            "github_user": github_user,
+            "output_format": output_format,
+            "quiet": quiet,
+            "json_file": json_file,
+            "report_html": report_html,
+            "noise_profile": noise_profile,
+            "lovable_noise_profile": lovable_noise_profile,
+            "additive_summary": additive_summary,
+            "invoice_mode": invoice_mode,
+            "invoice_ground_truth": invoice_ground_truth,
+        },
     )
     run_timelog_cli(options)
 
@@ -198,7 +246,7 @@ def search(
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
     quiet: Annotated[bool, typer.Option(help="Suppress progress")] = False,
 ):
-    """Search timeline quickly with all events shown (wrapper around report).
+    """Search timeline quickly with all events shown (shares report execution path).
 
     Common use cases:
     - Why did project X get time? `gittan search --today --project "X" --noise-profile lenient --lovable-noise-profile balanced`
@@ -206,48 +254,29 @@ def search(
     """
     from core.report_cli import run_timelog_cli
 
-    df_s, dt_s = None, None
-    if not (
-        today
-        or yesterday
-        or last_3_days
-        or last_week
-        or last_14_days
-        or last_month
-        or date_from
-        or date_to
-    ):
-        picked = prompt_for_timeframe()
-        today = picked.get("today", False)
-        yesterday = picked.get("yesterday", False)
-        last_3_days = picked.get("last_3_days", False)
-        last_week = picked.get("last_week", False)
-        last_14_days = picked.get("last_14_days", False)
-        last_month = picked.get("last_month", False)
-        df_s = picked.get("date_from")
-        dt_s = picked.get("date_to")
-    else:
-        df_s = date_from.strftime("%Y-%m-%d") if date_from else None
-        dt_s = date_to.strftime("%Y-%m-%d") if date_to else None
-
-    options = TimelogRunOptions(
-        date_from=df_s,
-        date_to=dt_s,
+    timeframe = _resolve_timeframe_args(
+        date_from=date_from,
+        date_to=date_to,
         today=today,
         yesterday=yesterday,
         last_3_days=last_3_days,
         last_week=last_week,
         last_14_days=last_14_days,
         last_month=last_month,
-        projects_config=projects_config,
-        only_project=project,
-        customer=customer,
-        source_summary=source_summary,
-        all_events=True,
-        output_format=output_format,
-        noise_profile=noise_profile,
-        lovable_noise_profile=lovable_noise_profile,
-        quiet=quiet,
+    )
+    options = _build_report_options(
+        timeframe=timeframe,
+        option_fields={
+            "projects_config": projects_config,
+            "only_project": project,
+            "customer": customer,
+            "source_summary": source_summary,
+            "output_format": output_format,
+            "noise_profile": noise_profile,
+            "lovable_noise_profile": lovable_noise_profile,
+            "quiet": quiet,
+        },
+        overrides={"all_events": True},
     )
     run_timelog_cli(options)
 

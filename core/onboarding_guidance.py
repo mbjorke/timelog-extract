@@ -50,6 +50,7 @@ def build_setup_next_steps(
     projects_status: str,
     doctor_status: str,
     smoke_status: str,
+    fast: bool = False,
 ) -> list[str]:
     steps: list[str] = []
     if dry_run:
@@ -69,6 +70,8 @@ def build_setup_next_steps(
     if not steps:
         steps.append("Run `gittan report --today --source-summary` for your first report.")
         steps.append("Use `gittan projects` later if you want to refine project matching.")
+    if fast:
+        steps.append("Optional later: run `gittan setup-global-timelog` when you want machine-wide commit-to-worklog automation.")
     return steps
 
 

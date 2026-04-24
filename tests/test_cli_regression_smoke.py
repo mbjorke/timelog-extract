@@ -168,6 +168,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
         self.assertIn("--interactive", self._plain_text(completed.stdout))
+        self.assertIn("--fast", self._plain_text(completed.stdout))
 
     def test_setup_one_click_dry_run(self):
         """One-click setup should run non-interactive with recommended defaults."""
@@ -185,6 +186,26 @@ class CliRegressionSmokeTests(unittest.TestCase):
         )
         self.assertIn("Setup wizard completed.", completed.stdout)
         self.assertIn("Gittan Setup", completed.stdout)
+
+    def test_setup_fast_dry_run(self):
+        """Fast setup should prioritize project bootstrap and skip non-essential steps."""
+        completed = subprocess.run(
+            [sys.executable, str(ENTRY), "setup", "--fast", "--dry-run"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=completed.stderr or completed.stdout,
+        )
+        normalized = " ".join(self._plain_text(completed.stdout).split())
+        self.assertIn("Skipped smoke report (--fast)", normalized)
+        self.assertIn("Skipped in --fast mode for", normalized)
+        self.assertIn("quicker onboarding.", normalized)
+        self.assertIn("Setup wizard completed.", completed.stdout)
 
     def test_quick_start_cli_commands_finish_within_60_seconds_each(self):
         """Landing page quick start (after install): each CLI step should stay snappy on CI.

@@ -115,6 +115,17 @@ class SetupNextStepsTests(unittest.TestCase):
             ],
         )
 
+    def test_setup_fast_adds_global_timelog_followup_hint(self):
+        steps = build_setup_next_steps(
+            dry_run=False,
+            projects_status="PASS",
+            doctor_status="PASS",
+            smoke_status="SKIPPED",
+            fast=True,
+        )
+        joined = "\n".join(steps)
+        self.assertIn("gittan setup-global-timelog", joined)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,6 +30,11 @@ def setup_global_timelog(
 
 @app.command("setup")
 def setup_wizard(
+    fast: bool = typer.Option(
+        False,
+        "--fast",
+        help="Run a faster onboarding path focused on project config + doctor (skips global timelog and smoke).",
+    ),
     one_click: bool = typer.Option(
         False,
         "--one-click",
@@ -65,6 +70,7 @@ def setup_wizard(
     Run the full onboarding wizard covering environment setup, timelog automation, configuration, health checks, and a final smoke test.
     
     Parameters:
+        fast (bool): Use the streamlined onboarding path focused on quick first-report readiness.
     	one_click (bool): Use recommended defaults and suppress interactive prompts.
     	interactive (bool): Use interactive prompts instead of default automated choices.
     	yes (bool): Alias to proceed with recommended steps without confirmation prompts.
@@ -77,11 +83,18 @@ def setup_wizard(
     """
     from rich.console import Console
 
-    if interactive and one_click:
-        raise typer.BadParameter("Cannot use both --interactive and --one-click; choose one")
+    if interactive and (one_click or fast):
+        raise typer.BadParameter("Cannot use --interactive together with --one-click/--fast; choose one mode")
 
     console = Console()
     auto_yes = not interactive
-    if yes or one_click:
+    if yes or one_click or fast:
         auto_yes = True
-    run_setup_wizard(console, yes=auto_yes, dry_run=dry_run, skip_smoke=skip_smoke, bootstrap_root=bootstrap_root)
+    run_setup_wizard(
+        console,
+        yes=auto_yes,
+        dry_run=dry_run,
+        skip_smoke=skip_smoke,
+        bootstrap_root=bootstrap_root,
+        fast=fast,
+    )

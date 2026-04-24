@@ -175,7 +175,15 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
         return "ACTION_REQUIRED"
 
 
-def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, bootstrap_root: str | None = None) -> None:
+def run_setup_wizard(
+    console,
+    *,
+    yes: bool,
+    dry_run: bool,
+    skip_smoke: bool,
+    bootstrap_root: str | None = None,
+    fast: bool = False,
+) -> None:
     _print_setup_header(console, dry_run=dry_run)
     summary_rows: list[tuple[str, str, str]] = []
     next_steps: list[str] = []
@@ -195,13 +203,22 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
         ]
     summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
     next_steps.extend(github_env_steps)
-    should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
-    if should_setup_timelog:
-        run_global_timelog_setup(console, yes=yes, dry_run=dry_run)
-        summary_rows.append(("Global timelog automation", "PASS" if not dry_run else "PASS (dry-run)", "Configured or previewed global hooks + global ignore."))
+    if fast:
+        summary_rows.append(("Global timelog automation", "SKIPPED", "Skipped in --fast mode for quicker onboarding."))
     else:
-        console.print("[yellow]Skipped global timelog automation.[/yellow]")
-        summary_rows.append(("Global timelog automation", "SKIPPED", "User skipped this step."))
+        should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
+        if should_setup_timelog:
+            run_global_timelog_setup(console, yes=yes, dry_run=dry_run)
+            summary_rows.append(
+                (
+                    "Global timelog automation",
+                    "PASS" if not dry_run else "PASS (dry-run)",
+                    "Configured or previewed global hooks + global ignore.",
+                )
+            )
+        else:
+            console.print("[yellow]Skipped global timelog automation.[/yellow]")
+            summary_rows.append(("Global timelog automation", "SKIPPED", "User skipped this step."))
     projects_status, projects_note, project_steps = _ensure_minimal_projects_config(
         console,
         yes=yes,
@@ -213,7 +230,10 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
     doctor_status = _run_doctor_check(console, dry_run=dry_run)
     summary_rows.append(("Doctor check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
     smoke_status = "SKIPPED"
-    if skip_smoke:
+    if fast:
+        console.print("[yellow]Skipped smoke report (--fast).[/yellow]")
+        summary_rows.append(("Smoke report", "SKIPPED", "Skipped in --fast mode for quicker onboarding."))
+    elif skip_smoke:
         console.print("[yellow]Skipped smoke report (--skip-smoke).[/yellow]")
         summary_rows.append(("Smoke report", "SKIPPED", "Skipped via --skip-smoke flag."))
     else:
@@ -250,6 +270,7 @@ def run_setup_wizard(console, *, yes: bool, dry_run: bool, skip_smoke: bool, boo
             projects_status=projects_status,
             doctor_status=doctor_status,
             smoke_status=smoke_status,
+            fast=fast,
         )
     )
     print_next_steps(console, list(dict.fromkeys(next_steps)))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Annotated
 
@@ -12,6 +13,29 @@ import typer
 from core.cli_app import app
 from core.cli_options import split_comma_separated_list
 from core.projects_lint import lint_projects_config
+
+
+def _suggest_match_terms(project_name: str, customer_name: str) -> list[str]:
+    """Return stable, low-noise default match terms for a new project."""
+    candidates = [project_name.strip(), customer_name.strip()]
+    terms: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = " ".join(candidate.split())
+        lowered = normalized.lower()
+        if lowered and lowered not in seen:
+            terms.append(lowered)
+            seen.add(lowered)
+        for token in re.split(r"[\s_\-./]+", normalized):
+            token = token.strip().lower()
+            if len(token) < 3:
+                continue
+            if token not in seen:
+                terms.append(token)
+                seen.add(token)
+    return terms
 
 
 @app.command()
@@ -112,9 +136,12 @@ def projects(
             if customer is None:
                 continue
 
+            default_match_terms = project.get("match_terms", [])
+            if not is_edit and not default_match_terms:
+                default_match_terms = _suggest_match_terms(name, customer)
             match_terms = questionary.text(
                 "Match Terms (comma separated):",
-                default=", ".join(project.get("match_terms", [])),
+                default=", ".join(default_match_terms),
             ).ask()
             if match_terms is None:
                 continue

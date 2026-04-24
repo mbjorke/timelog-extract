@@ -14,6 +14,12 @@ from core.cli_options import split_comma_separated_list
 from core.projects_lint import lint_projects_config
 
 
+def _match_terms_prompt_message(default_terms: list[str]) -> str:
+    if default_terms:
+        return "Match Terms (comma separated; press Enter to keep current/suggested terms):"
+    return "Match Terms (comma separated):"
+
+
 @app.command()
 def projects(
     config: Annotated[str, typer.Option(help="Path to projects config file")] = "timelog_projects.json",
@@ -112,9 +118,10 @@ def projects(
             if customer is None:
                 continue
 
+            default_terms = project.get("match_terms", [])
             match_terms = questionary.text(
-                "Match Terms (comma separated):",
-                default=", ".join(project.get("match_terms", [])),
+                _match_terms_prompt_message(default_terms),
+                default=", ".join(default_terms),
             ).ask()
             if match_terms is None:
                 continue

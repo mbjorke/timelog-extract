@@ -15,6 +15,12 @@ from core.cli_options import split_comma_separated_list
 from core.projects_lint import lint_projects_config
 
 
+def _match_terms_prompt_message(default_terms: list[str]) -> str:
+    if default_terms:
+        return "Match Terms (comma separated; press Enter to keep current/suggested terms):"
+    return "Match Terms (comma separated):"
+
+
 def _suggest_match_terms(project_name: str, customer_name: str) -> list[str]:
     """Return stable, low-noise default match terms for a new project."""
     candidates = [project_name.strip(), customer_name.strip()]
@@ -140,7 +146,7 @@ def projects(
             if not is_edit and not default_match_terms:
                 default_match_terms = _suggest_match_terms(name, customer)
             match_terms = questionary.text(
-                "Match Terms (comma separated):",
+                _match_terms_prompt_message(default_match_terms),
                 default=", ".join(default_match_terms),
             ).ask()
             if match_terms is None:

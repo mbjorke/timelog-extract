@@ -7,7 +7,7 @@
 - Landing/demo: `gittan.html` now uses honest private-beta positioning around local evidence, project-config onboarding, and observed/classified/approved time instead of automatic billing claims.
 - Live terminal demo: deterministic mock output now supports the Agentic Dev Days flow (`gittan doctor`, `gittan report --today --source-summary`, and `gittan report --today --format json`) with Truth Standard language.
 - Demo API: add a Cloudflare Worker implementation for the sandbox terminal API (`/demo/health`, `/demo/sessions`, `/demo/sessions/{id}/exec`) plus deployment runbook for `api.gittan.sh`.
-- Marketing: consolidate Substack draft material into [`docs/marketing/dais-substack-article-gittan-v3.md`](docs/marketing/dais-substack-article-gittan-v3.md), add hero image brief, and remove older duplicate article drafts.
+- Marketing: consolidate Substack draft material into [`docs/marketing/dais-substack-article-gittan-v3.md`](docs/marketing/dais-substack-article-gittan-v3.md), update the docs index to that current draft, add hero image brief, and remove older duplicate article drafts.
 - Triage JSON: `gittan triage --json` `top_sites` now include optional local timestamp anchors (`first_seen_local`, `last_seen_local`, `sample_window_local`) for faster onboarding decisions without exposing page titles/paths.
 - CLI / UX: **triage** JSON plan adds **`question`**, **`choices`**, and per-suggestion **`tags`** (mobile/inbox); new **`gittan triage-apply`** applies a validated **decisions** JSON to `timelog_projects.json` (`tracked_urls` / `match_terms`) with backup + `--dry-run`.
 - Docs: [`docs/runbooks/gittan-triage-agents.md`](docs/runbooks/gittan-triage-agents.md) — triage JSON extensions + `triage-apply` contract (distinct from `triage --json` output).
@@ -18,7 +18,7 @@
 
 - Docs: [`AGENTS.md`](AGENTS.md) + [`README.md`](README.md) — document full **worklog path resolution** (`--worklog`, config `worklog`, cwd `TIMELOG.md`, then `<current_repo_root>/TIMELOG.md` via Git); [`core/report_service.py`](core/report_service.py) uses [`runtime_workspace_root()`](core/workspace_root.py) for that repo root in reports (aligned with `gittan doctor`).
 - Docs: [`docs/business/github-sponsors-profile.md`](docs/business/github-sponsors-profile.md) — "install ergonomics" wording (replace nonstandard "ergonomy").
-- Docs: [`docs/marketing/dais-substack-article-gittan-v3.md`](docs/marketing/dais-substack-article-gittan-v3.md) — Data & AI Stockholm Substack draft (origin story + DAIS author guidelines checklist); [`docs/README.md`](docs/README.md) index link.
+- Docs: [`docs/marketing/dais-substack-article-gittan-origin.md`](docs/marketing/dais-substack-article-gittan-origin.md) — Data & AI Stockholm Substack draft (origin story + DAIS author guidelines checklist); [`docs/README.md`](docs/README.md) index link.
 - Docs: [`docs/marketing/stage-demo-speaker-notes.md`](docs/marketing/stage-demo-speaker-notes.md) — short stage script (three sentences + install one-liners) for large-audience demos.
 - Docs: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md) + [`packaging/homebrew/README.md`](packaging/homebrew/README.md) — sketch for a custom Homebrew tap (`brew tap …/gittan`) before PyPI-first demos; `brew create --python` workflow and presentation fallback.
 - Docs: [`README.md`](README.md) — clearer narrative flow (intro, Documentation, Contributing, Feedback); Contributing keeps seven parallel bullets + AGENTS pointer; less telegraphic tone.

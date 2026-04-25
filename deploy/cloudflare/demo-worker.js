@@ -244,8 +244,7 @@ async function parseJsonBody(request) {
 }
 
 function createSession() {
-  const random = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-  return jsonResponse({ session_id: random }, 201);
+  return jsonResponse({ session_id: crypto.randomUUID() }, 201);
 }
 
 async function execCommand(request) {

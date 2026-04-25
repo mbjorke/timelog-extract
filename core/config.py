@@ -6,9 +6,54 @@ import json
 import os
 import shutil
 import tempfile
+import getpass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+PROJECTS_CONFIG_FILENAME = "timelog_projects.json"
+ENV_PROJECTS_CONFIG = "GITTAN_PROJECTS_CONFIG"
+ENV_GITTAN_HOME = "GITTAN_HOME"
+
+
+def _default_profile_home() -> Path:
+    user = (os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser() or "user").strip().lower()
+    safe = "".join(ch if (ch.isalnum() or ch in {"-", "_"}) else "-" for ch in user).strip("-_") or "user"
+    return Path.home() / f".gittan-{safe}"
+
+
+def resolve_projects_config_path_and_source(cwd: Optional[Path] = None) -> tuple[Path, str]:
+    """Resolve default projects config path with source metadata."""
+    configured = str(os.environ.get(ENV_PROJECTS_CONFIG, "")).strip()
+    if configured:
+        return Path(configured).expanduser(), ENV_PROJECTS_CONFIG
+    gittan_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
+    if gittan_home:
+        return Path(gittan_home).expanduser() / PROJECTS_CONFIG_FILENAME, ENV_GITTAN_HOME
+    base_dir = cwd if cwd is not None else Path.cwd()
+    legacy_repo_path = base_dir / PROJECTS_CONFIG_FILENAME
+    if legacy_repo_path.is_file():
+        return legacy_repo_path, "cwd"
+    return _default_profile_home() / PROJECTS_CONFIG_FILENAME, "auto_profile_home"
+
+
+def resolve_projects_config_path(cwd: Optional[Path] = None) -> Path:
+    """Resolve the default projects-config path from env or workspace."""
+    resolved, _source = resolve_projects_config_path_and_source(cwd=cwd)
+    return resolved
+
+
+def default_projects_config_option() -> str:
+    """Default CLI value for --projects-config style options.
+
+    Typer evaluates function signature defaults when command modules are
+    imported, so commands using this helper capture the environment and cwd from
+    import time unless they call it explicitly at runtime.
+    """
+    resolved = resolve_projects_config_path()
+    if resolved.name == PROJECTS_CONFIG_FILENAME and resolved.parent == Path.cwd():
+        return PROJECTS_CONFIG_FILENAME
+    return str(resolved)
 
 
 def as_list(value):

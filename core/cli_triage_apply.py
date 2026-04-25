@@ -13,6 +13,7 @@ from core.cli_app import app
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
+    default_projects_config_option,
     load_projects_config_payload,
     save_projects_config_payload,
 )
@@ -68,7 +69,7 @@ def triage_apply(
         Optional[str],
         typer.Option("--input", "-i", help="Path to decisions JSON file (or - for stdin)"),
     ] = None,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     allow_create: Annotated[bool, typer.Option(help="Create unknown projects")] = False,
     dry_run: Annotated[bool, typer.Option(help="Print what would be applied; do not write")] = False,
 ):

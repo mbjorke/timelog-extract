@@ -12,6 +12,7 @@ import typer
 
 from core.cli_app import app
 from core.cli_options import split_comma_separated_list
+from core.config import default_projects_config_option
 from core.projects_lint import lint_projects_config
 
 
@@ -46,14 +47,14 @@ def _suggest_match_terms(project_name: str, customer_name: str) -> list[str]:
 
 @app.command()
 def projects(
-    config: Annotated[str, typer.Option(help="Path to projects config file")] = "timelog_projects.json",
+    config: Annotated[str, typer.Option(help="Path to projects config file")] = default_projects_config_option(),
 ):
     """Manage project profiles interactively."""
     from rich.console import Console
     from rich.table import Table
 
     console = Console()
-    config_path = Path(config)
+    config_path = Path(config).expanduser()
 
     if config_path.exists():
         try:
@@ -68,6 +69,7 @@ def projects(
 
     def save():
         try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         except OSError as exc:
             console.print(f"[red]Error writing config:[/red] {exc}")
@@ -208,7 +210,7 @@ def projects(
 
 @app.command("projects-lint")
 def projects_lint(
-    config: Annotated[str, typer.Option(help="Path to projects config file")] = "timelog_projects.json",
+    config: Annotated[str, typer.Option(help="Path to projects config file")] = default_projects_config_option(),
     strict: Annotated[bool, typer.Option(help="Exit non-zero when warnings exist")] = False,
 ):
     """Lint project config for overlapping terms and high-risk generic terms."""

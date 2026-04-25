@@ -15,7 +15,7 @@ from collectors.chrome import chrome_ts
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
-from core.config import as_list
+from core.config import as_list, default_projects_config_option
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
@@ -304,7 +304,7 @@ def _render_day_summary(row: dict, top_sites: list[DayTopSite]) -> str:
 def triage(
     date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
     date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = "timelog_projects.json",
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     max_days: Annotated[int, typer.Option(help="Max unexplained days to review")] = 3,
     max_sites: Annotated[int, typer.Option(help="Top sites shown/mappable per day")] = 5,
     scoring_mode: Annotated[str, typer.Option(help="balanced or site-first")] = "site-first",

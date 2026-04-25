@@ -229,9 +229,16 @@ Optional: run \`gittan report --today --format json\`
     };
   }
 
+  if (command === "gittan report --today --format json") {
+    return {
+      ok: true,
+      body: `${JSON.stringify(TRUTH_PAYLOAD, null, 2)}\n`,
+    };
+  }
+
   return {
-    ok: true,
-    body: `${JSON.stringify(TRUTH_PAYLOAD, null, 2)}\n`,
+    ok: false,
+    body: { error: `Unhandled allowlisted demo command: ${command}` },
   };
 }
 

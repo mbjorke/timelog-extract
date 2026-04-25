@@ -41,6 +41,8 @@ reduce uncategorized hours sooner.
 
 ### S1 — Timestamp-enriched triage payload
 
+Status: built and covered by `tests/test_cli_triage.py`.
+
 Add optional timestamp hints in triage JSON per top site/day, for example:
 
 - first_seen time
@@ -80,6 +82,10 @@ Measure:
 2. Validate on real local data (no broad refactor).
 3. Document wins/losses in this file.
 4. Promote to `docs/specs/` only if metrics improve.
+
+Current next step: validate S2 as a beta-onboarding path. The question is not
+whether the engine can run; it is whether a new user can reach a useful project
+config quickly with evidence, suggestions, and explicit approval before writes.
 
 ## Open questions
 

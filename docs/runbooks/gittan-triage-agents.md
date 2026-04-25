@@ -15,6 +15,22 @@ Purpose: let **non-interactive agents** (Cursor, Claude, CI) reason about unexpl
 
 **`triage-apply`** is the supported path for **batch / mobile** categorization: it validates a small **`decisions`** JSON and applies `tracked_urls` / `match_terms` rules. It creates a timestamped backup before writing when not `--dry-run` (see `core/cli_triage_apply.py`).
 
+## Beta onboarding use
+
+For early testers, treat triage as the first controlled path from "Gittan runs"
+to "my project config is useful":
+
+1. Run `gittan triage --json` to generate a read-only evidence plan.
+2. Review `top_sites` with local timestamp hints to recognize the real work
+   window.
+3. Treat `suggestions`, `question`, and `choices` as classified candidates, not
+   invoice truth.
+4. Apply only confirmed mappings with `gittan triage-apply --dry-run` first,
+   then without `--dry-run` after the user approves.
+
+This aligns with the Timelog Truth Standard split: observed evidence first,
+classified candidates second, explicit human approval before writes.
+
 ## JSON contract (`schema_version` 1) — `gittan triage --json`
 
 Top-level keys:

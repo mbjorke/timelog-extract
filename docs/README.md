@@ -41,6 +41,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Implementation checklist / agent prompt** → `task-prompts/`
 - **Apr 29 live demo — CLI polish backlog (current focus)** → [`runbooks/cli-polish-backlog-for-apr29.md`](runbooks/cli-polish-backlog-for-apr29.md)
 - **How to run CI, release, or QA** → `runbooks/` (optional **Homebrew tap** sketch for `brew install gittan`: [`runbooks/homebrew-tap.md`](runbooks/homebrew-tap.md))
+- **Beta onboarding path for project config friction** → [`runbooks/beta-onboarding-config.md`](runbooks/beta-onboarding-config.md)
 - **Classification trust recovery playbook** → [`runbooks/classification-trust-recovery.md`](runbooks/classification-trust-recovery.md)
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy
@@ -53,6 +54,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **How data enters the tool** → `sources/`
 - **Exploratory only, team-lexicon (människa–agent, inkl. TIL)** → `ideas/` (t.ex. [`ideas/team-lexicon.md`](ideas/team-lexicon.md))
 - **Current triage onboarding spike (top-sites + timestamp)** → [`ideas/triage-onboarding-spike-2026-04.md`](ideas/triage-onboarding-spike-2026-04.md)
+- **Future GSD-inspired session intent layer** → [`ideas/session-intent-gsd-inspired.md`](ideas/session-intent-gsd-inspired.md)
 - **No longer current but you still want the file in-repo** → `legacy/`
 
 ## Naming

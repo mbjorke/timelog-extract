@@ -1,6 +1,6 @@
 # Spec: triage onboarding timestamp spike (S1-first)
 
-Status: Draft (implementation spike)
+Status: S1 built; S2/S3 pending
 Date: 2026-04-21
 Related idea: `docs/ideas/triage-onboarding-spike-2026-04.md`
 
@@ -14,8 +14,17 @@ read-only guarantees.
 
 This spec defines a small first increment:
 
-- S1: timestamp hints in `gittan triage --json`
+- S1: timestamp hints in `gittan triage --json` (built)
 - S2/S3 planning hooks (not full implementation in this step)
+
+## Implementation status
+
+S1 is implemented in `core/cli_triage.py` and covered by
+`tests/test_cli_triage.py`.
+
+Validation evidence:
+
+- `python3 -m unittest tests/test_cli_triage.py`
 
 ## Non-goals
 
@@ -31,8 +40,8 @@ This spec defines a small first increment:
 - `top_sites`: domain, visits, share
 - suggestions / automation fields
 
-It does not provide temporal anchors to help users decide "which project this
-site belonged to around that time."
+Before S1, it did not provide temporal anchors to help users decide "which
+project this site belonged to around that time."
 
 ## Proposed S1 contract change (schema v1 additive)
 
@@ -76,6 +85,17 @@ For each day + domain in top sites:
 - Output remains single JSON object on stdout.
 - Existing keys stay stable; added fields must not break old consumers.
 
+## Truth Standard alignment
+
+This increment supports `docs/specs/timelog-truth-standard-rfc.md` by adding
+reviewable evidence to onboarding without treating the suggestion as invoice
+truth:
+
+- `top_sites` domains and local timestamp hints are observed evidence.
+- `suggestions`, `question`, and `choices` are classified candidates.
+- `gittan triage-apply` remains the explicit human-approved write path.
+- Page titles and raw URL paths stay out of JSON to reduce accidental PII.
+
 ## Tests (required)
 
 1. Unit tests for serializer output:
@@ -104,6 +124,7 @@ If no measurable win, stop and document rejection rationale.
 
 ## Rollout
 
-1. Implement S1 in `core/cli_triage.py` plan assembly.
-2. Update runbook contract: `docs/runbooks/gittan-triage-agents.md`.
-3. Keep changes narrow; no broad refactors in same PR.
+1. S1 implemented in `core/cli_triage.py` plan assembly.
+2. Runbook contract updated: `docs/runbooks/gittan-triage-agents.md`.
+3. Next: run S2/S3 comparison and record whether timestamp hints reduce
+   time-to-first-useful-config.

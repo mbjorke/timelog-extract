@@ -16,6 +16,7 @@ class LiveTerminalDemoContractTests(unittest.TestCase):
     def test_allowed_exact(self):
         for cmd in (
             "gittan doctor",
+            "gittan status",
             "gittan report --today --source-summary",
             "gittan report --today --format json",
             "gittan report --today --invoice-pdf",

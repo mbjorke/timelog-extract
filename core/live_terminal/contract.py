@@ -21,6 +21,7 @@ DEMO_SANDBOX_DENIED_MESSAGE: Final[str] = "Command not allowed in demo sandbox. 
 _ALLOWED_NORMALIZED: Final[frozenset[str]] = frozenset(
     {
         "gittan doctor",
+        "gittan status",
         "gittan report --today --source-summary",
         "gittan report --today --format json",
         "gittan report --today --invoice-pdf",

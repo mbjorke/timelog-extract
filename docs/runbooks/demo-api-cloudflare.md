@@ -43,6 +43,7 @@ Allowed commands:
 - `help`
 - `clear`
 - `gittan doctor`
+- `gittan status`
 - `gittan report --today --source-summary`
 - `gittan report --today --format json`
 
@@ -109,6 +110,8 @@ curl -X POST \
 Expected behavior:
 
 - `gittan doctor` prints demo environment checks.
+- `gittan status` prints a demo-selected today summary with observed /
+  classified / approved split.
 - `gittan report --today --source-summary` prints source counts and observed /
   classified / approved split.
 - `gittan report --today --format json` prints the deterministic truth payload.

@@ -10,6 +10,7 @@ from core.live_terminal.mock_data import load_demo_mock_data
 _STUB_HELP: Final[str] = """\
 Demo sandbox — allowlisted commands:
   gittan doctor
+  gittan status
   gittan report --today --source-summary
   gittan report --today --format json
   gittan report --today --invoice-pdf
@@ -66,6 +67,28 @@ def _source_summary_output() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _status_output() -> str:
+    return """\
+Gittan Status — today (demo fixture)
+Timeframe prompt: Today selected for demo.
+
+Hours Summary (unique timeline)
+Project                Hours   Sessions   State
+Gittan                 1.2h    3          work
+Client A               0.6h    2          needs review
+Ops                    0.3h    1          observed
+────────────────────────────────────────────────
+Total                  2.1h    6          observed
+
+Observed time:             2.1h
+Classified candidates:    1.8h
+Approved invoice time:    0.0h (human review required)
+
+Note: project rows are candidate attribution. Invoice approval is still manual.
+Next: run `gittan report --today --source-summary`
+"""
+
+
 def _json_output() -> str:
     fixture = load_demo_mock_data()
     payload = fixture.get("truth_payload", {})
@@ -83,6 +106,8 @@ def demo_stub_output(line: str) -> str:
         return "[demo] Screen cleared.\n"
     if key == "gittan doctor":
         return _doctor_output()
+    if key == "gittan status":
+        return _status_output()
     if key == "gittan report --today --source-summary":
         return _source_summary_output()
     if key == "gittan report --today --format json":

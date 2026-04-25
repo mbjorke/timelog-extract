@@ -2,6 +2,7 @@ const ALLOWED_COMMANDS = new Set([
   "help",
   "clear",
   "gittan doctor",
+  "gittan status",
   "gittan report --today --source-summary",
   "gittan report --today --format json",
 ]);
@@ -90,6 +91,7 @@ function demoOutput(line) {
       ok: true,
       body: `Demo sandbox — allowlisted commands:
   gittan doctor
+  gittan status
   gittan report --today --source-summary
   gittan report --today --format json
   help
@@ -118,6 +120,30 @@ Browser history        OK — local Chrome fixture
 GitHub activity        OK — public activity fixture
 Approval workflow      MANUAL — classified time is not invoice truth
 
+Next: run \`gittan report --today --source-summary\`
+`,
+    };
+  }
+
+  if (command === "gittan status") {
+    return {
+      ok: true,
+      body: `Gittan Status — today (demo fixture)
+Timeframe prompt: Today selected for demo.
+
+Hours Summary (unique timeline)
+Project                Hours   Sessions   State
+Gittan                 1.2h    3          work
+Client A               0.6h    2          needs review
+Ops                    0.3h    1          observed
+────────────────────────────────────────────────
+Total                  2.1h    6          observed
+
+Observed time:             2.1h
+Classified candidates:    1.8h
+Approved invoice time:    0.0h (human review required)
+
+Note: project rows are candidate attribution. Invoice approval is still manual.
 Next: run \`gittan report --today --source-summary\`
 `,
     };

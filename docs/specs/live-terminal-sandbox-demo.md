@@ -39,6 +39,7 @@ deterministic demo data.
 Allowed commands (exact or normalized aliases):
 
 - `gittan doctor`
+- `gittan status`
 - `gittan report --today --source-summary`
 - `gittan report --today --format json`
 - `gittan report --today --invoice-pdf`

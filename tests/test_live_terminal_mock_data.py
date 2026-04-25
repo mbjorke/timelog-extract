@@ -40,6 +40,15 @@ class LiveTerminalMockDataTests(unittest.TestCase):
         self.assertIn("classified time is not invoice truth", out)
         self.assertIn("Next: run `gittan report --today --source-summary`", out)
 
+    def test_stub_status_output_matches_truth_model(self):
+        out = demo_stub_output("gittan status")
+        self.assertIn("Gittan Status — today (demo fixture)", out)
+        self.assertIn("Timeframe prompt: Today selected for demo.", out)
+        self.assertIn("Hours Summary (unique timeline)", out)
+        self.assertIn("Classified candidates:", out)
+        self.assertIn("Approved invoice time:", out)
+        self.assertIn("Invoice approval is still manual", out)
+
     def test_stub_json_matches_fixture_payload(self):
         fixture = load_demo_mock_data()
         out = demo_stub_output("gittan report --today --format json")

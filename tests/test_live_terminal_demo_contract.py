@@ -16,6 +16,10 @@ class LiveTerminalDemoContractTests(unittest.TestCase):
     def test_allowed_exact(self):
         for cmd in (
             "gittan doctor",
+            "gittan setup",
+            "gittan setup --dry-run",
+            "gittan status",
+            "gittan report",
             "gittan report --today --source-summary",
             "gittan report --today --format json",
             "gittan report --today --invoice-pdf",
@@ -32,6 +36,7 @@ class LiveTerminalDemoContractTests(unittest.TestCase):
 
     def test_denied_unknown_and_injection(self):
         self.assertFalse(is_allowlisted_demo_command("gittan report --today"))
+        self.assertFalse(is_allowlisted_demo_command("gittan setup --yes"))
         self.assertFalse(is_allowlisted_demo_command("gittan doctor --help"))
         self.assertFalse(is_allowlisted_demo_command("gittan doctor; rm -rf /"))
         self.assertFalse(is_allowlisted_demo_command(""))

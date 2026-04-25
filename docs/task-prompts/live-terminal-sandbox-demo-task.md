@@ -54,6 +54,10 @@ This task is priority #2 (after inline CLI UX validation).
 ## Command allowlist (initial)
 
 - `gittan doctor`
+- `gittan setup`
+- `gittan setup --dry-run`
+- `gittan status`
+- `gittan report`
 - `gittan report --today --source-summary`
 - `gittan report --today --format json`
 - `gittan report --today --invoice-pdf`

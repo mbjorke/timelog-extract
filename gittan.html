@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gittan — Reconstruct your day. Locally.</title>
-  <meta name="description" content="Privacy-first, local-first CLI for automatic time tracking in the AI coding era. Stop guessing. Start billing." />
-  <meta property="og:title" content="Gittan — Reconstruct your day. Locally." />
-  <meta property="og:description" content="Stop losing hours to context switching. Gittan reconstructs your billable day from local signals — no cloud, no accounts, no excuses." />
+  <title>Gittan — From agent chaos to accountable hours</title>
+  <meta name="description" content="Local-first evidence for AI-era work. Gittan turns local traces into reviewable project-hour reports, with human approval before invoice truth." />
+  <meta property="og:title" content="Gittan — From agent chaos to accountable hours" />
+  <meta property="og:description" content="A local-first CLI for turning scattered AI/dev work traces into reviewable project-hour evidence. Private beta: design partners wanted." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://gittan.sh/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Gittan — Reconstruct your day. Locally." />
-  <meta name="twitter:description" content="Privacy-first, local-first CLI for automatic time tracking in the AI coding era." />
+  <meta name="twitter:title" content="Gittan — From agent chaos to accountable hours" />
+  <meta name="twitter:description" content="Local-first evidence for AI-era work. Observed traces, classified candidates, human approval." />
   <meta name="twitter:image" content="https://gittan.sh/og-image.png" />
-  <meta name="gittan-demo-api-base" content="" />
+  <meta name="gittan-demo-api-base" content="https://api.gittan.sh" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -1151,29 +1151,20 @@
 <!-- ─── HERO ─── -->
 <div class="hero">
   <div class="hero-copy">
-    <div class="hero-eyebrow">Local-first · Privacy-first · CLI</div>
-    <h1>Reconstruct<br>your day.<br><em>Locally.</em></h1>
+    <div class="hero-eyebrow">Local-first · Evidence-first · Private beta</div>
+    <h1>From agent chaos<br>to accountable<br><em>hours.</em></h1>
     <p class="hero-sub">
-      You switched contexts 47 times today.
-      How many hours will you actually bill?
-      Gittan reconstructs your day from local signals — no cloud, no accounts.
+      Modern AI work jumps between agents, repos, browser tabs, docs, and
+      clients. Gittan turns local traces into reviewable project-hour evidence —
+      without pretending classified time is automatically invoice truth.
     </p>
     <div class="hero-actions">
-      <a href="#how" class="btn-primary">Get started →</a>
+      <a href="#beta" class="btn-primary">Join the private beta →</a>
       <a href="https://github.com/mbjorke/timelog-extract" class="btn-ghost">★ GitHub</a>
     </div>
   </div>
 
   <div class="hero-terminal-wrap">
-    <img
-      class="hero-logo"
-      src="/gittan-logo.png"
-      width="768"
-      height="768"
-      alt="Gittan — local timeline, review-ready"
-      decoding="async"
-      fetchpriority="high"
-    />
   <div class="terminal">
     <div class="terminal-bar">
       <div class="terminal-dot td-red"></div>
@@ -1212,31 +1203,32 @@
 <!-- ─── THE PROBLEM ─── -->
 <section>
   <div class="section-eyebrow">The problem</div>
-  <h2>You're building in <em>AI flow.</em><br>Your billing isn't.</h2>
+  <h2>AI work is fragmented.<br><em>Memory is not enough.</em></h2>
   <p class="section-sub">
-    Between Cursor, Claude, and Gemini you're building faster than ever.
-    But at the end of the month, you're estimating — and you're estimating low.
+    In one 15-minute window you can touch several agents, several repos, and
+    several clients. The hard part is no longer proving that work happened. It
+    is explaining which work belonged where.
   </p>
   <div class="problem-grid">
     <div class="problem-card">
-      <div class="p-icon">Context hell</div>
-      <h3>Five AI chats. Three windows.</h3>
-      <p>Which session was for which client? You can't remember. Gittan can.</p>
+      <div class="p-icon">Agent chaos</div>
+      <h3>Many tools, many threads</h3>
+      <p>Cursor, Claude Code, GitHub, browser research, docs, and email all leave partial traces of the same workday.</p>
     </div>
     <div class="problem-card">
-      <div class="p-icon">Under-billing</div>
-      <h3>Incomplete memory costs money</h3>
-      <p>Developers chronically under-report hours — not out of dishonesty, but because good memory requires good tools.</p>
+      <div class="p-icon">Config friction</div>
+      <h3>Useful mapping takes effort</h3>
+      <p>The current beta blocker is time-to-useful-project-config: turning raw traces into project rules a person can trust.</p>
     </div>
     <div class="problem-card">
-      <div class="p-icon">Manual tracking</div>
-      <h3>Timers require you to remember</h3>
-      <p>In AI flow, nobody starts and stops a timer. Gittan reconstructs retroactively from signals you already leave behind.</p>
+      <div class="p-icon">Truth split</div>
+      <h3>Classified is not approved</h3>
+      <p>Gittan separates observed traces, classified candidates, and human-approved invoice time.</p>
     </div>
     <div class="problem-card">
-      <div class="p-icon">Cloud tools</div>
-      <h3>Most tools see too much</h3>
-      <p>Most time trackers sync your activity to their servers. Gittan doesn't. Your work history stays on your machine.</p>
+      <div class="p-icon">Local-first</div>
+      <h3>Your raw day stays local</h3>
+      <p>Gittan is built around local processing by default, because work traces are personal and often client-sensitive.</p>
     </div>
   </div>
 </section>
@@ -1245,26 +1237,26 @@
 
 <!-- ─── HOW IT WORKS ─── -->
 <section id="how">
-  <div class="section-eyebrow">Quick start</div>
-  <h2>Install, set up,<br><em>see your day</em></h2>
-  <p class="section-sub">Three steps. No account. On macOS, <strong>pipx</strong> avoids PATH headaches; the setup wizard is ~2 min. Full detail in the README.</p>
+  <div class="section-eyebrow">Current product shape</div>
+  <h2>Local traces become<br><em>reviewable evidence</em></h2>
+  <p class="section-sub">Gittan is a macOS-first CLI today. It can generate local reports, source summaries, and exports. The next milestone is making the first useful project config much easier.</p>
 
   <div class="steps">
     <div class="step">
-      <h3>Install</h3>
-      <p>Python 3.9+. Easiest on Mac: <strong>pipx</strong> (then open a new terminal or <code>source ~/.zshrc</code>):</p>
+      <h3>Run locally</h3>
+      <p>Install the CLI and keep raw work traces on your machine by default:</p>
       <code class="code-inline">pipx install timelog-extract</code>
-      <p class="step-note">Or: <code>python3 -m pip install --user timelog-extract</code> — you may need to add the user <code>bin</code> folder to PATH; <code>gittan doctor</code> hints if so. If <code>pip</code> is missing, use <code>python3 -m pip</code>. Clone + <code>python3 -m pip install -e .</code> if PyPI isn’t an option yet.</p>
+      <p class="step-note">Python 3.9+. Use <code>gittan doctor</code> to inspect setup and source availability.</p>
     </div>
     <div class="step">
-      <h3>Run setup</h3>
-      <p class="step-note">Preview: <code>gittan setup --dry-run</code> · then the full wizard:</p>
-      <code class="code-inline">gittan setup</code>
-    </div>
-    <div class="step">
-      <h3>See your day</h3>
-      <p class="step-note">Matches README “first report”. Add <code>--invoice-pdf</code> for an invoice PDF.</p>
+      <h3>Generate evidence</h3>
+      <p class="step-note">Start with a normal report and source summary:</p>
       <code class="code-inline">gittan report --today --source-summary</code>
+    </div>
+    <div class="step">
+      <h3>Improve mapping</h3>
+      <p class="step-note">The beta onboarding path uses read-only triage before any config write:</p>
+      <code class="code-inline">gittan triage --json</code>
     </div>
   </div>
 </section>
@@ -1273,99 +1265,93 @@
 
 <!-- ─── FEATURES ─── -->
 <section>
-  <div class="section-eyebrow">Features</div>
-  <h2>Built for <em>AI-era</em> developers</h2>
-  <p class="section-sub">Gittan understands how modern developers actually work — not how time tracking tools assume they do.</p>
+  <div class="section-eyebrow">Timelog Truth Standard</div>
+  <h2>Observed. Classified.<br><em>Approved by a human.</em></h2>
+  <p class="section-sub">The product direction is simple: do not confuse evidence with approval. Gittan helps you inspect the chain before anything becomes invoice-relevant.</p>
 
   <div class="features-grid">
     <div class="feature-card">
-      <div class="feature-icon">Cursor + IDE</div>
-      <h3>Checkpoint-level accuracy</h3>
-      <p>Reads Cursor checkpoints and workspace logs. Knows what you worked on, not just when a window was open.</p>
+      <div class="feature-icon">Observed time</div>
+      <h3>What the machine can see</h3>
+      <p>Local traces from IDEs, agents, browser history, worklogs, commits, and GitHub activity.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">AI sessions</div>
-      <h3>Claude, Gemini, OpenAI</h3>
-      <p>Detects AI sessions from local browser history. Counts prompts, not just tab opens.</p>
+      <div class="feature-icon">Classified time</div>
+      <h3>What the rules suggest</h3>
+      <p>Project mappings are candidates with reasons, not magic truth. Broad rules and uncertainty should stay visible.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">Invoice PDF</div>
-      <h3>Client-ready output</h3>
-      <p>Generate professional invoice PDFs directly from your report. No extra tools, no SaaS.</p>
+      <div class="feature-icon">Approved time</div>
+      <h3>What a human accepts</h3>
+      <p>Invoice-relevant time should come from explicit approval, not a black-box classifier.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">Chrome history</div>
-      <h3>Relevant browsing only</h3>
-      <p>Identifies documentation, PR reviews, and work-related browsing. Filters noise intelligently.</p>
+      <div class="feature-icon">Evidence plan</div>
+      <h3>Config onboarding path</h3>
+      <p>Read-only triage shows top domains, timestamp hints, and suggested mappings before any config write.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">TIMELOG.md</div>
-      <h3>Git hook automation</h3>
-      <p>Automatic entries after every commit. Zero-friction manual notes when you want them.</p>
+      <div class="feature-icon">Local-first</div>
+      <h3>No raw-day cloud lake</h3>
+      <p>The default posture is local processing and explicit export, because work history is sensitive.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">Doctor mode</div>
-      <h3>Full diagnostic</h3>
-      <p><code style="font-family:var(--mono);font-size:0.74rem;color:var(--berry-bright)">gittan doctor</code> — see exactly what's being picked up, what's missing, and why.</p>
+      <h3>Inspectable setup</h3>
+      <p><code style="font-family:var(--mono);font-size:0.74rem;color:var(--berry-bright)">gittan doctor</code> shows what is available, what is missing, and what to do next.</p>
     </div>
   </div>
 </section>
 
 <hr class="divider" />
 
-<!-- ─── DAI ─── -->
-<section>
+<!-- ─── BETA STATUS ─── -->
+<section id="beta">
   <div class="dai-header">
-    <div class="section-eyebrow">The numbers</div>
-    <h2>Developer Amnesia Index™ <span class="dai-badge">DAI-1</span></h2>
-    <div class="dai-subtitle">Industry-standard. Peer-reviewed†.</div>
+    <div class="section-eyebrow">Private beta</div>
+    <h2>What needs testing now <span class="dai-badge">Design partners</span></h2>
+    <div class="dai-subtitle">The engine runs. The onboarding path needs real workflows.</div>
   </div>
 
   <div class="dai-table-wrap">
     <table class="dai-table">
       <thead>
         <tr>
-          <th>Metric</th>
-          <th class="gittan-col">Gittan</th>
-          <th>"I'll remember later"</th>
-          <th>Spreadsheet tracker</th>
+          <th>Area</th>
+          <th class="gittan-col">Current state</th>
+          <th>What I need to learn</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td class="metric-name">Hours lost per month<span class="metric-sub">lower is better</span></td>
-          <td class="gittan-val">0.3h</td>
-          <td class="bad-val">12.4h</td>
-          <td class="mid-val">6.1h</td>
+          <td class="metric-name">Local reporting<span class="metric-sub">doctor + report</span></td>
+          <td class="gittan-val">working</td>
+          <td>Does it explain enough when a source is missing?</td>
         </tr>
         <tr>
-          <td class="metric-name">"Which client was this?" utterances per week<span class="metric-sub">lower is better</span></td>
-          <td class="gittan-val">0.1</td>
-          <td class="bad-val">14.7</td>
-          <td class="mid-val">4.2</td>
+          <td class="metric-name">Project config<span class="metric-sub">first useful mapping</span></td>
+          <td class="mid-val">too manual</td>
+          <td>Can evidence + suggestions reduce setup friction?</td>
         </tr>
         <tr>
-          <td class="metric-name">End-of-month invoice panic level<span class="metric-sub">lower is better</span></td>
-          <td class="gittan-val">none</td>
-          <td class="bad-val">extreme</td>
-          <td class="mid-val">moderate</td>
+          <td class="metric-name">Triage evidence<span class="metric-sub">top sites + timestamps</span></td>
+          <td class="gittan-val">built</td>
+          <td>Do timestamp hints help users recognize real work?</td>
         </tr>
         <tr>
-          <td class="metric-name">Data uploaded to someone else's cloud<span class="metric-sub">lower is better</span></td>
-          <td class="gittan-val">0 bytes</td>
-          <td class="bad-val">0 bytes</td>
-          <td class="mid-val">everything</td>
+          <td class="metric-name">Invoice truth<span class="metric-sub">approval workflow</span></td>
+          <td class="mid-val">not automatic</td>
+          <td>Where should human approval live in the workflow?</td>
         </tr>
         <tr>
-          <td class="metric-name">Dopamine per completed invoice<span class="metric-sub">higher is better</span></td>
-          <td class="gittan-val">9.6</td>
-          <td class="bad-val">1.4</td>
-          <td class="mid-val">4.0</td>
+          <td class="metric-name">Privacy posture<span class="metric-sub">local-first default</span></td>
+          <td class="gittan-val">clear</td>
+          <td>Which signals feel useful vs too sensitive?</td>
         </tr>
       </tbody>
     </table>
   </div>
-  <p class="dai-footnote">† Peer-reviewed by the author. n=1. p=vibes. Funded by zero venture capital.</p>
+  <p class="dai-footnote">Private beta goal: find 3-5 AI-heavy developers who will pressure-test the onboarding path, not outsource billing judgment.</p>
 </section>
 
 <hr class="divider" />
@@ -1481,108 +1467,75 @@
   </div>
 </div>
 
-<!-- ─── TESTIMONIALS ─── -->
+<!-- ─── DESIGN PARTNERS ─── -->
 <section>
-  <div class="section-eyebrow">Testimonials</div>
-  <h2>Someone said this, <em>once</em></h2>
+  <div class="section-eyebrow">Who this is for now</div>
+  <h2>I am looking for <em>design partners</em></h2>
   <br>
   <div class="testimonials-grid">
 
     <div class="testimonial">
-      <p class="testimonial-text">"I invoiced 40% more last month. I didn't work more. I just finally knew what I'd actually done."</p>
+      <p class="testimonial-text">Solo consultants or founders who already struggle to reconstruct project time from AI-heavy workdays.</p>
       <div class="testimonial-author">
-        <div class="author-avatar">FD</div>
+        <div class="author-avatar">01</div>
         <div>
-          <div class="author-name">Freelance Dev</div>
-          <div class="author-handle">@doing_my_best</div>
+          <div class="author-name">Good fit</div>
+          <div class="author-handle">messy real workflow</div>
         </div>
       </div>
     </div>
 
     <div class="testimonial">
-      <p class="testimonial-text">"It found 2.5 hours of Claude sessions I'd completely forgotten. That's real money on a client invoice."</p>
+      <p class="testimonial-text">People willing to run a local CLI and say exactly where setup, project mapping, or trust breaks down.</p>
       <div class="testimonial-author">
-        <div class="author-avatar">CO</div>
+        <div class="author-avatar">02</div>
         <div>
-          <div class="author-name">Consultant</div>
-          <div class="author-handle">@billing_by_hour</div>
+          <div class="author-name">Good fit</div>
+          <div class="author-handle">honest feedback</div>
         </div>
       </div>
     </div>
 
     <div class="testimonial">
-      <p class="testimonial-text">"I was skeptical of anything that touches my browser history. Then I read the source code. Then I was fine."</p>
+      <p class="testimonial-text">Developers who understand that classified time is a candidate record until a human approves it.</p>
       <div class="testimonial-author">
-        <div class="author-avatar">PE</div>
+        <div class="author-avatar">03</div>
         <div>
-          <div class="author-name">Paranoid Engineer</div>
-          <div class="author-handle">@read_the_source</div>
+          <div class="author-name">Good fit</div>
+          <div class="author-handle">trust-aware</div>
         </div>
       </div>
     </div>
 
     <div class="testimonial">
-      <p class="testimonial-text">"My time tracking was a sticky note that said 'worked a lot'. This is an improvement."</p>
+      <p class="testimonial-text">Not a good fit yet: teams that need hands-off invoice automation, cloud dashboards, or admin controls on day one.</p>
       <div class="testimonial-author">
-        <div class="author-avatar">OP</div>
+        <div class="author-avatar">!</div>
         <div>
-          <div class="author-name">Optimist</div>
-          <div class="author-handle">@sticky_note_cto</div>
+          <div class="author-name">Not yet</div>
+          <div class="author-handle">too early for that</div>
         </div>
       </div>
     </div>
 
     <div class="testimonial">
-      <p class="testimonial-text">"No cloud. No accounts. No 'we've updated our privacy policy' emails. This is the way."</p>
+      <p class="testimonial-text">The question I want to test: can local evidence help you trust your project-hour report faster than memory?</p>
       <div class="testimonial-author">
-        <div class="author-avatar">LF</div>
+        <div class="author-avatar">?</div>
         <div>
-          <div class="author-name">Local-First Believer</div>
-          <div class="author-handle">@offline_by_choice</div>
+          <div class="author-name">Core question</div>
+          <div class="author-handle">evidence vs memory</div>
         </div>
       </div>
     </div>
 
     <div class="testimonial">
-      <p class="testimonial-text">"Wait, it can see how many times I prompted Claude today? That number is between me and my therapist."</p>
+      <p class="testimonial-text">The next product milestone is guided config creation: evidence first, suggestions second, approval before writes.</p>
       <div class="testimonial-author">
-        <div class="author-avatar">VC</div>
+        <div class="author-avatar">→</div>
         <div>
-          <div class="author-name">Vibe Coder</div>
-          <div class="author-handle">@too_many_prompts</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="testimonial">
-      <p class="testimonial-text">"Claude: I was not compensated for this testimonial. I was, however, correctly attributed 4.2 hours of pair programming."</p>
-      <div class="testimonial-author">
-        <div class="author-avatar">AI</div>
-        <div>
-          <div class="author-name">Claude</div>
-          <div class="author-handle">@claude_ai</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="testimonial">
-      <p class="testimonial-text">"I have 47 browser tabs open right now. Gittan knows which ones were actually work. I do not."</p>
-      <div class="testimonial-author">
-        <div class="author-avatar">TH</div>
-        <div>
-          <div class="author-name">Tab Hoarder</div>
-          <div class="author-handle">@47_tabs_open</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="testimonial">
-      <p class="testimonial-text">"The review rabbit ASCII art alone is worth the install."</p>
-      <div class="testimonial-author">
-        <div class="author-avatar">AC</div>
-        <div>
-          <div class="author-name">ASCII Connoisseur</div>
-          <div class="author-handle">@art_appreciator</div>
+          <div class="author-name">Next milestone</div>
+          <div class="author-handle">guided onboarding</div>
         </div>
       </div>
     </div>
@@ -1593,14 +1546,14 @@
 <!-- ─── CTA ─── -->
 <div class="cta-section">
   <div class="section-eyebrow" style="margin-bottom:0.75rem;">Ready?</div>
-  <h2>Stop guessing.<br>Start billing.<br><em>Gittan knows.</em></h2>
-  <p>GPL-3.0-or-later. Privacy-first. Local-first.</p>
+  <h2>Help shape<br>accountable hours<br><em>for AI work.</em></h2>
+  <p>Private beta. Local-first. Evidence-first. Human-approved.</p>
   <div class="cta-actions">
     <a href="https://github.com/sponsors/blueberry-maybe/" class="btn-primary">
-      Support Gittan on GitHub Sponsors →
+      Sponsor or design-partner with Gittan →
     </a>
     <a href="https://github.com/mbjorke/timelog-extract" class="btn-ghost">
-      Get Gittan on GitHub
+      Read the code on GitHub
     </a>
   </div>
 </div>

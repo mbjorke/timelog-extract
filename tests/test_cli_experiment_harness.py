@@ -38,7 +38,7 @@ class CliExperimentHarnessTests(unittest.TestCase):
     "project": "Uncategorized",
     "timestamp": "2026-04-10T09:00:00+00:00"
   }],
-  "command_sequence": ["gittan setup --dry-run"],
+  "command_sequence": ["gittan setup --yes"],
   "thresholds": {
     "events_classified_pct_min": 0.0,
     "suggestion_acceptance_ratio_min": 0.0,

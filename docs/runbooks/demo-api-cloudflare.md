@@ -49,6 +49,7 @@ Allowed commands:
 - `gittan report`
 - `gittan report --today --source-summary`
 - `gittan report --today --format json`
+- `gittan report --today --invoice-pdf`
 
 No arbitrary command execution is allowed.
 
@@ -122,6 +123,8 @@ Expected behavior:
 - `gittan report --today --source-summary` prints source counts and observed /
   classified / approved split.
 - `gittan report --today --format json` prints the deterministic truth payload.
+- `gittan report --today --invoice-pdf` prints a stub note; no PDF is generated
+  by the sandbox Worker.
 - unknown commands return: `Command not allowed in demo sandbox. Try: help`.
 
 ## Safety Notes

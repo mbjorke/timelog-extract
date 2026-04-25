@@ -8,6 +8,7 @@ const ALLOWED_COMMANDS = new Set([
   "gittan report",
   "gittan report --today --source-summary",
   "gittan report --today --format json",
+  "gittan report --today --invoice-pdf",
 ]);
 
 const TRUTH_PAYLOAD = {
@@ -100,6 +101,7 @@ function demoOutput(line) {
   gittan report
   gittan report --today --source-summary
   gittan report --today --format json
+  gittan report --today --invoice-pdf
   help
   clear
 `,
@@ -217,6 +219,13 @@ Optional: run \`gittan report --today --format json\`
     return {
       ok: true,
       body: `Timeframe prompt: Today selected for demo.\n\n${result.body}`,
+    };
+  }
+
+  if (command === "gittan report --today --invoice-pdf") {
+    return {
+      ok: true,
+      body: "Invoice PDF (demo stub): not generated in sandbox mode\n",
     };
   }
 

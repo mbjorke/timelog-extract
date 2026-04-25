@@ -1,5 +1,6 @@
 """Tests for strict config normalization and project matching."""
 
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -217,38 +218,41 @@ class ProjectsConfigPathTests(unittest.TestCase):
         self.assertEqual(source, ENV_PROJECTS_CONFIG)
 
     def test_uses_gittan_home_when_set(self):
-        with mock.patch.dict("os.environ", {ENV_GITTAN_HOME: "/tmp/gittan-home"}, clear=False):
+        with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "/tmp/gittan-home"}, clear=False):
             path = resolve_projects_config_path()
             _path2, source = resolve_projects_config_path_and_source()
         self.assertEqual(path, Path("/tmp/gittan-home") / PROJECTS_CONFIG_FILENAME)
         self.assertEqual(source, ENV_GITTAN_HOME)
 
     def test_falls_back_to_workspace_default(self):
-        with mock.patch.dict(
-            "os.environ",
-            {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
-            clear=False,
-        ):
-            with mock.patch("core.config.Path.cwd", return_value=Path("/tmp/repo")):
-                with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
-                    with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
-                        path = resolve_projects_config_path()
-                        cli_default = default_projects_config_option()
-                        _path2, source = resolve_projects_config_path_and_source()
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(
+                "os.environ",
+                {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
+                clear=False,
+            ):
+                with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
+                    with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
+                        with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
+                            path = resolve_projects_config_path()
+                            cli_default = default_projects_config_option()
+                            _path2, source = resolve_projects_config_path_and_source()
         self.assertEqual(path, Path("/Users/demo/.gittan-mbjorke") / PROJECTS_CONFIG_FILENAME)
         self.assertEqual(cli_default, str(Path("/Users/demo/.gittan-mbjorke") / PROJECTS_CONFIG_FILENAME))
         self.assertEqual(source, "auto_profile_home")
 
     def test_prefers_existing_repo_local_file_when_present(self):
-        with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: ""}, clear=False):
-            with mock.patch("core.config.Path.cwd", return_value=Path("/tmp/repo")):
-                with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
-                    with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
-                        with mock.patch("pathlib.Path.is_file", return_value=True):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_config = Path(tmp) / PROJECTS_CONFIG_FILENAME
+            repo_config.write_text('{"projects": []}', encoding="utf-8")
+            with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: ""}, clear=False):
+                with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
+                    with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
+                        with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
                             path = resolve_projects_config_path()
                             cli_default = default_projects_config_option()
                             _path2, source = resolve_projects_config_path_and_source()
-        self.assertEqual(path, Path("/tmp/repo") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(path, Path(tmp) / PROJECTS_CONFIG_FILENAME)
         self.assertEqual(cli_default, PROJECTS_CONFIG_FILENAME)
         self.assertEqual(source, "cwd")
 

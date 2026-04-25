@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import json
 
 import typer
 
@@ -14,17 +14,32 @@ app.add_typer(config_app, name="config")
 
 
 @config_app.command("path")
-def config_path():
+def config_path(
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON output."),
+):
     """Print active projects-config path and source."""
     resolved_path, source = resolve_projects_config_path_and_source()
     source_label = {
-        "cwd": "fallback (current working directory)",
-        "auto_profile_home": "automatic profile home (~/.gittan-<user>)",
+        "cwd": "repository-local file (current working directory)",
+        "auto_profile_home": "fallback (automatic profile home ~/.gittan-<user>)",
         "GITTAN_HOME": "environment (GITTAN_HOME)",
         "GITTAN_PROJECTS_CONFIG": "environment (GITTAN_PROJECTS_CONFIG)",
     }.get(source, source)
-    exists = "yes" if Path(resolved_path).is_file() else "no"
+    exists = resolved_path.is_file()
+
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "projects_config_path": str(resolved_path),
+                    "source": source,
+                    "source_label": source_label,
+                    "exists": exists,
+                }
+            )
+        )
+        return
 
     typer.echo(f"projects_config_path={resolved_path}")
     typer.echo(f"source={source_label}")
-    typer.echo(f"exists={exists}")
+    typer.echo(f"exists={'yes' if exists else 'no'}")

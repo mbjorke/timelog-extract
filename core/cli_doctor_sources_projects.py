@@ -19,7 +19,7 @@ from typing import Annotated, Optional
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
-from core.config import default_projects_config_option, load_profiles, resolve_worklog_path
+from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
@@ -83,9 +83,7 @@ def doctor(
     console.print("")
     home = Path.home()
     workspace_root = runtime_workspace_root()
-    projects_cfg = Path(default_projects_config_option()).expanduser()
-    if not projects_cfg.is_absolute():
-        projects_cfg = workspace_root / projects_cfg
+    projects_cfg = resolve_projects_config_path().expanduser()
     _profiles, loaded_config_path, workspace = load_profiles(
         str(projects_cfg),
         argparse.Namespace(project="default-project", keywords="", email=""),

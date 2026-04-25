@@ -54,7 +54,7 @@ def projects(
     from rich.table import Table
 
     console = Console()
-    config_path = Path(config)
+    config_path = Path(config).expanduser()
 
     if config_path.exists():
         try:
@@ -69,6 +69,7 @@ def projects(
 
     def save():
         try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         except OSError as exc:
             console.print(f"[red]Error writing config:[/red] {exc}")

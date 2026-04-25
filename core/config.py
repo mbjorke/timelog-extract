@@ -44,7 +44,12 @@ def resolve_projects_config_path(cwd: Optional[Path] = None) -> Path:
 
 
 def default_projects_config_option() -> str:
-    """Default CLI value for --projects-config style options."""
+    """Default CLI value for --projects-config style options.
+
+    Typer evaluates function signature defaults when command modules are
+    imported, so commands using this helper capture the environment and cwd from
+    import time unless they call it explicitly at runtime.
+    """
     resolved = resolve_projects_config_path()
     if resolved.name == PROJECTS_CONFIG_FILENAME and resolved.parent == Path.cwd():
         return PROJECTS_CONFIG_FILENAME

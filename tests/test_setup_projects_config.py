@@ -8,9 +8,11 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from rich.console import Console
 
+from core.config import ENV_GITTAN_HOME, ENV_PROJECTS_CONFIG, resolve_projects_config_path
 from core.global_timelog_setup_lib import _ensure_minimal_projects_config
 from core.setup_projects_config_bootstrap import ensure_projects_config
 
@@ -36,22 +38,23 @@ class SetupProjectsConfigTests(unittest.TestCase):
             prev = Path.cwd()
             try:
                 os.chdir(tmp)
-                cfg = Path(tmp) / "timelog_projects.json"
-                cfg.write_text(
-                    json.dumps(
-                        {
-                            "worklog": "TIMELOG.md",
-                            "projects": [{"name": "keep-me", "match_terms": ["keep"]}],
-                        }
-                    ),
-                    encoding="utf-8",
-                )
-                status, notes, _steps = _ensure_minimal_projects_config(
-                    Console(record=True),
-                    yes=True,
-                    dry_run=False,
-                    bootstrap_root=tmp,
-                )
+                with mock.patch.dict(os.environ, {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: tmp}, clear=False):
+                    cfg = Path(tmp) / "timelog_projects.json"
+                    cfg.write_text(
+                        json.dumps(
+                            {
+                                "worklog": "TIMELOG.md",
+                                "projects": [{"name": "keep-me", "match_terms": ["keep"]}],
+                            }
+                        ),
+                        encoding="utf-8",
+                    )
+                    status, notes, _steps = _ensure_minimal_projects_config(
+                        Console(record=True),
+                        yes=True,
+                        dry_run=False,
+                        bootstrap_root=tmp,
+                    )
                 self.assertEqual(status, "PASS")
                 self.assertIn("discovered=0", notes)
                 payload = json.loads(cfg.read_text(encoding="utf-8"))
@@ -65,14 +68,15 @@ class SetupProjectsConfigTests(unittest.TestCase):
             prev = Path.cwd()
             try:
                 os.chdir(tmp)
-                cfg = Path(tmp) / "timelog_projects.json"
-                cfg.write_text("{not valid json", encoding="utf-8")
-                status, notes, _steps = _ensure_minimal_projects_config(
-                    Console(record=True),
-                    yes=True,
-                    dry_run=False,
-                    bootstrap_root=tmp,
-                )
+                with mock.patch.dict(os.environ, {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: tmp}, clear=False):
+                    cfg = Path(tmp) / "timelog_projects.json"
+                    cfg.write_text("{not valid json", encoding="utf-8")
+                    status, notes, _steps = _ensure_minimal_projects_config(
+                        Console(record=True),
+                        yes=True,
+                        dry_run=False,
+                        bootstrap_root=tmp,
+                    )
                 self.assertEqual(status, "PASS")
                 self.assertIn("fallback profile used", notes)
                 backups = list(Path(tmp).glob("timelog_projects.backup-*.json"))
@@ -87,24 +91,23 @@ class SetupProjectsConfigTests(unittest.TestCase):
             prev = Path.cwd()
             try:
                 os.chdir(tmp)
-                subprocess.run(["git", "init"], check=True, capture_output=True, text=True)
-                subprocess.run(
-                    ["git", "remote", "add", "origin", "https://github.com/example/acme-tools.git"],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                status, notes, _steps = _ensure_minimal_projects_config(
-                    Console(record=True),
-                    yes=True,
-                    dry_run=False,
-                    bootstrap_root=tmp,
-                )
-                self.assertEqual(status, "PASS")
-                self.assertIn("discovered=1", notes)
-                from core.config import resolve_projects_config_path
-
-                payload = json.loads(resolve_projects_config_path().read_text(encoding="utf-8"))
+                with mock.patch.dict(os.environ, {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: tmp}, clear=False):
+                    subprocess.run(["git", "init"], check=True, capture_output=True, text=True)
+                    subprocess.run(
+                        ["git", "remote", "add", "origin", "https://github.com/example/acme-tools.git"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    status, notes, _steps = _ensure_minimal_projects_config(
+                        Console(record=True),
+                        yes=True,
+                        dry_run=False,
+                        bootstrap_root=tmp,
+                    )
+                    self.assertEqual(status, "PASS")
+                    self.assertIn("discovered=1", notes)
+                    payload = json.loads(resolve_projects_config_path().read_text(encoding="utf-8"))
                 project = payload["projects"][0]
                 self.assertEqual(project["name"], "acme-tools")
                 self.assertEqual(project["customer"], "example")

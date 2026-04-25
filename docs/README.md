@@ -54,6 +54,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **How data enters the tool** → `sources/`
 - **Exploratory only, team-lexicon (människa–agent, inkl. TIL)** → `ideas/` (t.ex. [`ideas/team-lexicon.md`](ideas/team-lexicon.md))
 - **Current triage onboarding spike (top-sites + timestamp)** → [`ideas/triage-onboarding-spike-2026-04.md`](ideas/triage-onboarding-spike-2026-04.md)
+- **Future GSD-inspired session intent layer** → [`ideas/session-intent-gsd-inspired.md`](ideas/session-intent-gsd-inspired.md)
 - **No longer current but you still want the file in-repo** → `legacy/`
 
 ## Naming

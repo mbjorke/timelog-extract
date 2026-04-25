@@ -10,7 +10,10 @@ from core.live_terminal.mock_data import load_demo_mock_data
 _STUB_HELP: Final[str] = """\
 Demo sandbox — allowlisted commands:
   gittan doctor
+  gittan setup --dry-run
+  gittan setup
   gittan status
+  gittan report
   gittan report --today --source-summary
   gittan report --today --format json
   gittan report --today --invoice-pdf
@@ -67,6 +70,36 @@ def _source_summary_output() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _setup_dry_run_output() -> str:
+    return """\
+Gittan setup — dry run (demo fixture)
+
+Would check:
+  ✓ Python package and CLI entrypoint
+  ✓ local project config path
+  ✓ local worklog path
+  ✓ optional GitHub environment
+  ✓ global timelog automation prompt
+
+No files were changed.
+Next: run `gittan setup` when you are ready.
+"""
+
+
+def _setup_output() -> str:
+    return """\
+Gittan setup — demo fixture
+
+Environment checks       PASS
+Project config           READY — demo projects loaded
+Global timelog           SKIPPED — demo mode
+Smoke report             PASS — local evidence available
+
+Next: run `gittan doctor`
+Then: run `gittan report --today --source-summary`
+"""
+
+
 def _status_output() -> str:
     return """\
 Gittan Status — today (demo fixture)
@@ -106,8 +139,14 @@ def demo_stub_output(line: str) -> str:
         return "[demo] Screen cleared.\n"
     if key == "gittan doctor":
         return _doctor_output()
+    if key == "gittan setup --dry-run":
+        return _setup_dry_run_output()
+    if key == "gittan setup":
+        return _setup_output()
     if key == "gittan status":
         return _status_output()
+    if key == "gittan report":
+        return "Timeframe prompt: Today selected for demo.\n\n" + _source_summary_output()
     if key == "gittan report --today --source-summary":
         return _source_summary_output()
     if key == "gittan report --today --format json":

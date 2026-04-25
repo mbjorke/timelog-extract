@@ -2,7 +2,10 @@ const ALLOWED_COMMANDS = new Set([
   "help",
   "clear",
   "gittan doctor",
+  "gittan setup",
+  "gittan setup --dry-run",
   "gittan status",
+  "gittan report",
   "gittan report --today --source-summary",
   "gittan report --today --format json",
 ]);
@@ -91,7 +94,10 @@ function demoOutput(line) {
       ok: true,
       body: `Demo sandbox — allowlisted commands:
   gittan doctor
+  gittan setup --dry-run
+  gittan setup
   gittan status
+  gittan report
   gittan report --today --source-summary
   gittan report --today --format json
   help
@@ -121,6 +127,40 @@ GitHub activity        OK — public activity fixture
 Approval workflow      MANUAL — classified time is not invoice truth
 
 Next: run \`gittan report --today --source-summary\`
+`,
+    };
+  }
+
+  if (command === "gittan setup --dry-run") {
+    return {
+      ok: true,
+      body: `Gittan setup — dry run (demo fixture)
+
+Would check:
+  ✓ Python package and CLI entrypoint
+  ✓ local project config path
+  ✓ local worklog path
+  ✓ optional GitHub environment
+  ✓ global timelog automation prompt
+
+No files were changed.
+Next: run \`gittan setup\` when you are ready.
+`,
+    };
+  }
+
+  if (command === "gittan setup") {
+    return {
+      ok: true,
+      body: `Gittan setup — demo fixture
+
+Environment checks       PASS
+Project config           READY — demo projects loaded
+Global timelog           SKIPPED — demo mode
+Smoke report             PASS — local evidence available
+
+Next: run \`gittan doctor\`
+Then: run \`gittan report --today --source-summary\`
 `,
     };
   }
@@ -169,6 +209,14 @@ Approved invoice time:    0.0h (human review required)
 Gittan organizes evidence; it does not approve invoice truth.
 Optional: run \`gittan report --today --format json\`
 `,
+    };
+  }
+
+  if (command === "gittan report") {
+    const result = demoOutput("gittan report --today --source-summary");
+    return {
+      ok: true,
+      body: `Timeframe prompt: Today selected for demo.\n\n${result.body}`,
     };
   }
 

@@ -49,6 +49,22 @@ class LiveTerminalMockDataTests(unittest.TestCase):
         self.assertIn("Approved invoice time:", out)
         self.assertIn("Invoice approval is still manual", out)
 
+    def test_stub_setup_outputs_are_safe_and_demo_ready(self):
+        dry_run = demo_stub_output("gittan setup --dry-run")
+        self.assertIn("Gittan setup — dry run (demo fixture)", dry_run)
+        self.assertIn("No files were changed.", dry_run)
+
+        setup = demo_stub_output("gittan setup")
+        self.assertIn("Gittan setup — demo fixture", setup)
+        self.assertIn("Global timelog           SKIPPED — demo mode", setup)
+        self.assertIn("Then: run `gittan report --today --source-summary`", setup)
+
+    def test_stub_bare_report_selects_today_for_demo(self):
+        out = demo_stub_output("gittan report")
+        self.assertIn("Timeframe prompt: Today selected for demo.", out)
+        self.assertIn("Gittan report — today (demo fixture)", out)
+        self.assertIn("Gittan organizes evidence", out)
+
     def test_stub_json_matches_fixture_payload(self):
         fixture = load_demo_mock_data()
         out = demo_stub_output("gittan report --today --format json")

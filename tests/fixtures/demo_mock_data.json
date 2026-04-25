@@ -1,19 +1,22 @@
 {
   "version": 1,
   "doctor": {
-    "title": "Gittan Health Check (demo)",
+    "title": "Gittan doctor — demo environment",
     "rows": [
-      ["Project Config", "OK"],
-      ["Worklog (Local)", "OK"],
-      ["GitHub Copilot CLI", "NA (demo)"],
-      ["Lovable (desktop)", "OK"]
+      ["Project config", "OK — demo projects loaded"],
+      ["Local worklog", "OK — TIMELOG.md fixture"],
+      ["Cursor / IDE logs", "OK — local demo events"],
+      ["Browser history", "OK — local Chrome fixture"],
+      ["GitHub activity", "OK — public activity fixture"],
+      ["Approval workflow", "MANUAL — classified time is not invoice truth"]
     ]
   },
   "source_summary": {
     "rows": [
-      ["Cursor", 12],
+      ["Cursor / IDE", 12],
       ["Chrome", 9],
-      ["Lovable (desktop)", 7],
+      ["GitHub activity", 4],
+      ["AI agent logs", 3],
       ["TIMELOG.md", 3]
     ],
     "total": 31
@@ -25,6 +28,28 @@
     "totals": {
       "event_count": 31,
       "hours_estimated": 2.1
-    }
+    },
+    "truth_model": {
+      "observed_time_hours": 2.1,
+      "classified_candidate_hours": 1.8,
+      "approved_invoice_hours": 0.0,
+      "approval_state": "human_review_required"
+    },
+    "projects": [
+      {
+        "name": "Gittan",
+        "candidate_hours": 1.2,
+        "decision_class": "work",
+        "confidence": "high",
+        "evidence": ["cursor log", "github.com", "worklog note"]
+      },
+      {
+        "name": "Client A",
+        "candidate_hours": 0.6,
+        "decision_class": "maybe",
+        "confidence": "needs_review",
+        "evidence": ["browser domain", "GitHub PR review"]
+      }
+    ]
   }
 }

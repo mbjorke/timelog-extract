@@ -1,6 +1,6 @@
 # Stage demo — speaker notes (Gittan)
 
-**Audience:** Large room · **Tone:** Same as root [`README.md`](../../README.md) — clear, confident, not salesy.
+**Audience:** Large room · **Tone:** Same as root `[README.md](../../README.md)` — clear, confident, not salesy.
 
 ## Opening (45-60 seconds)
 
@@ -45,20 +45,20 @@ Not perfect truth, but accountable evidence.
 
 If you want to try it:  
 **gittan.sh**  
-For now, we also have a temporary demo page at **https://gittan-sales.lovable.app/**.
+For now, we also have a temporary demo page at **[https://gittan-sales.lovable.app/](https://gittan-sales.lovable.app/)**.
 
 ## Demo flow (3-5 minutes)
 
 1. **Frame the pain**
-   - "Most tools show monolithic blocks like 'Terminal 4h'."
-   - "That is not enough when someone asks what happened and why the hours are real."
+  - "Most tools show monolithic blocks like 'Terminal 4h'."
+  - "That is not enough when someone asks what happened and why the hours are real."
 2. **Show the workflow**
-   - Run install/version check.
-   - Mention local-first posture and optional sources.
-   - Show a report command and source summary.
+  - Run install/version check.
+  - Mention local-first posture and optional sources.
+  - Show a report command and source summary.
 3. **Close with outcome**
-   - "Less memory reconstruction, more auditable reporting."
-   - "Not perfect truth, but accountable evidence."
+  - "Less memory reconstruction, more auditable reporting."
+  - "Not perfect truth, but accountable evidence."
 
 ## One-liner installs (show on slide or terminal)
 
@@ -72,7 +72,7 @@ Optional (if your Homebrew tap is live):
 brew tap <your-github>/gittan && brew install gittan && gittan -V
 ```
 
-Details: [`docs/runbooks/homebrew-tap.md`](../runbooks/homebrew-tap.md).
+Details: `[docs/runbooks/homebrew-tap.md](../runbooks/homebrew-tap.md)`.
 
 ## Live demo commands (safe defaults)
 

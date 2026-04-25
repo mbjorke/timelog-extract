@@ -23,9 +23,19 @@ def _doctor_output() -> str:
     doctor = fixture.get("doctor", {})
     title = str(doctor.get("title", "Gittan Health Check (demo)"))
     rows = doctor.get("rows", [])
-    lines = [title]
+    lines = [
+        title,
+        "Local-first checks for a safe demo path.",
+        "",
+    ]
     for name, status in rows:
-        lines.append(f"{name:<20} {status}")
+        lines.append(f"{name:<22} {status}")
+    lines.extend(
+        [
+            "",
+            "Next: run `gittan report --today --source-summary`",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -34,10 +44,25 @@ def _source_summary_output() -> str:
     source_summary = fixture.get("source_summary", {})
     rows = source_summary.get("rows", [])
     total = int(source_summary.get("total", 0))
-    lines = ["Source summary (demo fixture)"]
+    lines = [
+        "Gittan report — today (demo fixture)",
+        "Source summary",
+        "",
+    ]
     for source, count in rows:
-        lines.append(f"{source:<20} {int(count)}")
+        lines.append(f"{source:<22} {int(count)} events")
     lines.append(f"Total: {total}")
+    lines.extend(
+        [
+            "",
+            "Observed time:             2.1h",
+            "Classified candidates:    1.8h",
+            "Approved invoice time:    0.0h (human review required)",
+            "",
+            "Gittan organizes evidence; it does not approve invoice truth.",
+            "Optional: run `gittan report --today --format json`",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -46,7 +71,7 @@ def _json_output() -> str:
     payload = fixture.get("truth_payload", {})
     import json
 
-    return json.dumps(payload, ensure_ascii=False) + "\n"
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 
 def demo_stub_output(line: str) -> str:

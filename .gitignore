@@ -21,6 +21,7 @@ TIMELOG.md
 private/
 .claude/
 .tmp/
+.wrangler/
 
 # Generated reports/artifacts
 output/

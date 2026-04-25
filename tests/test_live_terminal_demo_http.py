@@ -69,7 +69,8 @@ class LiveTerminalDemoHttpTests(unittest.TestCase):
             with urllib.request.urlopen(req, timeout=2) as r:  # noqa: S310
                 self.assertEqual(r.status, 200)
                 text = r.read().decode("utf-8")
-                self.assertIn("Gittan Health Check", text)
+                self.assertIn("Gittan doctor — demo environment", text)
+                self.assertIn("Next: run `gittan report --today --source-summary`", text)
         finally:
             server.shutdown()
             server.server_close()

@@ -1,0 +1,10 @@
+name = "gittan-demo-api"
+main = "demo-worker.js"
+compatibility_date = "2026-04-25"
+
+# Account safety:
+# Do not add account_id here. Deploy only after `npx wrangler whoami`
+# confirms the maintainer's private Cloudflare account for gittan.sh.
+#
+# Configure the api.gittan.sh route/custom domain in the Cloudflare dashboard
+# or with Wrangler after confirming the active account is not AX Finans.

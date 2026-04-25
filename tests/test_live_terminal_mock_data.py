@@ -20,18 +20,32 @@ class LiveTerminalMockDataTests(unittest.TestCase):
     def test_stub_source_summary_uses_fixture_counts(self):
         fixture = load_demo_mock_data()
         out = demo_stub_output("gittan report --today --source-summary")
-        self.assertIn("Source summary (demo fixture)", out)
+        self.assertIn("Gittan report — today (demo fixture)", out)
+        self.assertIn("Source summary", out)
         lines = out.splitlines()
         for source, count in fixture["source_summary"]["rows"]:
-            expected_line = f"{source:<20} {int(count)}"
+            expected_line = f"{source:<22} {int(count)} events"
             self.assertIn(expected_line, lines)
         self.assertIn(f"Total: {fixture['source_summary']['total']}", out)
+        self.assertIn("Observed time:", out)
+        self.assertIn("Classified candidates:", out)
+        self.assertIn("Approved invoice time:", out)
+        self.assertIn("Gittan organizes evidence", out)
+
+    def test_stub_doctor_output_is_demo_ready(self):
+        out = demo_stub_output("gittan doctor")
+        self.assertIn("Gittan doctor — demo environment", out)
+        self.assertIn("Project config", out)
+        self.assertIn("Approval workflow", out)
+        self.assertIn("classified time is not invoice truth", out)
+        self.assertIn("Next: run `gittan report --today --source-summary`", out)
 
     def test_stub_json_matches_fixture_payload(self):
         fixture = load_demo_mock_data()
         out = demo_stub_output("gittan report --today --format json")
         payload = json.loads(out)
         self.assertEqual(payload, fixture["truth_payload"])
+        self.assertEqual(payload["truth_model"]["approval_state"], "human_review_required")
 
 
 if __name__ == "__main__":

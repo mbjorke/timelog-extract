@@ -14,14 +14,12 @@ from core.cli_triage import (
     _build_site_time_hints,
     _build_choices,
     _build_question,
-    _prompt_manual_domain_mapping,
     _suggestion_to_plan_dict,
     build_triage_plan_dict,
     resolve_target_project_name,
     select_triage_days,
 )
 from scripts.calibration.gap_day_triage import ProjectSuggestion
-from scripts.calibration.gap_day_triage import DayTopSite
 
 
 class CliTriageHelpersTests(unittest.TestCase):
@@ -258,32 +256,6 @@ class TriageJsonExtensionTests(unittest.TestCase):
         suggestions = [_make_suggestion("Dev")]
         choices = _build_choices(suggestions, {"Dev": ["backend"]})
         self.assertIn("BACKEND", choices[0]["label"])
-
-    @patch("core.cli_triage.questionary.checkbox")
-    @patch("core.cli_triage.questionary.select")
-    def test_prompt_manual_domain_mapping_returns_selection(self, select_mock, checkbox_mock):
-        select_mock.return_value.ask.return_value = "Project A"
-        checkbox_mock.return_value.ask.return_value = ["github.com"]
-        result = _prompt_manual_domain_mapping(
-            day="2026-04-20",
-            all_names=["Project A", "Project B"],
-            top_sites=[DayTopSite(domain="github.com", visits=5, share=0.5, sample_title="repo")],
-            default_project=None,
-        )
-        self.assertEqual(result, ("Project A", ["github.com"]))
-
-    @patch("core.cli_triage.questionary.checkbox")
-    @patch("core.cli_triage.questionary.select")
-    def test_prompt_manual_domain_mapping_returns_none_on_skip(self, select_mock, checkbox_mock):
-        select_mock.return_value.ask.return_value = "Skip day"
-        result = _prompt_manual_domain_mapping(
-            day="2026-04-20",
-            all_names=["Project A"],
-            top_sites=[DayTopSite(domain="github.com", visits=5, share=0.5, sample_title="repo")],
-            default_project=None,
-        )
-        self.assertIsNone(result)
-        self.assertFalse(checkbox_mock.called)
 
 
 if __name__ == "__main__":

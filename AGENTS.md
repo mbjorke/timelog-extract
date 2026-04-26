@@ -15,15 +15,22 @@ Use this compact execution order before deep exploration:
    - run targeted test(s)
    - after **CLI-facing** edits, also run `bash scripts/cli_impact_smoke.sh` (see `docs/decisions/agent-inline-cli-ux-validation.md`)
    - then `bash scripts/run_autotests.sh` (repo root; same as CI)
-5. Prefer non-destructive config handling:
+5. For feature flows that are demoed or user-walkthrough critical, run the
+   **asciinema expected-outcome loop** before push:
+   - define expected observable outcome (what must be visible in terminal output)
+   - `asciinema rec` a clean run (prefer isolated `DEMO_HOME`)
+   - replay and compare output to expected result
+   - fix mismatches and rerun until the expected result is clearly visible
+   - reference: `docs/runbooks/asciinema-expected-outcome-loop.md`
+6. Prefer non-destructive config handling:
    - never move/delete `timelog_projects.json`
    - use explicit alternate paths (`--projects-config`) for experiments
    - for **gap / domain triage automation**, use `gittan triage --json` (read-only plan) before `--yes`; contract in **`docs/runbooks/gittan-triage-agents.md`**. For triage code reviews: in **Cursor** use **`/gittan-triage-review`** (or read **`.cursor/commands/gittan-triage-review.md`** — same checklist in any editor).
-6. Keep commits scoped by intent:
+7. Keep commits scoped by intent:
    - feature code
    - docs/reorg
    - follow-up cleanup
-7. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): **`bash scripts/run_autotests.sh`** from **repository root** — see [`CONTRIBUTING.md`](CONTRIBUTING.md). (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
+8. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): **`bash scripts/run_autotests.sh`** from **repository root** — see [`CONTRIBUTING.md`](CONTRIBUTING.md). (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
 
 If this section conflicts with any policy below, the detailed policy below wins.
 

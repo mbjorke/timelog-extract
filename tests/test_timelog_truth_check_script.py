@@ -27,7 +27,7 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
         self.assertIn("determinism_replay_report.json", completed.stdout)
 
     def test_blocks_open_window_without_allow_flag(self):
-        today = dt.datetime.now(dt.UTC).date().isoformat()
+        today = dt.datetime.now(dt.timezone.utc).date().isoformat()
         completed = subprocess.run(
             [
                 "bash",
@@ -82,7 +82,7 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
         self.assertIn("same calendar year", completed.stderr)
 
     def test_open_window_with_allow_never_reports_go(self):
-        today = dt.datetime.now(dt.UTC).date().isoformat()
+        today = dt.datetime.now(dt.timezone.utc).date().isoformat()
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp) / "truth-check-open-window"
             completed = subprocess.run(

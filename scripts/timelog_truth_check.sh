@@ -25,6 +25,7 @@ Artifacts written:
   - benchmark_manifest.json
   - benchmark_metrics.json
   - determinism_replay_report.json
+  - README.md
 EOF
 }
 

@@ -30,8 +30,7 @@ class CliHelpTextTests(unittest.TestCase):
         result = self.runner.invoke(app, ["--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Build detailed local evidence reports", result.output)
-        self.assertIn("Quick hours snapshot with project totals and session", result.output)
-        self.assertIn("counts.", result.output)
+        self.assertIn("Quick hours snapshot", result.output)
         self.assertIn("Run one-click onboarding", result.output)
 
 

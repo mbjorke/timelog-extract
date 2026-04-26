@@ -341,6 +341,7 @@ def status(
     from rich.table import Table
 
     from outputs.terminal_theme import (
+        CLR_GREEN,
         CLR_TEXT_SOFT,
         CLR_VALUE_ORANGE,
         STYLE_BORDER,
@@ -397,10 +398,10 @@ def status(
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
 
         if not report.included_events:
-            console.print("[yellow]No activity tracked for this period.[/yellow]")
+            console.print(f"[{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
             console.print(
-                "[dim]Tip: run `gittan doctor` to verify sources, then "
-                "`gittan report --today --source-summary` to inspect evidence collection.[/dim]"
+                f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
+                f"`gittan report --today --source-summary` to inspect collection.[/{STYLE_MUTED}]"
             )
             return
 
@@ -480,15 +481,16 @@ def status(
         ).lower()
         if resolved_profile == "ultra-strict":
             console.print(
-                "[dim]Note: ultra-strict removes extra diagnostic/repository churn noise. "
-                "Total hours may decrease and session boundaries/primary project attribution can shift.[/dim]"
+                f"[{STYLE_MUTED}]Note: ultra-strict removes extra diagnostic/repository churn noise. "
+                f"Totals and primary-project attribution may shift.[/{STYLE_MUTED}]"
             )
         if (not additive) and (shown_project_hours > total_h + 0.01 or shown_project_sessions > total_sessions):
             console.print(
-                f"[dim]Note: project rows can overlap attribution. "
+                f"[{STYLE_MUTED}]Note: project rows can overlap attribution. "
                 f"Shown rows sum to {shown_project_hours:.1f}h/{shown_project_sessions} sessions; "
-                f"Total is unique timeline time: {total_h:.1f}h/{total_sessions} sessions.[/dim]"
+                f"Total is unique timeline time: {total_h:.1f}h/{total_sessions} sessions.[/{STYLE_MUTED}]"
             )
+        console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
 
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")

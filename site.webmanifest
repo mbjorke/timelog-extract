@@ -1,0 +1,14 @@
+{
+  "name": "Gittan",
+  "short_name": "Gittan",
+  "description": "Local-first time logging for AI-era teams",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1119",
+  "theme_color": "#0c1119",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

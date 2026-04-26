@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import Any, Dict, List, Sequence, Optional
+from rich import box
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
@@ -18,6 +19,7 @@ from outputs.terminal_theme import (
     CLR_TEXT_SOFT,
     CLR_VALUE_ORANGE,
     CLR_MUTED,
+    STYLE_BORDER,
 )
 
 console = Console()
@@ -32,7 +34,7 @@ STYLE_POSITIVE = CLR_GREEN
 
 def _build_dynamic_legend(source_order: Sequence[str]) -> Text:
     legend = Text()
-    legend.append("Legend: ", style=f"bold {STYLE_LABEL}")
+    legend.append("Evidence legend: ", style=f"bold {STYLE_LABEL}")
     for idx, source in enumerate(source_order):
         legend.append(source, style=f"italic {get_source_color(source)}")
         if idx < len(source_order) - 1:
@@ -92,17 +94,28 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
     for event in events:
         counts[event["source"]] += 1
 
-    table = Table.grid(padding=(0, 2))
-    table.add_column(style=STYLE_BODY)
-    table.add_column(justify="right", style=STYLE_BODY)
-
-    console.print(f"[{STYLE_HEADING}]Source summary[/{STYLE_HEADING}]")
+    table = Table(
+        title="Evidence source summary",
+        caption="Source summary: observed local traces before project review.",
+        box=box.ROUNDED,
+    )
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Source", style=STYLE_BODY)
+    table.add_column("Events", justify="right", style=CLR_VALUE_ORANGE)
 
     for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
         table.add_row(src, str(counts[src]))
+    table.add_section()
+    table.add_row(
+        f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]",
+        f"[bold {CLR_VALUE_ORANGE}]{sum(counts.values())}[/bold {CLR_VALUE_ORANGE}]",
+    )
 
     console.print(table)
-    console.print(f"[{STYLE_LABEL}]Total:[/{STYLE_LABEL}] [{STYLE_ACCENT}]{sum(counts.values())}[/{STYLE_ACCENT}]")
+    console.print(
+        f"[{STYLE_META}]Review these counts before trusting attribution or invoice totals.[/{STYLE_META}]"
+    )
 
 
 def print_project_source_mix(
@@ -235,13 +248,16 @@ def print_report(
             console.print(f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {delta:+.1f}h)[/{STYLE_META}]")
         console.print()
 
-    # Final Summary Dashboard
-    console.print(f"[{STYLE_HEADING}]Final summary[/{STYLE_HEADING}]")
+    # Review summary dashboard
+    console.print(f"[{STYLE_HEADING}]Review summary[/{STYLE_HEADING}]")
     summary_table = Table.grid(padding=(0, 2))
     summary_table.add_column(style=f"bold {STYLE_BODY}", no_wrap=True)
     summary_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
 
-    summary_table.add_row("Total Estimated Hours (Raw)", f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]")
+    summary_table.add_row(
+        "Observed timeline hours",
+        f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
+    )
 
     if args.billable_unit and args.billable_unit > 0:
         grand_billable = sum(
@@ -298,8 +314,8 @@ def print_report(
         additive_project_hours = dict(per_project_hours)
         additive_project_days = dict(per_project_days)
 
-    # Customer/Project Breakdown
-    heading = "Hours by customer & project"
+    # Customer/project review breakdown
+    heading = "Project-hour review"
     if additive_summary:
         heading += " (additive: primary project per session)"
     console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
@@ -381,4 +397,7 @@ def print_report(
     # are automatically visible without manual output updates.
     legend = _build_dynamic_legend(source_order)
     console.print(legend)
+    console.print(
+        f"[{STYLE_META}]Nothing in this report is billable until explicitly approved.[/{STYLE_META}]"
+    )
     console.print()

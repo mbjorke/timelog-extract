@@ -1,0 +1,16 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Wings -->
+  <ellipse cx="9" cy="11" rx="5" ry="3.5" fill="#bedafe" opacity="0.9"/>
+  <ellipse cx="23" cy="11" rx="5" ry="3.5" fill="#bedafe" opacity="0.9"/>
+  <!-- Body -->
+  <ellipse cx="16" cy="18" rx="9" ry="8" fill="#f5cc47"/>
+  <!-- Depth shading -->
+  <path d="M16 26c4.5 0 8.5-3 9-7-1 4-5 6-9 6-2 0-4-.6-5.5-1.7C12 25 14 26 16 26z" fill="#e1a52d"/>
+  <!-- Stripes -->
+  <rect x="9" y="14.5" width="14" height="2.2" rx="1" fill="#212936"/>
+  <rect x="9" y="19.5" width="14" height="2.2" rx="1" fill="#212936"/>
+  <!-- Eye -->
+  <circle cx="20" cy="16.5" r="1.1" fill="#212936"/>
+  <!-- Antennae -->
+  <path d="M13 11.5l-1.5-3M19 11.5l1.5-3" stroke="#212936" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

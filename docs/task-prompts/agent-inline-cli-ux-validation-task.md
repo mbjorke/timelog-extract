@@ -43,15 +43,15 @@ This task is priority #1.
 ## Required behavior (v1)
 
 1. Detect CLI-impacting edits (commands, flags, command output copy, onboarding
-   next steps, report formatting, diagnostics output).
+  next steps, report formatting, diagnostics output).
 2. Run this inline smoke loop after meaningful edits:
-   - `python3 -m timelog_extract -V`
-   - `python3 -m timelog_extract report --today --source-summary`
-   - plus at least one command specific to the edited feature path.
+  - `python3 -m timelog_extract -V`
+  - `python3 -m timelog_extract report --today --source-summary`
+  - plus at least one command specific to the edited feature path.
 3. Report a short UX verdict in agent output:
-   - expected behavior
-   - observed behavior
-   - mismatch/blocker (if any)
+  - expected behavior
+  - observed behavior
+  - mismatch/blocker (if any)
 4. If a smoke command fails, stop and surface the blocker clearly (no guessing).
 
 ## Safety and guardrails
@@ -64,7 +64,7 @@ This task is priority #1.
 ## Implementation suggestions
 
 - Add a small helper module for inline smoke orchestration, e.g.
-  `core/cli_inline_smoke.py`, or extend existing CLI helper surfaces if cleaner.
+`core/cli_inline_smoke.py`, or extend existing CLI helper surfaces if cleaner.
 - Keep command execution wrapper pure/testable where possible.
 - Add a compact result model (`ok`, `command`, `summary`, `error`).
 

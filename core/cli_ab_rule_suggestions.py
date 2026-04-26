@@ -243,7 +243,13 @@ class SuggestionBundle(str, Enum):
 
 @app.command("suggest-rules")
 def suggest_rules(
-    project: Annotated[str, typer.Option("--project", help="Target project to attach suggested rules to.")],
+    project: Annotated[
+        Optional[str],
+        typer.Option(
+            "--project",
+            help="Target project to attach suggested rules to. If omitted, you will be prompted.",
+        ),
+    ] = None,
     date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
     date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
     today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
@@ -254,7 +260,7 @@ def suggest_rules(
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
 ):
-    """Propose A/B match rules from uncategorized clusters (preview + state file for apply)."""
+    """Suggest A/B mapping rules with preview; prompts for project if omitted."""
     from rich.console import Console
     from core.report_service import run_timelog_report
 
@@ -291,9 +297,14 @@ def suggest_rules(
     config_path = Path(projects_config)
     _load_projects_payload(console, config_path)
 
-    pname = project.strip()
+    pname = (project or "").strip()
     if not pname:
-        console.print("[red]--project must be a non-empty name.[/red]")
+        pname = (questionary.text("Target project for suggestions:").ask() or "").strip()
+    if not pname:
+        console.print(
+            "[red]Project name is required.[/red] "
+            "Use [bold]--project <name>[/bold] or provide a name when prompted."
+        )
         raise typer.Exit(code=1)
 
     opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, pname)
@@ -326,7 +337,7 @@ def apply_suggestions(
         typer.Option(help="Override path to suggestion state JSON."),
     ] = None,
 ):
-    """Apply a saved A/B suggestion bundle (see `gittan suggest-rules`)."""
+    """Apply a saved A/B suggestion bundle after explicit confirmation."""
     from rich.console import Console
 
     console = Console()

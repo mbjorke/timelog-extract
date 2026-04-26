@@ -63,7 +63,7 @@ def doctor(
     ] = "auto",
 ):
     """
-    Run a health check of local integrations and permissions and print a diagnostic table.
+    Check source access and local integration health, then print a diagnostic table.
     
     Parameters:
         worklog (Optional[str]): Path to TIMELOG.md that overrides the configured/workspace worklog.

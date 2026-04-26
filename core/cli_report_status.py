@@ -176,7 +176,7 @@ def report(
         ),
     ] = None,
 ):
-    """Detailed activity scanning and reporting.
+    """Build detailed local evidence reports for a selected timeframe.
 
     Common use cases:
     - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
@@ -324,7 +324,7 @@ def status(
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
-    """Quick high-level hours summary.
+    """Quick hours snapshot with project totals and session counts.
 
     Common use cases:
     - Daily check (recommended default): `gittan status --today --additive --noise-profile strict --lovable-noise-profile balanced`
@@ -398,6 +398,10 @@ def status(
 
         if not report.included_events:
             console.print("[yellow]No activity tracked for this period.[/yellow]")
+            console.print(
+                "[dim]Tip: run `gittan doctor` to verify sources, then "
+                "`gittan report --today --source-summary` to inspect evidence collection.[/dim]"
+            )
             return
 
         title_suffix = " — additive (primary project per session)" if additive else ""

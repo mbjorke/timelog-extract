@@ -14,6 +14,8 @@ from core.cli_triage import (
     _build_site_time_hints,
     _build_choices,
     _build_question,
+    _filter_triage_noise_rows,
+    _is_triage_noise_row,
     _suggestion_to_plan_dict,
     build_triage_plan_dict,
     resolve_target_project_name,
@@ -23,6 +25,24 @@ from scripts.calibration.gap_day_triage import ProjectSuggestion
 
 
 class CliTriageHelpersTests(unittest.TestCase):
+    def test_is_triage_noise_row_matches_known_cursor_noise(self):
+        self.assertTrue(_is_triage_noise_row("https://cursor.com/changelog", "Cursor release notes"))
+        self.assertTrue(
+            _is_triage_noise_row("https://example.com", "Canvas SDK mirror failed in background")
+        )
+        self.assertFalse(_is_triage_noise_row("https://github.com/acme/repo", "PR review"))
+
+    def test_filter_triage_noise_rows_drops_noise_rows(self):
+        rows = [
+            (1, "https://cursor.sh/docs", "Cursor Docs"),
+            (2, "https://example.com", "Canvas SDK mirror failed"),
+            (3, "https://github.com/acme/repo", "Implement feature"),
+        ]
+        filtered, dropped = _filter_triage_noise_rows(rows)
+        self.assertEqual(dropped, 2)
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0][1], "https://github.com/acme/repo")
+
     def test_build_site_time_hints_adds_first_last_and_sample_window(self):
         rows = [
             (132_537_602_000_000, "https://github.com/mbjorke/timelog-extract", "A"),
@@ -144,6 +164,58 @@ class CliTriageHelpersTests(unittest.TestCase):
         self.assertIn("sample_window_local", first)
         self.assertIn("start", first["sample_window_local"])
         self.assertIn("end", first["sample_window_local"])
+        self.assertEqual(plan["days"][0]["noise_rows_filtered"], 0)
+
+    @patch("core.report_service.run_timelog_report")
+    def test_build_triage_plan_filters_noise_rows_before_scoring(self, mock_run):
+        mock_run.return_value = SimpleNamespace(
+            dt_from=None,
+            dt_to=None,
+            args=SimpleNamespace(min_session=15, min_session_passive=5),
+            overall_days={},
+            project_reports={},
+            screen_time_days={},
+        )
+        raw = (
+            '{"version": 1, "projects": [{"name": "Only", "canonical_project": "Only", '
+            '"tracked_urls": ["github.com"], "match_terms": []}]}'
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp.write(raw)
+            path = tmp.name
+        gap_payload = {
+            "days": [
+                {
+                    "day": "2026-04-21",
+                    "estimated_hours": 2.0,
+                    "screen_time_hours": 2.5,
+                    "unexplained_screen_time_hours": 1.2,
+                }
+            ]
+        }
+        chrome_rows = [
+            (132_537_602_000_000, "https://cursor.sh/docs", "Cursor Docs"),
+            (132_537_603_000_000, "https://example.com", "Canvas SDK mirror failed"),
+            (132_537_605_000_000, "https://github.com/mbjorke/timelog-extract/pulls", "pr"),
+        ]
+        try:
+            with patch("core.cli_triage.analyze_screen_time_gaps", return_value=gap_payload), patch(
+                "core.cli_triage.fetch_chrome_rows_for_day", return_value=chrome_rows
+            ):
+                plan = build_triage_plan_dict(
+                    date_from=None,
+                    date_to=None,
+                    projects_config=path,
+                    max_days=3,
+                    max_sites=5,
+                    scoring_mode="site-first",
+                )
+        finally:
+            Path(path).unlink(missing_ok=True)
+        top_sites = plan["days"][0]["top_sites"]
+        self.assertEqual(len(top_sites), 1)
+        self.assertEqual(top_sites[0]["domain"], "github.com")
+        self.assertEqual(plan["days"][0]["noise_rows_filtered"], 2)
 
     def test_triage_json_and_yes_are_mutually_exclusive(self):
         repo = Path(__file__).resolve().parent.parent

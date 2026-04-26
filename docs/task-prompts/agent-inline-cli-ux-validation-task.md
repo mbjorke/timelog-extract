@@ -10,7 +10,7 @@ smoke checks, not only at PR end.
 - spec_status: `approved`
 - implementation_status: `not built`
 - created_at: `2026-04-15`
-- last_updated_at: `2026-04-15`
+- last_updated_at: `2026-04-26`
 - implementation.pr: `pending`
 - implementation.branch: `pending`
 - implementation.commits: `[]`
@@ -19,6 +19,7 @@ smoke checks, not only at PR end.
 - changelog:
   - `2026-04-15: Initial task prompt created.`
   - `2026-04-15: Added mandatory traceability metadata and branch-flow defaults.`
+  - `2026-04-26: Added CLI impact smoke gate and updated required behavior formatting.`
 
 ## Goal
 
@@ -47,6 +48,7 @@ This task is priority #1.
 2. Run this inline smoke loop after meaningful edits:
    - `python3 -m timelog_extract -V`
    - `python3 -m timelog_extract report --today --source-summary`
+   - `bash scripts/cli_impact_smoke.sh`
    - plus at least one command specific to the edited feature path.
 3. Report a short UX verdict in agent output:
    - expected behavior

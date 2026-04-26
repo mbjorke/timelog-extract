@@ -46,7 +46,7 @@ def review(
     max_clusters: Annotated[int, typer.Option(help="Max clusters to review")] = 20,
     samples_per_cluster: Annotated[int, typer.Option(help="Sample events shown per cluster")] = 4,
 ):
-    """Guided review loop for uncategorized activity."""
+    """Advanced manual cleanup for uncategorized activity clusters."""
     from rich.console import Console
     from core.report_service import run_timelog_report
 

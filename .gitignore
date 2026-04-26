@@ -9,6 +9,8 @@ build/
 # Local project config (copy from timelog_projects.example.json)
 timelog_projects.json
 timelog_projects.json.*.bak
+timelog_projects.home-backup-*.json
+timelog_projects.repo-backup-*.json
 
 # Local logs
 .remote.env
@@ -27,6 +29,7 @@ private/
 output/
 # CLI default report dir (`gittan report --json-file out/...`, reconciliation scripts, CI uploads under out/cli-experiments/)
 out/
+*.cast
 
 # Extension dependencies
 cursor-extension/node_modules/

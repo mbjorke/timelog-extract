@@ -144,6 +144,31 @@ scale with output.
 Tests, runbooks, review gates, and explicit product language are not overhead in
 that environment. They are how the work stays understandable.
 
+## The demo became part of the product loop
+
+One practical shift changed how I build: I now treat demos as test artifacts, not
+just presentations.
+
+I use `asciinema` to record repeatable CLI runs end-to-end, replay them, and
+inspect where the story breaks: confusing prompts, noisy output, weak "before vs
+after" evidence, or missing trust signals.
+
+That sounds small, but it changed behavior. Instead of saying "this should work,"
+I can point to a reproducible cast and ask: did this actually match the expected
+result?
+
+The loop is increasingly self-evaluating:
+
+1. define expected demo outcome,
+2. run/record,
+3. compare output to expectation,
+4. adjust prompts, defaults, or rules,
+5. rerun until evidence is clear.
+
+In other words, Gittan is not only classifying work time. It is starting to learn
+how to evaluate its own UX against an explicit bar before I claim a flow is
+"ready."
+
 ## What the system actually does
 
 Gittan is a local-first Python CLI with a layered pipeline:

@@ -48,6 +48,99 @@ def _project_bootstrap_next_steps(summary: RepoBootstrapSummary) -> list[str]:
     return steps
 
 
+def _default_seed_match_terms(project_name: str) -> list[str]:
+    return [project_name.strip()] if project_name.strip() else []
+
+
+def _collect_customer_project_seeds(*, yes: bool) -> list[tuple[str, str]]:
+    """Collect up to three project/customer pairs for setup bootstrap."""
+    if yes:
+        return []
+    should_collect = questionary.confirm(
+        "Name your top projects/customers now for faster first classification?",
+        default=True,
+    ).ask()
+    if not should_collect:
+        return []
+
+    seeds: list[tuple[str, str]] = []
+    for index in range(1, 4):
+        project_name = (
+            questionary.text(
+                f"Project {index} name (leave blank to stop):",
+                default="",
+            ).ask()
+            or ""
+        ).strip()
+        if not project_name:
+            break
+        customer_name = (
+            questionary.text(
+                f"Customer for {project_name}:",
+                default=project_name,
+            ).ask()
+            or project_name
+        ).strip()
+        seeds.append((project_name, customer_name or project_name))
+    return seeds
+
+
+def _merge_customer_project_seeds(payload: dict, seeds: list[tuple[str, str]]) -> tuple[int, int]:
+    """Merge seeds into existing projects safely (no destructive overwrite)."""
+    if not seeds:
+        return 0, 0
+
+    projects = payload.setdefault("projects", [])
+    if not isinstance(projects, list):
+        raise ValueError("payload.projects must be a list")
+
+    added = 0
+    updated = 0
+    for project_name, customer_name in seeds:
+        name_clean = project_name.strip()
+        customer_clean = customer_name.strip() or name_clean
+        if not name_clean:
+            continue
+
+        target: dict | None = None
+        for project in projects:
+            if not isinstance(project, dict):
+                continue
+            if str(project.get("name", "")).strip().lower() == name_clean.lower():
+                target = project
+                break
+
+        if target is None:
+            projects.append(
+                {
+                    "name": name_clean,
+                    "customer": customer_clean,
+                    "match_terms": _default_seed_match_terms(name_clean),
+                    "tracked_urls": [],
+                    "email": "",
+                    "invoice_title": "",
+                    "invoice_description": "",
+                    "enabled": True,
+                }
+            )
+            added += 1
+            continue
+
+        changed = False
+        existing_customer = str(target.get("customer", "")).strip()
+        if not existing_customer:
+            target["customer"] = customer_clean
+            changed = True
+        existing_terms = [str(term).strip() for term in target.get("match_terms", []) if str(term).strip()]
+        if name_clean.lower() not in {term.lower() for term in existing_terms}:
+            existing_terms.append(name_clean)
+            target["match_terms"] = existing_terms
+            changed = True
+        if changed:
+            updated += 1
+    return added, updated
+
+
 def ensure_projects_config(
     *,
     console,
@@ -135,19 +228,35 @@ def ensure_projects_config(
         ]
         summary = RepoBootstrapSummary(root=root_path, discovered=0, added=0, updated=0, skipped=0, fallback_used=True)
 
+    manual_seeds = _collect_customer_project_seeds(yes=yes)
+    seed_added, seed_updated = _merge_customer_project_seeds(merged_payload, manual_seeds)
+    seed_note = ""
+    if manual_seeds:
+        seed_note = f" | customer_seeds={len(manual_seeds)} (added={seed_added}, updated={seed_updated})"
+
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would write merged project config to {config_path}")
+        if manual_seeds:
+            console.print(
+                f"[yellow]Dry run:[/yellow] would merge {len(manual_seeds)} customer/project seed(s) into project config."
+            )
+        next_steps = _project_bootstrap_next_steps(summary)
+        if manual_seeds:
+            next_steps.insert(0, "Review captured project/customer seeds with `gittan projects` before first report.")
         return ProjectsConfigBootstrapResult(
             "PASS (dry-run)",
-            _project_bootstrap_notes(summary, dry_run=True),
-            _project_bootstrap_next_steps(summary),
+            _project_bootstrap_notes(summary, dry_run=True) + seed_note,
+            next_steps,
         )
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(merged_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Saved merged project config:[/green] {config_path}")
+    next_steps = _project_bootstrap_next_steps(summary)
+    if manual_seeds:
+        next_steps.insert(0, "Customer bootstrap seeds saved. Use `gittan projects` to adjust names/match terms if needed.")
     return ProjectsConfigBootstrapResult(
         "PASS",
-        _project_bootstrap_notes(summary, dry_run=False),
-        _project_bootstrap_next_steps(summary),
+        _project_bootstrap_notes(summary, dry_run=False) + seed_note,
+        next_steps,
     )

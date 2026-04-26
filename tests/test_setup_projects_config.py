@@ -116,6 +116,206 @@ class SetupProjectsConfigTests(unittest.TestCase):
             finally:
                 os.chdir(prev)
 
+    def test_customer_seed_prompt_skipped_keeps_fallback_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                encoding="utf-8",
+            )
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm") as confirm_mock:
+                confirm_mock.return_value.ask.return_value = False
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+            self.assertEqual(result.status, "PASS")
+            payload = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(len(payload["projects"]), 1)
+            self.assertEqual(payload["projects"][0]["name"], "existing")
+            self.assertNotIn("customer_seeds=", result.notes)
+
+    def test_customer_seed_prompt_adds_one_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                encoding="utf-8",
+            )
+            confirm_values = [True]
+            text_values = ["Acme API", "Acme Client", ""]
+
+            def _confirm(*_args, **_kwargs):
+                value = confirm_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            def _text(*_args, **_kwargs):
+                value = text_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            before = cfg.read_text(encoding="utf-8")
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
+                "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
+            ):
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+
+            self.assertEqual(result.status, "PASS")
+            self.assertIn("customer_seeds=1", result.notes)
+            self.assertTrue(any("Customer bootstrap seeds saved" in step for step in result.next_steps))
+            self.assertTrue(any("gittan report --today --source-summary" in step for step in result.next_steps))
+            payload = json.loads(cfg.read_text(encoding="utf-8"))
+            projects = {project["name"]: project for project in payload["projects"]}
+            self.assertIn("Acme API", projects)
+            self.assertEqual(projects["Acme API"]["customer"], "Acme Client")
+            self.assertIn("Acme API", projects["Acme API"]["match_terms"])
+
+    def test_customer_seed_prompt_adds_three_projects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                encoding="utf-8",
+            )
+            confirm_values = [True]
+            text_values = [
+                "Project One",
+                "Customer One",
+                "Project Two",
+                "Customer Two",
+                "Project Three",
+                "Customer Three",
+            ]
+
+            def _confirm(*_args, **_kwargs):
+                value = confirm_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            def _text(*_args, **_kwargs):
+                value = text_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            before = cfg.read_text(encoding="utf-8")
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
+                "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
+            ):
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+
+            self.assertEqual(result.status, "PASS")
+            self.assertIn("customer_seeds=3", result.notes)
+            payload = json.loads(cfg.read_text(encoding="utf-8"))
+            names = {project["name"] for project in payload["projects"]}
+            self.assertTrue({"Project One", "Project Two", "Project Three"}.issubset(names))
+
+    def test_customer_seed_merge_updates_existing_without_overwrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps(
+                    {
+                        "worklog": "TIMELOG.md",
+                        "projects": [
+                            {
+                                "name": "Acme API",
+                                "customer": "Locked Customer",
+                                "match_terms": ["legacy-term"],
+                                "tracked_urls": ["acme.example"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            confirm_values = [True]
+            text_values = ["Acme API", "New Customer", ""]
+
+            def _confirm(*_args, **_kwargs):
+                value = confirm_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            def _text(*_args, **_kwargs):
+                value = text_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
+                "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
+            ):
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+
+            self.assertEqual(result.status, "PASS")
+            self.assertIn("customer_seeds=1", result.notes)
+            payload = json.loads(cfg.read_text(encoding="utf-8"))
+            project = payload["projects"][0]
+            self.assertEqual(project["customer"], "Locked Customer")
+            self.assertEqual(project["tracked_urls"], ["acme.example"])
+            self.assertIn("legacy-term", project["match_terms"])
+            self.assertIn("Acme API", project["match_terms"])
+
+    def test_customer_seed_dry_run_shows_preview_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                encoding="utf-8",
+            )
+            before = cfg.read_text(encoding="utf-8")
+            confirm_values = [True]
+            text_values = ["Project Dry", "Customer Dry", ""]
+
+            def _confirm(*_args, **_kwargs):
+                value = confirm_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            def _text(*_args, **_kwargs):
+                value = text_values.pop(0)
+                return mock.Mock(ask=mock.Mock(return_value=value))
+
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
+                "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
+            ):
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=True,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+            self.assertEqual(result.status, "PASS (dry-run)")
+            self.assertIn("customer_seeds=1", result.notes)
+            self.assertTrue(any("Review captured project/customer seeds" in step for step in result.next_steps))
+            self.assertTrue(cfg.exists())
+            self.assertEqual(cfg.read_text(encoding="utf-8"), before)
+
 
 if __name__ == "__main__":
     unittest.main()

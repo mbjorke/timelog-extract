@@ -35,6 +35,7 @@ deterministic demo data.
 ## Command contract (v1 allowlist)
 
 **Code:** `core/live_terminal/contract.py` is the canonical allowlist and denial message; keep this section in sync when changing commands.
+For product-level command naming outside the sandbox subset, see `docs/product/cli-command-map.md`.
 
 Allowed commands (exact or normalized aliases):
 

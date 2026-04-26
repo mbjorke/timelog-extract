@@ -67,7 +67,7 @@ def setup_wizard(
     ),
 ):
     """
-    Run the full onboarding wizard covering environment setup, timelog automation, configuration, health checks, and a final smoke test.
+    Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report.
     
     Parameters:
         fast (bool): Use the streamlined onboarding path focused on quick first-report readiness.

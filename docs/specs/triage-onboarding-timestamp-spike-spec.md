@@ -107,3 +107,12 @@ If no measurable win, stop and document rejection rationale.
 1. Implement S1 in `core/cli_triage.py` plan assembly.
 2. Update runbook contract: `docs/runbooks/gittan-triage-agents.md`.
 3. Keep changes narrow; no broad refactors in same PR.
+
+## Phase-2 hook (customer bootstrap + top-sites)
+
+After setup-first customer bootstrap v1 is validated, use those seeded
+project/customer anchors to prioritize top-sites suggestions in triage:
+
+- setup v1: explicit top project/customer seeds (question-first)
+- triage v2: rank site/domain suggestions against seeded anchors before proposing writes
+- keep read-only by default in `gittan triage --json` until user approval

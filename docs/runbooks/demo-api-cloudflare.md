@@ -53,6 +53,9 @@ Allowed commands:
 
 No arbitrary command execution is allowed.
 
+This allowlist is a demo-safe subset of the full CLI surface. Canonical product
+command language lives in `docs/product/cli-command-map.md`.
+
 ## Frontend Configuration
 
 The landing page should point to:

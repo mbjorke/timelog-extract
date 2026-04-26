@@ -7,17 +7,18 @@ activity in Gittan with safe defaults and clear diagnostics.
 
 - story_id: `GH-123`
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `built`
 - created_at: `2026-04-15`
-- last_updated_at: `2026-04-15`
+- last_updated_at: `2026-04-25`
 - implementation.pr: `pending`
 - implementation.branch: `pending`
 - implementation.commits: `[]`
-- validation.evidence: `pending`
-- validation.decision: `NO-GO`
+- validation.evidence: `collectors/copilot_cli.py`, `tests/test_copilot_cli_collect.py`, `core/collector_registry.py`
+- validation.decision: `conditional GO`
 - changelog:
   - `2026-04-15: Initial task story created.`
   - `2026-04-15: Added mandatory traceability metadata and dev branch-flow defaults.`
+  - `2026-04-25: Marked built based on implemented collector, registry wiring, and collector tests.`
 
 ## Why this matters
 
@@ -61,7 +62,7 @@ can be included in reports, source summaries, and diagnostics.
 - Follow existing source patterns (`Claude Code CLI`, `Cursor`, etc.).
 - Keep collector resilient to missing files/permissions.
 - Normalize event detail to include enough context for classification without
-  leaking unnecessary raw noise.
+leaking unnecessary raw noise.
 
 ## Safety constraints
 

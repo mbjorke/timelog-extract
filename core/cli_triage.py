@@ -35,7 +35,24 @@ NOTES_FOR_AGENTS = [
     "Use --json for plans only; --yes applies mappings on this machine. Never pipe raw --json output into config.",
     "To apply decisions from mobile/offline UIs, use `gittan triage-apply` with a decisions JSON (see docs/runbooks/gittan-triage-agents.md) — not the triage --json plan.",
     "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
+    "Triage uses a noise pre-pass that removes known Cursor SDK/skills/tooling chatter before project suggestions.",
 ]
+
+TRIAGE_NOISE_DOMAINS = {
+    "cursor.com",
+    "www.cursor.com",
+    "cursor.sh",
+    "www.cursor.sh",
+}
+
+TRIAGE_NOISE_TITLE_MARKERS = (
+    "canvas sdk mirror failed",
+    "skills-cursor",
+    "cursor sdk",
+    "mcp tool schema",
+    "cursor extension host",
+    "cursor diagnostics",
+)
 
 
 def _extract_domain(url: str) -> str:
@@ -73,6 +90,30 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
             },
         }
     return out
+
+
+def _is_triage_noise_row(url: str, title: str) -> bool:
+    domain = _extract_domain(url)
+    if domain in TRIAGE_NOISE_DOMAINS:
+        return True
+    text = (title or "").strip().lower()
+    if not text:
+        return False
+    return any(marker in text for marker in TRIAGE_NOISE_TITLE_MARKERS)
+
+
+def _filter_triage_noise_rows(
+    chrome_rows: list[tuple[int, str, str]],
+) -> tuple[list[tuple[int, str, str]], int]:
+    filtered: list[tuple[int, str, str]] = []
+    dropped = 0
+    for row in chrome_rows:
+        _visit_time_cu, url, title = row
+        if _is_triage_noise_row(url, title):
+            dropped += 1
+            continue
+        filtered.append(row)
+    return filtered, dropped
 
 
 def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -195,12 +236,13 @@ def build_triage_plan_dict(
     for row in day_rows:
         day = str(row.get("day"))
         chrome_rows = fetch_chrome_rows_for_day(day, home=root_home)
-        top_sites = summarize_day_sites(chrome_rows, limit=max_sites)
-        site_time_hints = _build_site_time_hints(chrome_rows)
+        signal_rows, noise_rows_filtered = _filter_triage_noise_rows(chrome_rows)
+        top_sites = summarize_day_sites(signal_rows, limit=max_sites)
+        site_time_hints = _build_site_time_hints(signal_rows)
         suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
         skip_reason: Optional[str] = None
         if not top_sites:
-            skip_reason = "no_chrome_sites"
+            skip_reason = "no_signal_sites"
         elif not suggestions:
             skip_reason = "no_suggestions"
 
@@ -229,6 +271,7 @@ def build_triage_plan_dict(
                 "day": day,
                 "gap": gap_data,
                 "top_sites": [_site_to_plan_dict(s, site_time_hints) for s in top_sites],
+                "noise_rows_filtered": int(noise_rows_filtered),
                 "suggestions": [
                     _suggestion_to_plan_dict(s, tags_by_canonical.get(s.canonical, []))
                     for s in suggestions
@@ -368,9 +411,15 @@ def triage(
     applied_total = 0
     for row in days:
         day = str(row.get("day"))
-        top_sites = summarize_day_sites(fetch_chrome_rows_for_day(day, home=Path.home()), limit=max_sites)
+        chrome_rows = fetch_chrome_rows_for_day(day, home=Path.home())
+        signal_rows, noise_rows_filtered = _filter_triage_noise_rows(chrome_rows)
+        top_sites = summarize_day_sites(signal_rows, limit=max_sites)
         suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
         console.print("")
+        if noise_rows_filtered:
+            console.print(
+                f"[dim]Noise pre-pass filtered {noise_rows_filtered} row(s) before scoring.[/dim]"
+            )
         console.print(_render_day_summary(row, top_sites))
         if not top_sites:
             continue

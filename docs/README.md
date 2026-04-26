@@ -43,6 +43,8 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Which task-prompts are actually built** → [`task-prompts/implementation-status.md`](task-prompts/implementation-status.md)
 - **Apr 29 live demo — CLI polish backlog (current focus)** → [`runbooks/cli-polish-backlog-for-apr29.md`](runbooks/cli-polish-backlog-for-apr29.md)
 - **How to run CI, release, or QA** → `runbooks/` (optional **Homebrew tap** sketch for `brew install gittan`: [`runbooks/homebrew-tap.md`](runbooks/homebrew-tap.md))
+- **Repeatable onboarding demo (clean reset each take)** → [`runbooks/repeatable-onboarding-demo.md`](runbooks/repeatable-onboarding-demo.md)
+- **On-stage cheat sheet (3-5 min onboarding demo)** → [`runbooks/onboarding-demo-stage-card.md`](runbooks/onboarding-demo-stage-card.md)
 - **Beta onboarding path for project config friction** → [`runbooks/beta-onboarding-config.md`](runbooks/beta-onboarding-config.md)
 - **Classification trust recovery playbook** → [`runbooks/classification-trust-recovery.md`](runbooks/classification-trust-recovery.md)
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))

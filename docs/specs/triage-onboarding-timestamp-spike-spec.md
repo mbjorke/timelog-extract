@@ -128,3 +128,12 @@ If no measurable win, stop and document rejection rationale.
 2. Runbook contract updated: `docs/runbooks/gittan-triage-agents.md`.
 3. Next: run S2/S3 comparison and record whether timestamp hints reduce
    time-to-first-useful-config.
+
+## Phase-2 hook (customer bootstrap + top-sites)
+
+After setup-first customer bootstrap v1 is validated, use those seeded
+project/customer anchors to prioritize top-sites suggestions in triage:
+
+- setup v1: explicit top project/customer seeds (question-first)
+- triage v2: rank site/domain suggestions against seeded anchors before proposing writes
+- keep read-only by default in `gittan triage --json` until user approval

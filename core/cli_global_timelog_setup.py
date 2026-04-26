@@ -67,7 +67,7 @@ def setup_wizard(
     ),
 ):
     """
-    Run one-click onboarding: setup, config checks, doctor, and a first smoke report.
+    Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report.
     
     Parameters:
         fast (bool): Use the streamlined onboarding path focused on quick first-report readiness.

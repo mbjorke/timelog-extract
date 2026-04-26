@@ -19,7 +19,7 @@ Options:
   --to DATE                End date (required)
   --out-dir DIR            Output directory (default: out/timelog_truth_check/<timestamp>)
   --projects-config PATH   Optional projects config path
-  --allow-open-window      Allow --to equal today's date (normally blocked)
+  --allow-open-window      Allow --to on/after today's date (normally blocked)
 
 Artifacts written:
   - benchmark_manifest.json
@@ -68,11 +68,39 @@ if [[ -z "$FROM_DATE" || -z "$TO_DATE" ]]; then
   exit 1
 fi
 
-TODAY="$(date '+%Y-%m-%d')"
-if [[ "$TO_DATE" == "$TODAY" && "$ALLOW_OPEN_WINDOW" -ne 1 ]]; then
-  echo "Error: --to is today ($TODAY). Use a closed window or pass --allow-open-window." >&2
-  exit 1
-fi
+TODAY_UTC="$(date -u '+%Y-%m-%d')"
+python3 - "$FROM_DATE" "$TO_DATE" "$TODAY_UTC" "$ALLOW_OPEN_WINDOW" <<'PY'
+import datetime as dt
+import sys
+
+date_from, date_to, today_utc, allow_open_window = sys.argv[1:]
+try:
+    start = dt.date.fromisoformat(date_from)
+    end = dt.date.fromisoformat(date_to)
+    today = dt.date.fromisoformat(today_utc)
+except ValueError:
+    print("Error: --from/--to must be valid YYYY-MM-DD dates.", file=sys.stderr)
+    raise SystemExit(1)
+
+if start > end:
+    print(f"Error: --from ({date_from}) is after --to ({date_to}).", file=sys.stderr)
+    raise SystemExit(1)
+
+if start.year != end.year:
+    print(
+        "Error: --from and --to must be in the same calendar year for target_year semantics.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+if end >= today and allow_open_window != "1":
+    print(
+        f"Error: --to ({date_to}) is today or in the future (UTC today={today_utc}). "
+        "Use a closed window or pass --allow-open-window.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+PY
 
 if [[ -z "$OUT_DIR" ]]; then
   OUT_DIR="out/timelog_truth_check/$(date '+%Y%m%d-%H%M%S')"
@@ -100,7 +128,7 @@ echo "- out:  $OUT_DIR"
 "${REPORT_CMD[@]}" --json-file "$RUN1_JSON" >/dev/null
 "${REPORT_CMD[@]}" --json-file "$RUN2_JSON" >/dev/null
 
-python3 - "$FROM_DATE" "$TO_DATE" "$RUN1_JSON" "$RUN2_JSON" "$MANIFEST_JSON" "$METRICS_JSON" "$REPLAY_JSON" "$README_MD" "$TODAY" "$ALLOW_OPEN_WINDOW" <<'PY'
+python3 - "$FROM_DATE" "$TO_DATE" "$RUN1_JSON" "$RUN2_JSON" "$MANIFEST_JSON" "$METRICS_JSON" "$REPLAY_JSON" "$README_MD" "$TODAY_UTC" "$ALLOW_OPEN_WINDOW" <<'PY'
 import datetime as dt
 import hashlib
 import json
@@ -169,6 +197,7 @@ drift_keys = collect_diff_keys(norm1, norm2)[:200]
 
 date_start = dt.date.fromisoformat(date_from)
 date_end = dt.date.fromisoformat(date_to)
+today_date = dt.date.fromisoformat(today)
 months = []
 cursor = dt.date(date_start.year, date_start.month, 1)
 while cursor <= date_end:
@@ -204,13 +233,17 @@ manifest = {
     "policy_package": policy_package,
 }
 
-is_open_window = date_to == today
-if normalized_equal:
-    gate_decision = "GO"
-elif is_open_window and allow_open_window == "1":
-    gate_decision = "conditional GO"
+is_open_window = date_end >= today_date
+if is_open_window:
+    gate_decision = "conditional GO" if allow_open_window == "1" else "NO-GO"
 else:
-    gate_decision = "NO-GO"
+    gate_decision = "GO" if normalized_equal else "NO-GO"
+
+gate_failures = []
+if is_open_window:
+    gate_failures.append("open_window_replay_not_eligible_for_go")
+if not normalized_equal:
+    gate_failures.append("determinism_replay_mismatch")
 
 metrics = {
     "precision_recall_f1_by_project": None,
@@ -219,7 +252,7 @@ metrics = {
     "explainability_coverage": None,
     "annual_coverage": None,
     "gate_decision": gate_decision,
-    "gate_failures": ([] if normalized_equal else ["determinism_replay_mismatch"]),
+    "gate_failures": gate_failures,
 }
 
 replay = {
@@ -252,7 +285,8 @@ Path(readme_path).write_text(
             "## How to read results",
             "",
             "- `normalized_equal=true` means deterministic replay passed for this window.",
-            "- `gate_decision=GO` means no determinism mismatch was detected.",
+            "- `gate_decision=GO` is only eligible for closed-window runs.",
+            "- Open-window runs are flagged with `open_window_replay_not_eligible_for_go`.",
             "- If `drift_keys` is non-empty, inspect determinism_replay_report.json first.",
             "",
         ]

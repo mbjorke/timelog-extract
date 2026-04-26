@@ -4,8 +4,8 @@ Status: active workflow
 
 ## Purpose
 
-Run a deterministic replay check for `gittan report` and emit standard artifacts
-for review and CI evidence.
+Run a deterministic replay check for `python3 -m timelog_extract report` and
+emit standard artifacts for review and CI evidence.
 
 ## Preconditions
 

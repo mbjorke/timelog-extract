@@ -112,6 +112,10 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
             print(f"No events for project {report.args.only_project!r} in selected range.")
         else:
             print("No events found.")
+            print(
+                "Tip: run 'gittan doctor' to verify source access, then "
+                "'gittan report --today --source-summary' to inspect collected evidence."
+            )
         if report.args.invoice_pdf:
             try:
                 out = (

@@ -83,3 +83,25 @@ jobs:
         with:
           name: cli-experiment-scorecard
           path: out/cli-experiments/
+
+  timelog-truth-check:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Run Timelog Truth deterministic replay check (closed window)
+        run: |
+          bash scripts/timelog_truth_check.sh --from 2026-01-01 --to 2026-01-31 --out-dir out/timelog_truth_check/ci
+      - name: Upload Timelog Truth artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timelog-truth-check
+          path: out/timelog_truth_check/

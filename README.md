@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/mbjorke/timelog-extract/main/gittan-readme-icon.png" width="128" height="128" alt="Gittan logo" />
+<img src="https://raw.githubusercontent.com/mbjorke/timelog-extract/main/docs/brand/marks/bee.svg" width="128" height="128" alt="Gittan bee logo" />
 
 # Gittan
 

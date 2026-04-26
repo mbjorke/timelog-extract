@@ -1,73 +1,67 @@
-"""Small themed ASCII heroes for key CLI commands.
-
-Art matches the bumblebee + berries metaphor in ``outputs/gittan_banner.py`` (75-char panels).
-Styling follows ``docs/product/terminal-style-guide.md``: one calm frame + ``STYLE_LABEL``,
-tagline in ``STYLE_MUTED`` — no extra accent colors here.
-"""
+"""Small themed heroes for key CLI commands."""
 
 from __future__ import annotations
 
-from rich.console import Console
+from rich.console import Console, Group
+from rich.panel import Panel
 from rich.text import Text
 
-from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
+from outputs.terminal_theme import (
+    CLR_BERRY_BRIGHT,
+    CLR_GREEN,
+    CLR_TEXT_SOFT,
+    CLR_VALUE_ORANGE,
+    STYLE_BORDER,
+    STYLE_LABEL,
+    STYLE_MUTED,
+)
 
 
 _HEROES: dict[str, tuple[list[str], str]] = {
     "status": (
         [
-            "+-------------------------------------------------------------------------+",
-            "|    __      Gittan Status                                                |",
-            "|   /oo\\     Choose timeframe to get started.                             |",
-            "|   \\__/     Tip: `--additive --noise-profile strict` for daily checks.   |",
-            "|  o    o    Estimates: verify before reporting or invoicing.             |",
-            "+-------------------------------------------------------------------------+",
+            "    __      Gittan Status",
+            "   /oo\\     Local traces become review-ready evidence.",
+            "   \\__/     Use --additive when project totals must reconcile.",
+            "  o    o    Estimates stay local until you approve them.",
         ],
-        "Local timeline -> review-ready.",
+        "local timeline -> review-ready evidence",
     ),
     "doctor": (
         [
-            "+-------------------------------------------------------------------------+",
-            "|    __      Gittan Doctor                                                |",
-            "|   /oo\\     Quick scan: sources, permissions, and config.                |",
-            "|   \\__/     Fix one warning at a time, then rerun doctor.                |",
-            "|  o    o    Read-only: does not modify project files.                    |",
-            "+-------------------------------------------------------------------------+",
+            "    __      Gittan Doctor",
+            "   /oo\\     Checks source access, permissions, and config.",
+            "   \\__/     Warnings are evidence gaps, not failures.",
+            "  o    o    Read-only: nothing is changed on your machine.",
         ],
-        "Diagnose first, then optimize.",
+        "diagnose first, then approve fixes",
     ),
     "setup": (
         [
-            "+-------------------------------------------------------------------------+",
-            "|    __      Gittan Setup                                                 |",
-            "|   /oo\\     Welcome: guided onboarding for local-first reporting.        |",
-            "|   \\__/     Tip: `--dry-run` before machine-wide settings.               |",
-            "|  o    o    You approve prompts before any write operations.             |",
-            "+-------------------------------------------------------------------------+",
+            "    __      Gittan Setup",
+            "   /oo\\     Build a local project map from existing traces.",
+            "   \\__/     Use --dry-run before machine-wide settings.",
+            "  o    o    Every write is explicit and reviewable.",
         ],
-        "Calm setup, clear next steps.",
+        "local setup with clear approval points",
     ),
     "setup-global-timelog": (
         [
-            "+-------------------------------------------------------------------------+",
-            "|    __      Gittan Global Timelog                                        |",
-            "|   /oo\\     Machine-wide commit -> TIMELOG.md automation.                |",
-            "|   \\__/     Tip: `--dry-run` previews hooks and git config.              |",
-            "|  o    o    Designed to be explicit, safe, and reversible.               |",
-            "+-------------------------------------------------------------------------+",
+            "    __      Gittan Global Timelog",
+            "   /oo\\     Machine-wide commits can feed a local worklog.",
+            "   \\__/     --dry-run previews hooks and git config.",
+            "  o    o    Automation stays explicit and reversible.",
         ],
-        "Global automation with local control.",
+        "global capture with local control",
     ),
     "report": (
         [
-            "+-------------------------------------------------------------------------+",
-            "|    __      Gittan Report                                                |",
-            "|   /oo\\     Scanning local signals for timelines and sessions.           |",
-            "|   \\__/     Tip: add `--project` + `--noise-profile` to debug totals.    |",
-            "|  o    o    Estimate-oriented: review before sharing or invoicing.       |",
-            "+-------------------------------------------------------------------------+",
+            "    __      Gittan Report",
+            "   /oo\\     Turns local signals into a project-hour narrative.",
+            "   \\__/     Add --project and --noise-profile to inspect totals.",
+            "  o    o    Review before sharing, syncing, or invoicing.",
         ],
-        "Collect, classify, summarize.",
+        "collect -> classify -> summarize",
     ),
 }
 
@@ -75,8 +69,33 @@ _HEROES: dict[str, tuple[list[str], str]] = {
 def print_command_hero(console: Console, command: str) -> None:
     """Print a command-specific ASCII hero and one-line tagline."""
     lines, tagline = _HEROES.get(command, _HEROES["status"])
-    console.print(Text("\n".join(lines), style=f"bold {STYLE_LABEL}"))
-    console.print(f"[{STYLE_MUTED}]{tagline}[/{STYLE_MUTED}]")
+    hero = Text()
+    for idx, line in enumerate(lines):
+        if idx:
+            hero.append("\n")
+        if idx == 0:
+            mark, title = line[:12], line[12:]
+            hero.append(mark, style=f"bold {CLR_VALUE_ORANGE}")
+            hero.append(title, style=f"bold {CLR_TEXT_SOFT}")
+        else:
+            mark, body = line[:12], line[12:]
+            hero.append(mark, style=CLR_VALUE_ORANGE)
+            hero.append(body, style=STYLE_LABEL)
+
+    state_line = Text.assemble(
+        ("observed", CLR_BERRY_BRIGHT),
+        (" -> ", STYLE_MUTED),
+        ("classified", CLR_VALUE_ORANGE),
+        (" -> ", STYLE_MUTED),
+        ("approved", CLR_GREEN),
+    )
+    console.print(
+        Panel(
+            Group(hero, Text(tagline, style=STYLE_MUTED), state_line),
+            border_style=STYLE_BORDER,
+            padding=(1, 2),
+        )
+    )
 
 
 def hero_commands() -> list[str]:

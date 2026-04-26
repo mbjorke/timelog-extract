@@ -1,28 +1,29 @@
 """Shared terminal palette and icon semantics for CLI output.
 
-Canonical roles are defined in ``docs/product/terminal-style-guide.md``.
-Keep tokens aligned with the guide: calm hierarchy, few saturated accents, semantic color only.
+These tokens mirror the public Gittan brand marks as closely as terminals allow:
+honey for value and state, blueberry for active evidence, green for approval, and
+muted cool neutrals for the local-first shell surface.
 """
 
 from __future__ import annotations
 
-# --- Core text (lavender / neutral on void #0a0714) ---
-CLR_BERRY = "#9f7aff"
-CLR_BERRY_BRIGHT = "#b79bff"
-CLR_MUTED = "#aaa0c8"
-CLR_DIM = "#847d9f"
-CLR_TEXT_SOFT = "#d8d0ee"
+# --- Core text (cool neutrals on dark shell) ---
+CLR_BERRY = "#3c83f6"
+CLR_BERRY_BRIGHT = "#67a8ff"
+CLR_MUTED = "#9aa7b8"
+CLR_DIM = "#667386"
+CLR_TEXT_SOFT = "#edf4ff"
 
 # --- Semantic accents (use sparingly) ---
 CLR_GREEN = "#47cfa8"
-CLR_SOURCE_BLUE = "#67a8ff"
-CLR_VALUE_ORANGE = "#e7ad5a"
+CLR_SOURCE_BLUE = CLR_BERRY_BRIGHT
+CLR_VALUE_ORANGE = "#f5cc47"
 
 # --- Tables: doctor / status / setup (shared column semantics) ---
 # Label = headers & first column; Muted = details / long tails (see style guide).
-STYLE_LABEL = "#cfc8e8"
-STYLE_MUTED = "#8f86ad"
-STYLE_BORDER = "#4a4660"
+STYLE_LABEL = "#d7e5f8"
+STYLE_MUTED = CLR_MUTED
+STYLE_BORDER = "#2a3444"
 
 # Tree meta, taglines — Rich dim reads lighter without extra neon.
 STYLE_DIM = f"dim {CLR_DIM}"

@@ -10,6 +10,7 @@ Goal: show clear value in 3 minutes with a stable flow:
 ```bash
 export DEMO_HOME="$HOME/.gittan-demo-live"; export GITTAN_HOME="$DEMO_HOME"; unset GITTAN_PROJECTS_CONFIG
 mkdir -p "$DEMO_HOME/stage-repo" && cd "$DEMO_HOME/stage-repo" && git init -q
+git config user.name "Demo User" && git config user.email "demo@example.com"
 rm -f timelog_projects.json TIMELOG.md && test ! -f timelog_projects.json && test ! -f TIMELOG.md && echo "EMPTY_START_OK"
 gittan setup --interactive
 printf "demo-%s\n" "$(date +%s)" > demo-proof.txt && git add demo-proof.txt && git commit -m "feat: prepare invoice narrative baseline"

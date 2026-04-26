@@ -242,7 +242,8 @@ def build_triage_plan_dict(
         suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
         skip_reason: Optional[str] = None
         if not top_sites:
-            skip_reason = "no_signal_sites"
+            # Keep stable schema v1 token for downstream consumers.
+            skip_reason = "no_chrome_sites"
         elif not suggestions:
             skip_reason = "no_suggestions"
 

@@ -23,7 +23,7 @@ Show a clean first-run path:
 
 Use an isolated demo home:
 
-- `DEMO_HOME=/Users/mbjorke/.gittan-demo-clean`
+- `DEMO_HOME="$HOME/.gittan-demo-clean"`
 - `GITTAN_HOME=$DEMO_HOME`
 - unset `GITTAN_PROJECTS_CONFIG`
 
@@ -111,10 +111,11 @@ Canonical demo seed set (use these names in setup prompts):
 High-quality config check (show this right after setup):
 
 ```bash
-python3 - <<'PY'
+python3 - <<PY
 import json
+import os
 from pathlib import Path
-p = Path("$DEMO_HOME").expanduser() / "timelog_projects.json"
+p = Path(os.environ["DEMO_HOME"]).expanduser() / "timelog_projects.json"
 d = json.loads(p.read_text(encoding="utf-8"))
 projects = d.get("projects", [])
 print(f"config: {p}")
@@ -256,14 +257,14 @@ If output differs from expected:
 
 ## Optional backup/restore of existing home config
 
-If you demo against `~/.gittan-mbjorke` instead of `DEMO_HOME`, backup first:
+If you demo against a personal Gittan home instead of `DEMO_HOME`, backup first:
 
 ```bash
-cp "$HOME/.gittan-mbjorke/timelog_projects.json" "$HOME/.gittan-mbjorke/timelog_projects.pre-demo-$(date +%Y%m%d-%H%M%S).json"
+cp "$HOME/.gittan-home/timelog_projects.json" "$HOME/.gittan-home/timelog_projects.pre-demo-$(date +%Y%m%d-%H%M%S).json"
 ```
 
 Restore later by copying that backup back to
-`$HOME/.gittan-mbjorke/timelog_projects.json`.
+`$HOME/.gittan-home/timelog_projects.json`.
 
 ## Troubleshooting
 

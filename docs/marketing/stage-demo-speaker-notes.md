@@ -83,12 +83,15 @@ Details: `[docs/runbooks/homebrew-tap.md](../runbooks/homebrew-tap.md)`.
 ## Live demo commands (safe defaults)
 
 ```bash
+export DEMO_HOME="${DEMO_HOME:-$HOME/.gittan-demo-clean}"
+export GITTAN_HOME="$DEMO_HOME"
 test ! -f "$DEMO_HOME/timelog_projects.json" && test ! -f "$DEMO_HOME/TIMELOG.md" && echo "EMPTY_START_OK"
 gittan setup
-python3 - <<'PY'
+python3 - <<PY
 import json
+import os
 from pathlib import Path
-p = Path("$DEMO_HOME").expanduser() / "timelog_projects.json"
+p = Path(os.environ["DEMO_HOME"]).expanduser() / "timelog_projects.json"
 d = json.loads(p.read_text(encoding="utf-8"))
 print("projects:", len(d.get("projects", [])))
 print("worklog:", d.get("worklog"))

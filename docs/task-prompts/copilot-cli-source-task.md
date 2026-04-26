@@ -10,9 +10,9 @@ activity in Gittan with safe defaults and clear diagnostics.
 - implementation_status: `built`
 - created_at: `2026-04-15`
 - last_updated_at: `2026-04-25`
-- implementation.pr: `pending`
-- implementation.branch: `pending`
-- implementation.commits: `[]`
+- implementation.pr: `#110`
+- implementation.branch: `task/customer-bootstrap-setup-ux`
+- implementation.commits: `["2c76b50", "38ffdf2"]`
 - validation.evidence: `collectors/copilot_cli.py`, `tests/test_copilot_cli_collect.py`, `core/collector_registry.py`
 - validation.decision: `conditional GO`
 - changelog:

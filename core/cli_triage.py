@@ -300,6 +300,31 @@ def _render_day_summary(row: dict, top_sites: list[DayTopSite]) -> str:
     return "\n".join(lines)
 
 
+def _prompt_manual_domain_mapping(
+    *,
+    day: str,
+    all_names: list[str],
+    top_sites: list[DayTopSite],
+    default_project: Optional[str] = None,
+) -> Optional[tuple[str, list[str]]]:
+    """Ask user to map one or more top-site domains to a project."""
+    project_choice = questionary.select(
+        f"{day}: choose project",
+        choices=[*all_names, "Skip day"],
+        default=default_project if default_project in all_names else None,
+    ).ask()
+    if not project_choice or project_choice == "Skip day":
+        return None
+    selected_domains = questionary.checkbox(
+        f"{day}: pick domains to map to '{project_choice}'",
+        choices=[site.domain for site in top_sites],
+        validate=lambda value: True if value else "Select at least one domain or skip day.",
+    ).ask()
+    if not selected_domains:
+        return None
+    return project_choice, as_list(selected_domains)
+
+
 @app.command("triage")
 def triage(
     date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
@@ -375,7 +400,28 @@ def triage(
         if not top_sites:
             continue
         if not suggestions:
-            console.print("[yellow]No project suggestions found; skipping day.[/yellow]")
+            if yes:
+                console.print("[yellow]No project suggestions found; skipping day.[/yellow]")
+                continue
+            console.print("[yellow]No project suggestions found; choose project manually if you want to map top domains.[/yellow]")
+            manual_choice = _prompt_manual_domain_mapping(
+                day=day,
+                all_names=all_names,
+                top_sites=top_sites,
+                default_project=None,
+            )
+            if not manual_choice:
+                continue
+            target, selected_domains = manual_choice
+            assignments = [(domain, target) for domain in selected_domains]
+            applied, _created = apply_domain_mappings(
+                Path(projects_config),
+                assignments,
+                allow_create_projects=False,
+            )
+            applied_total += applied
+            console.print(f"[green]Applied[/green] {applied} manual mapping(s) for {day} -> {target}")
+            profiles = load_profiles_for_projects_config(projects_config)
             continue
         suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical)
         if yes:
@@ -385,22 +431,16 @@ def triage(
                 continue
             selected_domains = [site.domain for site in top_sites[:2]]
         else:
-            project_choice = questionary.select(
-                f"{day}: choose project",
-                choices=[*all_names, "Skip day"],
-                default=suggested_project if suggested_project in all_names else None,
-            ).ask()
-            if not project_choice or project_choice == "Skip day":
+            manual_choice = _prompt_manual_domain_mapping(
+                day=day,
+                all_names=all_names,
+                top_sites=top_sites,
+                default_project=suggested_project,
+            )
+            if not manual_choice:
                 continue
-            target = project_choice
-            selected_domains = questionary.checkbox(
-                f"{day}: pick domains to map to '{target}'",
-                choices=[site.domain for site in top_sites],
-                validate=lambda value: True if value else "Select at least one domain or skip day.",
-            ).ask()
-            if not selected_domains:
-                continue
-        assignments = [(domain, target) for domain in as_list(selected_domains)]
+            target, selected_domains = manual_choice
+        assignments = [(domain, target) for domain in selected_domains]
         if not assignments:
             continue
         applied, _created = apply_domain_mappings(

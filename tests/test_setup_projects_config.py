@@ -158,6 +158,7 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 value = text_values.pop(0)
                 return mock.Mock(ask=mock.Mock(return_value=value))
 
+            before = cfg.read_text(encoding="utf-8")
             with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
                 "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
             ):
@@ -206,6 +207,7 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 value = text_values.pop(0)
                 return mock.Mock(ask=mock.Mock(return_value=value))
 
+            before = cfg.read_text(encoding="utf-8")
             with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm", side_effect=_confirm), mock.patch(
                 "core.setup_projects_config_bootstrap.questionary.text", side_effect=_text
             ):
@@ -284,6 +286,7 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
                 encoding="utf-8",
             )
+            before = cfg.read_text(encoding="utf-8")
             confirm_values = [True]
             text_values = ["Project Dry", "Customer Dry", ""]
 
@@ -311,6 +314,7 @@ class SetupProjectsConfigTests(unittest.TestCase):
             self.assertIn("customer_seeds=1", result.notes)
             self.assertTrue(any("Review captured project/customer seeds" in step for step in result.next_steps))
             self.assertTrue(cfg.exists())
+            self.assertEqual(cfg.read_text(encoding="utf-8"), before)
 
 
 if __name__ == "__main__":

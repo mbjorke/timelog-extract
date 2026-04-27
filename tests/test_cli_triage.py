@@ -18,6 +18,7 @@ from core.cli_triage import (
     _is_triage_noise_row,
     _suggestion_to_plan_dict,
     build_triage_plan_dict,
+    load_triage_profiles,
     resolve_target_project_name,
     select_triage_days,
 )
@@ -81,6 +82,16 @@ class CliTriageHelpersTests(unittest.TestCase):
             {"name": "Project B", "canonical_project": "Suite"},
         ]
         self.assertEqual(resolve_target_project_name(profiles, "Suite"), "Project A")
+
+    def test_load_triage_profiles_preserves_explicit_empty_config(self):
+        raw = '{"version": 1, "projects": []}'
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp.write(raw)
+            path = tmp.name
+        try:
+            self.assertEqual(load_triage_profiles(path), [])
+        finally:
+            Path(path).unlink(missing_ok=True)
 
     @patch("core.report_service.run_timelog_report")
     def test_build_triage_plan_dict_empty_when_no_unexplained_hours(self, mock_run):
@@ -215,7 +226,124 @@ class CliTriageHelpersTests(unittest.TestCase):
         top_sites = plan["days"][0]["top_sites"]
         self.assertEqual(len(top_sites), 1)
         self.assertEqual(top_sites[0]["domain"], "github.com")
+        self.assertEqual(
+            plan["days"][0]["code_repos"],
+            [{"provider": "github", "value": "github.com/mbjorke/timelog-extract", "visits": 1}],
+        )
         self.assertEqual(plan["days"][0]["noise_rows_filtered"], 2)
+
+    @patch("core.report_service.run_timelog_report")
+    def test_build_triage_plan_includes_guided_config_dry_run(self, mock_run):
+        mock_run.return_value = SimpleNamespace(
+            dt_from=None,
+            dt_to=None,
+            args=SimpleNamespace(min_session=15, min_session_passive=5),
+            overall_days={},
+            project_reports={},
+            screen_time_days={},
+        )
+        raw = (
+            '{"version": 1, "projects": ['
+            '{"name": "Acme", "canonical_project": "Acme", '
+            '"tracked_urls": [], "match_terms": ["shared"]},'
+            '{"name": "Other", "canonical_project": "Other", '
+            '"tracked_urls": [], "match_terms": ["shared"]}'
+            "]}"
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp.write(raw)
+            path = tmp.name
+        gap_payload = {
+            "days": [
+                {
+                    "day": "2026-04-21",
+                    "estimated_hours": 1.0,
+                    "screen_time_hours": 2.0,
+                    "unexplained_screen_time_hours": 1.0,
+                }
+            ]
+        }
+        chrome_rows = [
+            (132_537_602_000_000, "https://acme.example.com/dashboard", "Acme dashboard"),
+            (132_537_605_000_000, "https://docs.acme.example.com/api", "Acme API"),
+        ]
+        try:
+            with patch("core.cli_triage.analyze_screen_time_gaps", return_value=gap_payload), patch(
+                "core.cli_triage.fetch_chrome_rows_for_day", return_value=chrome_rows
+            ):
+                plan = build_triage_plan_dict(
+                    date_from=None,
+                    date_to=None,
+                    projects_config=path,
+                    max_days=3,
+                    max_sites=5,
+                    scoring_mode="site-first",
+                )
+        finally:
+            Path(path).unlink(missing_ok=True)
+        guided = plan["guided_config"]
+        self.assertEqual(guided["mode"], "evidence-review")
+        self.assertIn("candidates", guided)
+        self.assertIn("config_warnings", guided)
+        self.assertNotIn("update", guided)
+        self.assertTrue(any(item["candidate_type"] == "domain" for item in guided["candidates"]))
+        self.assertTrue(any(item["code"] == "overlap-term" for item in guided["config_warnings"]))
+        self.assertIn("explicit decisions", " ".join(guided["next_steps"]))
+
+    @patch("core.report_service.run_timelog_report")
+    def test_build_triage_plan_yes_automation_blocks_weak_project_domains(self, mock_run):
+        mock_run.return_value = SimpleNamespace(
+            dt_from=None,
+            dt_to=None,
+            args=SimpleNamespace(min_session=15, min_session_passive=5),
+            overall_days={},
+            project_reports={},
+            screen_time_days={},
+        )
+        raw = (
+            '{"version": 1, "projects": ['
+            '{"name": "Acme API", "canonical_project": "Acme API", '
+            '"tracked_urls": [], "match_terms": ["dashboard"]},'
+            '{"name": "Client Docs", "canonical_project": "Client Docs", '
+            '"tracked_urls": [], "match_terms": ["docs"]}'
+            "]}"
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp.write(raw)
+            path = tmp.name
+        gap_payload = {
+            "days": [
+                {
+                    "day": "2026-04-08",
+                    "estimated_hours": 3.0,
+                    "screen_time_hours": 10.0,
+                    "unexplained_screen_time_hours": 7.0,
+                }
+            ]
+        }
+        chrome_rows = [
+            (132_537_602_000_000, "https://dashboard.example.com/app", "dashboard"),
+            (132_537_605_000_000, "https://docs.vendor.test/guides", "docs"),
+            (132_537_606_000_000, "https://search.example.net/work", "search"),
+        ]
+        try:
+            with patch("core.cli_triage.analyze_screen_time_gaps", return_value=gap_payload), patch(
+                "core.cli_triage.fetch_chrome_rows_for_day", return_value=chrome_rows
+            ):
+                plan = build_triage_plan_dict(
+                    date_from=None,
+                    date_to=None,
+                    projects_config=path,
+                    max_days=1,
+                    max_sites=3,
+                    scoring_mode="site-first",
+                )
+        finally:
+            Path(path).unlink(missing_ok=True)
+        automation = plan["days"][0]["yes_automation"]
+        self.assertFalse(automation["would_apply"])
+        self.assertEqual(automation["reason"], "explicit_decision_required")
+        self.assertEqual(automation["target_project"], "Acme API")
 
     def test_triage_json_and_yes_are_mutually_exclusive(self):
         repo = Path(__file__).resolve().parent.parent
@@ -228,6 +356,18 @@ class CliTriageHelpersTests(unittest.TestCase):
         )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Cannot combine", r.stdout + r.stderr)
+
+    def test_triage_yes_is_disabled(self):
+        repo = Path(__file__).resolve().parent.parent
+        r = subprocess.run(
+            [sys.executable, str(repo / "timelog_extract.py"), "triage", "--yes"],
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no longer applies heuristic mappings", r.stdout + r.stderr)
 
 
 def _make_suggestion(canonical: str, score: int = 10) -> ProjectSuggestion:

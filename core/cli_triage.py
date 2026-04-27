@@ -15,14 +15,15 @@ from collectors.chrome import chrome_ts
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
-from core.config import as_list, default_projects_config_option
+from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
+from core.guided_project_config import build_guided_config_plan
+from core.triage_code_repos import build_code_repo_candidates
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
     ProjectSuggestion,
     apply_domain_mappings,
     fetch_chrome_rows_for_day,
-    load_profiles_for_projects_config,
     score_projects_for_sites,
     summarize_day_sites,
 )
@@ -53,6 +54,16 @@ TRIAGE_NOISE_TITLE_MARKERS = (
     "cursor extension host",
     "cursor diagnostics",
 )
+
+
+def load_triage_profiles(projects_config: str) -> list[dict]:
+    payload = load_projects_config_payload(Path(projects_config))
+    profiles: list[dict] = []
+    for raw in payload.get("projects", []):
+        if not isinstance(raw, dict) or not bool(raw.get("enabled", True)):
+            continue
+        profiles.append(normalize_profile(raw))
+    return profiles
 
 
 def _extract_domain(url: str) -> str:
@@ -114,8 +125,6 @@ def _filter_triage_noise_rows(
             continue
         filtered.append(row)
     return filtered, dropped
-
-
 def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, Any]]) -> dict[str, Any]:
     payload = {
         "domain": site.domain,
@@ -126,8 +135,6 @@ def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, An
     if timing:
         payload.update(timing)
     return payload
-
-
 def _suggestion_to_plan_dict(s: ProjectSuggestion, tags: list[str]) -> dict[str, Any]:
     return {
         "canonical": s.canonical,
@@ -140,8 +147,6 @@ def _suggestion_to_plan_dict(s: ProjectSuggestion, tags: list[str]) -> dict[str,
         "default_client": s.default_client,
         "tags": tags,
     }
-
-
 def _build_choices(
     suggestions: list[ProjectSuggestion],
     tags_by_canonical: dict[str, list[str]],
@@ -154,8 +159,6 @@ def _build_choices(
         choices.append({"canonical": s.canonical, "tags": tags, "label": f"{tag_prefix}{s.canonical}"})
     choices.append({"canonical": None, "tags": [], "label": "None of these / skip"})
     return choices
-
-
 def _build_question(gap: dict[str, Any], suggestions: list[ProjectSuggestion]) -> Optional[str]:
     hours = float(gap.get("unexplained_screen_time_hours", 0.0))
     day = gap.get("day", "?")
@@ -172,20 +175,14 @@ def _yes_automation_plan(
     profiles: list[dict],
     all_names: list[str],
     top_sites: list[DayTopSite],
+    projects_payload: dict[str, Any],
+    day: str,
 ) -> dict[str, Any]:
-    if not suggestions:
-        return {"would_apply": False, "reason": "no_suggestions"}
-    suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical)
-    if suggested_project not in all_names:
-        return {
-            "would_apply": False,
-            "reason": "suggested_project_not_in_config",
-            "suggested_project": suggested_project,
-        }
+    suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical) if suggestions else None
     return {
-        "would_apply": True,
+        "would_apply": False,
+        "reason": "explicit_decision_required",
         "target_project": suggested_project,
-        "domains": [site.domain for site in top_sites[:2]],
     }
 
 
@@ -214,7 +211,8 @@ def build_triage_plan_dict(
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = analyze_screen_time_gaps(report)
     day_rows = select_triage_days(payload, max_days=max_days)
-    profiles = load_profiles_for_projects_config(projects_config)
+    profiles = load_triage_profiles(projects_config)
+    projects_payload = load_projects_config_payload(Path(projects_config))
     all_names = sorted(
         {
             str(profile.get("name", "")).strip()
@@ -238,11 +236,11 @@ def build_triage_plan_dict(
         chrome_rows = fetch_chrome_rows_for_day(day, home=root_home)
         signal_rows, noise_rows_filtered = _filter_triage_noise_rows(chrome_rows)
         top_sites = summarize_day_sites(signal_rows, limit=max_sites)
+        code_repos = build_code_repo_candidates(signal_rows, limit=max_sites)
         site_time_hints = _build_site_time_hints(signal_rows)
         suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
         skip_reason: Optional[str] = None
         if not top_sites:
-            # Keep stable schema v1 token for downstream consumers.
             skip_reason = "no_chrome_sites"
         elif not suggestions:
             skip_reason = "no_suggestions"
@@ -258,6 +256,8 @@ def build_triage_plan_dict(
                 profiles=profiles,
                 all_names=all_names,
                 top_sites=top_sites,
+                projects_payload=projects_payload,
+                day=day,
             )
         else:
             yes_automation = {"would_apply": False, "reason": "no_suggestions"}
@@ -272,6 +272,7 @@ def build_triage_plan_dict(
                 "day": day,
                 "gap": gap_data,
                 "top_sites": [_site_to_plan_dict(s, site_time_hints) for s in top_sites],
+                "code_repos": code_repos,
                 "noise_rows_filtered": int(noise_rows_filtered),
                 "suggestions": [
                     _suggestion_to_plan_dict(s, tags_by_canonical.get(s.canonical, []))
@@ -300,6 +301,11 @@ def build_triage_plan_dict(
         "project_names": all_names,
         "empty_reason": empty_reason,
         "days": out_days,
+        "guided_config": build_guided_config_plan(
+            projects_payload=projects_payload,
+            triage_days=out_days,
+            projects_config=projects_config,
+        ),
         "notes_for_agents": list(NOTES_FOR_AGENTS),
     }
 
@@ -352,7 +358,7 @@ def triage(
     max_days: Annotated[int, typer.Option(help="Max unexplained days to review")] = 3,
     max_sites: Annotated[int, typer.Option(help="Top sites shown/mappable per day")] = 5,
     scoring_mode: Annotated[str, typer.Option(help="balanced or site-first")] = "site-first",
-    yes: Annotated[bool, typer.Option(help="Auto-accept top suggestion and top 2 domains")] = False,
+    yes: Annotated[bool, typer.Option(help="Deprecated: heuristic auto-apply is disabled")] = False,
     json_out: Annotated[
         bool,
         typer.Option("--json", help="Print read-only JSON plan to stdout; never writes config"),
@@ -361,7 +367,6 @@ def triage(
     """Guided loop: confirm/correct project mapping on top unexplained days."""
     from rich.console import Console
 
-    # Deferred import: core.report_service imports core.cli, which loads this module first.
     from core.report_service import run_timelog_report
 
     console = Console()
@@ -373,6 +378,12 @@ def triage(
         raise typer.Exit(code=1)
     if int(max_days) < 1:
         console.print(f"[red]Invalid --max-days:[/red] must be at least 1, got {max_days}")
+        raise typer.Exit(code=1)
+    if yes:
+        console.print(
+            "[yellow]`gittan triage --yes` no longer applies heuristic mappings.[/yellow] "
+            "Use `gittan triage --json` to review evidence, then `gittan triage-apply` with explicit decisions."
+        )
         raise typer.Exit(code=1)
     if json_out:
         plan = build_triage_plan_dict(
@@ -401,7 +412,7 @@ def triage(
         console.print("[green]No unexplained days to triage in this range.[/green]")
         raise typer.Exit(code=0)
 
-    profiles = load_profiles_for_projects_config(projects_config)
+    profiles = load_triage_profiles(projects_config)
     all_names = sorted(
         {
             str(profile.get("name", "")).strip()
@@ -409,6 +420,7 @@ def triage(
             if str(profile.get("name", "")).strip()
         }
     )
+    projects_payload = load_projects_config_payload(Path(projects_config))
     applied_total = 0
     for row in days:
         day = str(row.get("day"))
@@ -428,28 +440,21 @@ def triage(
             console.print("[yellow]No project suggestions found; skipping day.[/yellow]")
             continue
         suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical)
-        if yes:
-            target = suggested_project
-            if target not in all_names:
-                console.print(f"[yellow]Skipping {day}: suggested project '{target}' not found in config[/yellow]")
-                continue
-            selected_domains = [site.domain for site in top_sites[:2]]
-        else:
-            project_choice = questionary.select(
-                f"{day}: choose project",
-                choices=[*all_names, "Skip day"],
-                default=suggested_project if suggested_project in all_names else None,
-            ).ask()
-            if not project_choice or project_choice == "Skip day":
-                continue
-            target = project_choice
-            selected_domains = questionary.checkbox(
-                f"{day}: pick domains to map to '{target}'",
-                choices=[site.domain for site in top_sites],
-                validate=lambda value: True if value else "Select at least one domain or skip day.",
-            ).ask()
-            if not selected_domains:
-                continue
+        project_choice = questionary.select(
+            f"{day}: choose project",
+            choices=[*all_names, "Skip day"],
+            default=suggested_project if suggested_project in all_names else None,
+        ).ask()
+        if not project_choice or project_choice == "Skip day":
+            continue
+        target = project_choice
+        selected_domains = questionary.checkbox(
+            f"{day}: pick domains to map to '{target}'",
+            choices=[site.domain for site in top_sites],
+            validate=lambda value: True if value else "Select at least one domain or skip day.",
+        ).ask()
+        if not selected_domains:
+            continue
         assignments = [(domain, target) for domain in as_list(selected_domains)]
         if not assignments:
             continue
@@ -460,6 +465,7 @@ def triage(
         )
         applied_total += applied
         console.print(f"[green]Applied[/green] {applied} mapping(s) for {day} -> {target}")
-        profiles = load_profiles_for_projects_config(projects_config)
+        profiles = load_triage_profiles(projects_config)
+        projects_payload = load_projects_config_payload(Path(projects_config))
     console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
 

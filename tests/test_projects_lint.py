@@ -49,6 +49,32 @@ class ProjectsLintHelperTests(unittest.TestCase):
         }
         warnings = lint_projects_payload(payload)
         self.assertTrue(any(w.code == "overlap-term" for w in warnings))
+        self.assertTrue(any(w.code == "overlap-term" and w.severity == "warn" for w in warnings))
+
+    def test_project_slug_overlap_is_review_severity(self):
+        payload = {
+            "projects": [
+                {"name": "briox-buddy", "enabled": True, "match_terms": ["briox-buddy"]},
+                {"name": "timelog-extract", "enabled": True, "match_terms": ["briox-buddy"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        overlap = [w for w in warnings if w.code == "overlap-term"]
+        self.assertEqual(len(overlap), 1)
+        self.assertEqual(overlap[0].severity, "review")
+
+    def test_repo_path_overlap_warns_across_projects(self):
+        payload = {
+            "projects": [
+                {"name": "A", "enabled": True, "match_terms": ["/Users/me/work/acme"]},
+                {"name": "B", "enabled": True, "match_terms": ["/Users/me/work/acme/api"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        msgs = "\n".join(w.message for w in warnings)
+        self.assertTrue(any(w.code == "repo-path-overlap" for w in warnings))
+        self.assertIn("A", msgs)
+        self.assertIn("B", msgs)
 
 
 class ProjectsLintCliTests(unittest.TestCase):

@@ -117,11 +117,10 @@ def _suggested_project_names(day: dict[str, Any]) -> list[str]:
 
 
 def _next_steps(lint_items: list[dict[str, Any]]) -> list[str]:
-    steps: list[str] = []
-    steps.append("Choose a project/customer for each evidence candidate before applying any config change.")
-    steps.append("Apply only explicit decisions with `gittan triage-apply`; do not pipe triage JSON into config.")
+    steps = [
+        "Choose a project/customer for each evidence candidate before applying any config change.",
+        "Apply only explicit decisions with `gittan triage-apply`; do not pipe triage JSON into config.",
+    ]
     if any(item["severity"] == "warn" for item in lint_items):
         steps.append("Resolve warn-level project config lint findings before trusting totals.")
-    if not steps:
-        steps.append("No project config changes suggested for this range.")
     return steps

@@ -51,7 +51,19 @@ class ProjectsLintHelperTests(unittest.TestCase):
         self.assertTrue(any(w.code == "overlap-term" for w in warnings))
         self.assertTrue(any(w.code == "overlap-term" and w.severity == "warn" for w in warnings))
 
-    def test_project_slug_overlap_is_review_severity(self):
+    def test_overlap_is_review_when_term_matches_multiple_project_names(self):
+        payload = {
+            "projects": [
+                {"name": "blueberry-site", "enabled": True, "match_terms": ["blueberry-site"]},
+                {"name": "blueberry-site-admin", "enabled": True, "match_terms": ["blueberry-site"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        overlap = [w for w in warnings if w.code == "overlap-term"]
+        self.assertEqual(len(overlap), 1)
+        self.assertEqual(overlap[0].severity, "review")
+
+    def test_overlap_warns_when_term_matches_only_one_project_name(self):
         payload = {
             "projects": [
                 {"name": "briox-buddy", "enabled": True, "match_terms": ["briox-buddy"]},
@@ -61,7 +73,7 @@ class ProjectsLintHelperTests(unittest.TestCase):
         warnings = lint_projects_payload(payload)
         overlap = [w for w in warnings if w.code == "overlap-term"]
         self.assertEqual(len(overlap), 1)
-        self.assertEqual(overlap[0].severity, "review")
+        self.assertEqual(overlap[0].severity, "warn")
 
     def test_repo_path_overlap_warns_across_projects(self):
         payload = {

@@ -62,7 +62,7 @@ def github_repo_slug(url: str, *, title: str = "") -> str:
     parts = [part for part in parsed.path.split("/") if part]
     if len(parts) < 2:
         return ""
-    owner, repo = parts[0].strip(), parts[1].strip()
+    owner, repo = parts[0].strip().lower(), parts[1].strip().lower()
     has_repo_subpath = len(parts) > 2 and parts[2].lower() in REPO_SUBPATH_MARKERS
     has_repo_title = _title_mentions_repo(title, owner, repo)
     if len(parts) > 2 and not has_repo_subpath:

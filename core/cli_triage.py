@@ -33,7 +33,7 @@ AGENT_TRIAGE_SCHEMA_VERSION = 1
 NOTES_FOR_AGENTS = [
     "JSON mode omits Chrome page titles to reduce accidental PII in logs; domains and counts remain.",
     "Primary mapping signal is tracked_urls / site-first scoring; match_terms is secondary.",
-    "Use --json for plans only; --yes applies mappings on this machine. Never pipe raw --json output into config.",
+    "Use --json for read-only plans only. Apply explicit decisions with `gittan triage-apply`; never pipe raw --json output into config.",
     "To apply decisions from mobile/offline UIs, use `gittan triage-apply` with a decisions JSON (see docs/runbooks/gittan-triage-agents.md) — not the triage --json plan.",
     "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
     "Triage uses a noise pre-pass that removes known Cursor SDK/skills/tooling chatter before project suggestions.",

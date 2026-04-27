@@ -122,14 +122,18 @@ def _looks_like_intentional_overlap(term: str, names: list[str], canonicals: set
         return True
     clean_term = _compact_token(term)
     compact_names = [_compact_token(name) for name in names]
-    if clean_term and any(clean_term == name or clean_term in name for name in compact_names):
+    if clean_term and _matching_name_count(clean_term, compact_names) >= 2:
         return True
     if "/" in term:
         tail = term.rsplit("/", 1)[-1]
         compact_tail = _compact_token(tail)
-        if compact_tail and any(compact_tail == name or compact_tail in name for name in compact_names):
+        if compact_tail and _matching_name_count(compact_tail, compact_names) >= 2:
             return True
     return False
+
+
+def _matching_name_count(term: str, names: list[str]) -> int:
+    return sum(1 for name in names if term == name or term in name)
 
 
 def _compact_token(value: str) -> str:

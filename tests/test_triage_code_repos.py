@@ -8,7 +8,7 @@ from core.triage_code_repos import build_code_repo_candidates, code_repo_candida
 class TriageCodeRepoTests(unittest.TestCase):
     def test_extracts_provider_neutral_repo_candidates(self):
         self.assertEqual(
-            code_repo_candidate("https://github.com/octo-org/service-api/pulls/1"),
+            code_repo_candidate("https://github.com/Octo-Org/Service-API/pulls/1"),
             {"provider": "github", "value": "github.com/octo-org/service-api"},
         )
 
@@ -52,7 +52,7 @@ class TriageCodeRepoTests(unittest.TestCase):
     def test_build_candidates_counts_repo_visits(self):
         rows = [
             (1, "https://github.com/octo-org/service-api", "GitHub - octo-org/service-api"),
-            (2, "https://github.com/octo-org/service-api/pulls", "Pull requests"),
+            (2, "https://github.com/Octo-Org/Service-API/pulls", "Pull requests"),
             (3, "https://github.com/octo-org/service-api", "Generic tab title"),
             (4, "https://github.com/customer-co/billing-portal/tree/main", "Repository tree"),
         ]

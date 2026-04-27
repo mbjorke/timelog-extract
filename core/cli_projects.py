@@ -230,7 +230,7 @@ def projects_lint(
 
     console.print(f"[yellow]projects-lint: WARN[/yellow] {len(warnings)} warning(s)")
     for idx, warning in enumerate(warnings, start=1):
-        console.print(f"{idx}. [{warning.code}] {warning.message}")
+        console.print(f"{idx}. [{warning.severity}/{warning.code}] {warning.message}")
 
     if strict:
         raise typer.Exit(code=2)

@@ -22,16 +22,17 @@ Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns 
 
 You need **Python 3.9+**. If `pip` is awkward on your machine, prefer **`python3 -m pip`** (common on macOS).
 
-**Fast path:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` is on your PATH:
+**Fast path:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` is on your PATH. Install `pipx` with your normal Python tooling, or with Homebrew if that is already how you manage developer tools:
 
 ```bash
-brew install pipx && pipx ensurepath
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 # open a new shell, then:
 pipx install timelog-extract
 gittan -V
 ```
 
-**Homebrew (optional):** when a maintainer tap is published, the preferred demo line is `brew tap <org>/gittan && brew install gittan` then `gittan -V`. Until then, use pipx above. Setup and formula notes: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md).
+There is no supported Homebrew install for `gittan` yet. Maintainer notes for a future tap live in [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md), but PyPI/pipx is the current public install path.
 
 <details>
 <summary><b>Other install paths</b></summary>

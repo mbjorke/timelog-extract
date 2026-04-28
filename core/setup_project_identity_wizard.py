@@ -199,7 +199,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         return
 
     console.print("")
-    print_command_hero(console, "setup-project-mapping")
+    print_command_hero(console, "setup:project-mapping")
     console.print("")
     console.print(f"[{STYLE_LABEL}]Project mapping setup[/]")
     console.print(f"[{STYLE_MUTED}]Nothing is saved without your approval.[/]")

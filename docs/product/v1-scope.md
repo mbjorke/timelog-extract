@@ -25,7 +25,7 @@
 - **Cloud-agent platforms** (optional connectors that pull job-level metadata—runs, cost, links to outputs—from third-party agent APIs using the user’s credentials): **not in v1**; treated as **post-v1 / backlog**. Root `VISION.md` and `docs/product/gittan-vision.md` describe this direction so marketing stays honest; **shipped v1** remains the **local trace** sources listed above until explicitly added here.
 - Apple Mail and Screen Time as default-enabled sources are deferred behind explicit opt-in.
 - Full Briox invoice push flow deferred to v1.1+ (keep read/test integration outside core plugin path).
-- **ActivityWatch** (optional local activity aggregator): **not in v1**; rationale and integration sketch in `**docs/sources/activitywatch-integration.md`**.
+- **ActivityWatch** (optional local activity aggregator): **not in v1**; rationale and integration sketch in `docs/sources/activitywatch-integration.md`.
 
 ## v1 UX Commitments
 

@@ -38,12 +38,11 @@ if $svg_ready && command -v rsvg-convert >/dev/null 2>&1; then
   cp "$MARKS_DIR/bee.svg" favicon.svg
 
   # favicon.ico — Bee only, rendered at 1.25× then center-cropped so it fills the frame.
-  rsvg-convert -w 20 -h 20 "$MARKS_DIR/bee.svg" \
-    | magick - -gravity center -background "#0c1119" -extent 16x16 "$TMP/fav-16.png"
-  rsvg-convert -w 40 -h 40 "$MARKS_DIR/bee.svg" \
-    | magick - -gravity center -background "#0c1119" -extent 32x32 "$TMP/fav-32.png"
-  rsvg-convert -w 60 -h 60 "$MARKS_DIR/bee.svg" \
-    | magick - -gravity center -background "#0c1119" -extent 48x48 "$TMP/fav-48.png"
+  for pair in "20:16" "40:32" "60:48"; do
+    IFS=":" read -r render_px target_px <<< "$pair"
+    rsvg-convert -w "$render_px" -h "$render_px" "$MARKS_DIR/bee.svg" \
+      | magick - -gravity center -background "#0c1119" -extent "${target_px}x${target_px}" "$TMP/fav-${target_px}.png"
+  done
   magick "$TMP/fav-16.png" "$TMP/fav-32.png" "$TMP/fav-48.png" favicon.ico
 
   cp "$TMP/fav-16.png" favicon-16x16.png

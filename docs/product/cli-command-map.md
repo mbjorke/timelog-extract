@@ -52,7 +52,8 @@ Reference implementation: `core/live_terminal/contract.py`.
   - Step 4: Doctor Check
   - Step 5: Triage Review (optional)
 - After setup, prefer interactive flow over flag-heavy instructions:
-  - `gittan triage --json` (timeframe picker when date flags are omitted)
-  - `gittan triage-apply` after explicit review
+  - `gittan triage --json` (read-only plan; timeframe picker when date flags are omitted)
+  - `gittan triage-apply --interactive-review` after explicit review (use `--yes` only after confirming the plan)
+  - Workflow contract reference: `docs/runbooks/gittan-triage-agents.md`
 - Position `gittan review` as advanced/manual cleanup, not the default first-run path.
 - If we add future aliases, document them as additive language, not replacements, until migration is complete.

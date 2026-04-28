@@ -76,10 +76,14 @@ def _choose_bootstrap_root_interactive(default_root: Path) -> Path:
     if picked == "Cancel setup":
         raise KeyboardInterrupt("setup cancelled by user")
     if picked == "Enter custom path...":
-        custom = (questionary.text("Custom repo discovery root:", default=str(default_root)).ask() or "").strip()
-        if not custom:
-            return default_root
-        return Path(custom).expanduser()
+        while True:
+            custom = (questionary.text("Custom repo discovery root:", default=str(default_root)).ask() or "").strip()
+            if not custom:
+                return default_root
+            custom_path = Path(custom).expanduser()
+            if custom_path.exists() and custom_path.is_dir():
+                return custom_path
+            print(f"Invalid directory: {custom_path}. Please choose an existing folder.")
     for label, path in candidates:
         if picked == f"{label}: {path}":
             return path

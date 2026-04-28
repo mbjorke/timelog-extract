@@ -93,7 +93,7 @@ Anonymized demo config scenario (derived from real config):
 bash scripts/contributor_setup_scenarios.sh anonymized-demo-config
 ```
 
-Both scenarios:
+These setup scenarios:
 
 - create a disposable temporary `timelog_projects.json`,
 - run interactive `setup`,

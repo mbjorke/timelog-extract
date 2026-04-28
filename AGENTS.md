@@ -25,18 +25,18 @@ Use this compact execution order before deep exploration:
 6. Prefer non-destructive config handling:
   - never move/delete `timelog_projects.json`
   - use explicit alternate paths (`--projects-config`) for experiments
-  - for **gap / domain triage automation**, use `gittan triage --json` (read-only plan) before `--yes`; contract in `**docs/runbooks/gittan-triage-agents.md`**. For triage code reviews: in **Cursor** use `**/gittan-triage-review`** (or read `**.cursor/commands/gittan-triage-review.md**` — same checklist in any editor).
+  - for **gap / domain triage automation**, use `gittan triage --json` (read-only plan) before `--yes`; contract in `docs/runbooks/gittan-triage-agents.md`. For triage code reviews: in **Cursor** use `/gittan-triage-review` (or read `.cursor/commands/gittan-triage-review.md` — same checklist in any editor).
 7. Keep commits scoped by intent:
   - feature code
   - docs/reorg
   - follow-up cleanup
-8. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): `**bash scripts/run_autotests.sh`** from **repository root** — see `[CONTRIBUTING.md](CONTRIBUTING.md)`. (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
+8. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): `bash scripts/run_autotests.sh` from **repository root** — see [`CONTRIBUTING.md`](CONTRIBUTING.md). (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
 
 If this section conflicts with any policy below, the detailed policy below wins.
 
-**Multiple AI tools/editors:** policy stays in this file; for a tool matrix, inspiration vs ideas, and optional skills guidance, see `**docs/contributing/ai-assisted-work.md`** and `**docs/inspiration/README.md**`.
+**Multiple AI tools/editors:** policy stays in this file; for a tool matrix, inspiration vs ideas, and optional skills guidance, see `docs/contributing/ai-assisted-work.md` and `docs/inspiration/README.md`.
 
-**Product doc hierarchy** (vision, scope, metrics, how root `VISION.md` relates): `**docs/product/vision-documents.md`** — check before substantive product or marketing doc edits.
+**Product doc hierarchy** (vision, scope, metrics, how root `VISION.md` relates): `docs/product/vision-documents.md` — check before substantive product or marketing doc edits.
 
 ## Maintainer workflow preferences (low copy-paste)
 
@@ -75,27 +75,27 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - Never commit `TIMELOG.md`.
 - Ensure `TIMELOG.md` remains gitignored.
 - If `TIMELOG.md` is accidentally staged, unstage it before commit.
-- Do not commit a `**private/`** directory or other gitignored local business notes — including **revenue, detailed metrics, and sponsor-specific numbers** (see `**docs/meta/private-local-notes.md`**).
+- Do not commit a `private/` directory or other gitignored local business notes — including **revenue, detailed metrics, and sponsor-specific numbers** (see `docs/meta/private-local-notes.md`).
 
 ## Local data safety (destructive commands)
 
-- **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on `**timelog_projects.json`**, `**TIMELOG.md**`, dated backups, or anything under `**private/**`.
+- **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on `timelog_projects.json`, `TIMELOG.md`, dated backups, or anything under `private/`.
 - Before renaming, moving aside, or deleting files that are the **only copy** of configuration or work history, **confirm with the user** or use a **non-destructive** pattern first (e.g. `cp` to a timestamped path outside the repo, or document exact restore steps).
-- Scenario testing and “quick cleanup” are common ways to lose data; treat `**timelog_projects.json`** as **critical** even though it is gitignored.
-- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `**docs/incidents/2026-04-13-project-config-backup-gap.md`**.
+- Scenario testing and “quick cleanup” are common ways to lose data; treat `timelog_projects.json` as **critical** even though it is gitignored.
+- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `docs/incidents/2026-04-13-project-config-backup-gap.md`.
 
 ## Branch policy (`main` + short-lived `task/*`)
 
-- `**main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
-- Agents should create **short-lived task branches from `main`** (for example `task/<scope>`), open PR `**task/* -> main**`, merge, then delete the task branch.
+- **`main` is branch-protected** (no direct push). Keep it release-ready and merge only via PR.
+- Agents should create **short-lived task branches from `main`** (for example `task/<scope>`), open PR `task/* -> main`, merge, then delete the task branch.
 - Avoid long-lived branch families (`feat/*`, `fix/*`, `docs/*`, `cursor/*`) unless explicitly requested for a special case.
 - Release flow:
-  1. Merge ordinary work to `**main**` via PR when ready.
-  2. Use `**release/X.Y.Z**` when versioning/release chores need explicit isolation; PR `**release/* -> main**` when that line is ready.
-- Review intent: `**task/* -> main**` carries feature/docs review; keep PRs small enough to review in one pass.
+  1. Merge ordinary work to `main` via PR when ready.
+  2. Use `release/X.Y.Z` when versioning/release chores need explicit isolation; PR `release/* -> main` when that line is ready.
+- Review intent: `task/* -> main` carries feature/docs review; keep PRs small enough to review in one pass.
 - **Before bumping versioned files** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`): confirm branch intent with `git branch --show-current`.
-- If a **separate `dev`** branch exists (fork or policy), divergence handling lives in `**docs/runbooks/dev-main-alignment.md**` — default upstream is `**main` only**.
-- See `**BRANCH.md`** for the operational workflow and `**docs/runbooks/ci.md**` for CI behavior.
+- If a **separate `dev`** branch exists (fork or policy), divergence handling lives in `docs/runbooks/dev-main-alignment.md` — default upstream is `main` only.
+- See `BRANCH.md` for the operational workflow and `docs/runbooks/ci.md` for CI behavior.
 
 ## Naming migration (`rc-` -> `task-`)
 
@@ -114,29 +114,29 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 1. **Decides** the target version (e.g. patch vs minor) and what must be in scope.
 2. On **GitHub**: open or refresh the **pull request** from `release/X.Y.Z` (or the agreed branch) into `main`, wait for **CI** to pass, then **merge** the PR (squash or merge commit per repo habit).
-3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in `**docs/runbooks/versioning.md`**.
+3. **PyPI** (if applicable): ensure [trusted publishing](https://docs.pypi.org/trusted-publishers/) is configured, then either push git **tag** `vX.Y.Z` or run the **Publish to PyPI** workflow as described in `docs/runbooks/versioning.md`.
 4. **Optional:** smoke-test `pip install timelog-extract` after upload.
 
 **Plain terms:** **PR** = request to merge a branch into `main`; **merge** = accept that request on GitHub; **tag** = release label on a commit (often triggers publish); **conflicts** = overlapping edits — resolved **in the branch** by the agent, then pushed, so the PR becomes mergeable again.
 
 ### Agent — assume these responsibilities
 
-1. Work on `**release/X.Y.Z`** (or create it from latest `**origin/main`** for a **new** version line). Confirm branch name matches the version being bumped.
-2. Apply the **version bump checklist** in `**docs/runbooks/versioning.md`** (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
-3. Run `**bash scripts/run_autotests.sh`** (repo root); when packaging changes, also `**python -m build`** locally if appropriate.
-4. Commit, `**git push origin <branch>`**, and keep the maintainer informed in **non-jargon** terms (“PR is ready”, “CI should run”, “after you merge, tag vX.Y.Z”).
-5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by `**git fetch origin`** and `**git merge origin/main`** into the release branch, resolve conflicts (often `**CHANGELOG.md`**, `**README.md`**), commit the merge, push — see `**docs/runbooks/versioning.md**` and `**BRANCH.md**`.
+1. Work on `release/X.Y.Z` (or create it from latest `origin/main` for a **new** version line). Confirm branch name matches the version being bumped.
+2. Apply the **version bump checklist** in `docs/runbooks/versioning.md` (`pyproject.toml`, `core/cli_options.py` dev fallback, `CHANGELOG.md`, etc.).
+3. Run `bash scripts/run_autotests.sh` (repo root); when packaging changes, also `python -m build` locally if appropriate.
+4. Commit, `git push origin <branch>`, and keep the maintainer informed in **non-jargon** terms (“PR is ready”, “CI should run”, “after you merge, tag vX.Y.Z”).
+5. **Squash-merge follow-up:** If `main` was updated by **squash-merging** an earlier PR from the **same** `release/X.Y.Z` line, Git history on the branch and on `main` **diverges**. A **second** PR from that branch may show **merge conflicts**. Fix by `git fetch origin` and `git merge origin/main` into the release branch, resolve conflicts (often `CHANGELOG.md`, `README.md`), commit the merge, push — see `docs/runbooks/versioning.md` and `BRANCH.md`.
 
 ## Git worktrees (parallel work)
 
 - Use when: an open PR branch must stay stable, a spike or side idea should not share the same working tree as another agent or task, or you want a second Cursor window on another branch without `stash`/`checkout` churn.
 - Prefer sibling worktrees next to the main clone via `./scripts/git_worktree.sh add <branch> [dir-name]` from the primary repo; open the printed path in a separate Cursor window for that branch only.
-- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh `**release/X.Y.Z`** branch from updated `main`.
+- Do not mix unrelated commits into an existing PR branch; start a new branch (new worktree or `git switch -c` in an existing tree) for new scope — for **another numbered release**, prefer a fresh `release/X.Y.Z` branch from updated `main`.
 - Remove finished trees with `./scripts/git_worktree.sh remove …` (or `git worktree remove`); use `git worktree prune` if a directory was deleted manually.
 
 ## GitHub Pages (landing site)
 
-- **Production deploy** runs only on **push to `main`** (see `**docs/runbooks/ci.md**` → *GitHub Pages*). A PR branch is **not** “deployed” until merge; that GitHub label is expected.
+- **Production deploy** runs only on **push to `main`** (see `docs/runbooks/ci.md` -> *GitHub Pages*). A PR branch is **not** "deployed" until merge; that GitHub label is expected.
 - **PRs** run a **verify** job when site files change; merge to `main` to publish. **Re-run deploy:** Actions → *Deploy static content to Pages* → *Run workflow* (`workflow_dispatch`).
 
 ## Global Automatic Timelog Setup
@@ -149,8 +149,8 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 
 ## Documentation paths in code (CLI, errors, `console.print`)
 
-- **Do not** point user-facing code (Python CLI output, error helpers, extension copy) at `**docs/legacy/*`*. Those files are not maintained as operational truth.
-- **Do** reference maintained docs: typically `**docs/runbooks/`** for procedures, `**docs/decisions/**` for policy, `**docs/specs/**` for behavior contracts, `**docs/product/**` for product truth. If the right doc does not exist yet, add a short runbook and link optional history from there.
+- **Do not** point user-facing code (Python CLI output, error helpers, extension copy) at `docs/legacy/`. Those files are not maintained as operational truth.
+- **Do** reference maintained docs: typically `docs/runbooks/` for procedures, `docs/decisions/` for policy, `docs/specs/` for behavior contracts, `docs/product/` for product truth. If the right doc does not exist yet, add a short runbook and link optional history from there.
 - Markdown (README, `docs/README.md`, changelogs) may still mention `docs/legacy/` as secondary context.
 
 ## Documentation privacy and path hygiene
@@ -178,12 +178,12 @@ remove it, rerun tests, and document the correction in the PR notes.
 
 ## Review Cadence (CodeRabbit)
 
-- **Severity and who may fix what:** see `**docs/decisions/agent-review-contract.md`** (draft contract between review signal and human/Cursor execution).
+- **Severity and who may fix what:** see `docs/decisions/agent-review-contract.md` (draft contract between review signal and human/Cursor execution).
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.
 - Keep CodeRabbit auto-review enabled; throttle manual review commands to at most
 one trigger per stable batch.
-- Trigger `**@coderabbitai full review**` when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use `**@coderabbitai review`** only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
+- Trigger `@coderabbitai full review` when you want a **complete** pass over the whole PR (CodeRabbit ignores its previous inline comments for that run). Use `@coderabbitai review` only for an **incremental** pass on new commits since the last full review — if nothing new was pushed, incremental review may do little.
 - Trigger that review only when:
   - the current scope is complete enough for review,
   - CI is green (or expected to be green after the latest push),
@@ -206,7 +206,7 @@ one trigger per stable batch.
 
 - The **GitHub** integration can hit an **hourly cap on reviewed commits** for your org/plan. If CodeRabbit posts a **“Rate limit exceeded”** message, wait for the countdown (often ~1 hour) or use the **CLI** below instead of `@coderabbitai` on GitHub.
 - **Reduce surprises:** batch pushes, then trigger **one** `@coderabbitai full review` when the PR is stable — avoid requesting a full review after every small commit in the same hour.
-- `**@coderabbitai help`** in the PR lists commands; product details change over time — treat [CodeRabbit docs](https://docs.coderabbit.ai/) as source of truth for quotas.
+- `@coderabbitai help` in the PR lists commands; product details change over time — treat [CodeRabbit docs](https://docs.coderabbit.ai/) as source of truth for quotas.
 
 ### CodeRabbit CLI (optional local pre-check)
 
@@ -217,11 +217,11 @@ one trigger per stable batch.
 
 ### Task handover prompt (copy-paste)
 
-- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `**docs/contributing/agent-task-handover-prompt.md`**. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
+- For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `docs/contributing/agent-task-handover-prompt.md`. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.
 
 ## Task spec traceability (required)
 
-- Every new or updated task spec/prompt in `**docs/task-prompts/`** must include a
+- Every new or updated task spec/prompt in `docs/task-prompts/` must include a
 canonical `## Traceability` section using the exact field keys below.
 - Story ID must use your canonical tracker prefix, for example `GH-123` (GitHub)
 or `JIRA-123` (Jira). Do not use free-form IDs.

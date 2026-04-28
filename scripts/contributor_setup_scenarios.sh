@@ -160,7 +160,7 @@ run_real_config_sandbox() {
   (
     cd "$ROOT_DIR"
     GITTAN_PROJECTS_CONFIG="$tmpcfg" python3 timelog_extract.py setup --interactive --skip-smoke
-    GITTAN_PROJECTS_CONFIG="$tmpcfg" python3 timelog_extract.py triage --json --max-days 1 --max-sites 5
+    GITTAN_PROJECTS_CONFIG="$tmpcfg" triage_cmd
   )
 
   echo

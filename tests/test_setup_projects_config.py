@@ -147,19 +147,24 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
                 encoding="utf-8",
             )
-            result = ensure_projects_config(
-                console=Console(record=True),
-                yes=False,
-                dry_run=False,
-                bootstrap_root=tmp,
-                config_path=cfg,
-                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
-                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
-            )
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.text") as text_mock, mock.patch(
+                "core.setup_projects_config_bootstrap.questionary.confirm"
+            ) as confirm_mock:
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=False,
+                    dry_run=False,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
 
             self.assertEqual(result.status, "PASS")
             self.assertNotIn("customer_seeds=", result.notes)
             self.assertTrue(cfg.exists())
+            text_mock.assert_not_called()
+            confirm_mock.assert_not_called()
             # Existing project remains; bootstrap no longer asks for Project 1/2/3 seeds.
             payload = json.loads(cfg.read_text(encoding="utf-8"))
             self.assertEqual(len(payload["projects"]), 1)

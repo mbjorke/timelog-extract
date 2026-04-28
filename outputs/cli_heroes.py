@@ -45,7 +45,7 @@ _HEROES: dict[str, tuple[list[str], str]] = {
         ],
         "local setup with clear approval points",
     ),
-    "setup-project-mapping": (
+    "setup:project-mapping": (
         [
             "    __      Gittan Project Mapping",
             "   /oo\\     Map discovered projects to your customer domains.",

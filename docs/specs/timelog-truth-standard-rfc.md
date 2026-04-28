@@ -414,7 +414,7 @@ Expired waivers MUST automatically become NO-GO until renewed or resolved.
 
 ### Conditional GO usage policy (draft)
 
-- Allowed on `task/`* branches for controlled iteration when:
+- Allowed on `task/*` branches for controlled iteration when:
   - determinism gate passes,
   - explainability coverage is complete,
   - remaining gate misses have active mitigation plans.

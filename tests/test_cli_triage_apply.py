@@ -9,8 +9,15 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from core.cli_triage_apply import _load_decisions, _validate_decision, _project_exists
+from core.cli_triage_apply import (
+    _interactive_review,
+    _load_decisions,
+    _project_exists,
+    _render_plan_preview,
+    _validate_decision,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 CLI = [sys.executable, str(REPO / "timelog_extract.py")]
@@ -165,6 +172,8 @@ class TriageApplyTests(unittest.TestCase):
         self.assertEqual(entry["project_name"], "Demo")
         self.assertEqual(entry["rule_type"], "tracked_urls")
         self.assertEqual(entry["rule_value"], "work.example.com")
+        self.assertIn("preview", out)
+        self.assertIn("Planned config updates", out["preview"])
 
     def test_apply_case_insensitive_project_match(self):
         """Project names are matched case-insensitively."""
@@ -296,6 +305,29 @@ class TriageApplyHelpersTests(unittest.TestCase):
     def test_project_exists_empty_projects(self):
         payload = {"projects": []}
         self.assertFalse(_project_exists(payload, "Anything"))
+
+    def test_render_plan_preview_groups_by_project(self):
+        text = _render_plan_preview(
+            [
+                ("Demo", "tracked_urls", "demo.io"),
+                ("Demo", "match_terms", "deploy"),
+                ("Ops", "match_terms", "pager"),
+            ]
+        )
+        self.assertIn("Demo:", text)
+        self.assertIn("+ tracked_urls: demo.io", text)
+        self.assertIn("+ match_terms: deploy", text)
+        self.assertIn("Ops:", text)
+
+    def test_interactive_review_keeps_confirmed_only(self):
+        decisions = [
+            ("Demo", "match_terms", "ship"),
+            ("Demo", "tracked_urls", "demo.io"),
+        ]
+        with patch("core.cli_triage_apply.questionary.confirm") as mock_confirm:
+            mock_confirm.return_value.ask.side_effect = [True, False]
+            selected = _interactive_review(decisions)
+        self.assertEqual(selected, [("Demo", "match_terms", "ship")])
 
 
 if __name__ == "__main__":

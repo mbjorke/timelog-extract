@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, Optional
 
+import questionary
 import typer
 
 from core.cli_app import app
@@ -20,6 +22,14 @@ from core.config import (
 
 _VALID_RULE_TYPES = {"tracked_urls", "match_terms"}
 _SCHEMA_VERSION = 1
+
+
+def _decision_payload(project_name: str, rule_type: str, rule_value: str) -> dict[str, str]:
+    return {
+        "project_name": project_name,
+        "rule_type": rule_type,
+        "rule_value": rule_value,
+    }
 
 
 def _load_decisions(input_path: Optional[str]) -> list[dict]:
@@ -63,6 +73,34 @@ def _project_exists(payload: dict, project_name: str) -> bool:
     return False
 
 
+def _render_plan_preview(validated: list[tuple[str, str, str]]) -> str:
+    if not validated:
+        return "No validated decisions."
+    by_project: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for project_name, rule_type, rule_value in validated:
+        by_project[project_name].append((rule_type, rule_value))
+    lines = ["Planned config updates:"]
+    for project_name in sorted(by_project.keys(), key=str.lower):
+        lines.append(f"  {project_name}:")
+        for rule_type, rule_value in by_project[project_name]:
+            lines.append(f"    + {rule_type}: {rule_value}")
+    return "\n".join(lines)
+
+
+def _interactive_review(validated: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    if not validated:
+        return []
+    selected: list[tuple[str, str, str]] = []
+    for project_name, rule_type, rule_value in validated:
+        keep = questionary.confirm(
+            f"Apply {rule_type}='{rule_value}' to project '{project_name}'?",
+            default=True,
+        ).ask()
+        if keep:
+            selected.append((project_name, rule_type, rule_value))
+    return selected
+
+
 @app.command("triage-apply")
 def triage_apply(
     input_path: Annotated[
@@ -72,6 +110,10 @@ def triage_apply(
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     allow_create: Annotated[bool, typer.Option(help="Create unknown projects")] = False,
     dry_run: Annotated[bool, typer.Option(help="Print what would be applied; do not write")] = False,
+    interactive_review: Annotated[
+        bool,
+        typer.Option(help="Review each validated decision before apply"),
+    ] = False,
 ):
     """Apply categorization decisions from mobile to timelog_projects.json."""
     try:
@@ -114,16 +156,18 @@ def triage_apply(
         typer.echo(json.dumps({"applied": 0, "skipped": 0, "errors": errors}))
         raise typer.Exit(code=1)
 
+    selected = list(validated)
+    if interactive_review:
+        selected = _interactive_review(validated)
+
     if dry_run:
         typer.echo(
             json.dumps(
                 {
                     "dry_run": True,
-                    "would_apply": [
-                        {"project_name": pn, "rule_type": rt, "rule_value": rv}
-                        for pn, rt, rv in validated
-                    ],
-                    "skipped": len(decisions) - len(validated),
+                    "preview": _render_plan_preview(selected),
+                    "would_apply": [_decision_payload(pn, rt, rv) for pn, rt, rv in selected],
+                    "skipped": len(decisions) - len(selected),
                     "errors": [],
                 }
             )
@@ -131,7 +175,11 @@ def triage_apply(
         return
 
     applied = 0
-    for project_name, rule_type, rule_value in validated:
+    if not selected:
+        typer.echo(json.dumps({"applied": 0, "skipped": len(decisions), "errors": []}))
+        return
+
+    for project_name, rule_type, rule_value in selected:
         apply_rule_to_project(
             payload,
             project_name=project_name,
@@ -148,7 +196,8 @@ def triage_apply(
         json.dumps(
             {
                 "applied": applied,
-                "skipped": len(decisions) - applied,
+                "skipped": len(decisions) - len(selected),
+                "preview": _render_plan_preview(selected),
                 "errors": [],
             }
         )

@@ -11,11 +11,13 @@ from unittest.mock import patch
 
 from core.cli_triage import (
     AGENT_TRIAGE_SCHEMA_VERSION,
+    _resolve_date_range_with_picker,
     _build_site_time_hints,
     _build_choices,
     _build_question,
     _filter_triage_noise_rows,
     _is_triage_noise_row,
+    _render_triage_next_steps,
     _suggestion_to_plan_dict,
     build_triage_plan_dict,
     load_triage_profiles,
@@ -26,6 +28,22 @@ from scripts.calibration.gap_day_triage import ProjectSuggestion
 
 
 class CliTriageHelpersTests(unittest.TestCase):
+    def test_resolve_date_range_with_picker_uses_prompt_when_tty(self):
+        with patch("core.cli_triage.sys.stdin.isatty", return_value=True), patch(
+            "core.cli_triage.prompt_for_timeframe",
+            return_value={"date_from": "2026-04-01", "date_to": "2026-04-07"},
+        ):
+            d_from, d_to = _resolve_date_range_with_picker(date_from=None, date_to=None)
+        self.assertEqual((d_from, d_to), ("2026-04-01", "2026-04-07"))
+
+    def test_resolve_date_range_with_picker_skips_prompt_when_not_tty(self):
+        with patch("core.cli_triage.sys.stdin.isatty", return_value=False), patch(
+            "core.cli_triage.prompt_for_timeframe"
+        ) as picker:
+            d_from, d_to = _resolve_date_range_with_picker(date_from=None, date_to=None)
+        self.assertEqual((d_from, d_to), (None, None))
+        picker.assert_not_called()
+
     def test_is_triage_noise_row_matches_known_cursor_noise(self):
         self.assertTrue(_is_triage_noise_row("https://cursor.com/changelog", "Cursor release notes"))
         self.assertTrue(
@@ -46,8 +64,8 @@ class CliTriageHelpersTests(unittest.TestCase):
 
     def test_build_site_time_hints_adds_first_last_and_sample_window(self):
         rows = [
-            (132_537_602_000_000, "https://github.com/mbjorke/timelog-extract", "A"),
-            (132_537_605_000_000, "https://www.github.com/mbjorke/timelog-extract/pulls", "B"),
+            (132_537_602_000_000, "https://github.com/example/acme-app", "A"),
+            (132_537_605_000_000, "https://www.github.com/example/acme-app/pulls", "B"),
         ]
         hints = _build_site_time_hints(rows)
         self.assertIn("github.com", hints)
@@ -149,8 +167,8 @@ class CliTriageHelpersTests(unittest.TestCase):
             ]
         }
         chrome_rows = [
-            (132_537_602_000_000, "https://github.com/mbjorke/timelog-extract", "repo"),
-            (132_537_605_000_000, "https://github.com/mbjorke/timelog-extract/pulls", "pr"),
+            (132_537_602_000_000, "https://github.com/example/acme-app", "repo"),
+            (132_537_605_000_000, "https://github.com/example/acme-app/pulls", "pr"),
         ]
         try:
             with patch("core.cli_triage.analyze_screen_time_gaps", return_value=gap_payload), patch(
@@ -207,7 +225,7 @@ class CliTriageHelpersTests(unittest.TestCase):
         chrome_rows = [
             (132_537_602_000_000, "https://cursor.sh/docs", "Cursor Docs"),
             (132_537_603_000_000, "https://example.com", "Canvas SDK mirror failed"),
-            (132_537_605_000_000, "https://github.com/mbjorke/timelog-extract/pulls", "pr"),
+            (132_537_605_000_000, "https://github.com/example/acme-app/pulls", "pr"),
         ]
         try:
             with patch("core.cli_triage.analyze_screen_time_gaps", return_value=gap_payload), patch(
@@ -228,7 +246,7 @@ class CliTriageHelpersTests(unittest.TestCase):
         self.assertEqual(top_sites[0]["domain"], "github.com")
         self.assertEqual(
             plan["days"][0]["code_repos"],
-            [{"provider": "github", "value": "github.com/mbjorke/timelog-extract", "visits": 1}],
+            [{"provider": "github", "value": "github.com/example/acme-app", "visits": 1}],
         )
         self.assertEqual(plan["days"][0]["noise_rows_filtered"], 2)
 
@@ -368,6 +386,13 @@ class CliTriageHelpersTests(unittest.TestCase):
         )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("no longer applies heuristic mappings", r.stdout + r.stderr)
+        self.assertIn("Next steps", r.stdout + r.stderr)
+
+    def test_render_triage_next_steps_mentions_interactive_review(self):
+        text = _render_triage_next_steps("timelog_projects.json")
+        self.assertIn("triage --json", text)
+        self.assertIn("triage-apply --dry-run", text)
+        self.assertIn("triage-apply --interactive-review", text)
 
 
 def _make_suggestion(canonical: str, score: int = 10) -> ProjectSuggestion:

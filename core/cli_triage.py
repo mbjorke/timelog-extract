@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from datetime import timedelta
 from typing import Annotated, Any, Optional
@@ -17,6 +18,7 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
+from core.cli_prompts import prompt_for_timeframe
 from core.guided_project_config import build_guided_config_plan
 from core.triage_code_repos import build_code_repo_candidates
 from scripts.calibration.gap_day_triage import (
@@ -350,6 +352,27 @@ def _render_day_summary(row: dict, top_sites: list[DayTopSite]) -> str:
     return "\n".join(lines)
 
 
+def _render_triage_next_steps(projects_config: str) -> str:
+    return (
+        "[bold]Next steps:[/bold]\n"
+        "  1. Run [cyan]gittan triage --json[/cyan] to collect read-only evidence candidates.\n"
+        "  2. Build a [cyan]decisions[/cyan] JSON with confirmed mappings only.\n"
+        f"  3. Preview writes with [cyan]gittan triage-apply --dry-run --projects-config {projects_config} --input decisions.json[/cyan].\n"
+        f"  4. Apply after review with [cyan]gittan triage-apply --interactive-review --projects-config {projects_config} --input decisions.json[/cyan]."
+    )
+
+
+def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Use the shared timeframe picker when triage runs without date flags."""
+    if date_from or date_to:
+        return date_from, date_to
+    if not sys.stdin.isatty():
+        return date_from, date_to
+    print("No date flags provided - choose timeframe interactively.")
+    picked = prompt_for_timeframe()
+    return picked.get("date_from"), picked.get("date_to")
+
+
 @app.command("triage")
 def triage(
     date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
@@ -384,16 +407,21 @@ def triage(
             "[yellow]`gittan triage --yes` no longer applies heuristic mappings.[/yellow] "
             "Use `gittan triage --json` to review evidence, then `gittan triage-apply` with explicit decisions."
         )
+        console.print(_render_triage_next_steps(projects_config))
         raise typer.Exit(code=1)
+    date_from, date_to = _resolve_date_range_with_picker(date_from=date_from, date_to=date_to)
     if json_out:
-        plan = build_triage_plan_dict(
-            date_from=date_from,
-            date_to=date_to,
-            projects_config=projects_config,
-            max_days=max_days,
-            max_sites=max_sites,
-            scoring_mode=scoring_mode,
-        )
+        stderr_console = Console(stderr=True)
+        stderr_console.print("[dim]Producing read-only triage JSON evidence (no config changes)...[/dim]")
+        with stderr_console.status("[bold blue]Producing triage evidence JSON...[/bold blue]", spinner="dots"):
+            plan = build_triage_plan_dict(
+                date_from=date_from,
+                date_to=date_to,
+                projects_config=projects_config,
+                max_days=max_days,
+                max_sites=max_sites,
+                scoring_mode=scoring_mode,
+            )
         print(json.dumps(plan, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
 
@@ -468,4 +496,5 @@ def triage(
         profiles = load_triage_profiles(projects_config)
         projects_payload = load_projects_config_payload(Path(projects_config))
     console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
+    console.print(_render_triage_next_steps(projects_config))
 

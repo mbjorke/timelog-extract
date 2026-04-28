@@ -87,9 +87,9 @@ class StatusIntegrityTests(unittest.TestCase):
 
     def test_status_prints_ultra_strict_note(self):
         report = _FakeReport(
-            project_reports={"Akturo": {"2026-04-22": {"hours": 0.1, "sessions": [1]}}},
+            project_reports={"Project Alpha": {"2026-04-22": {"hours": 0.1, "sessions": [1]}}},
             overall_days={"2026-04-22": {"hours": 0.1, "sessions": [1]}},
-            included_events=[{"project": "Akturo", "source": "Cursor"}],
+            included_events=[{"project": "Project Alpha", "source": "Cursor"}],
         )
         report.args.noise_profile = "ultra-strict"
         with patch("core.report_service.run_timelog_report", return_value=report):

@@ -105,19 +105,19 @@ class CoreDomainTests(unittest.TestCase):
 
     def test_classify_project_prefers_repo_path_over_generic_tool_term(self):
         profiles = [
-            {"name": "AX Finans", "match_terms": ["ax-finans", "/users/me/ax-finans"]},
-            {"name": "Akturo", "match_terms": ["cloudflare", "akturo"]},
+            {"name": "Project Alpha", "match_terms": ["alpha-repo", "/users/me/alpha-repo"]},
+            {"name": "Project Beta", "match_terms": ["cloudflare", "beta-app"]},
         ]
-        text = "Cloudflare Dashboard /Users/me/ax-finans"
-        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "AX Finans")
+        text = "Cloudflare Dashboard /Users/me/alpha-repo"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
 
     def test_classify_project_prefers_tracked_url_over_generic_tool_term(self):
         profiles = [
-            {"name": "AX Finans", "match_terms": ["cloudflare"], "tracked_urls": ["dash.cloudflare.com/accounts/ax"]},
-            {"name": "Akturo", "match_terms": ["cloudflare"], "tracked_urls": []},
+            {"name": "Project Alpha", "match_terms": ["cloudflare"], "tracked_urls": ["dash.cloudflare.com/accounts/alpha"]},
+            {"name": "Project Beta", "match_terms": ["cloudflare"], "tracked_urls": []},
         ]
-        text = "https://dash.cloudflare.com/accounts/ax overview"
-        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "AX Finans")
+        text = "https://dash.cloudflare.com/accounts/alpha overview"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
 
 
 if __name__ == "__main__":

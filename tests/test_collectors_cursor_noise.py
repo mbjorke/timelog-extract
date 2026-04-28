@@ -99,14 +99,14 @@ class CursorNoiseFilterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "c" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/akturo")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 16:32:19 [info] akturo: git_status: true, "
-                        "/Users/me/Workspace/Project/akturo workspaceStorage/" + wid
+                        "2026-04-22 16:32:19 [info] project-alpha: git_status: true, "
+                        "/Users/me/Workspace/Project/project-alpha workspaceStorage/" + wid
                     )
                 ],
             )
@@ -116,7 +116,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
                 home=home,
                 local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Akturo",
+                classify_project=lambda _hay, _profiles: "Project Alpha",
                 make_event=lambda source, ts, detail, project: {
                     "source": source,
                     "timestamp": ts,
@@ -130,14 +130,14 @@ class CursorNoiseFilterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "d" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/akturo")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 16:32:19 [info] akturo: git_status: true, "
-                        "/Users/me/Workspace/Project/akturo workspaceStorage/" + wid
+                        "2026-04-22 16:32:19 [info] project-alpha: git_status: true, "
+                        "/Users/me/Workspace/Project/project-alpha workspaceStorage/" + wid
                     )
                 ],
             )
@@ -147,7 +147,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
                 home=home,
                 local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Akturo",
+                classify_project=lambda _hay, _profiles: "Project Alpha",
                 make_event=lambda source, ts, detail, project: {
                     "source": source,
                     "timestamp": ts,
@@ -162,14 +162,14 @@ class CursorNoiseFilterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "e" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/akturo")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main/window.log",
                 [
                     (
                         "2026-04-22 17:25:46 [info] [VscodeDiagnosticsExecutor] EXECUTE: "
-                        "/Users/me/Workspace/Project/akturo/src/index.vue workspaceStorage/" + wid
+                        "/Users/me/Workspace/Project/project-alpha/src/index.vue workspaceStorage/" + wid
                     )
                 ],
             )
@@ -179,7 +179,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
                 home=home,
                 local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Akturo",
+                classify_project=lambda _hay, _profiles: "Project Alpha",
                 make_event=lambda source, ts, detail, project: {
                     "source": source,
                     "timestamp": ts,
@@ -194,14 +194,14 @@ class CursorNoiseFilterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "f" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/akturo")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main/window.log",
                 [
                     (
                         "2026-04-22 17:25:46 [info] [VscodeDiagnosticsExecutor] EXECUTE: "
-                        "/Users/me/Workspace/Project/akturo/src/index.vue workspaceStorage/" + wid
+                        "/Users/me/Workspace/Project/project-alpha/src/index.vue workspaceStorage/" + wid
                     )
                 ],
             )
@@ -211,7 +211,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
                 home=home,
                 local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Akturo",
+                classify_project=lambda _hay, _profiles: "Project Alpha",
                 make_event=lambda source, ts, detail, project: {
                     "source": source,
                     "timestamp": ts,

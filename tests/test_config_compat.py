@@ -233,12 +233,12 @@ class ProjectsConfigPathTests(unittest.TestCase):
             ):
                 with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
                     with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
-                        with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
+                        with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
                             path = resolve_projects_config_path()
                             cli_default = default_projects_config_option()
                             _path2, source = resolve_projects_config_path_and_source()
-        self.assertEqual(path, Path("/Users/demo/.gittan-mbjorke") / PROJECTS_CONFIG_FILENAME)
-        self.assertEqual(cli_default, str(Path("/Users/demo/.gittan-mbjorke") / PROJECTS_CONFIG_FILENAME))
+        self.assertEqual(path, Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(cli_default, str(Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME))
         self.assertEqual(source, "auto_profile_home")
 
     def test_prefers_existing_repo_local_file_when_present(self):
@@ -248,7 +248,7 @@ class ProjectsConfigPathTests(unittest.TestCase):
             with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: ""}, clear=False):
                 with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
                     with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
-                        with mock.patch("core.config.getpass.getuser", return_value="mbjorke"):
+                        with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
                             path = resolve_projects_config_path()
                             cli_default = default_projects_config_option()
                             _path2, source = resolve_projects_config_path_and_source()

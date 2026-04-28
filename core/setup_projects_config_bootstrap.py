@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,37 +53,42 @@ def _default_seed_match_terms(project_name: str) -> list[str]:
     return [project_name.strip()] if project_name.strip() else []
 
 
-def _collect_customer_project_seeds(*, yes: bool) -> list[tuple[str, str]]:
-    """Collect up to three project/customer pairs for setup bootstrap."""
-    if yes:
-        return []
-    should_collect = questionary.confirm(
-        "Name your top projects/customers now for faster first classification?",
-        default=True,
+def _choose_bootstrap_root_interactive(default_root: Path) -> Path:
+    """Ask user for discovery root using smart presets + custom path."""
+    candidates: list[tuple[str, Path]] = []
+    for label, path in [
+        ("Recommended (project-focused)", default_root),
+        ("Workspace", Path.home() / "Workspace"),
+        ("Projects", Path.home() / "Projects"),
+        ("Code", Path.home() / "Code"),
+        ("Home root (broad scan)", Path.home()),
+    ]:
+        resolved = path.expanduser()
+        if resolved.exists() and resolved.is_dir() and all(existing != resolved for _lbl, existing in candidates):
+            candidates.append((label, resolved))
+    choices = [f"{label}: {path}" for label, path in candidates]
+    choices.extend(["Enter custom path...", "Cancel setup"])
+    picked = questionary.select(
+        "Choose repo discovery root for project bootstrap:",
+        choices=choices,
+        default=choices[0] if choices else "Enter custom path...",
     ).ask()
-    if not should_collect:
-        return []
+    if picked == "Cancel setup":
+        raise KeyboardInterrupt("setup cancelled by user")
+    if picked == "Enter custom path...":
+        custom = (questionary.text("Custom repo discovery root:", default=str(default_root)).ask() or "").strip()
+        if not custom:
+            return default_root
+        return Path(custom).expanduser()
+    for label, path in candidates:
+        if picked == f"{label}: {path}":
+            return path
+    return default_root
 
-    seeds: list[tuple[str, str]] = []
-    for index in range(1, 4):
-        project_name = (
-            questionary.text(
-                f"Project {index} name (leave blank to stop):",
-                default="",
-            ).ask()
-            or ""
-        ).strip()
-        if not project_name:
-            break
-        customer_name = (
-            questionary.text(
-                f"Customer for {project_name}:",
-                default=project_name,
-            ).ask()
-            or project_name
-        ).strip()
-        seeds.append((project_name, customer_name or project_name))
-    return seeds
+
+def _collect_customer_project_seeds(*, yes: bool) -> list[tuple[str, str]]:
+    """Legacy helper kept for compatibility; setup no longer uses this flow."""
+    return []
 
 
 def _merge_customer_project_seeds(payload: dict, seeds: list[tuple[str, str]]) -> tuple[int, int]:
@@ -186,11 +192,18 @@ def ensure_projects_config(
 
     root_path = Path(bootstrap_root).expanduser() if bootstrap_root else suggest_bootstrap_root(Path.cwd())
     if not yes and bootstrap_root is None:
-        root_answer = questionary.text("Repo discovery root for multi-repo bootstrap:", default=str(root_path)).ask()
-        if root_answer:
-            root_path = Path(root_answer).expanduser()
+        console.print("[dim]Tip: use a focused root for faster scans, or choose home root for maximum coverage.[/dim]")
+        console.print("[dim]Naming hints: repos in kebab-case, customers as domains, branches as task/* or release/X.Y.Z.[/dim]")
+        root_path = _choose_bootstrap_root_interactive(root_path)
 
-    repos = discover_local_git_repos(root_path)
+    # Some terminal environments suppress Rich spinner rendering during prompts.
+    # Emit explicit start/end lines so users still get progress visibility.
+    console.print("[dim]Scanning local directories for git repositories...[/dim]")
+    scan_started = time.perf_counter()
+    with console.status("[bold blue]Scanning repositories for bootstrap...[/bold blue]", spinner="dots"):
+        repos = discover_local_git_repos(root_path, max_depth=3)
+    scan_elapsed = time.perf_counter() - scan_started
+    console.print(f"[dim]Repository scan complete: {len(repos)} candidate repos ({scan_elapsed:.1f}s).[/dim]")
     seeds = [seed for repo in repos if (seed := build_repo_project_seed(repo)) is not None]
     merged_payload, summary = merge_repo_project_seeds(payload, seeds, root=root_path)
     summary = RepoBootstrapSummary(
@@ -228,21 +241,11 @@ def ensure_projects_config(
         ]
         summary = RepoBootstrapSummary(root=root_path, discovered=0, added=0, updated=0, skipped=0, fallback_used=True)
 
-    manual_seeds = _collect_customer_project_seeds(yes=yes)
-    seed_added, seed_updated = _merge_customer_project_seeds(merged_payload, manual_seeds)
     seed_note = ""
-    if manual_seeds:
-        seed_note = f" | customer_seeds={len(manual_seeds)} (added={seed_added}, updated={seed_updated})"
 
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would write merged project config to {config_path}")
-        if manual_seeds:
-            console.print(
-                f"[yellow]Dry run:[/yellow] would merge {len(manual_seeds)} customer/project seed(s) into project config."
-            )
         next_steps = _project_bootstrap_next_steps(summary)
-        if manual_seeds:
-            next_steps.insert(0, "Review captured project/customer seeds with `gittan projects` before first report.")
         return ProjectsConfigBootstrapResult(
             "PASS (dry-run)",
             _project_bootstrap_notes(summary, dry_run=True) + seed_note,
@@ -253,8 +256,6 @@ def ensure_projects_config(
     config_path.write_text(json.dumps(merged_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Saved merged project config:[/green] {config_path}")
     next_steps = _project_bootstrap_next_steps(summary)
-    if manual_seeds:
-        next_steps.insert(0, "Customer bootstrap seeds saved. Use `gittan projects` to adjust names/match terms if needed.")
     return ProjectsConfigBootstrapResult(
         "PASS",
         _project_bootstrap_notes(summary, dry_run=False) + seed_note,

@@ -368,7 +368,7 @@ def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Option
         return date_from, date_to
     if not sys.stdin.isatty():
         return date_from, date_to
-    print("No date flags provided - choose timeframe interactively.")
+    print("No date flags provided - choose timeframe interactively.", file=sys.stderr)
     picked = prompt_for_timeframe()
     return picked.get("date_from"), picked.get("date_to")
 

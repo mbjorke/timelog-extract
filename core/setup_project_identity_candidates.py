@@ -144,6 +144,10 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
 
         preferred = ""
         owner_key = customer.strip().lower()
+        if slug_hints:
+            owner_key = slug_hints[0].split("/", 1)[0].strip().lower()
+        elif "." in owner_key:
+            owner_key = owner_key.split(".", 1)[0].strip().lower()
         if current_owner and current_repo and owner_key == current_owner:
             current_slug = f"{current_owner}/{current_repo}"
             if current_slug in slug_hints:

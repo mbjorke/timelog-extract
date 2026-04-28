@@ -241,10 +241,10 @@ def run_setup_wizard(
                     "Confirmed customer->project mapping.",
                 )
             )
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as exc:
             summary_rows.append(("Step 3: Project Mapping", "STOPPED", "User cancelled setup during mapping step."))
             console.print("[yellow]Setup stopped before save.[/yellow]")
-            raise typer.Exit(code=130)
+            raise typer.Exit(code=130) from exc
         except Exception as exc:  # pragma: no cover - defensive summary visibility
             summary_rows.append(("Step 3: Project Mapping", "ACTION_REQUIRED", f"Wizard error: {exc}"))
             raise

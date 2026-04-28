@@ -45,6 +45,15 @@ _HEROES: dict[str, tuple[list[str], str]] = {
         ],
         "local setup with clear approval points",
     ),
+    "setup:project-mapping": (
+        [
+            "    __      Gittan Project Mapping",
+            "   /oo\\     Map discovered projects to your customer domains.",
+            "   \\__/     Confirm each mapping before anything is saved.",
+            "  o    o    Safe to rerun whenever your client list changes.",
+        ],
+        "project mapping with explicit approval points",
+    ),
     "setup-global-timelog": (
         [
             "    __      Gittan Global Timelog",

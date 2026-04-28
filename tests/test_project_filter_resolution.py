@@ -60,7 +60,7 @@ class ProjectFilterResolutionTests(unittest.TestCase):
             only_project="time",
             profiles=[
                 {"name": "Time Log Genius", "aliases": ["tlg"]},
-                {"name": "Akturo", "aliases": []},
+                {"name": "Project Alpha", "aliases": []},
             ],
         )
         self.assertEqual(ctx.args.only_project, "Time Log Genius")

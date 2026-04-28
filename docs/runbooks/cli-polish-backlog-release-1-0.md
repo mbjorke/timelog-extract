@@ -1,6 +1,11 @@
-# CLI Polish Backlog for Apr 29
+# CLI Polish Backlog for Release 1.0
 
-Purpose: preserve today's UX insights and turn them into a minimal, low-risk polish plan before the live demo.
+Purpose: preserve UX insights and turn them into a minimal, low-risk polish plan toward Release 1.0.
+
+Origin:
+
+- Renamed from `docs/runbooks/cli-polish-backlog-for-apr29.md`.
+- Historical Apr 29 context is kept where relevant, but this file is now the canonical tracker.
 
 Latest status update (2026-04-20):
 
@@ -8,7 +13,6 @@ Latest status update (2026-04-20):
 - Install path is still pending: `brew install gittan`.
 - Demo app + design-system handoff is done: [https://gittan.lovable.app/handoff](https://gittan.lovable.app/handoff)
 - Sales funnel fed by design system is live (not interactive yet): [https://gittan-sales.lovable.app/](https://gittan-sales.lovable.app/)
-- Substack update must be sent before tomorrow and should include today's new progress.
 - Product/domain naming direction:
   - `gittan-sales` -> `gittan.sh`
   - real app -> `app.gittan.sh`
@@ -17,8 +21,9 @@ Latest status update (2026-04-20):
 Scope rule:
 
 - Prioritize clarity over novelty.
-- Max 3-5 polish changes before Apr 29.
-- No deep refactors or behavioral rewrites.
+- Keep each polish batch small and reviewable.
+- No deep refactors or behavioral rewrites in polish-only cycles.
+- Default user guidance should avoid flag-heavy instructions; flags are advanced paths.
 
 ---
 
@@ -33,7 +38,7 @@ Scope rule:
 3. For setup simplification, is the preferred near-term approach:
   - introduce a new explicit `--advanced` flag, or
   - keep current flags and only reduce default line density now?
-4. For Apr 29 scope, do we lock to:
+4. For release polish scope, do we lock to:
   - `P0` only, or
   - `P0 + tiny P1.2 copy polish` if tests remain green?
 
@@ -43,6 +48,7 @@ Record decisions here before implementation:
 - Q2: **Always** print one `Next:` line after the summary (including successful posts and empty runs).
 - Q3: **Deferred** — no `--advanced` for `setup` in this batch; reduce default density later if needed.
 - Q4: **P0 only** for this pass; P1.2 copy polish only if tests stay green and time allows.
+- Setup naming baseline: **Step 1: Global Timelog Setup** -> **Step 2: Project Bootstrap** -> **Step 3: Project Mapping** -> **Step 4: Doctor Check** -> **Step 5: Triage Review (optional)**.
 
 ---
 
@@ -150,12 +156,35 @@ bash scripts/cli_impact_smoke.sh
 
 ---
 
-### P1.1b Faster project-config onboarding (post-v0.2.12 focus)
+### P1.1c Reduce flag dependency in onboarding next steps
 
-Context:
+Problem observed:
 
-- This was the intended "next morning" onboarding UX track after the release train.
-- Keep this as a small, low-risk sequence (no deep refactor in first PR).
+- Next-step instructions still include many explicit flags, which increases first-run friction.
+
+Desired UX:
+
+- Setup and triage guidance should default to interactive choices (prompts/date picker) with minimal required flags.
+
+Acceptance criteria:
+
+- Setup summary and next-step copy prioritize interactive commands first.
+- `gittan triage` and `gittan triage --json` show the timeframe picker only in interactive TTY sessions when date flags are omitted.
+- In non-interactive/automation runs, pass explicit date flags (`--from/--to`) to avoid prompts.
+- Flag-heavy examples remain only in advanced/debug sections.
+
+Validation:
+
+```bash
+gittan setup --interactive --skip-smoke
+gittan triage
+gittan triage --json
+python3 -m unittest tests/test_cli_triage.py tests/test_cli_regression_smoke.py
+```
+
+---
+
+### P1.1b Faster project-config onboarding
 
 Goal:
 
@@ -191,7 +220,7 @@ Scope guardrails:
 
 - PR 1: only `setup --fast` + next-step copy/handoff.
 - PR 2: `projects` smart defaults.
-- Defer any broader report/search plumbing refactor to dedicated task (`docs/specs/report-search-refactor-plan.md`).
+- Defer broader report/search plumbing refactor to dedicated task (`docs/specs/report-search-refactor-plan.md`).
 
 ---
 
@@ -209,6 +238,14 @@ Acceptance criteria:
 
 - Tone and final hint lines are consistent.
 - No regression in command outputs.
+
+Follow-up note (saved idea, post-release scope):
+
+- Add daily "classification health" visibility in `gittan status` for:
+  - unexplained gap,
+  - new repos/domains appearing,
+  - likely misclassification signals.
+- Keep this as a concise status-layer summary (not a deep triage wizard) so it can be reviewed quickly every day.
 
 Validation:
 
@@ -256,7 +293,7 @@ python3 scripts/run_screen_time_gap_analysis.py
 
 ---
 
-## Focused Branch + Commit Plan (for fast first CodeRabbit review)
+## Focused Branch + Commit Plan
 
 Branch:
 
@@ -278,18 +315,13 @@ bash scripts/cli_impact_smoke.sh
 python3 -m unittest tests/test_jira_sync.py tests/test_cli_regression_smoke.py
 ```
 
-PR strategy:
-
-- Open PR right after commit 1+2 (docs can be follow-up if needed).
-- Request first CodeRabbit review early; keep later changes incremental and small.
-
 ---
 
-## Next Focus: Gap Analysis on Real Data (after CLI polish PR is open)
+## Next Focus: Gap Analysis on Real Data
 
 Goal:
 
-- Validate gap analysis with your own real dataset and target ~98% of screen-time explained before broad demo positioning.
+- Validate gap analysis with real dataset and target ~98% of screen-time explained before broad demo positioning.
 
 Execution:
 
@@ -305,38 +337,16 @@ Review checklist:
 - Is terminology consistent with stage wording ("estimate", "reconciliation", "local-first")?
 - Is explained screen-time percentage clearly reported and trending toward 98%?
 
-If output is hard to explain:
-
-- capture 3 concrete friction points,
-- convert each into one scoped change request,
-- implement only the highest-impact wording/structure change before Apr 29.
-- keep a visible tracker for "% explained" across reruns.
-
-Status field for this cycle:
-
-- Gap analysis: `INTERNAL_ONLY` -> `DEMO_READY` (target) or `KEEP_INTERNAL` (acceptable fallback).
-- Screen-time explained: `<value>%` (target `98%`).
-
 ---
 
-## Narrative and launch-surface alignment (new)
+## Narrative and launch-surface alignment
 
-Before Apr 29, ensure all demo/release artifacts align on:
+Ensure demo/release artifacts align on:
 
 - marketing/sales surface: `gittan.sh`
 - product app surface: `app.gittan.sh`
 - legacy `gittan.html` retirement plan in this repo
 - common docs shared between design system and funnel/app narrative
-- Substack publication timing and content consistency with the above
-
-Deferred note (this week, not blocking today):
-
-- Align shared CLI + app documentation with Lovable handoff package: [https://gittan.lovable.app/handoff](https://gittan.lovable.app/handoff)
-- Produce one canonical “common docs” handover artifact for:
-  - collectors/source model
-  - installation/onboarding flow
-  - naming and route map (`gittan.sh` / `app.gittan.sh`)
-  - demo-safe vs internal-only surfaces
 
 ---
 
@@ -353,4 +363,3 @@ If command behavior changes materially:
 
 - update runbook/docs in same commit,
 - keep commit scope single-purpose.
-

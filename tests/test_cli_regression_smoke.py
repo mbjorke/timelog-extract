@@ -135,7 +135,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
             0,
             msg=completed.stderr or completed.stdout,
         )
-        self.assertIn("Dry run completed.", completed.stdout)
+        self.assertIn("Global timelog dry run completed.", completed.stdout)
         self.assertIn("Gittan Global Timelog", completed.stdout)
 
     def test_setup_wizard_dry_run(self):

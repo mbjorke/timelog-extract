@@ -240,7 +240,11 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         console.print(f"[red]File operation failed:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print("\n[green]Setup completed.[/green]" if not dry_run else "\n[green]Dry run completed.[/green]")
+    console.print(
+        "\n[green]Global timelog setup completed.[/green]"
+        if not dry_run
+        else "\n[green]Global timelog dry run completed.[/green]"
+    )
     console.print("Added `TIMELOG.md` to global gitignore." if added_ignore else "`TIMELOG.md` already present in global gitignore.")
     verify_hooks = _read_global_git_config("core.hooksPath") if not dry_run else str(hooks_dir)
     verify_excludes = _read_global_git_config("core.excludesFile") if not dry_run else str(ignore_path)

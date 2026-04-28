@@ -22,7 +22,7 @@ Use these roles consistently:
 
 ## Color semantics
 
-Implementation: **`outputs/terminal_theme.py`** (canonical hex tokens). The site (`gittan.html`) may use a slightly brighter marketing palette; the **CLI defaults to softer lavender table chrome** so long sessions stay readable.
+Implementation: `outputs/terminal_theme.py` (canonical hex tokens). The site (`gittan.html`) may use a slightly brighter marketing palette; the CLI defaults to softer lavender table chrome so long sessions stay readable.
 
 - **Base**: purple-neutral **lavender greys** — `STYLE_LABEL` (headers / first column), `CLR_TEXT_SOFT` (body), `STYLE_MUTED` / `STYLE_DIM` (details and tails). Avoid saturating every line with `CLR_BERRY` / `CLR_BERRY_BRIGHT`; reserve those for rare emphasis if needed.
 - **Source names**: a single blue tone (`CLR_SOURCE_BLUE`) — no rainbow per tool.
@@ -45,11 +45,11 @@ Implementation: **`outputs/terminal_theme.py`** (canonical hex tokens). The site
 - **Don't** assign unique saturated colors to every source/tool.
 - **Don't** mix multiple unrelated accent colors in the same line.
 - **Don't** reintroduce strong borders/background blocks without a semantic reason.
-- **Don't** hardcode hex colors in command modules when `terminal_theme` already defines a token — use **`STYLE_LABEL`**, **`STYLE_MUTED`**, **`STYLE_BORDER`**, etc.
+- **Don't** hardcode hex colors in command modules when `terminal_theme` already defines a token — use `STYLE_LABEL`, `STYLE_MUTED`, `STYLE_BORDER`, etc.
 
 ## Implementation touchpoints
 
-- `outputs/terminal_theme.py` — **canonical hex tokens** for CLI (void for “terminal” on the site is **`#0a0714`**).
+- `outputs/terminal_theme.py` — canonical hex tokens for CLI (void for "terminal" on the site is `#0a0714`).
 - `gittan.html` — marketing / demo terminal chrome (berry family; need not be a literal copy of every CLI hex).
 - `outputs/terminal.py` (report rendering)
 - `core/cli_doctor_sources_projects.py` (doctor table semantics)

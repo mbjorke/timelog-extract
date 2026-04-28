@@ -22,6 +22,7 @@ from core.onboarding_guidance import build_setup_next_steps, print_next_steps
 from core.config import resolve_projects_config_path
 from core.setup_github_env import configure_github_env_for_setup
 from core.setup_projects_config_bootstrap import ensure_projects_config
+from core.setup_project_identity_wizard import run_project_identity_wizard
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
@@ -205,31 +206,52 @@ def run_setup_wizard(
     summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
     next_steps.extend(github_env_steps)
     if fast:
-        summary_rows.append(("Global timelog automation", "SKIPPED", "Skipped in --fast mode for quicker onboarding."))
+        summary_rows.append(("Step 1: Global Timelog Setup", "SKIPPED", "Skipped in --fast mode for quicker onboarding."))
     else:
         should_setup_timelog = yes or questionary.confirm("Configure global timelog automation now?", default=True).ask()
         if should_setup_timelog:
             run_global_timelog_setup(console, yes=yes, dry_run=dry_run)
             summary_rows.append(
                 (
-                    "Global timelog automation",
+                    "Step 1: Global Timelog Setup",
                     "PASS" if not dry_run else "PASS (dry-run)",
                     "Configured or previewed global hooks + global ignore.",
                 )
             )
         else:
             console.print("[yellow]Skipped global timelog automation.[/yellow]")
-            summary_rows.append(("Global timelog automation", "SKIPPED", "User skipped this step."))
+            summary_rows.append(("Step 1: Global Timelog Setup", "SKIPPED", "User skipped this step."))
     projects_status, projects_note, project_steps = _ensure_minimal_projects_config(
         console,
         yes=yes,
         dry_run=dry_run,
         bootstrap_root=bootstrap_root,
     )
-    summary_rows.append(("Project config bootstrap", projects_status, projects_note))
+    summary_rows.append(("Step 2: Project Bootstrap", projects_status, projects_note))
     next_steps.extend(project_steps)
+
+    # Conservative onboarding step: confirm customer->project mapping without inventing match_terms.
+    if not yes:
+        try:
+            run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
+            summary_rows.append(
+                (
+                    "Step 3: Project Mapping",
+                    "PASS" if not dry_run else "PASS (dry-run)",
+                    "Confirmed customer->project mapping.",
+                )
+            )
+        except KeyboardInterrupt as exc:
+            summary_rows.append(("Step 3: Project Mapping", "STOPPED", "User cancelled setup during mapping step."))
+            console.print("[yellow]Setup stopped before save.[/yellow]")
+            raise typer.Exit(code=130) from exc
+        except Exception as exc:  # pragma: no cover - defensive summary visibility
+            summary_rows.append(("Step 3: Project Mapping", "ACTION_REQUIRED", f"Wizard error: {exc}"))
+            raise
+    else:
+        summary_rows.append(("Step 3: Project Mapping", "SKIPPED", "Skipped in non-interactive (--yes) mode."))
     doctor_status = _run_doctor_check(console, dry_run=dry_run)
-    summary_rows.append(("Doctor check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
+    summary_rows.append(("Step 4: Doctor Check", doctor_status, "Ran (or previewed) source/permission diagnostics."))
     smoke_status = "SKIPPED"
     if fast:
         console.print("[yellow]Skipped smoke report (--fast).[/yellow]")
@@ -246,6 +268,13 @@ def run_setup_wizard(
             console.print("[yellow]Skipped smoke report.[/yellow]")
             summary_rows.append(("Smoke report", "SKIPPED", "User skipped this step."))
             smoke_status = "SKIPPED"
+    summary_rows.append(
+        (
+            "Step 5: Triage Review (optional)",
+            "SKIPPED",
+            "Not run inside setup in this version; available as optional follow-up via `gittan triage`.",
+        )
+    )
     summary_table = Table(title="Setup summary", box=box.ROUNDED)
     summary_table.border_style = STYLE_BORDER
     summary_table.header_style = f"bold {STYLE_LABEL}"

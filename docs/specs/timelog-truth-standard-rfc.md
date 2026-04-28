@@ -12,27 +12,29 @@ need a model that is reproducible, auditable, and measurable against explicit
 ## Executive summary
 
 - Determinism is mandatory: same frozen inputs + same policy package MUST produce
-  the same normalized payload hash.
+the same normalized payload hash.
 - Reporting output is split and explicit: observed, classified, and approved
-  invoice time are never conflated.
+invoice time are never conflated.
 - Compliance requires evidence completeness (100% session evidence payload),
-  reproducibility metadata, and deterministic replay artifacts.
+reproducibility metadata, and deterministic replay artifacts.
 - Validation scope is annual and all-project: every month and every active project
-  must be included or explicitly excluded with reason codes.
+must be included or explicitly excluded with reason codes.
 - Release decision is gate-driven (`GO` / `conditional GO` / `NO-GO`) with strict
-  waiver limits (no determinism waiver on closed-window replay).
+waiver limits (no determinism waiver on closed-window replay).
 
 ## Decision status snapshot
 
-| Area | Status | Notes |
-| --- | --- | --- |
-| Determinism gate on closed window | Locked | MUST pass; no waiver allowed |
-| Evidence payload completeness | Locked | 100% session coverage required |
-| Annual + all-project benchmark protocol | Draft (operational) | Protocol and artifacts defined; tune thresholds via first cycle |
-| Numeric gate thresholds | Draft | Initial values set; calibrate after first benchmark cycle |
-| Active project threshold values | Draft | v1 values defined; finalize after initial annual run |
-| Volatile field allowlist scope | Open | Final allowlist governance still pending |
-| Conditional GO for main/release promotion | Locked | Not allowed without explicit maintainer risk acceptance; never for release promotion tags |
+
+| Area                                      | Status              | Notes                                                                                     |
+| ----------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------- |
+| Determinism gate on closed window         | Locked              | MUST pass; no waiver allowed                                                              |
+| Evidence payload completeness             | Locked              | 100% session coverage required                                                            |
+| Annual + all-project benchmark protocol   | Draft (operational) | Protocol and artifacts defined; tune thresholds via first cycle                           |
+| Numeric gate thresholds                   | Draft               | Initial values set; calibrate after first benchmark cycle                                 |
+| Active project threshold values           | Draft               | v1 values defined; finalize after initial annual run                                      |
+| Volatile field allowlist scope            | Open                | Final allowlist governance still pending                                                  |
+| Conditional GO for main/release promotion | Locked              | Not allowed without explicit maintainer risk acceptance; never for release promotion tags |
+
 
 ## Reader map
 
@@ -80,13 +82,13 @@ The following are explicitly out-of-policy for Timelog Truth Standard
 implementation:
 
 - claiming determinism while using open-window replay that includes active,
-  changing data without snapshot freeze,
+changing data without snapshot freeze,
 - silently changing classification behavior without policy package version bumps,
 - treating classified time as invoice-approved time by default,
 - suppressing drift/determinism failures to keep release velocity,
 - using undocumented volatile fields in deterministic hash comparison logic,
 - relying on manual memory or narrative-only explanations where machine evidence
-  payload is required.
+payload is required.
 
 ## Terminology
 
@@ -205,9 +207,9 @@ For each benchmark month, run a deterministic replay check:
 Precondition:
 
 - replay checks must use a **closed** time window, or a formally frozen snapshot
-  cut taken at a fixed timestamp.
+cut taken at a fixed timestamp.
 - windows that include actively changing "today" data are expected to drift and
-  must be treated as non-deterministic by design.
+must be treated as non-deterministic by design.
 
 Expected outcome:
 
@@ -236,16 +238,16 @@ practical to execute in day-to-day feature work.
 Two full-year style replay pilots were executed:
 
 1. **Open window pilot** (`2026-01-01` to `2026-04-26`, includes active day):
-   - result: `normalized_equal=False` (expected drift from active data).
+  - result: `normalized_equal=False` (expected drift from active data).
 2. **Closed window pilot** (`2026-01-01` to `2026-04-25`, excludes active day):
-   - result: `normalized_equal=True`.
+  - result: `normalized_equal=True`.
 
 Interpretation:
 
 - determinism is achievable at year-scale when replay preconditions are respected
-  (closed window or frozen snapshot cut),
+(closed window or frozen snapshot cut),
 - open-window replay should be treated as a guardrail violation, not a benchmark
-  failure.
+failure.
 
 ### Allowed volatile fields (initial draft)
 
@@ -277,7 +279,7 @@ Minimum policy package fields:
 Compatibility rule:
 
 - any change affecting classification, confidence, or deterministic hashing must
-  bump at least one policy package version field.
+bump at least one policy package version field.
 
 ## Deterministic hash profile (v1 draft)
 
@@ -304,16 +306,16 @@ Deterministic hash input should exclude:
 Each standard-candidate validation cycle must include:
 
 1. **Full-year window set**
-   - all calendar months in target year are represented,
-   - each month validated with closed-window replay inputs.
+  - all calendar months in target year are represented,
+  - each month validated with closed-window replay inputs.
 2. **All-project inclusion**
-   - every project with activity above agreed threshold is included in benchmark
-     scoring or explicitly marked excluded with reason code.
+  - every project with activity above agreed threshold is included in benchmark
+   scoring or explicitly marked excluded with reason code.
 3. **Cross-month consistency check**
-   - run month-by-month and annual aggregate comparisons,
-   - confirm no hidden policy drift between month runs and annual run.
+  - run month-by-month and annual aggregate comparisons,
+  - confirm no hidden policy drift between month runs and annual run.
 4. **Evidence completeness sweep**
-   - ensure 100% session evidence payload coverage across all included projects.
+  - ensure 100% session evidence payload coverage across all included projects.
 
 Required output artifacts:
 
@@ -344,12 +346,12 @@ report payload (except explicitly allowed metadata fields like `generated_at`).
 #### Draft numeric gates (for first operational cut)
 
 - precision regression gate: `<= 1.0` percentage point drop vs prior approved
-  policy package on same benchmark set,
+policy package on same benchmark set,
 - customer-hour drift gate: absolute drift `<= 2.0%` per benchmark month and
-  signed drift near zero over annual aggregate,
+signed drift near zero over annual aggregate,
 - review-load gate: `maybe` bucket `<= 35%` of sessions in benchmark baseline,
 - annual coverage gate: benchmark includes all months in target year and all
-  active projects with >= minimal activity threshold.
+active projects with >= minimal activity threshold.
 
 ### Active project threshold (draft v1)
 
@@ -383,7 +385,7 @@ Waivers are exceptional and MUST NOT apply to determinism gate on closed windows
 Allowed waiver scope (MAY):
 
 - non-determinism-independent quality gates (for example temporary review-load
-  spike) with documented mitigation.
+spike) with documented mitigation.
 
 Required waiver metadata (MUST):
 
@@ -417,7 +419,7 @@ Expired waivers MUST automatically become NO-GO until renewed or resolved.
   - explainability coverage is complete,
   - remaining gate misses have active mitigation plans.
 - Not allowed for final `main` merge readiness unless maintainer explicitly
-  accepts the conditional risk in writing.
+accepts the conditional risk in writing.
 - Not allowed for release promotion tags (`release/*` to publish path).
 
 ## Product contract split
@@ -466,29 +468,29 @@ Use this checklist when implementing Timelog Truth Standard components.
 Compliance note:
 
 - Items in this checklist are **MUST** unless explicitly marked as implementation
-  sequencing guidance.
+sequencing guidance.
 
 1. **Contract wiring**
-   - add per-session fields: `decision_class`, `confidence_score`,
-     `matched_evidence`, `negative_evidence`, `input_fingerprint`,
-     `determinism_status`, `determinism_reasons`,
-   - add run-level reproducibility block fields.
+  - add per-session fields: `decision_class`, `confidence_score`,
+   `matched_evidence`, `negative_evidence`, `input_fingerprint`,
+   `determinism_status`, `determinism_reasons`,
+  - add run-level reproducibility block fields.
 2. **Policy packaging**
-   - emit full policy package contract in output metadata,
-   - ensure policy-affecting changes bump contract version fields.
+  - emit full policy package contract in output metadata,
+  - ensure policy-affecting changes bump contract version fields.
 3. **Deterministic replay tooling**
-   - implement payload normalizer + volatile-field stripper,
-   - implement deterministic hash computation and diff report.
+  - implement payload normalizer + volatile-field stripper,
+  - implement deterministic hash computation and diff report.
 4. **Benchmark runner**
-   - execute month-level + annual/all-project protocol,
-   - emit required artifacts (`benchmark_manifest.json`,
-     `benchmark_metrics.json`, `determinism_replay_report.json`).
+  - execute month-level + annual/all-project protocol,
+  - emit required artifacts (`benchmark_manifest.json`,
+  `benchmark_metrics.json`, `determinism_replay_report.json`).
 5. **Gate evaluation**
-   - evaluate numeric gates and produce GO/conditional GO/NO-GO result,
-   - enforce waiver policy constraints (no determinism waiver on closed windows).
+  - evaluate numeric gates and produce GO/conditional GO/NO-GO result,
+  - enforce waiver policy constraints (no determinism waiver on closed windows).
 6. **Operator visibility**
-   - expose decision split (observed/classified/approved) in CLI/UI output,
-   - ensure explainability payload is inspectable for every session.
+  - expose decision split (observed/classified/approved) in CLI/UI output,
+  - ensure explainability payload is inspectable for every session.
 
 ## Implementation slices (execution order)
 
@@ -497,7 +499,7 @@ Compliance note:
 Goal:
 
 - emit run-level reproducibility block and policy package metadata in report
-  payload.
+payload.
 
 Primary targets:
 
@@ -552,7 +554,7 @@ Primary targets:
 Definition of done:
 
 - replay checker emits `determinism_replay_report.json` (per canonical artifact
-  format),
+format),
 - closed-window replay pass/fail is machine-evaluable.
 
 Definition of ready:
@@ -575,7 +577,7 @@ Primary targets:
 Definition of done:
 
 - emits `benchmark_manifest.json` and `benchmark_metrics.json` (per canonical
-  artifact format),
+artifact format),
 - annual coverage gate and project inclusion status are reported.
 
 Definition of ready:
@@ -658,7 +660,7 @@ Minimum evidence requirements:
 Current evidence anchor for replay checker script contract:
 
 - `tests/test_timelog_truth_check_script.py` validates open-window guard behavior
-  and required artifact generation for `scripts/timelog_truth_check.sh`.
+and required artifact generation for `scripts/timelog_truth_check.sh`.
 - Operational usage and reviewer flow: `docs/runbooks/timelog-truth-check.md`.
 
 ## Risks

@@ -14,11 +14,11 @@ class SearchCommandTests(unittest.TestCase):
 
     def test_search_forwards_all_events_and_project(self):
         with patch("core.report_cli.run_timelog_cli") as run_mock:
-            result = self.runner.invoke(app, ["search", "--yesterday", "--project", "Akturo"])
+            result = self.runner.invoke(app, ["search", "--yesterday", "--project", "Project Alpha"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         options = run_mock.call_args[0][0]
         self.assertTrue(getattr(options, "all_events", False))
-        self.assertEqual(getattr(options, "only_project", None), "Akturo")
+        self.assertEqual(getattr(options, "only_project", None), "Project Alpha")
 
     def test_search_supports_json_format(self):
         with patch("core.report_cli.run_timelog_cli") as run_mock:

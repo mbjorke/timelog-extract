@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.15 - 2026-04-28
+
+- Setup UX: finalized first-time onboarding flow around the 5-step setup sequence (global timelog, bootstrap, mapping, doctor, optional triage) with safer rerun/cancel behavior and clearer customer/project mapping prompts.
+- Triage UX: improved interactive date-range handling and machine-safe `--json` behavior; evidence-plan flow remains read-only until explicit `triage-apply` review/apply.
+- Mapping candidates: extracted candidate/activity rendering helpers, improved active-owner normalization for domain-style customer names, and kept setup files under policy limits.
+- Contributor tooling/docs: added repeatable contributor setup scenarios, release pre-merge planning notes, and updated docs formatting/consistency across runbooks/spec references.
+- Quality and review follow-up: resolved PR review findings (markdown hygiene, setup path validation, hero key naming clarity, targeted regression tests) to keep release branch merge-safe.
+
 ## 0.2.14 - 2026-04-26
 
 - Brand assets: add canonical Bee, Blueberry, pair, touch icon, and OG SVG sources under `docs/brand/marks/`; regenerate root favicon/touch/OG assets from SVG with Bee-only favicons and pair marks kept for Blueberry association.

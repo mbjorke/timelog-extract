@@ -1,4 +1,5 @@
 <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="6" fill="#0c1119"/>
   <!-- Wings -->
   <ellipse cx="9" cy="11" rx="5" ry="3.5" fill="#bedafe" opacity="0.9"/>
   <ellipse cx="23" cy="11" rx="5" ry="3.5" fill="#bedafe" opacity="0.9"/>

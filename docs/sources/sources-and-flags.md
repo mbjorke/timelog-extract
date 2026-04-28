@@ -1,6 +1,6 @@
 # Sources and flags — how collection works
 
-This document explains how **data sources**, **CLI flags**, and **`--exclude`** interact. It exists so expectations match the implementation (see `core/pipeline.py`, `core/collector_registry.py`, `core/analytics.py`).
+This document explains how **data sources**, **CLI flags**, and `**--exclude`** interact. It exists so expectations match the implementation (see `core/pipeline.py`, `core/collector_registry.py`, `core/analytics.py`).
 
 ## There is no shared “base timeline”
 
@@ -23,7 +23,7 @@ Jira worklog posting is available via `gittan jira-sync` (separate from source c
 
 ## Per-collector status in JSON output
 
-When you use `--format json`, the truth payload includes **`collector_status`**: for each named source, whether it was **enabled**, a **reason** string when disabled or failed, and **how many raw events** that collector returned (`core/truth_payload.py`).
+When you use `--format json`, the truth payload includes `**collector_status`**: for each named source, whether it was **enabled**, a **reason** string when disabled or failed, and **how many raw events** that collector returned (`core/truth_payload.py`).
 
 Use this to answer “why is Chrome/GitHub/etc. empty?” without guessing.
 
@@ -31,7 +31,7 @@ The Rich terminal report does **not** print the full `collector_status` table; i
 
 ## `--exclude` is not “exclude this source”
 
-`--exclude` takes **comma-separated keywords**. In `core/analytics.group_by_day`, any event whose **`detail`** text contains one of those keywords (case-insensitive) is **skipped when grouping by day** for session/hour estimation.
+`--exclude` takes **comma-separated keywords**. In `core/analytics.group_by_day`, any event whose `**detail`** text contains one of those keywords (case-insensitive) is **skipped when grouping by day** for session/hour estimation.
 
 - Collection has **already happened**; `--exclude` only affects **which events participate** in that aggregation step.
 - It does **not** match on source name; it matches **substrings in the event detail string**.
@@ -45,7 +45,7 @@ If **no** events survive deduplication and inclusion filters, or every collector
 **Practical checks:**
 
 1. `gittan doctor` — paths and permissions for local files (Chrome, Mail, Cursor, etc.).
-2. `--format json` — inspect **`collector_status`** and **`totals.event_count`**.
+2. `--format json` — inspect `**collector_status`** and `**totals.event_count**`.
 3. Ensure **opt-in sources** are actually enabled (e.g. GitHub username + `--github-source` when you want it on).
 4. For **project classification**, remember that **uncategorized** events may be hidden unless `--include-uncategorized` (see `core/events.py`).
 

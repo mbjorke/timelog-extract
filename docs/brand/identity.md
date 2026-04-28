@@ -1,6 +1,6 @@
 # Gittan visual identity (living notes)
 
-**Values and culture (team + product):** `[values.md](values.md)`.
+**Values and culture (team + product):** [values.md](values.md).
 
 Evolves with the product. **ASCII spirit:** `outputs/gittan_banner.py` (`GITTAN_BUMBLEBEE_BERRIES`, `TAGLINE`).
 
@@ -36,5 +36,5 @@ Some tools leave **playful poetry** on pull requests (e.g. CodeRabbit-style asid
 - **Site:** `gittan.html` — live CSS variables (void + berry family).
 - **CLI colors:** `outputs/terminal_theme.py` — keep in sync with `gittan.html`.
 - **Site logo:** root `gittan-logo.png` (generated, square crop from the mark, default 768px, pixel-crisp) — `gittan.html` + Pages; rebuild with `scripts/build_brand_assets.sh`.
-- **Archive:** **rabbit-v2** snapshots — historical backup; new era art may add parallel `*-bumblebee-`* masters when ready.
+- **Archive:** **rabbit-v2** snapshots — historical backup; new era art may add parallel `*-bumblebee-*` masters when ready.
 - **Drafts:** optional experiments; promote by copying over the canonical PNGs when ready.

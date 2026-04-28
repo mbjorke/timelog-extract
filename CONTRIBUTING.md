@@ -61,6 +61,45 @@ Naming notes:
   python3 -m unittest discover -s tests -p "test_*.py"
   ```
 
+## Contributor setup UX scenarios
+
+For repeatable manual onboarding checks (without retyping long one-liners), use:
+
+```bash
+bash scripts/contributor_setup_scenarios.sh new-customer-from-scratch
+```
+
+Alternative scenario for rerun/edit safety:
+
+```bash
+bash scripts/contributor_setup_scenarios.sh mapping-rerun-safety
+```
+
+Faster triage-only review scenario:
+
+```bash
+bash scripts/contributor_setup_scenarios.sh triage-only-evidence-review
+```
+
+Real-config sandbox scenario (copies your real config to temp first):
+
+```bash
+bash scripts/contributor_setup_scenarios.sh real-config-sandbox
+```
+
+Anonymized demo config scenario (derived from real config):
+
+```bash
+bash scripts/contributor_setup_scenarios.sh anonymized-demo-config
+```
+
+Both scenarios:
+
+- create a disposable temporary `timelog_projects.json`,
+- run interactive `setup`,
+- then run `triage --json` for evidence review,
+- and print a short "what to validate" checklist before execution.
+
 ## Code style and structure
 
 - Match existing patterns in the touched modules (imports, typing, error handling).

@@ -45,6 +45,14 @@ Reference implementation: `core/live_terminal/contract.py`.
 ## Copy rules
 
 - Do not market unimplemented commands (for example `gittan capture`) as real CLI behavior.
-- For onboarding/default flow text, prefer: doctor -> report -> triage -> triage-apply -> status.
+- For onboarding/default flow text, prefer this setup sequence:
+  - Step 1: Global Timelog Setup
+  - Step 2: Project Bootstrap
+  - Step 3: Project Mapping
+  - Step 4: Doctor Check
+  - Step 5: Triage Review (optional)
+- After setup, prefer interactive flow over flag-heavy instructions:
+  - `gittan triage --json` (timeframe picker when date flags are omitted)
+  - `gittan triage-apply` after explicit review
 - Position `gittan review` as advanced/manual cleanup, not the default first-run path.
 - If we add future aliases, document them as additive language, not replacements, until migration is complete.

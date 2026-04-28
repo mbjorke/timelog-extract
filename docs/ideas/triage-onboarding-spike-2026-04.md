@@ -26,7 +26,7 @@ This spike builds on documented ideas, not a brand-new direction:
   - Vision: reduce config authoring friction and guide users into valid project
     structure.
   - Gap: concrete short-loop UX for first-day onboarding is still thin.
-- `docs/runbooks/cli-polish-backlog-for-apr29.md`
+- `docs/runbooks/cli-polish-backlog-release-1-0.md`
   - Current bias: fast, low-risk polish and clear next actions.
   - Relevance: this spike should keep the same "small increments, measurable
     value" principle.

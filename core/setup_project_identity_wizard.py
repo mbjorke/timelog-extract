@@ -162,11 +162,6 @@ def _ask_customer_list(
 ) -> list[str]:
     # Start empty by default for first-time UX; detected candidates are shown as hints only.
     current: list[str] = list(initial_customers or [])
-    suggested_default = ""
-    if existing_customers and not current:
-        # Pre-fill detected candidates so the user can "accept with edits" instead
-        # of retyping everything. This is a display/UX change only.
-        suggested_default = ", ".join(sorted(existing_customers, key=_ux_alpha_key))
     while True:
         if existing_customers:
             _print_customer_candidates_table(console, projects, existing_customers)
@@ -174,7 +169,7 @@ def _ask_customer_list(
         console.print("Examples: acme.com, northwind.io, summithealth.co")
         raw = questionary.text(
             "Name your customers or customer domains (comma-separated):",
-            default=", ".join(current) if current else suggested_default,
+            default=", ".join(current) if current else "",
         ).ask()
         values = [part.strip() for part in (raw or "").split(",") if part and part.strip()]
 
@@ -301,11 +296,20 @@ def _pick_projects_with_helpers(*, prompt: str, unresolved: list[str]) -> list[s
 
         # Re-open checkbox list immediately after helper actions so the UI
         # stays "in context" and the user doesn't need an extra "continue" step.
-        picked = questionary.checkbox(
-            prompt,
-            choices=choices,
-            default=[name for name in choices if name in selected],
-        ).ask()
+        default_values = [name for name in choices if name in selected]
+        # questionary raises when default is an empty list in this codepath;
+        # omitting default preserves the intended "none selected" state.
+        if default_values:
+            picked = questionary.checkbox(
+                prompt,
+                choices=choices,
+                default=default_values,
+            ).ask()
+        else:
+            picked = questionary.checkbox(
+                prompt,
+                choices=choices,
+            ).ask()
         selected = {str(item) for item in (picked or [])}
 
 
@@ -316,6 +320,13 @@ def _collect_batch_mappings(
     candidates: list[str],
     customers: list[str],
 ) -> tuple[list[str], dict[str, str]]:
+    def _short_preview(items: list[str], *, limit: int = 6) -> str:
+        items_sorted = sorted(items, key=_ux_alpha_key)
+        shown = ", ".join(items_sorted[:limit])
+        if len(items_sorted) <= limit:
+            return shown
+        return f"{shown}, … +{len(items_sorted) - limit} more"
+
     assignments: dict[str, str] = {}
     total_candidates = len(candidates)
     customers = sorted(customers, key=_ux_alpha_key)
@@ -372,6 +383,9 @@ def _collect_batch_mappings(
                 continue
             for item in picked:
                 assignments[str(item)] = created
+            console.print(
+                f"[{STYLE_MUTED}]Planned:[/] {created} <- {(_short_preview(picked) if picked else 'no projects selected')}"
+            )
             continue
         if action == "Skip selected projects...":
             skipped = _pick_projects_with_helpers(
@@ -382,6 +396,9 @@ def _collect_batch_mappings(
                 continue
             for item in skipped:
                 assignments[str(item)] = "Skip"
+            console.print(
+                f"[{STYLE_MUTED}]Planned:[/] skip {(_short_preview(skipped) if skipped else 'no projects selected')}"
+            )
             continue
         customer_choice = str(action)
         sticky_customer = customer_choice
@@ -393,6 +410,9 @@ def _collect_batch_mappings(
             continue
         for item in picked:
             assignments[str(item)] = customer_choice
+        console.print(
+            f"[{STYLE_MUTED}]Planned:[/] {customer_choice} <- {(_short_preview(picked) if picked else 'no projects selected')}"
+        )
     return customers, assignments
 
 

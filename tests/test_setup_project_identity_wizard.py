@@ -124,6 +124,34 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(assignments["project-gamma"], "customer-a.test")
         self.assertNotIn("project-alpha", assignments)
 
+    def test_batch_mapping_helper_clear_selection_does_not_crash(self):
+        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_wizard.questionary.checkbox"
+        ) as checkbox_mock:
+            # 1) choose customer
+            # 2) helper: Clear selection (selection becomes empty)
+            # 3) helper: Done (accept selection)
+            # 4) outer loop: Finish mapping
+            select_mock.return_value.ask.side_effect = [
+                "customer-a.test",
+                "Clear selection",
+                "Done (accept selection)",
+                "Finish mapping",
+            ]
+            checkbox_mock.return_value.ask.side_effect = [
+                ["project-alpha"],  # initial checkbox pick
+                [],  # checkbox re-open after Clear selection
+            ]
+
+            _, assignments = _collect_batch_mappings(
+                Console(record=True),
+                projects=[],
+                candidates=["project-alpha", "project-beta"],
+                customers=["customer-a.test"],
+            )
+
+        self.assertEqual(assignments, {})
+
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "timelog_projects.json"

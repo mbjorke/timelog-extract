@@ -8,10 +8,34 @@ from unittest import mock
 
 from rich.console import Console
 
-from core.setup_project_identity_wizard import run_project_identity_wizard
+from core.setup_project_identity_wizard import _collect_batch_mappings, run_project_identity_wizard
 
 
 class SetupProjectIdentityWizardTests(unittest.TestCase):
+    def test_batch_mapping_helper_invert_selection(self):
+        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_wizard.questionary.checkbox"
+        ) as checkbox_mock:
+            # 1) choose customer, 2) invert helper, 3) continue helper, 4) finish mapping
+            select_mock.return_value.ask.side_effect = [
+                "customer-a.test",
+                "Invert selection",
+                "Continue to review selection",
+                "Finish mapping",
+            ]
+            checkbox_mock.return_value.ask.return_value = ["project-alpha"]
+
+            _, assignments = _collect_batch_mappings(
+                Console(record=True),
+                projects=[],
+                candidates=["project-alpha", "project-beta", "project-gamma"],
+                customers=["customer-a.test"],
+            )
+
+        self.assertEqual(assignments["project-beta"], "customer-a.test")
+        self.assertEqual(assignments["project-gamma"], "customer-a.test")
+        self.assertNotIn("project-alpha", assignments)
+
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "timelog_projects.json"
@@ -42,13 +66,15 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
 
             with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
-            ) as select_mock:
+            ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_mock.return_value.ask.return_value = "Atlas Studio"
                 select_mock.return_value.ask.side_effect = [
                     "Continue",
                     "Continue",
                     "Atlas Studio",
+                    "Continue to review selection",
                 ]
+                checkbox_mock.return_value.ask.return_value = ["northwind-web"]
                 run_project_identity_wizard(Console(record=True), config_path=cfg, dry_run=True)
 
             self.assertEqual(cfg.read_text(encoding="utf-8"), before)
@@ -87,10 +113,17 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
 
             with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
-            ) as select_mock:
+            ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_mock.return_value.ask.return_value = "Atlas Studio"
-                # 1) continue step 2) confirm customer list 3) project->customer 4) save
-                select_mock.return_value.ask.side_effect = ["Continue", "Continue", "Atlas Studio", "Save"]
+                # 1) continue step 2) confirm customer list 3) batch customer 4) save
+                select_mock.return_value.ask.side_effect = [
+                    "Continue",
+                    "Continue",
+                    "Atlas Studio",
+                    "Continue to review selection",
+                    "Save",
+                ]
+                checkbox_mock.return_value.ask.return_value = ["northwind-web"]
 
                 run_project_identity_wizard(Console(record=True), config_path=cfg, dry_run=False)
 
@@ -159,7 +192,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
 
             with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
-            ) as select_mock:
+            ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_prompt = mock.Mock()
                 text_prompt.ask.side_effect = [
                     "customer-a.test",
@@ -169,14 +202,20 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                 select_mock.return_value.ask.side_effect = [
                     "Continue",  # run step
                     "Continue",  # confirm initial customer list
-                    "customer-a.test",  # project 1 selection
-                    "Edit customer list...",  # project 2: edit customers
+                    "customer-a.test",  # batch map some projects to customer-a
+                    "Continue to review selection",  # accept selection for customer-a
+                    "Edit customer list...",  # edit customers
                     "Continue",  # confirm edited customer list
-                    "Previous project",  # resume mapping position
-                    "customer-b.test",  # project 1 re-selection
-                    "customer-a.test",  # project 2 remains on its intended customer
+                    "customer-b.test",  # batch map remaining to customer-b
+                    "Continue to review selection",  # accept selection for customer-b
                     "Save",  # save changes
                 ]
+                checkbox_prompt = mock.Mock()
+                checkbox_prompt.ask.side_effect = [
+                    ["project-beta"],  # map beta -> customer-a
+                    ["project-alpha"],  # map alpha -> customer-b
+                ]
+                checkbox_mock.return_value = checkbox_prompt
 
                 run_project_identity_wizard(Console(record=True), config_path=cfg, dry_run=False)
 

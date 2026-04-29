@@ -192,6 +192,120 @@ def _apply_customer_to_projects(payload: dict[str, Any], *, customer_label: str,
     return updated
 
 
+def _pick_projects_with_helpers(*, prompt: str, unresolved: list[str]) -> list[str] | None:
+    if not unresolved:
+        return []
+    picked = questionary.checkbox(prompt, choices=unresolved).ask()
+    selected = {str(item) for item in (picked or [])}
+    while True:
+        helper = questionary.select(
+            f"Selection helper ({len(selected)}/{len(unresolved)} selected):",
+            choices=[
+                "Select all visible",
+                "Invert selection",
+                "Clear selection",
+                "Continue to review selection",
+                "Back",
+            ],
+            default="Continue to review selection",
+        ).ask()
+        if helper == "Back":
+            return None
+        if helper == "Continue to review selection":
+            return [name for name in unresolved if name in selected]
+        if helper == "Select all visible":
+            selected = set(unresolved)
+            continue
+        if helper == "Invert selection":
+            selected = {name for name in unresolved if name not in selected}
+            continue
+        if helper == "Clear selection":
+            selected = set()
+
+
+def _collect_batch_mappings(
+    console,
+    *,
+    projects: list[dict[str, Any]],
+    candidates: list[str],
+    customers: list[str],
+) -> tuple[list[str], dict[str, str]]:
+    assignments: dict[str, str] = {}
+    sticky_customer = customers[0] if customers else ""
+    while True:
+        unresolved = [name for name in candidates if name not in assignments]
+        if not unresolved:
+            break
+        default_choice = sticky_customer if sticky_customer in customers else customers[0]
+        action = questionary.select(
+            "Choose customer for batch mapping (then select projects with checkboxes):",
+            choices=[
+                *customers,
+                "Create new customer...",
+                "Edit customer list...",
+                "Skip selected projects...",
+                "Finish mapping",
+                "Cancel setup",
+            ],
+            default=default_choice,
+        ).ask()
+        if action == "Cancel setup":
+            console.print("[yellow]Setup cancelled by user.[/yellow]")
+            raise KeyboardInterrupt("setup cancelled by user")
+        if action == "Finish mapping":
+            break
+        if action == "Edit customer list...":
+            customers = _ask_customer_list(
+                console,
+                projects,
+                _existing_customers(projects),
+                initial_customers=customers,
+            )
+            if not customers:
+                console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
+                return [], {}
+            if sticky_customer not in customers:
+                sticky_customer = customers[0]
+            continue
+        if action == "Create new customer...":
+            created = (questionary.text("Customer name:", default="").ask() or "").strip()
+            if not created:
+                continue
+            if created not in customers:
+                customers.append(created)
+            sticky_customer = created
+            picked = _pick_projects_with_helpers(
+                prompt=f"Select project(s) to map to '{created}':",
+                unresolved=unresolved,
+            )
+            if picked is None:
+                continue
+            for item in picked:
+                assignments[str(item)] = created
+            continue
+        if action == "Skip selected projects...":
+            skipped = _pick_projects_with_helpers(
+                prompt="Select project(s) to skip for now:",
+                unresolved=unresolved,
+            )
+            if skipped is None:
+                continue
+            for item in skipped:
+                assignments[str(item)] = "Skip"
+            continue
+        customer_choice = str(action)
+        sticky_customer = customer_choice
+        picked = _pick_projects_with_helpers(
+            prompt=f"Select project(s) to map to '{customer_choice}':",
+            unresolved=unresolved,
+        )
+        if picked is None:
+            continue
+        for item in picked:
+            assignments[str(item)] = customer_choice
+    return customers, assignments
+
+
 def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> None:
     payload = load_projects_config_payload(config_path)
     projects = [p for p in payload.get("projects", []) if isinstance(p, dict)]
@@ -239,79 +353,18 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
 
     console.print("")
     console.print("[bold]Potential project mappings found.[/bold]")
-    console.print(f"[{STYLE_MUTED}]Please confirm each mapping before save.[/]")
+    console.print(f"[{STYLE_MUTED}]Batch map projects with checkboxes before save.[/]")
 
     planned_updates: list[tuple[str, list[str]]] = []  # (customer, [project_names...])
-    sticky_customer = customers[0] if customers else "Skip"
-    total = len(candidates)
-    selections: dict[str, str] = {}
-    pending_defaults: dict[str, str] = {}
-    idx = 0
-    while idx < total:
-        project_name = candidates[idx]
-        project_default = selections.get(project_name, pending_defaults.get(project_name, sticky_customer))
-        if project_default not in customers:
-            project_default = "Skip"
-        action = questionary.select(
-            f"Project wizard step {idx + 1} / {total}:\n{project_name} (map to customer)",
-            choices=[
-                *customers,
-                "Create new customer...",
-                "Skip",
-                "Previous project",
-                "Edit customer list...",
-                "Cancel setup",
-            ],
-            default=project_default,
-        ).ask()
-        if action == "Cancel setup":
-            console.print("[yellow]Setup cancelled by user.[/yellow]")
-            raise KeyboardInterrupt("setup cancelled by user")
-        if action == "Previous project":
-            if idx > 0:
-                idx -= 1
-            continue
-        if action == "Edit customer list...":
-            # Preserve the current project's suggested value so editing the list
-            # does not unexpectedly change the next default for this project.
-            if project_name not in selections and project_default != "Skip":
-                pending_defaults[project_name] = project_default
-            customers = _ask_customer_list(
-                console,
-                projects,
-                _existing_customers(projects),
-                initial_customers=customers,
-            )
-            if not customers:
-                console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
-                return
-            if sticky_customer not in customers:
-                sticky_customer = customers[0]
-            resume = questionary.select(
-                "Resume mapping where?",
-                choices=["Current project", "Previous project"],
-                default="Current project",
-            ).ask()
-            if resume == "Previous project" and idx > 0:
-                idx -= 1
-            continue
-        if not action or action == "Skip":
-            selections[project_name] = "Skip"
-            idx += 1
-            continue
-        if action == "Create new customer...":
-            created = (questionary.text("Customer name:", default="").ask() or "").strip()
-            if not created:
-                continue
-            if created not in customers:
-                customers.append(created)
-            selections[project_name] = created
-            sticky_customer = created
-            idx += 1
-            continue
-        selections[project_name] = str(action)
-        sticky_customer = str(action)
-        idx += 1
+    _, selections = _collect_batch_mappings(
+        console,
+        projects=projects,
+        candidates=candidates,
+        customers=customers,
+    )
+    if not selections:
+        console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
+        return
 
     for project_name in candidates:
         customer_choice = selections.get(project_name, "Skip")

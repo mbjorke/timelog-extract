@@ -20,6 +20,10 @@ from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
 
 
+def _ux_alpha_key(value: str) -> tuple[str, str]:
+    return (str(value).casefold(), str(value))
+
+
 def _slug(text: str) -> str:
     clean = re.sub(r"[^a-z0-9]+", "-", (text or "").strip().lower()).strip("-")
     return clean
@@ -27,6 +31,26 @@ def _slug(text: str) -> str:
 
 def _compact(text: str) -> str:
     return "".join(ch for ch in (text or "").lower() if ch.isalnum())
+
+
+def _customer_identity_key(value: str) -> str:
+    """
+    Best-effort identity key for deduping common customer variants.
+
+    Minimal-risk goal: collapse obvious duplicates users enter/see in onboarding:
+    - casing differences: "AX Finans" vs "ax-finans"
+    - domain vs bare root: "blueberry.ax" vs "Blueberry"
+    """
+    s = str(value or "").strip().lower()
+    if not s:
+        return ""
+    # URLs/domains: use the leftmost label (before first dot) as "root".
+    if "." in s:
+        s = s.split(".", 1)[0].strip()
+    # If any path-like value appears, keep only the last segment.
+    if "/" in s:
+        s = s.rsplit("/", 1)[-1].strip()
+    return _compact(s)
 
 
 def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict[str, list[str]]:
@@ -47,6 +71,7 @@ def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict
 def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
     # Prefer user-curated customer labels over placeholder customer=name rows.
     curated: list[str] = []
+    seen_keys: set[str] = set()
     for p in projects:
         name = str(p.get("name", "")).strip()
         customer = str(p.get("customer", "")).strip()
@@ -54,16 +79,25 @@ def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
             continue
         if customer.lower() == name.lower():
             continue
-        if customer not in curated:
-            curated.append(customer)
+        key = _customer_identity_key(customer)
+        if not key or key in seen_keys:
+            continue
+        curated.append(customer)
+        seen_keys.add(key)
     if curated:
         return curated
     # Fallback: still list existing customer values if no curated set exists yet.
     any_customers: list[str] = []
+    seen_keys = set()
     for p in projects:
         customer = str(p.get("customer", "")).strip()
-        if customer and customer not in any_customers:
-            any_customers.append(customer)
+        if not customer:
+            continue
+        key = _customer_identity_key(customer)
+        if not key or key in seen_keys:
+            continue
+        any_customers.append(customer)
+        seen_keys.add(key)
     return any_customers
 
 
@@ -84,7 +118,7 @@ def _candidate_projects_for_customer_mapping(projects: list[dict[str, Any]]) -> 
         )
         if unresolved and name not in candidates:
             candidates.append(name)
-    return candidates
+    return sorted(candidates, key=_ux_alpha_key)
 
 
 def _select_candidate_scope(candidates: list[str]) -> list[str]:
@@ -128,6 +162,11 @@ def _ask_customer_list(
 ) -> list[str]:
     # Start empty by default for first-time UX; detected candidates are shown as hints only.
     current: list[str] = list(initial_customers or [])
+    suggested_default = ""
+    if existing_customers and not current:
+        # Pre-fill detected candidates so the user can "accept with edits" instead
+        # of retyping everything. This is a display/UX change only.
+        suggested_default = ", ".join(sorted(existing_customers, key=_ux_alpha_key))
     while True:
         if existing_customers:
             _print_customer_candidates_table(console, projects, existing_customers)
@@ -135,13 +174,50 @@ def _ask_customer_list(
         console.print("Examples: acme.com, northwind.io, summithealth.co")
         raw = questionary.text(
             "Name your customers or customer domains (comma-separated):",
-            default=", ".join(current) if current else "",
+            default=", ".join(current) if current else suggested_default,
         ).ask()
         values = [part.strip() for part in (raw or "").split(",") if part and part.strip()]
-        deduped: list[str] = []
+
+        # Deduplicate variants but keep the UX transparent:
+        # if the user typed multiple spellings/domains for the same customer,
+        # we keep the first and print the others so they are not "lost".
+        variants_by_key: dict[str, list[str]] = {}
         for value in values:
-            if value not in deduped:
-                deduped.append(value)
+            key = _customer_identity_key(value)
+            if not key:
+                continue
+            variants_by_key.setdefault(key, []).append(value)
+
+        deduped: list[str] = []
+        seen_keys: set[str] = set()
+        dropped_variants: list[str] = []
+        for value in values:
+            key = _customer_identity_key(value)
+            if not key or key in seen_keys:
+                if key and key in variants_by_key and value in variants_by_key[key]:
+                    dropped_variants.append(value)
+                continue
+            deduped.append(value)
+            seen_keys.add(key)
+
+        if variants_by_key and dropped_variants and existing_customers:
+            # Only print when we actually deduped something; keep message short.
+            # Example: "Using 'AX Finans' as canonical; also found: ax-finans".
+            canonical_by_key = {key: variants_by_key[key][0] for key in variants_by_key if variants_by_key[key]}
+            alias_lines: list[str] = []
+            for key, variants in variants_by_key.items():
+                if len(variants) <= 1:
+                    continue
+                canonical = canonical_by_key.get(key)
+                if not canonical:
+                    continue
+                aliases = [v for v in variants if v != canonical]
+                if aliases:
+                    alias_lines.append(f"{canonical} (also: {', '.join(aliases)})")
+            if alias_lines:
+                console.print(f"[{STYLE_MUTED}]Customer variants detected; keeping canonical spelling:[/]")
+                for line in alias_lines:
+                    console.print(f"  - {line}")
         if not deduped:
             action = questionary.select(
                 "No customers entered.",
@@ -195,7 +271,8 @@ def _apply_customer_to_projects(payload: dict[str, Any], *, customer_label: str,
 def _pick_projects_with_helpers(*, prompt: str, unresolved: list[str]) -> list[str] | None:
     if not unresolved:
         return []
-    picked = questionary.checkbox(prompt, choices=unresolved).ask()
+    choices = sorted(unresolved, key=_ux_alpha_key)
+    picked = questionary.checkbox(prompt, choices=choices).ask()
     selected = {str(item) for item in (picked or [])}
     while True:
         helper = questionary.select(
@@ -204,23 +281,32 @@ def _pick_projects_with_helpers(*, prompt: str, unresolved: list[str]) -> list[s
                 "Select all visible",
                 "Invert selection",
                 "Clear selection",
-                "Continue to review selection",
+                "Done (accept selection)",
                 "Back",
             ],
-            default="Continue to review selection",
+            default="Done (accept selection)",
         ).ask()
         if helper == "Back":
             return None
-        if helper == "Continue to review selection":
-            return [name for name in unresolved if name in selected]
         if helper == "Select all visible":
             selected = set(unresolved)
-            continue
-        if helper == "Invert selection":
+        elif helper == "Invert selection":
             selected = {name for name in unresolved if name not in selected}
-            continue
-        if helper == "Clear selection":
+        elif helper == "Clear selection":
             selected = set()
+        elif helper == "Done (accept selection)":
+            return [name for name in choices if name in selected]
+        else:
+            continue
+
+        # Re-open checkbox list immediately after helper actions so the UI
+        # stays "in context" and the user doesn't need an extra "continue" step.
+        picked = questionary.checkbox(
+            prompt,
+            choices=choices,
+            default=[name for name in choices if name in selected],
+        ).ask()
+        selected = {str(item) for item in (picked or [])}
 
 
 def _collect_batch_mappings(
@@ -231,14 +317,17 @@ def _collect_batch_mappings(
     customers: list[str],
 ) -> tuple[list[str], dict[str, str]]:
     assignments: dict[str, str] = {}
+    total_candidates = len(candidates)
+    customers = sorted(customers, key=_ux_alpha_key)
     sticky_customer = customers[0] if customers else ""
     while True:
-        unresolved = [name for name in candidates if name not in assignments]
+        unresolved = sorted([name for name in candidates if name not in assignments], key=_ux_alpha_key)
         if not unresolved:
             break
+        decided = total_candidates - len(unresolved)
         default_choice = sticky_customer if sticky_customer in customers else customers[0]
         action = questionary.select(
-            "Choose customer for batch mapping (then select projects with checkboxes):",
+            f"Choose customer for batch mapping (decided {decided}/{total_candidates}, remaining {len(unresolved)}; then select projects with checkboxes):",
             choices=[
                 *customers,
                 "Create new customer...",
@@ -273,6 +362,7 @@ def _collect_batch_mappings(
                 continue
             if created not in customers:
                 customers.append(created)
+                customers = sorted(customers, key=_ux_alpha_key)
             sticky_customer = created
             picked = _pick_projects_with_helpers(
                 prompt=f"Select project(s) to map to '{created}':",

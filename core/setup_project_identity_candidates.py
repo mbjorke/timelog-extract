@@ -128,7 +128,7 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
     current_owner = (current_hint.remote_owner or "").strip().lower() if current_hint else ""
     current_repo = (current_hint.remote_repo or "").strip().lower() if current_hint else ""
     rows: list[tuple[str, str, str, str]] = []
-    for customer in customers:
+    for customer in sorted(customers, key=lambda value: (str(value).casefold(), str(value))):
         slug_hints: list[str] = []
         for project in projects:
             if not isinstance(project, dict):

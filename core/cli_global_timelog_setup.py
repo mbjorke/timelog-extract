@@ -87,9 +87,11 @@ def setup_wizard(
         raise typer.BadParameter("Cannot use --interactive together with --one-click/--fast; choose one mode")
 
     console = Console()
+    explicit_non_interactive = yes or one_click or fast
     auto_yes = not interactive
-    if yes or one_click or fast:
+    if explicit_non_interactive:
         auto_yes = True
+    prompt_project_mapping = (not interactive) and (not explicit_non_interactive)
     run_setup_wizard(
         console,
         yes=auto_yes,
@@ -97,4 +99,5 @@ def setup_wizard(
         skip_smoke=skip_smoke,
         bootstrap_root=bootstrap_root,
         fast=fast,
+        prompt_project_mapping=prompt_project_mapping,
     )

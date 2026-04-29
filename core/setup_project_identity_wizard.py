@@ -173,46 +173,14 @@ def _ask_customer_list(
         ).ask()
         values = [part.strip() for part in (raw or "").split(",") if part and part.strip()]
 
-        # Deduplicate variants but keep the UX transparent:
-        # if the user typed multiple spellings/domains for the same customer,
-        # we keep the first and print the others so they are not "lost".
-        variants_by_key: dict[str, list[str]] = {}
-        for value in values:
-            key = _customer_identity_key(value)
-            if not key:
-                continue
-            variants_by_key.setdefault(key, []).append(value)
-
         deduped: list[str] = []
         seen_keys: set[str] = set()
-        dropped_variants: list[str] = []
         for value in values:
             key = _customer_identity_key(value)
             if not key or key in seen_keys:
-                if key and key in variants_by_key and value in variants_by_key[key]:
-                    dropped_variants.append(value)
                 continue
             deduped.append(value)
             seen_keys.add(key)
-
-        if variants_by_key and dropped_variants and existing_customers:
-            # Only print when we actually deduped something; keep message short.
-            # Example: "Using 'AX Finans' as canonical; also found: ax-finans".
-            canonical_by_key = {key: variants_by_key[key][0] for key in variants_by_key if variants_by_key[key]}
-            alias_lines: list[str] = []
-            for key, variants in variants_by_key.items():
-                if len(variants) <= 1:
-                    continue
-                canonical = canonical_by_key.get(key)
-                if not canonical:
-                    continue
-                aliases = [v for v in variants if v != canonical]
-                if aliases:
-                    alias_lines.append(f"{canonical} (also: {', '.join(aliases)})")
-            if alias_lines:
-                console.print(f"[{STYLE_MUTED}]Customer variants detected; keeping canonical spelling:[/]")
-                for line in alias_lines:
-                    console.print(f"  - {line}")
         if not deduped:
             action = questionary.select(
                 "No customers entered.",

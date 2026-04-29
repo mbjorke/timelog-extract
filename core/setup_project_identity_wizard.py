@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import questionary
+from rich.panel import Panel
 
 from core.config import backup_projects_config_if_exists, load_projects_config_payload, save_projects_config_payload
 from core.setup_project_identity_candidates import print_customer_candidates_table
@@ -129,12 +130,11 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
     mode = questionary.select(
         "How many project candidates do you want to map now?",
         choices=[
-            "Map first 8 (recommended)",
             "Map all",
             "Pick specific projects...",
             "Cancel setup",
         ],
-        default="Map first 8 (recommended)",
+        default="Map all",
     ).ask()
     if mode == "Cancel setup":
         raise KeyboardInterrupt("setup cancelled by user")
@@ -146,7 +146,7 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
             choices=candidates,
         ).ask()
         return [str(item) for item in (picked or [])]
-    return candidates[:8]
+    return candidates
 
 
 def _print_customer_candidates_table(console, projects: list[dict[str, Any]], existing_customers: list[str]) -> None:
@@ -231,54 +231,37 @@ def _apply_customer_to_projects(payload: dict[str, Any], *, customer_label: str,
     return updated
 
 
-def _pick_projects_with_helpers(*, prompt: str, unresolved: list[str]) -> list[str] | None:
+def _print_project_selection_frame(console, *, customer_label: str, choices: list[str]) -> None:
+    shown_limit = 14
+    shown = choices[:shown_limit]
+    body_lines = [
+        f"[{STYLE_MUTED}]Customer:[/] [{STYLE_LABEL}]{customer_label}[/]",
+        f"[{STYLE_MUTED}]Candidates:[/] {len(choices)}",
+        f"[{STYLE_MUTED}]Use:[/] <space> select, <a> toggle all, <i> invert, <enter> confirm",
+        "",
+    ]
+    body_lines.extend([f"  - [yellow]{name}[/yellow]" for name in shown])
+    if len(choices) > shown_limit:
+        body_lines.append(f"[{STYLE_MUTED}]... and {len(choices) - shown_limit} more[/]")
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title="Project Mapping Selection",
+            border_style=STYLE_LABEL,
+            expand=False,
+        )
+    )
+
+
+def _pick_projects_with_helpers(console, *, customer_label: str, prompt: str, unresolved: list[str]) -> list[str] | None:
     if not unresolved:
         return []
     choices = sorted(unresolved, key=_ux_alpha_key)
+    _print_project_selection_frame(console, customer_label=customer_label, choices=choices)
     picked = questionary.checkbox(prompt, choices=choices).ask()
-    selected = {str(item) for item in (picked or [])}
-    while True:
-        helper = questionary.select(
-            f"Selection helper ({len(selected)}/{len(unresolved)} selected):",
-            choices=[
-                "Select all visible",
-                "Invert selection",
-                "Clear selection",
-                "Done (accept selection)",
-                "Back",
-            ],
-            default="Done (accept selection)",
-        ).ask()
-        if helper == "Back":
-            return None
-        if helper == "Select all visible":
-            selected = set(unresolved)
-        elif helper == "Invert selection":
-            selected = {name for name in unresolved if name not in selected}
-        elif helper == "Clear selection":
-            selected = set()
-        elif helper == "Done (accept selection)":
-            return [name for name in choices if name in selected]
-        else:
-            continue
-
-        # Re-open checkbox list immediately after helper actions so the UI
-        # stays "in context" and the user doesn't need an extra "continue" step.
-        default_values = [name for name in choices if name in selected]
-        # questionary raises when default is an empty list in this codepath;
-        # omitting default preserves the intended "none selected" state.
-        if default_values:
-            picked = questionary.checkbox(
-                prompt,
-                choices=choices,
-                default=default_values,
-            ).ask()
-        else:
-            picked = questionary.checkbox(
-                prompt,
-                choices=choices,
-            ).ask()
-        selected = {str(item) for item in (picked or [])}
+    if picked is None:
+        return None
+    return [str(item) for item in (picked or [])]
 
 
 def _collect_batch_mappings(
@@ -317,6 +300,9 @@ def _collect_batch_mappings(
             ],
             default=default_choice,
         ).ask()
+        if action is None:
+            console.print("[yellow]Setup cancelled by user.[/yellow]")
+            raise KeyboardInterrupt("setup cancelled by user")
         if action == "Cancel setup":
             console.print("[yellow]Setup cancelled by user.[/yellow]")
             raise KeyboardInterrupt("setup cancelled by user")
@@ -344,6 +330,8 @@ def _collect_batch_mappings(
                 customers = sorted(customers, key=_ux_alpha_key)
             sticky_customer = created
             picked = _pick_projects_with_helpers(
+                console,
+                customer_label=created,
                 prompt=f"Select project(s) to map to '{created}':",
                 unresolved=unresolved,
             )
@@ -357,6 +345,8 @@ def _collect_batch_mappings(
             continue
         if action == "Skip selected projects...":
             skipped = _pick_projects_with_helpers(
+                console,
+                customer_label="Skip selected projects",
                 prompt="Select project(s) to skip for now:",
                 unresolved=unresolved,
             )
@@ -371,6 +361,8 @@ def _collect_batch_mappings(
         customer_choice = str(action)
         sticky_customer = customer_choice
         picked = _pick_projects_with_helpers(
+            console,
+            customer_label=customer_choice,
             prompt=f"Select project(s) to map to '{customer_choice}':",
             unresolved=unresolved,
         )

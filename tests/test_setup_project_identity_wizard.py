@@ -54,10 +54,9 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
             "core.setup_project_identity_wizard.questionary.checkbox"
         ) as checkbox_mock:
-            # choose customer, accept selection, then finish loop
+            # choose customer, checkbox selection applies immediately, then finish loop
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
-                "Done (accept selection)",
                 "Finish mapping",
             ]
             checkbox_mock.return_value.ask.return_value = ["beta-project"]
@@ -94,24 +93,15 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         # Dedup collapses "Blueberry" + "blueberry.ax" and casing variants.
         self.assertEqual(customers, ["AX Finans", "blueberry.ax"])
 
-    def test_batch_mapping_helper_invert_selection(self):
+    def test_batch_mapping_assigns_selected_projects(self):
         with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
             "core.setup_project_identity_wizard.questionary.checkbox"
         ) as checkbox_mock:
-            # 1) choose customer
-            # 2) invert helper -> checkbox re-opens
-            # 3) done helper
-            # 4) finish mapping
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
-                "Invert selection",
-                "Done (accept selection)",
                 "Finish mapping",
             ]
-            checkbox_mock.return_value.ask.side_effect = [
-                ["project-alpha"],  # initial checkbox selection
-                ["project-beta", "project-gamma"],  # selection after invert helper
-            ]
+            checkbox_mock.return_value.ask.return_value = ["project-beta", "project-gamma"]
 
             _, assignments = _collect_batch_mappings(
                 Console(record=True),
@@ -123,34 +113,6 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(assignments["project-beta"], "customer-a.test")
         self.assertEqual(assignments["project-gamma"], "customer-a.test")
         self.assertNotIn("project-alpha", assignments)
-
-    def test_batch_mapping_helper_clear_selection_does_not_crash(self):
-        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
-            "core.setup_project_identity_wizard.questionary.checkbox"
-        ) as checkbox_mock:
-            # 1) choose customer
-            # 2) helper: Clear selection (selection becomes empty)
-            # 3) helper: Done (accept selection)
-            # 4) outer loop: Finish mapping
-            select_mock.return_value.ask.side_effect = [
-                "customer-a.test",
-                "Clear selection",
-                "Done (accept selection)",
-                "Finish mapping",
-            ]
-            checkbox_mock.return_value.ask.side_effect = [
-                ["project-alpha"],  # initial checkbox pick
-                [],  # checkbox re-open after Clear selection
-            ]
-
-            _, assignments = _collect_batch_mappings(
-                Console(record=True),
-                projects=[],
-                candidates=["project-alpha", "project-beta"],
-                customers=["customer-a.test"],
-            )
-
-        self.assertEqual(assignments, {})
 
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -188,7 +150,6 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                     "Continue",
                     "Continue",
                     "Atlas Studio",
-                    "Done (accept selection)",
                 ]
                 checkbox_mock.return_value.ask.return_value = ["northwind-web"]
                 run_project_identity_wizard(Console(record=True), config_path=cfg, dry_run=True)
@@ -236,7 +197,6 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                     "Continue",
                     "Continue",
                     "Atlas Studio",
-                    "Done (accept selection)",
                     "Save",
                 ]
                 checkbox_mock.return_value.ask.return_value = ["northwind-web"]
@@ -319,11 +279,9 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                     "Continue",  # run step
                     "Continue",  # confirm initial customer list
                     "customer-a.test",  # batch map some projects to customer-a
-                    "Done (accept selection)",  # accept selection for customer-a
                     "Edit customer list...",  # edit customers
                     "Continue",  # confirm edited customer list
                     "customer-b.test",  # batch map remaining to customer-b
-                    "Done (accept selection)",  # accept selection for customer-b
                     "Save",  # save changes
                 ]
                 checkbox_prompt = mock.Mock()

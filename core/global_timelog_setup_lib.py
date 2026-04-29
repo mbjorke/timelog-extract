@@ -177,6 +177,13 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
         return "ACTION_REQUIRED"
 
 
+def _run_mapping_wizard_with_summary(console, *, dry_run: bool) -> tuple[str, str]:
+    run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
+    if dry_run:
+        return "PASS (dry-run)", "Confirmed customer->project mapping."
+    return "PASS", "Confirmed customer->project mapping."
+
+
 def run_setup_wizard(
     console,
     *,
@@ -234,14 +241,8 @@ def run_setup_wizard(
     # Conservative onboarding step: confirm customer->project mapping without inventing match_terms.
     if not yes:
         try:
-            run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
-            summary_rows.append(
-                (
-                    "Step 3: Project Mapping",
-                    "PASS" if not dry_run else "PASS (dry-run)",
-                    "Confirmed customer->project mapping.",
-                )
-            )
+            status, notes = _run_mapping_wizard_with_summary(console, dry_run=dry_run)
+            summary_rows.append(("Step 3: Project Mapping", status, notes))
         except KeyboardInterrupt as exc:
             summary_rows.append(("Step 3: Project Mapping", "STOPPED", "User cancelled setup during mapping step."))
             console.print("[yellow]Setup stopped before save.[/yellow]")
@@ -253,14 +254,8 @@ def run_setup_wizard(
         should_run_mapping = questionary.confirm("Run project mapping now?", default=True).ask()
         if should_run_mapping:
             try:
-                run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
-                summary_rows.append(
-                    (
-                        "Step 3: Project Mapping",
-                        "PASS",
-                        "Confirmed customer->project mapping.",
-                    )
-                )
+                status, notes = _run_mapping_wizard_with_summary(console, dry_run=dry_run)
+                summary_rows.append(("Step 3: Project Mapping", status, notes))
             except KeyboardInterrupt as exc:
                 summary_rows.append(("Step 3: Project Mapping", "STOPPED", "User cancelled setup during mapping step."))
                 console.print("[yellow]Setup stopped before save.[/yellow]")

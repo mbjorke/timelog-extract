@@ -262,6 +262,36 @@ class TriageGuidedTests(unittest.TestCase):
         self.assertIn("uncategorized fallback", result.output)
         self.assertEqual(apply_mock.call_count, 2)
 
+    def test_guided_checkbox_label_includes_repo_hint_when_present(self):
+        plan = {
+            "days": [
+                {
+                    "day": "2026-04-30",
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "Demo",
+                    "top_sites": [
+                        {
+                            "domain": "github.com",
+                            "repo_hint": "mbjorke/timelog-extract",
+                            "sample_title": "Improve triage prompt",
+                        }
+                    ],
+                }
+            ],
+            "project_names": ["Demo"],
+            "domain_project_counts": {"github.com": [{"project": "Demo", "events": 3}]},
+        }
+        cfg = self._config_path()
+        with patch("core.cli_triage_guided.build_triage_plan_dict", return_value=plan), patch(
+            "core.cli_triage_guided.questionary.confirm"
+        ) as confirm_mock, patch("core.cli_triage_guided.questionary.checkbox") as checkbox_mock:
+            confirm_mock.return_value.ask.return_value = True
+            checkbox_mock.return_value.ask.return_value = []
+            result = self.runner.invoke(app, ["triage-guided", "--projects-config", cfg])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        choices = checkbox_mock.call_args.kwargs["choices"]
+        self.assertIn("mbjorke/timelog-extract", choices[0].title)
+
 
 if __name__ == "__main__":
     unittest.main()

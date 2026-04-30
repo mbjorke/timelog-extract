@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Optional
+from urllib.parse import urlparse
 
 import questionary
 import typer
@@ -59,11 +60,16 @@ def _extract_domain(url: str) -> str:
 def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str, dict[str, Any]]:
     # Domain-level timing anchors for faster mapping decisions in onboarding UIs.
     by_domain: dict[str, list[int]] = {}
+    by_domain_repo_counts: dict[str, dict[str, int]] = {}
     for visit_time_cu, url, _title in chrome_rows:
         domain = _extract_domain(url)
         if not domain:
             continue
         by_domain.setdefault(domain, []).append(int(visit_time_cu))
+        repo_hint = _github_repo_hint(url)
+        if repo_hint:
+            by_domain_repo_counts.setdefault(domain, {})
+            by_domain_repo_counts[domain][repo_hint] = by_domain_repo_counts[domain].get(repo_hint, 0) + 1
     out: dict[str, dict[str, Any]] = {}
     for domain, times in by_domain.items():
         if not times:
@@ -80,6 +86,69 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
                 "end": sample_end.isoformat(timespec="seconds"),
             },
         }
+        repo_counts = by_domain_repo_counts.get(domain, {})
+        if repo_counts:
+            top_repo = sorted(repo_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+            out[domain]["repo_hint"] = top_repo
+    return out
+
+
+def _domain_from_event_detail(detail: str) -> str:
+    text = str(detail or "")
+    for token in text.split():
+        if not token.startswith("http://") and not token.startswith("https://"):
+            continue
+        try:
+            host = urlparse(token).netloc.lower().strip()
+        except Exception:
+            continue
+        if host.startswith("www."):
+            host = host[4:]
+        if host:
+            return host
+    return ""
+
+
+def _github_repo_hint(url: str) -> str:
+    text = str(url or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urlparse(text)
+    except Exception:
+        return ""
+    host = parsed.netloc.lower().strip()
+    if host.startswith("www."):
+        host = host[4:]
+    if host != "github.com":
+        return ""
+    segments = [part.strip() for part in parsed.path.split("/") if part.strip()]
+    if len(segments) < 2:
+        return ""
+    owner, repo = segments[0], segments[1]
+    if not owner or not repo:
+        return ""
+    return f"{owner}/{repo}"
+
+
+def _domain_project_counts_from_report(report) -> dict[str, list[dict[str, Any]]]:
+    counts: dict[str, dict[str, int]] = {}
+    for event in list(getattr(report, "included_events", []) or []):
+        project = str(event.get("project") or "").strip()
+        if not project:
+            continue
+        domain = _domain_from_event_detail(str(event.get("detail") or ""))
+        if not domain:
+            continue
+        counts.setdefault(domain, {})
+        counts[domain][project] = counts[domain].get(project, 0) + 1
+    out: dict[str, list[dict[str, Any]]] = {}
+    for domain, per_project in counts.items():
+        ranked = sorted(per_project.items(), key=lambda item: (-item[1], item[0]))
+        out[domain] = [
+            {"project": project, "events": int(events)}
+            for project, events in ranked[:3]
+        ]
     return out
 
 
@@ -96,6 +165,7 @@ def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, An
         "domain": site.domain,
         "visits": site.visits,
         "share": round(float(site.share), 6),
+        "sample_title": str(site.sample_title or ""),
     }
     timing = site_time_hints.get(site.domain)
     if timing:
@@ -176,6 +246,7 @@ def build_triage_plan_dict(
     )
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = analyze_screen_time_gaps(report)
+    domain_project_counts = _domain_project_counts_from_report(report)
     day_rows = select_triage_days(payload, max_days=max_days)
     profiles = load_triage_profiles(projects_config)
     projects_payload = load_projects_config_payload(Path(projects_config))
@@ -265,6 +336,7 @@ def build_triage_plan_dict(
             "scoring_mode": scoring_mode,
         },
         "project_names": all_names,
+        "domain_project_counts": domain_project_counts,
         "empty_reason": empty_reason,
         "days": out_days,
         "guided_config": build_guided_config_plan(

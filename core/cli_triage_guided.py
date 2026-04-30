@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Annotated, Any, Optional
+from urllib.parse import urlparse
 
 import questionary
 import typer
+from questionary import Choice
 
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
@@ -28,11 +30,49 @@ from core.report_nudges import (
 
 DEFAULT_GUIDED_RECENT_DAYS = 7
 _DECISIONS_SCHEMA_VERSION = 1
+_ANSI_YELLOW = "\x1b[33m"
+_ANSI_RESET = "\x1b[0m"
+
+
+def _domain_checkbox_choices_with_context(
+    top_sites: list[dict[str, Any]],
+    *,
+    domain_project_counts: dict[str, list[dict[str, Any]]] | None,
+) -> list[Choice]:
+    choices: list[Choice] = []
+    history_map = domain_project_counts or {}
+    for item in top_sites:
+        domain = str(item.get("domain", "")).strip()
+        if not domain:
+            continue
+        repo_hint = str(item.get("repo_hint", "")).strip()
+        sample_title = str(item.get("sample_title", "")).strip()
+        title_preview = sample_title.replace("\n", " ").strip()
+        if len(title_preview) > 60:
+            title_preview = title_preview[:57].rstrip() + "..."
+        history = history_map.get(domain, [])
+        history_preview = ", ".join(
+            f"{str(entry.get('project', '')).strip()} ({int(entry.get('events', 0) or 0)})"
+            for entry in history
+            if str(entry.get("project", "")).strip()
+        )
+        parts = [domain]
+        if repo_hint:
+            parts.append(repo_hint)
+        if title_preview:
+            parts.append(title_preview)
+        if history_preview:
+            parts.append(f"often: {history_preview}")
+        label = " — ".join(parts)
+        choices.append(Choice(title=label, value=domain))
+    return choices
 
 
 def _build_guided_decisions(
     plan_days: list[dict[str, Any]],
     project_names: set[str],
+    *,
+    domain_project_counts: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, str]]:
     decisions: list[dict[str, str]] = []
     for day in plan_days:
@@ -40,8 +80,11 @@ def _build_guided_decisions(
         if not suggested or suggested not in project_names:
             continue
         top_sites = day.get("top_sites", [])
-        domains = [str(item.get("domain", "")).strip() for item in top_sites if str(item.get("domain", "")).strip()]
-        if not domains:
+        domain_choices = _domain_checkbox_choices_with_context(
+            top_sites,
+            domain_project_counts=domain_project_counts,
+        )
+        if not domain_choices:
             continue
         include_day = questionary.confirm(
             f"{day.get('day')}: map top domains to '{suggested}'?",
@@ -51,9 +94,10 @@ def _build_guided_decisions(
             raise KeyboardInterrupt("triage guided cancelled by user")
         if not include_day:
             continue
+        highlighted_project = f"{_ANSI_YELLOW}{suggested}{_ANSI_RESET}"
         picked_domains = questionary.checkbox(
-            f"{day.get('day')}: choose domains",
-            choices=domains,
+            f"{day.get('day')}: choose domains for '{highlighted_project}'",
+            choices=domain_choices,
         ).ask()
         if picked_domains is None:
             raise KeyboardInterrupt("triage guided cancelled by user")
@@ -130,6 +174,7 @@ def _build_uncategorized_plan_days(*, report, projects_config: str, max_days: in
         chrome_rows = fetch_chrome_rows_for_day(day, home=Path.home())
         signal_rows, noise_rows_filtered = _filter_triage_noise_rows(chrome_rows)
         top_sites = summarize_day_sites(signal_rows, limit=max_sites)
+        domain_repo_hints = _repo_hints_by_domain(signal_rows)
         if not top_sites:
             if noise_rows_filtered:
                 continue
@@ -143,10 +188,53 @@ def _build_uncategorized_plan_days(*, report, projects_config: str, max_days: in
                 "day": day,
                 "skip_reason": None,
                 "resolved_project_for_top_suggestion": resolved,
-                "top_sites": [{"domain": site.domain} for site in top_sites],
+                "top_sites": [
+                    {
+                        "domain": site.domain,
+                        "sample_title": str(site.sample_title or ""),
+                        "repo_hint": domain_repo_hints.get(site.domain, ""),
+                    }
+                    for site in top_sites
+                ],
             }
         )
     return plan_days
+
+
+def _repo_hints_by_domain(rows: list[tuple[int, str, str]]) -> dict[str, str]:
+    counts: dict[str, dict[str, int]] = {}
+    for _visit_time_cu, url, _title in rows:
+        domain, repo = _extract_domain_repo_hint(url)
+        if not domain or not repo:
+            continue
+        counts.setdefault(domain, {})
+        counts[domain][repo] = counts[domain].get(repo, 0) + 1
+    out: dict[str, str] = {}
+    for domain, per_repo in counts.items():
+        out[domain] = sorted(per_repo.items(), key=lambda item: (-item[1], item[0]))[0][0]
+    return out
+
+
+def _extract_domain_repo_hint(url: str) -> tuple[str, str]:
+    text = str(url or "").strip()
+    if not text:
+        return "", ""
+    try:
+        parsed = urlparse(text)
+    except Exception:
+        return "", ""
+    host = parsed.netloc.lower().strip()
+    if host.startswith("www."):
+        host = host[4:]
+    if host != "github.com":
+        return host, ""
+    segments = [part.strip() for part in parsed.path.split("/") if part.strip()]
+    if len(segments) < 2:
+        return host, ""
+    owner, repo = segments[0], segments[1]
+    if not owner or not repo:
+        return host, ""
+    return host, f"{owner}/{repo}"
 
 
 @app.command("triage-guided")
@@ -193,6 +281,11 @@ def triage_guided(
         scoring_mode=scoring_mode,
     )
     days = [d for d in plan.get("days", []) if not d.get("skip_reason")]
+    domain_project_counts = {
+        str(k): list(v)
+        for k, v in (plan.get("domain_project_counts", {}) or {}).items()
+        if isinstance(k, str) and isinstance(v, list)
+    }
     if not days:
         options = TimelogRunOptions(
             date_from=date_from,
@@ -220,7 +313,11 @@ def triage_guided(
             )
             project_names = set(str(name) for name in plan.get("project_names", []))
             try:
-                fallback_decisions = _build_guided_decisions(fallback_days, project_names)
+                fallback_decisions = _build_guided_decisions(
+                    fallback_days,
+                    project_names,
+                    domain_project_counts=domain_project_counts,
+                )
             except KeyboardInterrupt:
                 console.print("[yellow]Cancelled before writing config.[/yellow]")
                 raise typer.Exit(code=0)
@@ -264,7 +361,11 @@ def triage_guided(
 
     project_names = set(str(name) for name in plan.get("project_names", []))
     try:
-        decisions = _build_guided_decisions(days, project_names)
+        decisions = _build_guided_decisions(
+            days,
+            project_names,
+            domain_project_counts=domain_project_counts,
+        )
     except KeyboardInterrupt:
         console.print("[yellow]Cancelled before writing config.[/yellow]")
         raise typer.Exit(code=0)

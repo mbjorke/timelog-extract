@@ -14,6 +14,27 @@ from core.git_project_bootstrap import discover_git_project_hints, discover_loca
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
 
+def _normalize_github_slug_hint(term: str) -> str:
+    raw = str(term or "").strip().lower()
+    if not raw:
+        return ""
+    # Ignore filesystem-like paths that can contain "/users/..." and would
+    # otherwise be rendered as fake github.com slugs.
+    trimmed = raw.lstrip("/")
+    if trimmed.startswith(("users/", "workspace/", "private/", "var/", "tmp/", "opt/", "home/")):
+        return ""
+    if " " in trimmed or ":" in trimmed:
+        return ""
+    if "/" not in trimmed:
+        return ""
+    owner, repo = trimmed.split("/", 1)
+    owner = owner.strip()
+    repo = repo.strip().strip("/")
+    if not owner or not repo:
+        return ""
+    return f"{owner}/{repo}"
+
+
 def _activity_dot(epoch_ts: int) -> str:
     if epoch_ts <= 0:
         return "[dim]●[/dim]"
@@ -128,7 +149,7 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
     current_owner = (current_hint.remote_owner or "").strip().lower() if current_hint else ""
     current_repo = (current_hint.remote_repo or "").strip().lower() if current_hint else ""
     rows: list[tuple[str, str, str, str]] = []
-    for customer in customers:
+    for customer in sorted(customers, key=lambda value: (str(value).casefold(), str(value))):
         slug_hints: list[str] = []
         for project in projects:
             if not isinstance(project, dict):
@@ -137,10 +158,9 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
             if p_customer != customer:
                 continue
             for term in project.get("match_terms", []) or []:
-                raw = str(term).strip().lower()
-                if "/" in raw and not raw.startswith(("workspace/", "users/")) and " " not in raw:
-                    if raw not in slug_hints:
-                        slug_hints.append(raw)
+                slug = _normalize_github_slug_hint(str(term))
+                if slug and slug not in slug_hints:
+                    slug_hints.append(slug)
 
         preferred = ""
         owner_key = customer.strip().lower()
@@ -168,8 +188,8 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
                 current_ts = _git_last_commit_epoch(Path.cwd())
                 top_pairs = [(current_ts, current_slug), *filtered]
             shown_pairs = top_pairs[:15]
-            top_lines = [f"{_activity_dot(ts)} github.com/{slug}" for ts, slug in shown_pairs]
-            most_active = f"github.com/{preferred}" if preferred else "n/a"
+            top_lines = [f"{_activity_dot(ts)} github.com/{slug.lstrip('/')}" for ts, slug in shown_pairs]
+            most_active = f"github.com/{preferred.lstrip('/')}" if preferred else "n/a"
             rows.append((customer, str(count), most_active, "\n".join(top_lines) if top_lines else "n/a"))
         else:
             rows.append((customer, "n/a", "n/a", "n/a"))

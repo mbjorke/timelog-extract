@@ -13,11 +13,16 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import questionary
+from rich.panel import Panel
 
 from core.config import backup_projects_config_if_exists, load_projects_config_payload, save_projects_config_payload
 from core.setup_project_identity_candidates import print_customer_candidates_table
 from outputs.cli_heroes import print_command_hero
-from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
+from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
+
+
+def _ux_alpha_key(value: str) -> tuple[str, str]:
+    return (str(value).casefold(), str(value))
 
 
 def _slug(text: str) -> str:
@@ -27,6 +32,26 @@ def _slug(text: str) -> str:
 
 def _compact(text: str) -> str:
     return "".join(ch for ch in (text or "").lower() if ch.isalnum())
+
+
+def _customer_identity_key(value: str) -> str:
+    """
+    Best-effort identity key for deduping common customer variants.
+
+    Minimal-risk goal: collapse obvious duplicates users enter/see in onboarding:
+    - casing differences: "AX Finans" vs "ax-finans"
+    - domain vs bare root: "blueberry.ax" vs "Blueberry"
+    """
+    s = str(value or "").strip().lower()
+    if not s:
+        return ""
+    # URLs/domains: use the leftmost label (before first dot) as "root".
+    if "." in s:
+        s = s.split(".", 1)[0].strip()
+    # If any path-like value appears, keep only the last segment.
+    if "/" in s:
+        s = s.rsplit("/", 1)[-1].strip()
+    return _compact(s)
 
 
 def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict[str, list[str]]:
@@ -47,6 +72,7 @@ def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict
 def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
     # Prefer user-curated customer labels over placeholder customer=name rows.
     curated: list[str] = []
+    seen_keys: set[str] = set()
     for p in projects:
         name = str(p.get("name", "")).strip()
         customer = str(p.get("customer", "")).strip()
@@ -54,16 +80,25 @@ def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
             continue
         if customer.lower() == name.lower():
             continue
-        if customer not in curated:
-            curated.append(customer)
+        key = _customer_identity_key(customer)
+        if not key or key in seen_keys:
+            continue
+        curated.append(customer)
+        seen_keys.add(key)
     if curated:
         return curated
     # Fallback: still list existing customer values if no curated set exists yet.
     any_customers: list[str] = []
+    seen_keys = set()
     for p in projects:
         customer = str(p.get("customer", "")).strip()
-        if customer and customer not in any_customers:
-            any_customers.append(customer)
+        if not customer:
+            continue
+        key = _customer_identity_key(customer)
+        if not key or key in seen_keys:
+            continue
+        any_customers.append(customer)
+        seen_keys.add(key)
     return any_customers
 
 
@@ -84,7 +119,7 @@ def _candidate_projects_for_customer_mapping(projects: list[dict[str, Any]]) -> 
         )
         if unresolved and name not in candidates:
             candidates.append(name)
-    return candidates
+    return sorted(candidates, key=_ux_alpha_key)
 
 
 def _select_candidate_scope(candidates: list[str]) -> list[str]:
@@ -95,12 +130,11 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
     mode = questionary.select(
         "How many project candidates do you want to map now?",
         choices=[
-            "Map first 8 (recommended)",
             "Map all",
             "Pick specific projects...",
             "Cancel setup",
         ],
-        default="Map first 8 (recommended)",
+        default="Map all",
     ).ask()
     if mode == "Cancel setup":
         raise KeyboardInterrupt("setup cancelled by user")
@@ -112,7 +146,7 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
             choices=candidates,
         ).ask()
         return [str(item) for item in (picked or [])]
-    return candidates[:8]
+    return candidates
 
 
 def _print_customer_candidates_table(console, projects: list[dict[str, Any]], existing_customers: list[str]) -> None:
@@ -138,10 +172,15 @@ def _ask_customer_list(
             default=", ".join(current) if current else "",
         ).ask()
         values = [part.strip() for part in (raw or "").split(",") if part and part.strip()]
+
         deduped: list[str] = []
+        seen_keys: set[str] = set()
         for value in values:
-            if value not in deduped:
-                deduped.append(value)
+            key = _customer_identity_key(value)
+            if not key or key in seen_keys:
+                continue
+            deduped.append(value)
+            seen_keys.add(key)
         if not deduped:
             action = questionary.select(
                 "No customers entered.",
@@ -192,11 +231,160 @@ def _apply_customer_to_projects(payload: dict[str, Any], *, customer_label: str,
     return updated
 
 
-def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> None:
+def _print_project_selection_frame(console, *, customer_label: str, choices: list[str]) -> None:
+    shown_limit = 14
+    shown = choices[:shown_limit]
+    body_lines = [
+        f"[{STYLE_MUTED}]Customer:[/] [{STYLE_LABEL}]{customer_label}[/]",
+        f"[{STYLE_MUTED}]Candidates:[/] {len(choices)}",
+        f"[{STYLE_MUTED}]Use:[/] <space> select, <a> toggle all, <i> invert, <enter> confirm",
+        "",
+    ]
+    body_lines.extend([f"  - [yellow]{name}[/yellow]" for name in shown])
+    if len(choices) > shown_limit:
+        body_lines.append(f"[{STYLE_MUTED}]... and {len(choices) - shown_limit} more[/]")
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title="Project Mapping Selection",
+            border_style=STYLE_BORDER,
+            title_align="left",
+            expand=False,
+        )
+    )
+
+
+def _pick_projects_with_helpers(console, *, customer_label: str, prompt: str, unresolved: list[str]) -> list[str] | None:
+    if not unresolved:
+        return []
+    choices = sorted(unresolved, key=_ux_alpha_key)
+    _print_project_selection_frame(console, customer_label=customer_label, choices=choices)
+    picked = questionary.checkbox(prompt, choices=choices).ask()
+    if picked is None:
+        return None
+    return [str(item) for item in (picked or [])]
+
+
+def _collect_batch_mappings(
+    console,
+    *,
+    projects: list[dict[str, Any]],
+    candidates: list[str],
+    customers: list[str],
+) -> tuple[list[str], dict[str, str]]:
+    def _short_preview(items: list[str], *, limit: int = 6) -> str:
+        items_sorted = sorted(items, key=_ux_alpha_key)
+        shown = ", ".join(items_sorted[:limit])
+        if len(items_sorted) <= limit:
+            return shown
+        return f"{shown}, … +{len(items_sorted) - limit} more"
+
+    assignments: dict[str, str] = {}
+    total_candidates = len(candidates)
+    customers = sorted(customers, key=_ux_alpha_key)
+    sticky_customer = customers[0] if customers else ""
+    while True:
+        unresolved = sorted([name for name in candidates if name not in assignments], key=_ux_alpha_key)
+        if not unresolved:
+            break
+        decided = total_candidates - len(unresolved)
+        default_choice = sticky_customer if sticky_customer in customers else customers[0]
+        action = questionary.select(
+            f"Choose customer for batch mapping (decided {decided}/{total_candidates}, remaining {len(unresolved)}; then select projects with checkboxes):",
+            choices=[
+                *customers,
+                "Create new customer...",
+                "Edit customer list...",
+                "Skip selected projects...",
+                "Finish mapping",
+                "Cancel setup",
+            ],
+            default=default_choice,
+        ).ask()
+        if action is None:
+            console.print("[yellow]Setup cancelled by user.[/yellow]")
+            raise KeyboardInterrupt("setup cancelled by user")
+        if action == "Cancel setup":
+            console.print("[yellow]Setup cancelled by user.[/yellow]")
+            raise KeyboardInterrupt("setup cancelled by user")
+        if action == "Finish mapping":
+            break
+        if action == "Edit customer list...":
+            customers = _ask_customer_list(
+                console,
+                projects,
+                _existing_customers(projects),
+                initial_customers=customers,
+            )
+            if not customers:
+                console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
+                return [], {}
+            if sticky_customer not in customers:
+                sticky_customer = customers[0]
+            continue
+        if action == "Create new customer...":
+            created = (questionary.text("Customer name:", default="").ask() or "").strip()
+            if not created:
+                continue
+            created_key = _customer_identity_key(created)
+            existing = next((value for value in customers if _customer_identity_key(value) == created_key), None)
+            canonical = existing or created
+            if existing is None:
+                customers.append(canonical)
+                customers = sorted(customers, key=_ux_alpha_key)
+            sticky_customer = canonical
+            picked = _pick_projects_with_helpers(
+                console,
+                customer_label=canonical,
+                prompt=f"Select project(s) to map to '{canonical}':",
+                unresolved=unresolved,
+            )
+            if picked is None:
+                continue
+            for item in picked:
+                assignments[str(item)] = canonical
+            console.print(
+                f"[{STYLE_MUTED}]Planned:[/] {canonical} <- {(_short_preview(picked) if picked else 'no projects selected')}"
+            )
+            continue
+        if action == "Skip selected projects...":
+            skipped = _pick_projects_with_helpers(
+                console,
+                customer_label="Skip selected projects",
+                prompt="Select project(s) to skip for now:",
+                unresolved=unresolved,
+            )
+            if skipped is None:
+                continue
+            for item in skipped:
+                assignments[str(item)] = "Skip"
+            console.print(
+                f"[{STYLE_MUTED}]Planned:[/] skip {(_short_preview(skipped) if skipped else 'no projects selected')}"
+            )
+            continue
+        customer_choice = str(action)
+        sticky_customer = customer_choice
+        picked = _pick_projects_with_helpers(
+            console,
+            customer_label=customer_choice,
+            prompt=f"Select project(s) to map to '{customer_choice}':",
+            unresolved=unresolved,
+        )
+        if picked is None:
+            continue
+        for item in picked:
+            assignments[str(item)] = customer_choice
+        console.print(
+            f"[{STYLE_MUTED}]Planned:[/] {customer_choice} <- {(_short_preview(picked) if picked else 'no projects selected')}"
+        )
+    return customers, assignments
+
+
+def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> str:
     payload = load_projects_config_payload(config_path)
     projects = [p for p in payload.get("projects", []) if isinstance(p, dict)]
     if not projects:
-        return
+        return "No projects"
 
     console.print("")
     print_command_hero(console, "setup:project-mapping")
@@ -213,7 +401,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         raise KeyboardInterrupt("setup cancelled by user")
     if proceed == "Skip this step" or not proceed:
         console.print(f"[{STYLE_MUTED}]Skipped this step.[/]")
-        return
+        return "Skip this step"
 
     collisions = _detect_customer_slug_collisions(projects)
     if collisions:
@@ -226,92 +414,31 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     customers = _ask_customer_list(console, projects, _existing_customers(projects))
     if not customers:
         console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
-        return
+        return "No customers provided"
 
     candidates = _candidate_projects_for_customer_mapping(projects)
     if not candidates:
         console.print(f"[{STYLE_MUTED}]No unresolved project->customer mappings found. Skipping.[/]")
-        return
+        return "No unresolved mappings"
     candidates = _select_candidate_scope(candidates)
     if not candidates:
         console.print(f"[{STYLE_MUTED}]No candidates selected. Skipping this step.[/]")
-        return
+        return "No candidates selected"
 
     console.print("")
     console.print("[bold]Potential project mappings found.[/bold]")
-    console.print(f"[{STYLE_MUTED}]Please confirm each mapping before save.[/]")
+    console.print(f"[{STYLE_MUTED}]Batch map projects with checkboxes before save.[/]")
 
     planned_updates: list[tuple[str, list[str]]] = []  # (customer, [project_names...])
-    sticky_customer = customers[0] if customers else "Skip"
-    total = len(candidates)
-    selections: dict[str, str] = {}
-    pending_defaults: dict[str, str] = {}
-    idx = 0
-    while idx < total:
-        project_name = candidates[idx]
-        project_default = selections.get(project_name, pending_defaults.get(project_name, sticky_customer))
-        if project_default not in customers:
-            project_default = "Skip"
-        action = questionary.select(
-            f"Project wizard step {idx + 1} / {total}:\n{project_name} (map to customer)",
-            choices=[
-                *customers,
-                "Create new customer...",
-                "Skip",
-                "Previous project",
-                "Edit customer list...",
-                "Cancel setup",
-            ],
-            default=project_default,
-        ).ask()
-        if action == "Cancel setup":
-            console.print("[yellow]Setup cancelled by user.[/yellow]")
-            raise KeyboardInterrupt("setup cancelled by user")
-        if action == "Previous project":
-            if idx > 0:
-                idx -= 1
-            continue
-        if action == "Edit customer list...":
-            # Preserve the current project's suggested value so editing the list
-            # does not unexpectedly change the next default for this project.
-            if project_name not in selections and project_default != "Skip":
-                pending_defaults[project_name] = project_default
-            customers = _ask_customer_list(
-                console,
-                projects,
-                _existing_customers(projects),
-                initial_customers=customers,
-            )
-            if not customers:
-                console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
-                return
-            if sticky_customer not in customers:
-                sticky_customer = customers[0]
-            resume = questionary.select(
-                "Resume mapping where?",
-                choices=["Current project", "Previous project"],
-                default="Current project",
-            ).ask()
-            if resume == "Previous project" and idx > 0:
-                idx -= 1
-            continue
-        if not action or action == "Skip":
-            selections[project_name] = "Skip"
-            idx += 1
-            continue
-        if action == "Create new customer...":
-            created = (questionary.text("Customer name:", default="").ask() or "").strip()
-            if not created:
-                continue
-            if created not in customers:
-                customers.append(created)
-            selections[project_name] = created
-            sticky_customer = created
-            idx += 1
-            continue
-        selections[project_name] = str(action)
-        sticky_customer = str(action)
-        idx += 1
+    _, selections = _collect_batch_mappings(
+        console,
+        projects=projects,
+        candidates=candidates,
+        customers=customers,
+    )
+    if not selections:
+        console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
+        return "No mappings selected"
 
     for project_name in candidates:
         customer_choice = selections.get(project_name, "Skip")
@@ -321,7 +448,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
 
     if not planned_updates:
         console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
-        return
+        return "No mappings selected"
 
     console.print("")
     console.print("[bold]I will update[/bold]")
@@ -329,7 +456,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         console.print(f"  - {customer_label} -> {', '.join(project_names)}")
     if dry_run:
         console.print("[yellow]Dry run:[/yellow] would update customer mapping fields in your project config.")
-        return
+        return "Confirmed (dry-run)"
 
     should_save = questionary.select(
         "Save these mapping updates?",
@@ -341,7 +468,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         raise KeyboardInterrupt("setup cancelled by user")
     if should_save != "Save":
         console.print(f"[{STYLE_MUTED}]Cancelled. No changes were saved.[/]")
-        return
+        return "Nothing to save"
 
     updated = 0
     for customer_label, project_names in planned_updates:
@@ -351,6 +478,8 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         backup_projects_config_if_exists(config_path)
         save_projects_config_payload(config_path, payload)
         console.print(f"[green]Saved.[/green] Updated {updated} project(s).")
+        return "Confirmed"
     else:
         console.print(f"[{STYLE_MUTED}]No projects were updated.[/]")
+        return "Nothing to save"
 

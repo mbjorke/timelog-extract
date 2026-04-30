@@ -37,6 +37,38 @@ class ReportNudgesTests(unittest.TestCase):
         self.assertIn("Uncategorized", text)
         self.assertIn("triage-guided", text)
 
+    def test_uncategorized_nudge_suppressed_when_residual_noise_dominates(self):
+        report = self._report(estimated=4.0, screen_hours=4.0, uncategorized_hours=3.9)
+        report.included_events = [
+            {
+                "project": "Uncategorized",
+                "day": "2026-04-30",
+                "detail": "https://cursor.com/changelog canvas sdk mirror failed",
+            },
+            {
+                "project": "Uncategorized",
+                "day": "2026-04-30",
+                "detail": "https://cursor.sh/docs cursor diagnostics",
+            },
+            {
+                "project": "Uncategorized",
+                "day": "2026-04-30",
+                "detail": "https://cursor.com/features skills-cursor",
+            },
+            {
+                "project": "Uncategorized",
+                "day": "2026-04-30",
+                "detail": "https://cursor.sh/pricing mcp tool schema",
+            },
+            {
+                "project": "Uncategorized",
+                "day": "2026-04-30",
+                "detail": "https://example.com/real-work",
+            },
+        ]
+        text = build_unexplained_gap_nudge(report, threshold_hours=1.5)
+        self.assertIsNone(text)
+
 
 if __name__ == "__main__":
     unittest.main()

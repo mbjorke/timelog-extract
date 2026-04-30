@@ -184,15 +184,14 @@ class TriageGuidedTests(unittest.TestCase):
         with patch("core.cli_triage_guided.build_triage_plan_dict", return_value=plan), patch(
             "core.report_service.run_timelog_report",
             return_value=fallback_report,
-        ):
+        ), patch("core.cli_triage_guided._build_uncategorized_plan_days", return_value=[]):
             result = self.runner.invoke(
                 app,
                 ["triage-guided", "--projects-config", cfg, "--from", "2026-04-30", "--to", "2026-04-30"],
             )
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Uncategorized time is significant", result.output)
-        self.assertIn("gittan triage --json", result.output)
-        self.assertIn("triage-apply", result.output)
+        self.assertIn("Guided mode will derive candidate mappings", result.output)
 
     def test_guided_fallback_write_decisions_writes_scaffold_file(self):
         plan = {"days": [], "project_names": ["Demo"]}
@@ -207,7 +206,7 @@ class TriageGuidedTests(unittest.TestCase):
             with patch("core.cli_triage_guided.build_triage_plan_dict", return_value=plan), patch(
                 "core.report_service.run_timelog_report",
                 return_value=fallback_report,
-            ):
+            ), patch("core.cli_triage_guided._build_uncategorized_plan_days", return_value=[]):
                 result = self.runner.invoke(
                     app,
                     [
@@ -223,10 +222,45 @@ class TriageGuidedTests(unittest.TestCase):
                     ],
                 )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("Scaffold decisions file written:", result.output)
+            self.assertIn("Decisions file written:", result.output)
             payload = json.loads(decisions_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["schema_version"], 1)
             self.assertEqual(payload["decisions"], [])
+
+    def test_guided_fallback_derives_decisions_and_applies_after_confirm(self):
+        plan = {"days": [], "project_names": ["Demo"]}
+        cfg = self._config_path()
+        fallback_report = SimpleNamespace(
+            overall_days={"2026-04-30": {"hours": 4.0}},
+            project_reports={"Uncategorized": {"2026-04-30": {"hours": 3.9}}},
+            screen_time_days={"2026-04-30": 4.0 * 3600.0},
+        )
+        fallback_days = [
+            {
+                "day": "2026-04-30",
+                "skip_reason": None,
+                "resolved_project_for_top_suggestion": "Demo",
+                "top_sites": [{"domain": "demo.test"}],
+            }
+        ]
+        with patch("core.cli_triage_guided.build_triage_plan_dict", return_value=plan), patch(
+            "core.report_service.run_timelog_report",
+            return_value=fallback_report,
+        ), patch("core.cli_triage_guided._build_uncategorized_plan_days", return_value=fallback_days), patch(
+            "core.cli_triage_guided.questionary.confirm"
+        ) as confirm_mock, patch("core.cli_triage_guided.questionary.checkbox") as checkbox_mock, patch(
+            "core.cli_triage_guided.apply_triage_decisions_payload"
+        ) as apply_mock:
+            confirm_mock.return_value.ask.side_effect = [True, True]
+            checkbox_mock.return_value.ask.return_value = ["demo.test"]
+            apply_mock.side_effect = [
+                {"dry_run": True, "preview": "Planned config updates:", "would_apply": [], "skipped": 0, "errors": []},
+                {"applied": 1, "skipped": 0, "preview": "Planned config updates:", "errors": []},
+            ]
+            result = self.runner.invoke(app, ["triage-guided", "--projects-config", cfg, "--today"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("uncategorized fallback", result.output)
+        self.assertEqual(apply_mock.call_count, 2)
 
 
 if __name__ == "__main__":

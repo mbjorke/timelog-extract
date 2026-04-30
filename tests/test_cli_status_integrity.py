@@ -125,6 +125,15 @@ class StatusIntegrityTests(unittest.TestCase):
         options = run_mock.call_args[0][3]
         self.assertEqual(getattr(options, "lovable_noise_profile", ""), "strict")
 
+    def test_status_accepts_explicit_from_to_dates(self):
+        report = _FakeReport(project_reports={}, overall_days={}, included_events=[])
+        with patch("core.report_service.run_timelog_report", return_value=report) as run_mock:
+            r = self.runner.invoke(app, ["status", "--from", "2026-04-01", "--to", "2026-04-03"])
+        self.assertEqual(r.exit_code, 0, msg=r.output)
+        options = run_mock.call_args[0][3]
+        self.assertEqual(getattr(options, "date_from", ""), "2026-04-01")
+        self.assertEqual(getattr(options, "date_to", ""), "2026-04-03")
+
     def test_status_accepts_alias_global_and_lovable_profile_flags(self):
         report = _FakeReport(
             project_reports={},

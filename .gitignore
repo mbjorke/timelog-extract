@@ -8,6 +8,9 @@ build/
 
 # Local project config (copy from timelog_projects.example.json)
 timelog_projects.json
+timelog_projects.json.marcus
+timelog_projects.backup.*.json
+decisions-*.json
 timelog_projects.json.*.bak
 timelog_projects.home-backup-*.json
 timelog_projects.repo-backup-*.json

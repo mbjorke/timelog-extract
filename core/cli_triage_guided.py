@@ -30,8 +30,6 @@ from core.report_nudges import (
 
 DEFAULT_GUIDED_RECENT_DAYS = 7
 _DECISIONS_SCHEMA_VERSION = 1
-_ANSI_YELLOW = "\x1b[33m"
-_ANSI_RESET = "\x1b[0m"
 
 
 def _domain_checkbox_choices_with_context(
@@ -87,16 +85,15 @@ def _build_guided_decisions(
         if not domain_choices:
             continue
         include_day = questionary.confirm(
-            f"{day.get('day')}: map top domains to '{suggested}'?",
+            f"{day.get('day')}: map top domains to project '{suggested}'?",
             default=True,
         ).ask()
         if include_day is None:
             raise KeyboardInterrupt("triage guided cancelled by user")
         if not include_day:
             continue
-        highlighted_project = f"{_ANSI_YELLOW}{suggested}{_ANSI_RESET}"
         picked_domains = questionary.checkbox(
-            f"{day.get('day')}: choose domains for '{highlighted_project}'",
+            f"{day.get('day')}: choose domains for project '{suggested}'",
             choices=domain_choices,
         ).ask()
         if picked_domains is None:

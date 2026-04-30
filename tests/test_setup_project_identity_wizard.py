@@ -29,7 +29,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
 
     def test_customer_select_choices_are_sorted_before_special_actions(self):
         with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock:
-            select_mock.return_value.ask.return_value = "Finish mapping"
+            select_mock.return_value.ask.return_value = "__finish_mapping__"
             _collect_batch_mappings(
                 Console(record=True),
                 projects=[],
@@ -38,15 +38,27 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
             )
 
         first_choices = select_mock.call_args_list[0].kwargs["choices"]
-        self.assertEqual(first_choices[:3], ["Alpha.test", "beta.test", "zeta.test"])
+        first_titles = [choice.title for choice in first_choices]
+        first_values = [choice.value for choice in first_choices]
+        self.assertEqual(first_titles[:3], ["Alpha.test", "beta.test", "zeta.test"])
         self.assertEqual(
-            first_choices[3:],
+            first_titles[3:],
             [
                 "Create new customer...",
                 "Edit customer list...",
                 "Skip selected projects...",
                 "Finish mapping",
                 "Cancel setup",
+            ],
+        )
+        self.assertEqual(
+            first_values[3:],
+            [
+                "__create_customer__",
+                "__edit_customers__",
+                "__skip_projects__",
+                "__finish_mapping__",
+                "__cancel_setup__",
             ],
         )
 
@@ -57,7 +69,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
             # choose customer, checkbox selection applies immediately, then finish loop
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
-                "Finish mapping",
+                "__finish_mapping__",
             ]
             checkbox_mock.return_value.ask.return_value = ["beta-project"]
             _collect_batch_mappings(
@@ -74,24 +86,24 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
 
     def test_existing_customers_dedupes_common_variants(self):
         projects = [
-            {"name": "AX Finans", "customer": "AX Finans", "default_client": ""},
-            {"name": "ax-finans", "customer": "ax-finans", "default_client": ""},
-            {"name": "blueberry.ax", "customer": "blueberry.ax", "default_client": ""},
-            {"name": "Blueberry", "customer": "Blueberry", "default_client": ""},
+            {"name": "customer-a.test", "customer": "customer-a.test", "default_client": ""},
+            {"name": "customer-a", "customer": "customer-a", "default_client": ""},
+            {"name": "customer-b.test", "customer": "customer-b.test", "default_client": ""},
+            {"name": "customer-b", "customer": "customer-b", "default_client": ""},
         ]
         # If all rows are placeholders (customer=name), _existing_customers falls back
         # to listing existing customer values (deduped).
-        self.assertEqual(_existing_customers(projects), ["AX Finans", "blueberry.ax"])
+        self.assertEqual(_existing_customers(projects), ["customer-a.test", "customer-b.test"])
 
         projects2 = [
-            {"name": "ax-finans", "customer": "AX Finans", "default_client": ""},
-            # Use a non-placeholder row for the "blueberry" group so it is included
+            {"name": "customer-a", "customer": "customer-a.test", "default_client": ""},
+            # Use a non-placeholder row for the "customer-b" group so it is included
             # in the curated path (customer!=name).
-            {"name": "Blueberry", "customer": "blueberry.ax", "default_client": ""},
+            {"name": "customer-b", "customer": "customer-b.test", "default_client": ""},
         ]
         customers = _existing_customers(projects2)
-        # Dedup collapses "Blueberry" + "blueberry.ax" and casing variants.
-        self.assertEqual(customers, ["AX Finans", "blueberry.ax"])
+        # Dedup collapses common variants for customer-a and customer-b.
+        self.assertEqual(customers, ["customer-a.test", "customer-b.test"])
 
     def test_batch_mapping_assigns_selected_projects(self):
         with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
@@ -99,7 +111,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         ) as checkbox_mock:
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
-                "Finish mapping",
+                "__finish_mapping__",
             ]
             checkbox_mock.return_value.ask.return_value = ["project-beta", "project-gamma"]
 
@@ -119,19 +131,19 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
             "core.setup_project_identity_wizard.questionary.text"
         ) as text_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
             select_mock.return_value.ask.side_effect = [
-                "Create new customer...",
-                "Finish mapping",
+                "__create_customer__",
+                "__finish_mapping__",
             ]
-            text_mock.return_value.ask.return_value = "Blueberry"
+            text_mock.return_value.ask.return_value = "customer-b"
             checkbox_mock.return_value.ask.return_value = ["project-a"]
             _customers, assignments = _collect_batch_mappings(
                 Console(record=True),
                 projects=[],
                 candidates=["project-a"],
-                customers=["blueberry.ax"],
+                customers=["customer-b.test"],
             )
 
-        self.assertEqual(assignments["project-a"], "blueberry.ax")
+        self.assertEqual(assignments["project-a"], "customer-b.test")
 
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -298,7 +310,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                     "Continue",  # run step
                     "Continue",  # confirm initial customer list
                     "customer-a.test",  # batch map some projects to customer-a
-                    "Edit customer list...",  # edit customers
+                    "__edit_customers__",  # edit customers
                     "Continue",  # confirm edited customer list
                     "customer-b.test",  # batch map remaining to customer-b
                     "Save",  # save changes

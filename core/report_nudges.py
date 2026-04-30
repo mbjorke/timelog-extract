@@ -89,7 +89,7 @@ def uncategorized_nudge_candidate(report, *, threshold_hours: float, threshold_r
     for day, uncategorized_h in uncategorized_by_day.items():
         total_h = float(total_by_day.get(day, 0.0) or 0.0)
         ratio = (uncategorized_h / total_h) if total_h > 0 else 0.0
-        if uncategorized_h < float(threshold_hours) and ratio < float(threshold_ratio):
+        if uncategorized_h < float(threshold_hours) or ratio < float(threshold_ratio):
             continue
         if _uncategorized_noise_ratio_for_day(report, day=day) >= float(UNCATEGORIZED_NOISE_SUPPRESSION_RATIO):
             continue
@@ -104,7 +104,8 @@ def uncategorized_nudge_candidate(report, *, threshold_hours: float, threshold_r
 
 
 def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_GAP_NUDGE_THRESHOLD_HOURS) -> str | None:
-    if not hasattr(report, "screen_time_days"):
+    required_attrs = ("screen_time_days", "overall_days", "project_reports")
+    if not all(hasattr(report, attr) for attr in required_attrs):
         return None
     payload = analyze_screen_time_gaps(report)
     max_unexplained = 0.0

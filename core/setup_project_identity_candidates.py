@@ -20,16 +20,30 @@ def _normalize_github_slug_hint(term: str) -> str:
         return ""
     # Ignore filesystem-like paths that can contain "/users/..." and would
     # otherwise be rendered as fake github.com slugs.
-    trimmed = raw.lstrip("/")
+    trimmed = raw
+    if trimmed.startswith("http://"):
+        trimmed = trimmed[len("http://") :]
+    elif trimmed.startswith("https://"):
+        trimmed = trimmed[len("https://") :]
+    if trimmed.startswith("www."):
+        trimmed = trimmed[len("www.") :]
+    if trimmed.startswith("github.com"):
+        remainder = trimmed[len("github.com") :]
+        if remainder.startswith("/"):
+            trimmed = remainder
+        elif not remainder:
+            trimmed = ""
+    trimmed = trimmed.split("?", 1)[0].split("#", 1)[0].strip().strip("/")
     if trimmed.startswith(("users/", "workspace/", "private/", "var/", "tmp/", "opt/", "home/")):
         return ""
     if " " in trimmed or ":" in trimmed:
         return ""
-    if "/" not in trimmed:
+    parts = [part.strip() for part in trimmed.split("/") if part.strip()]
+    if len(parts) != 2:
         return ""
-    owner, repo = trimmed.split("/", 1)
-    owner = owner.strip()
-    repo = repo.strip().strip("/")
+    owner, repo = parts
+    if repo.endswith(".git"):
+        repo = repo[:-4]
     if not owner or not repo:
         return ""
     return f"{owner}/{repo}"

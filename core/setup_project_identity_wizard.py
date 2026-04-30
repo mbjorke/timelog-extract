@@ -272,6 +272,13 @@ def _collect_batch_mappings(
     candidates: list[str],
     customers: list[str],
 ) -> tuple[list[str], dict[str, str]]:
+    action_create = "__create_customer__"
+    action_edit = "__edit_customers__"
+    action_skip = "__skip_projects__"
+    action_finish = "__finish_mapping__"
+    action_cancel = "__cancel_setup__"
+    skip_assignment = "__skip_assignment__"
+
     def _short_preview(items: list[str], *, limit: int = 6) -> str:
         items_sorted = sorted(items, key=_ux_alpha_key)
         shown = ", ".join(items_sorted[:limit])
@@ -292,24 +299,24 @@ def _collect_batch_mappings(
         action = questionary.select(
             f"Choose customer for batch mapping (decided {decided}/{total_candidates}, remaining {len(unresolved)}; then select projects with checkboxes):",
             choices=[
-                *customers,
-                "Create new customer...",
-                "Edit customer list...",
-                "Skip selected projects...",
-                "Finish mapping",
-                "Cancel setup",
+                *[questionary.Choice(title=customer, value=customer) for customer in customers],
+                questionary.Choice(title="Create new customer...", value=action_create),
+                questionary.Choice(title="Edit customer list...", value=action_edit),
+                questionary.Choice(title="Skip selected projects...", value=action_skip),
+                questionary.Choice(title="Finish mapping", value=action_finish),
+                questionary.Choice(title="Cancel setup", value=action_cancel),
             ],
             default=default_choice,
         ).ask()
         if action is None:
             console.print("[yellow]Setup cancelled by user.[/yellow]")
             raise KeyboardInterrupt("setup cancelled by user")
-        if action == "Cancel setup":
+        if action == action_cancel:
             console.print("[yellow]Setup cancelled by user.[/yellow]")
             raise KeyboardInterrupt("setup cancelled by user")
-        if action == "Finish mapping":
+        if action == action_finish:
             break
-        if action == "Edit customer list...":
+        if action == action_edit:
             customers = _ask_customer_list(
                 console,
                 projects,
@@ -322,7 +329,7 @@ def _collect_batch_mappings(
             if sticky_customer not in customers:
                 sticky_customer = customers[0]
             continue
-        if action == "Create new customer...":
+        if action == action_create:
             created = (questionary.text("Customer name:", default="").ask() or "").strip()
             if not created:
                 continue
@@ -347,7 +354,7 @@ def _collect_batch_mappings(
                 f"[{STYLE_MUTED}]Planned:[/] {canonical} <- {(_short_preview(picked) if picked else 'no projects selected')}"
             )
             continue
-        if action == "Skip selected projects...":
+        if action == action_skip:
             skipped = _pick_projects_with_helpers(
                 console,
                 customer_label="Skip selected projects",
@@ -357,7 +364,7 @@ def _collect_batch_mappings(
             if skipped is None:
                 continue
             for item in skipped:
-                assignments[str(item)] = "Skip"
+                assignments[str(item)] = skip_assignment
             console.print(
                 f"[{STYLE_MUTED}]Planned:[/] skip {(_short_preview(skipped) if skipped else 'no projects selected')}"
             )
@@ -441,8 +448,8 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         return "No mappings selected"
 
     for project_name in candidates:
-        customer_choice = selections.get(project_name, "Skip")
-        if customer_choice == "Skip":
+        customer_choice = selections.get(project_name, "__skip_assignment__")
+        if customer_choice == "__skip_assignment__":
             continue
         planned_updates.append((customer_choice, [project_name]))
 

@@ -47,12 +47,16 @@ def _build_guided_decisions(
             f"{day.get('day')}: map top domains to '{suggested}'?",
             default=True,
         ).ask()
+        if include_day is None:
+            raise KeyboardInterrupt("triage guided cancelled by user")
         if not include_day:
             continue
         picked_domains = questionary.checkbox(
             f"{day.get('day')}: choose domains",
             choices=domains,
-        ).ask() or []
+        ).ask()
+        if picked_domains is None:
+            raise KeyboardInterrupt("triage guided cancelled by user")
         for domain in picked_domains:
             decisions.append(
                 {
@@ -100,13 +104,17 @@ def _render_uncategorized_fallback(*, report, date_from: Optional[str], date_to:
     candidates = _top_uncategorized_days(report, max_days=max_days)
     if not candidates:
         return None
-    from_s = date_from or "auto"
-    to_s = date_to or "auto"
+    range_args: list[str] = []
+    if date_from:
+        range_args.append(f"--from {date_from}")
+    if date_to:
+        range_args.append(f"--to {date_to}")
+    range_hint = f" Range: {' '.join(range_args)}." if range_args else ""
     return (
         "No unexplained gap days were found, but Uncategorized time is significant.\n"
         f"Candidates: {', '.join(candidates)}\n"
         "Guided mode will derive candidate mappings from top Chrome domains and still require explicit confirmation.\n"
-        f"Range: --from {from_s} --to {to_s}."
+        f"{range_hint}"
     )
 
 
@@ -211,7 +219,11 @@ def triage_guided(
                 scoring_mode=scoring_mode,
             )
             project_names = set(str(name) for name in plan.get("project_names", []))
-            fallback_decisions = _build_guided_decisions(fallback_days, project_names)
+            try:
+                fallback_decisions = _build_guided_decisions(fallback_days, project_names)
+            except KeyboardInterrupt:
+                console.print("[yellow]Cancelled before writing config.[/yellow]")
+                raise typer.Exit(code=0)
             if write_decisions:
                 written_path = _write_decisions_file(write_decisions, fallback_decisions)
                 console.print(
@@ -251,7 +263,11 @@ def triage_guided(
         raise typer.Exit(code=0)
 
     project_names = set(str(name) for name in plan.get("project_names", []))
-    decisions = _build_guided_decisions(days, project_names)
+    try:
+        decisions = _build_guided_decisions(days, project_names)
+    except KeyboardInterrupt:
+        console.print("[yellow]Cancelled before writing config.[/yellow]")
+        raise typer.Exit(code=0)
     if not decisions:
         if write_decisions:
             console.print("[yellow]No decisions selected. Decisions file not written.[/yellow]")

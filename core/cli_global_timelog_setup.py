@@ -43,7 +43,7 @@ def setup_wizard(
     interactive: bool = typer.Option(
         False,
         "--interactive",
-        help="Use interactive prompts instead of default one-click behavior.",
+        help="Force interactive prompts; default mode may still prompt for setup choices unless --yes/--one-click/--fast is used.",
     ),
     yes: bool = typer.Option(
         False,
@@ -83,14 +83,12 @@ def setup_wizard(
     """
     from rich.console import Console
 
-    if interactive and (one_click or fast):
-        raise typer.BadParameter("Cannot use --interactive together with --one-click/--fast; choose one mode")
+    if interactive and (one_click or fast or yes):
+        raise typer.BadParameter("Cannot use --interactive together with --one-click/--fast/--yes; choose one mode")
 
     console = Console()
     explicit_non_interactive = yes or one_click or fast
-    auto_yes = not interactive
-    if explicit_non_interactive:
-        auto_yes = True
+    auto_yes = explicit_non_interactive or not interactive
     prompt_project_mapping = (not interactive) and (not explicit_non_interactive)
     run_setup_wizard(
         console,

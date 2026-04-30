@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
@@ -139,8 +140,14 @@ def _decisions_payload(decisions: list[dict[str, str]]) -> dict[str, Any]:
 
 @app.command("triage-domains")
 def triage_domains(
-    date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
+    date_from: Annotated[
+        Optional[datetime],
+        typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)"),
+    ] = None,
+    date_to: Annotated[
+        Optional[datetime],
+        typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)"),
+    ] = None,
     today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
     yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
     last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Optional
 from urllib.parse import urlparse
@@ -100,6 +101,7 @@ def _build_guided_decisions(
     domain_project_counts: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, str]]:
     decisions: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
     for day in plan_days:
         suggested = str(day.get("resolved_project_for_top_suggestion") or "").strip()
         if not suggested or suggested not in project_names:
@@ -127,6 +129,10 @@ def _build_guided_decisions(
         if picked_domains is None:
             raise KeyboardInterrupt("triage guided cancelled by user")
         for domain in picked_domains:
+            key = (suggested.lower(), "tracked_urls", str(domain))
+            if key in seen:
+                continue
+            seen.add(key)
             decisions.append(
                 {
                     "project_name": suggested,
@@ -267,8 +273,14 @@ def _extract_domain_repo_hint(url: str) -> tuple[str, str]:
 
 @app.command("triage-guided")
 def triage_guided(
-    date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
+    date_from: Annotated[
+        Optional[datetime],
+        typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)"),
+    ] = None,
+    date_to: Annotated[
+        Optional[datetime],
+        typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)"),
+    ] = None,
     today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
     yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
     last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,

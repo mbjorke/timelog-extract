@@ -54,11 +54,11 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(
             first_values[3:],
             [
-                "__create_customer__",
-                "__edit_customers__",
-                "__skip_projects__",
-                "__finish_mapping__",
-                "__cancel_setup__",
+                ("action", "create_customer"),
+                ("action", "edit_customers"),
+                ("action", "skip_projects"),
+                ("action", "finish_mapping"),
+                ("action", "cancel_setup"),
             ],
         )
 

@@ -213,8 +213,12 @@ def build_repo_project_seed(repo_path: Path) -> RepoProjectSeed | None:
     if parsed is None:
         return None
     owner, repo = parsed
-    hints = discover_git_project_hints(repo_path)
-    match_terms = hints.match_terms if hints is not None else [repo.lower(), f"{owner}/{repo}".lower()]
+    # Keep bootstrap seeding intentionally conservative: add only core
+    # identifiers for discovered repos to avoid match_terms bloat.
+    match_terms = [repo.strip().lower()]
+    slug = f"{owner.strip().lower()}/{repo.strip().lower()}".strip("/")
+    if slug and slug not in match_terms:
+        match_terms.append(slug)
     match_terms = [term for term in match_terms if term]
     if not match_terms:
         return None

@@ -18,7 +18,7 @@ from rich.panel import Panel
 from core.config import backup_projects_config_if_exists, load_projects_config_payload, save_projects_config_payload
 from core.setup_project_identity_candidates import print_customer_candidates_table
 from outputs.cli_heroes import print_command_hero
-from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
+from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
 
 def _ux_alpha_key(value: str) -> tuple[str, str]:
@@ -247,7 +247,8 @@ def _print_project_selection_frame(console, *, customer_label: str, choices: lis
         Panel(
             "\n".join(body_lines),
             title="Project Mapping Selection",
-            border_style=STYLE_LABEL,
+            border_style=STYLE_BORDER,
+            title_align="left",
             expand=False,
         )
     )
@@ -325,22 +326,25 @@ def _collect_batch_mappings(
             created = (questionary.text("Customer name:", default="").ask() or "").strip()
             if not created:
                 continue
-            if created not in customers:
-                customers.append(created)
+            created_key = _customer_identity_key(created)
+            existing = next((value for value in customers if _customer_identity_key(value) == created_key), None)
+            canonical = existing or created
+            if existing is None:
+                customers.append(canonical)
                 customers = sorted(customers, key=_ux_alpha_key)
-            sticky_customer = created
+            sticky_customer = canonical
             picked = _pick_projects_with_helpers(
                 console,
-                customer_label=created,
-                prompt=f"Select project(s) to map to '{created}':",
+                customer_label=canonical,
+                prompt=f"Select project(s) to map to '{canonical}':",
                 unresolved=unresolved,
             )
             if picked is None:
                 continue
             for item in picked:
-                assignments[str(item)] = created
+                assignments[str(item)] = canonical
             console.print(
-                f"[{STYLE_MUTED}]Planned:[/] {created} <- {(_short_preview(picked) if picked else 'no projects selected')}"
+                f"[{STYLE_MUTED}]Planned:[/] {canonical} <- {(_short_preview(picked) if picked else 'no projects selected')}"
             )
             continue
         if action == "Skip selected projects...":
@@ -376,11 +380,11 @@ def _collect_batch_mappings(
     return customers, assignments
 
 
-def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> None:
+def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> str:
     payload = load_projects_config_payload(config_path)
     projects = [p for p in payload.get("projects", []) if isinstance(p, dict)]
     if not projects:
-        return
+        return "No projects"
 
     console.print("")
     print_command_hero(console, "setup:project-mapping")
@@ -397,7 +401,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         raise KeyboardInterrupt("setup cancelled by user")
     if proceed == "Skip this step" or not proceed:
         console.print(f"[{STYLE_MUTED}]Skipped this step.[/]")
-        return
+        return "Skip this step"
 
     collisions = _detect_customer_slug_collisions(projects)
     if collisions:
@@ -410,16 +414,16 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     customers = _ask_customer_list(console, projects, _existing_customers(projects))
     if not customers:
         console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
-        return
+        return "No customers provided"
 
     candidates = _candidate_projects_for_customer_mapping(projects)
     if not candidates:
         console.print(f"[{STYLE_MUTED}]No unresolved project->customer mappings found. Skipping.[/]")
-        return
+        return "No unresolved mappings"
     candidates = _select_candidate_scope(candidates)
     if not candidates:
         console.print(f"[{STYLE_MUTED}]No candidates selected. Skipping this step.[/]")
-        return
+        return "No candidates selected"
 
     console.print("")
     console.print("[bold]Potential project mappings found.[/bold]")
@@ -434,7 +438,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     )
     if not selections:
         console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
-        return
+        return "No mappings selected"
 
     for project_name in candidates:
         customer_choice = selections.get(project_name, "Skip")
@@ -444,7 +448,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
 
     if not planned_updates:
         console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
-        return
+        return "No mappings selected"
 
     console.print("")
     console.print("[bold]I will update[/bold]")
@@ -452,7 +456,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         console.print(f"  - {customer_label} -> {', '.join(project_names)}")
     if dry_run:
         console.print("[yellow]Dry run:[/yellow] would update customer mapping fields in your project config.")
-        return
+        return "Confirmed (dry-run)"
 
     should_save = questionary.select(
         "Save these mapping updates?",
@@ -464,7 +468,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         raise KeyboardInterrupt("setup cancelled by user")
     if should_save != "Save":
         console.print(f"[{STYLE_MUTED}]Cancelled. No changes were saved.[/]")
-        return
+        return "Nothing to save"
 
     updated = 0
     for customer_label, project_names in planned_updates:
@@ -474,6 +478,8 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         backup_projects_config_if_exists(config_path)
         save_projects_config_payload(config_path, payload)
         console.print(f"[green]Saved.[/green] Updated {updated} project(s).")
+        return "Confirmed"
     else:
         console.print(f"[{STYLE_MUTED}]No projects were updated.[/]")
+        return "Nothing to save"
 

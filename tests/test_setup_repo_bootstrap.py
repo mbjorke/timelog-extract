@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,17 @@ from core.setup_projects_config_bootstrap import ensure_projects_config
 
 
 class SetupRepoBootstrapTests(unittest.TestCase):
+    def _init_git_repo(self, repo: Path, remote_url: str) -> None:
+        repo.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", remote_url],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
     def test_parse_github_origin_supports_https_and_ssh(self):
         self.assertEqual(
             parse_github_origin("https://github.com/example/acme-tools.git"),
@@ -110,6 +122,39 @@ class SetupRepoBootstrapTests(unittest.TestCase):
         self.assertEqual(project["tracked_urls"], ["https://example.com"])
         self.assertIn("legacy-term", project["match_terms"])
         self.assertIn("example/acme-tools", project["match_terms"])
+
+    def test_build_repo_project_seed_uses_only_core_terms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools-backup-pr-123"
+            self._init_git_repo(repo, "https://github.com/example/acme-tools.git")
+            seed = build_repo_project_seed(repo)
+            self.assertIsNotNone(seed)
+            assert seed is not None
+            self.assertEqual(seed.match_terms, ["acme-tools", "example/acme-tools"])
+
+    def test_merge_repo_project_seeds_does_not_add_noisy_variants_from_repo_name(self):
+        payload = {
+            "worklog": "TIMELOG.md",
+            "projects": [
+                {
+                    "name": "acme-tools",
+                    "customer": "example",
+                    "match_terms": ["acme-tools"],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools-backup-pr-123"
+            self._init_git_repo(repo, "https://github.com/example/acme-tools.git")
+            seed = build_repo_project_seed(repo)
+            self.assertIsNotNone(seed)
+            assert seed is not None
+            merged, _summary = merge_repo_project_seeds(payload, [seed], root=Path(tmp))
+        project = merged["projects"][0]
+        self.assertIn("acme-tools", project["match_terms"])
+        self.assertIn("example/acme-tools", project["match_terms"])
+        self.assertNotIn("acme-tools-backup-pr-123", project["match_terms"])
+        self.assertNotIn("acmetoolsbackuppr123", project["match_terms"])
 
     def test_fallback_creates_single_profile_when_no_github_repos_found(self):
         with tempfile.TemporaryDirectory() as tmp:

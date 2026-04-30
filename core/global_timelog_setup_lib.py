@@ -46,6 +46,7 @@ def _ensure_minimal_projects_config(
     *,
     yes: bool,
     dry_run: bool,
+    prompt_bootstrap_root: bool = False,
     bootstrap_root: str | None = None,
 ) -> tuple[str, str, list[str]]:
     """
@@ -57,6 +58,7 @@ def _ensure_minimal_projects_config(
         console: Console-like object used for prompts and informational output.
         yes (bool): If True, proceed without interactive confirmation.
         dry_run (bool): If True, show what would change but do not write files.
+        prompt_bootstrap_root (bool): If True, ask for bootstrap root even when yes=True.
         bootstrap_root (str | None): Optional path used to bootstrap project discovery; when None no special bootstrap root is used.
 
     Returns:
@@ -68,6 +70,7 @@ def _ensure_minimal_projects_config(
         console=console,
         yes=yes,
         dry_run=dry_run,
+        prompt_bootstrap_root=prompt_bootstrap_root,
         bootstrap_root=bootstrap_root,
         config_path=resolve_projects_config_path(),
         timestamped_backup_path_fn=_timestamped_backup_path,
@@ -124,19 +127,23 @@ def _print_setup_environment_loaded(console) -> None:
 
 def _run_doctor_check(console, *, dry_run: bool) -> str:
     if dry_run:
-        console.print("\n[bold]Doctor output[/bold]")
         console.print("[yellow]Dry run:[/yellow] would run `gittan doctor`.")
         return "PASS (dry-run)"
-    entry = REPO_ROOT / "timelog_extract.py"
-    console.print("\n[bold]Doctor output[/bold]")
     console.print("[dim]Running `gittan doctor` inside setup...[/dim]")
-    completed = subprocess.run([sys.executable, str(entry), "doctor"], check=False, capture_output=True, text=True, cwd=str(Path.cwd()))
-    console.print("[green]Doctor check completed.[/green]" if completed.returncode == 0 else "[yellow]Doctor check reported issues.[/yellow]")
-    if completed.stdout:
-        console.print(completed.stdout.strip())
-    if completed.stderr:
-        console.print(f"[dim]{completed.stderr.strip()}[/dim]")
-    return "PASS" if completed.returncode == 0 else "ACTION_REQUIRED"
+    try:
+        # Run doctor in-process so Rich rendering uses the same theme as setup.
+        from core.cli_doctor_sources_projects import doctor as run_doctor
+
+        run_doctor()
+    except typer.Exit as exc:
+        code = exc.exit_code if isinstance(exc.exit_code, int) else 1
+        if code == 0:
+            return "PASS"
+        return "ACTION_REQUIRED"
+    except Exception as exc:
+        console.print(f"[yellow]Doctor check reported issues.[/yellow] {exc}")
+        return "ACTION_REQUIRED"
+    return "PASS"
 
 
 def _run_smoke_report(console, *, dry_run: bool) -> str:
@@ -178,10 +185,19 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
 
 
 def _run_mapping_wizard_with_summary(console, *, dry_run: bool) -> tuple[str, str]:
-    run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
-    if dry_run:
-        return "PASS (dry-run)", "Confirmed customer->project mapping."
-    return "PASS", "Confirmed customer->project mapping."
+    outcome = run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
+    status_map = {
+        "Confirmed": ("PASS", "Confirmed customer->project mapping."),
+        "Confirmed (dry-run)": ("PASS (dry-run)", "Confirmed customer->project mapping."),
+        "Skip this step": ("SKIPPED", "User skipped mapping."),
+        "No customers provided": ("SKIPPED", "No customers provided."),
+        "No candidates selected": ("SKIPPED", "No candidates selected."),
+        "No unresolved mappings": ("SKIPPED", "No unresolved project->customer mappings found."),
+        "No mappings selected": ("SKIPPED", "No mappings selected; nothing saved."),
+        "Nothing to save": ("SKIPPED", "No mapping changes were saved."),
+        "No projects": ("SKIPPED", "No projects found in config."),
+    }
+    return status_map.get(outcome, ("ACTION_REQUIRED", f"Unexpected mapping outcome: {outcome}"))
 
 
 def run_setup_wizard(
@@ -233,6 +249,7 @@ def run_setup_wizard(
         console,
         yes=yes,
         dry_run=dry_run,
+        prompt_bootstrap_root=prompt_project_mapping and not dry_run,
         bootstrap_root=bootstrap_root,
     )
     summary_rows.append(("Step 2: Project Bootstrap", projects_status, projects_note))

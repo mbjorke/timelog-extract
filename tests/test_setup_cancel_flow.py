@@ -6,7 +6,7 @@ from unittest.mock import patch
 import typer
 from rich.console import Console
 
-from core.global_timelog_setup_lib import run_setup_wizard
+from core.global_timelog_setup_lib import _run_mapping_wizard_with_summary, run_setup_wizard
 
 
 class SetupCancelFlowTests(unittest.TestCase):
@@ -36,6 +36,15 @@ class SetupCancelFlowTests(unittest.TestCase):
                     fast=True,
                 )
         self.assertEqual(ctx.exception.exit_code, 130)
+
+    def test_mapping_summary_maps_skip_outcome(self):
+        with patch(
+            "core.global_timelog_setup_lib.run_project_identity_wizard",
+            return_value="Skip this step",
+        ):
+            status, notes = _run_mapping_wizard_with_summary(Console(record=True), dry_run=False)
+        self.assertEqual(status, "SKIPPED")
+        self.assertEqual(notes, "User skipped mapping.")
 
 
 if __name__ == "__main__":

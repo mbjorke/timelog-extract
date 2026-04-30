@@ -156,6 +156,7 @@ def ensure_projects_config(
     console,
     yes: bool,
     dry_run: bool,
+    prompt_bootstrap_root: bool = False,
     bootstrap_root: str | None,
     config_path: Path,
     timestamped_backup_path_fn,
@@ -195,7 +196,7 @@ def ensure_projects_config(
         payload = {"worklog": "TIMELOG.md", "projects": []}
 
     root_path = Path(bootstrap_root).expanduser() if bootstrap_root else suggest_bootstrap_root(Path.cwd())
-    if not yes and bootstrap_root is None:
+    if (not yes or prompt_bootstrap_root) and bootstrap_root is None:
         console.print("[dim]Tip: use a focused root for faster scans, or choose home root for maximum coverage.[/dim]")
         console.print("[dim]Naming hints: repos in kebab-case, customers as domains, branches as task/* or release/X.Y.Z.[/dim]")
         root_path = _choose_bootstrap_root_interactive(root_path)

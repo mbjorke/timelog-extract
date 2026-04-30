@@ -114,6 +114,25 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(assignments["project-gamma"], "customer-a.test")
         self.assertNotIn("project-alpha", assignments)
 
+    def test_create_new_customer_reuses_normalized_existing_customer(self):
+        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_wizard.questionary.text"
+        ) as text_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
+            select_mock.return_value.ask.side_effect = [
+                "Create new customer...",
+                "Finish mapping",
+            ]
+            text_mock.return_value.ask.return_value = "Blueberry"
+            checkbox_mock.return_value.ask.return_value = ["project-a"]
+            _customers, assignments = _collect_batch_mappings(
+                Console(record=True),
+                projects=[],
+                candidates=["project-a"],
+                customers=["blueberry.ax"],
+            )
+
+        self.assertEqual(assignments["project-a"], "blueberry.ax")
+
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "timelog_projects.json"

@@ -1,0 +1,14 @@
+{
+    "schema_version": 1,
+    "decisions": [
+      {
+        "project": "timelog-extract",
+        "match_terms": ["gittan", "coderabbit", "jira.com"],
+        "tracked_urls": ["https://github.com/mbjorke/timelog-extract"]
+      },
+      {
+        "project": "financing-portal",
+        "match_terms": ["ax-finans", "ax finans", "oneflow", "oneflow.com"]
+      }
+    ]
+  }

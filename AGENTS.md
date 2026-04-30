@@ -31,6 +31,7 @@ Use this compact execution order before deep exploration:
   - docs/reorg
   - follow-up cleanup
 8. **Before `git push` to `origin`:** run the autotest gate on what you are pushing (same as CI): `bash scripts/run_autotests.sh` from **repository root** — see [`CONTRIBUTING.md`](CONTRIBUTING.md). (`./scripts/run_autotests.sh` is equivalent if the file is executable.) For non-trivial batches, also run **CodeRabbit CLI** when available (`coderabbit review --base main --type committed` — see *CodeRabbit CLI* below). Do not treat “push first, test later” as the default.
+9. **When a related PR merges to `main` while your branch stays open:** immediately sync before more edits (`git fetch origin` + `git merge origin/main` or rebase per branch policy), then run the smallest relevant tests. Do not assume "I was notified" means your branch is conflict-safe; overlap in the same files/functions can still require manual resolution.
 
 If this section conflicts with any policy below, the detailed policy below wins.
 

@@ -25,6 +25,7 @@ from core import cli_config  # noqa: F401
 from core import cli_review  # noqa: F401
 from core import cli_triage  # noqa: F401
 from core import cli_triage_apply  # noqa: F401
+from core import cli_triage_guided  # noqa: F401
 from core import cli_ux    # noqa: F401
 from core import cli_cast  # noqa: F401
 

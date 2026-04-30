@@ -14,7 +14,7 @@ from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
-
+from core.report_nudges import build_unexplained_gap_nudge
 
 def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
     """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
@@ -490,6 +490,9 @@ def status(
                 f"Shown rows sum to {shown_project_hours:.1f}h/{shown_project_sessions} sessions; "
                 f"Total is unique timeline time: {total_h:.1f}h/{total_sessions} sessions.[/{STYLE_MUTED}]"
             )
+        nudge = build_unexplained_gap_nudge(report)
+        if nudge:
+            console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
 
     except Exception as e:

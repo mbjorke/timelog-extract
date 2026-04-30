@@ -46,6 +46,42 @@ class SetupCancelFlowTests(unittest.TestCase):
         self.assertEqual(status, "SKIPPED")
         self.assertEqual(notes, "User skipped mapping.")
 
+    def test_setup_keeps_triage_as_optional_follow_up(self):
+        console = Console(record=True, width=120)
+        with patch("core.global_timelog_setup_lib._print_setup_header"), patch(
+            "core.global_timelog_setup_lib._print_environment_status"
+        ), patch(
+            "core.global_timelog_setup_lib._print_setup_environment_loaded"
+        ), patch(
+            "core.global_timelog_setup_lib.configure_github_env_for_setup",
+            return_value=("PASS", "ok", []),
+        ), patch(
+            "core.global_timelog_setup_lib._ensure_minimal_projects_config",
+            return_value=("PASS", "ok", []),
+        ), patch(
+            "core.global_timelog_setup_lib._run_doctor_check",
+            return_value="PASS",
+        ), patch(
+            "core.global_timelog_setup_lib.build_setup_next_steps",
+            return_value=[],
+        ), patch(
+            "core.global_timelog_setup_lib.print_next_steps"
+        ), patch(
+            "core.global_timelog_setup_lib.run_project_identity_wizard",
+            return_value="Skip this step",
+        ):
+            run_setup_wizard(
+                console,
+                yes=False,
+                dry_run=True,
+                skip_smoke=True,
+                bootstrap_root=None,
+                fast=True,
+            )
+        output = console.export_text()
+        self.assertIn("Step 5: Triage Review (optional)", output)
+        self.assertIn("Not run inside setup", output)
+
 
 if __name__ == "__main__":
     unittest.main()

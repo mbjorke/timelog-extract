@@ -19,6 +19,7 @@ from core.report_service import (
     generate_invoice_pdf,
     run_timelog_report,
 )
+from core.report_nudges import build_unexplained_gap_nudge
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
 
@@ -152,6 +153,9 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.args,
         report.config_path,
     )
+    nudge = build_unexplained_gap_nudge(report)
+    if nudge:
+        print(nudge)
     if report.args.narrative:
         _print_narrative(
             report.overall_days,

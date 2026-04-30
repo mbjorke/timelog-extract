@@ -101,6 +101,80 @@ def _interactive_review(validated: list[tuple[str, str, str]]) -> list[tuple[str
     return selected
 
 
+def apply_triage_decisions_payload(
+    *,
+    decisions: list[dict],
+    projects_config: str,
+    allow_create: bool = False,
+    dry_run: bool = False,
+    interactive_review: bool = False,
+) -> dict:
+    config_path = Path(projects_config)
+    payload = load_projects_config_payload(config_path)
+
+    seen: set[tuple[str, str, str]] = set()
+    validated: list[tuple[str, str, str]] = []
+    errors: list[str] = []
+
+    for idx, d in enumerate(decisions):
+        try:
+            project_name, rule_type, rule_value = _validate_decision(d, idx)
+        except ValueError as e:
+            errors.append(str(e))
+            continue
+        if not allow_create and not _project_exists(payload, project_name):
+            errors.append(
+                f"Decision #{idx}: project '{project_name}' not in config (use --allow-create to create)"
+            )
+            continue
+        deduped_value = rule_value.lower() if rule_type == "match_terms" else rule_value
+        key = (project_name.lower(), rule_type, deduped_value)
+        if key in seen:
+            continue
+        seen.add(key)
+        validated.append((project_name, rule_type, rule_value))
+
+    if errors:
+        return {"applied": 0, "skipped": 0, "errors": errors}
+
+    selected = list(validated)
+    if interactive_review:
+        selected = _interactive_review(validated)
+
+    if dry_run:
+        return {
+            "dry_run": True,
+            "preview": _render_plan_preview(selected),
+            "would_apply": [_decision_payload(pn, rt, rv) for pn, rt, rv in selected],
+            "skipped": len(decisions) - len(selected),
+            "errors": [],
+        }
+
+    applied = 0
+    if not selected:
+        return {"applied": 0, "skipped": len(decisions), "errors": []}
+
+    for project_name, rule_type, rule_value in selected:
+        apply_rule_to_project(
+            payload,
+            project_name=project_name,
+            rule_type=rule_type,
+            rule_value=rule_value,
+        )
+        applied += 1
+
+    if applied:
+        backup_projects_config_if_exists(config_path)
+        save_projects_config_payload(config_path, payload)
+
+    return {
+        "applied": applied,
+        "skipped": len(decisions) - len(selected),
+        "preview": _render_plan_preview(selected),
+        "errors": [],
+    }
+
+
 @app.command("triage-apply")
 def triage_apply(
     input_path: Annotated[
@@ -122,83 +196,19 @@ def triage_apply(
         typer.echo(json.dumps({"error": str(e)}))
         raise typer.Exit(code=1) from e
 
-    config_path = Path(projects_config)
     try:
-        payload = load_projects_config_payload(config_path)
+        result = apply_triage_decisions_payload(
+            decisions=decisions,
+            projects_config=projects_config,
+            allow_create=allow_create,
+            dry_run=dry_run,
+            interactive_review=interactive_review,
+        )
     except (OSError, ValueError) as e:
-        typer.echo(json.dumps({"error": f"Cannot load config: {e}"}))
+        typer.echo(json.dumps({"error": f"Cannot apply decisions: {e}"}))
         raise typer.Exit(code=1) from e
 
-    seen: set[tuple[str, str, str]] = set()
-    validated: list[tuple[str, str, str]] = []
-    errors: list[str] = []
-
-    for idx, d in enumerate(decisions):
-        try:
-            project_name, rule_type, rule_value = _validate_decision(d, idx)
-        except ValueError as e:
-            errors.append(str(e))
-            continue
-        if not allow_create and not _project_exists(payload, project_name):
-            errors.append(
-                f"Decision #{idx}: project '{project_name}' not in config (use --allow-create to create)"
-            )
-            continue
-        # match_terms are lowercased downstream; tracked_urls preserve case for paths
-        deduped_value = rule_value.lower() if rule_type == "match_terms" else rule_value
-        key = (project_name.lower(), rule_type, deduped_value)
-        if key in seen:
-            continue
-        seen.add(key)
-        validated.append((project_name, rule_type, rule_value))
-
-    if errors:
-        typer.echo(json.dumps({"applied": 0, "skipped": 0, "errors": errors}))
+    if result.get("errors"):
+        typer.echo(json.dumps(result))
         raise typer.Exit(code=1)
-
-    selected = list(validated)
-    if interactive_review:
-        selected = _interactive_review(validated)
-
-    if dry_run:
-        typer.echo(
-            json.dumps(
-                {
-                    "dry_run": True,
-                    "preview": _render_plan_preview(selected),
-                    "would_apply": [_decision_payload(pn, rt, rv) for pn, rt, rv in selected],
-                    "skipped": len(decisions) - len(selected),
-                    "errors": [],
-                }
-            )
-        )
-        return
-
-    applied = 0
-    if not selected:
-        typer.echo(json.dumps({"applied": 0, "skipped": len(decisions), "errors": []}))
-        return
-
-    for project_name, rule_type, rule_value in selected:
-        apply_rule_to_project(
-            payload,
-            project_name=project_name,
-            rule_type=rule_type,
-            rule_value=rule_value,
-        )
-        applied += 1
-
-    if applied:
-        backup_projects_config_if_exists(config_path)
-        save_projects_config_payload(config_path, payload)
-
-    typer.echo(
-        json.dumps(
-            {
-                "applied": applied,
-                "skipped": len(decisions) - len(selected),
-                "preview": _render_plan_preview(selected),
-                "errors": [],
-            }
-        )
-    )
+    typer.echo(json.dumps(result))

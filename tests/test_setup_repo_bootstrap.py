@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -23,9 +24,12 @@ from core.setup_projects_config_bootstrap import ensure_projects_config
 class SetupRepoBootstrapTests(unittest.TestCase):
     def _init_git_repo(self, repo: Path, remote_url: str) -> None:
         repo.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+        git_path = shutil.which("git")
+        if not git_path:
+            raise unittest.SkipTest("git executable is not available in PATH")
+        subprocess.run([git_path, "init"], cwd=repo, check=True, capture_output=True, text=True)
         subprocess.run(
-            ["git", "remote", "add", "origin", remote_url],
+            [git_path, "remote", "add", "origin", remote_url],
             cwd=repo,
             check=True,
             capture_output=True,

@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Annotated, Optional, cast
 
 import click
 import typer
 
 from core.cli_app import app
+from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
-
+from core.report_nudges import build_unexplained_gap_nudge
 
 def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
     """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
@@ -302,6 +303,8 @@ def search(
 
 @app.command()
 def status(
+    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
+    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
     today: Annotated[bool, typer.Option(help="Today's status.")] = False,
     yesterday: Annotated[bool, typer.Option(help="Yesterday's status.")] = False,
     last_3_days: Annotated[bool, typer.Option(help="Last 3 days status.")] = False,
@@ -349,27 +352,19 @@ def status(
         STYLE_MUTED,
     )
 
-    df_s, dt_s = None, None
-    if not (today or yesterday or last_3_days or last_week or last_14_days or last_month):
-        picked = prompt_for_timeframe()
-        df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = _timeframe_from_prompt(picked)
-    else:
-        now = datetime.now()
-        end_d = now.date()
-        end_s = end_d.isoformat()
-        if today:
-            df_s = dt_s = end_s
-        elif yesterday:
-            yest = (end_d - timedelta(days=1)).isoformat()
-            df_s = dt_s = yest
-        elif last_3_days:
-            df_s, dt_s = (end_d - timedelta(days=2)).isoformat(), end_s
-        elif last_week:
-            df_s, dt_s = (end_d - timedelta(days=6)).isoformat(), end_s
-        elif last_14_days:
-            df_s, dt_s = (end_d - timedelta(days=13)).isoformat(), end_s
-        elif last_month:
-            df_s, dt_s = (end_d - timedelta(days=29)).isoformat(), end_s
+    df_s, dt_s = resolve_date_window(
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        prompt_if_missing=not (
+            date_from or date_to or today or yesterday or last_3_days or last_week or last_14_days or last_month
+        ),
+    )
 
     console = Console()
     if df_s is None or dt_s is None:
@@ -490,6 +485,9 @@ def status(
                 f"Shown rows sum to {shown_project_hours:.1f}h/{shown_project_sessions} sessions; "
                 f"Total is unique timeline time: {total_h:.1f}h/{total_sessions} sessions.[/{STYLE_MUTED}]"
             )
+        nudge = build_unexplained_gap_nudge(report)
+        if nudge:
+            console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
 
     except Exception as e:

@@ -34,6 +34,7 @@ from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 GENERIC_DOMAINS = {
     "google.com",
     "github.com",
+    "claude.ai",
     "id.atlassian.com",
     "home.atlassian.com",
     "atlassian.net",
@@ -169,11 +170,17 @@ def score_projects_for_sites(
                 term_weight = 1 if is_generic else 2
                 alias_weight = max(1, visits // 2) if is_generic else visits
                 name_weight = max(1, visits // 2) if is_generic else visits
-            if any(domain in value or value in domain for value in tracked):
-                # Explicit domain anchors from --map should dominate generic inference.
-                score += visits * tracked_weight
-                explicit_hits_by_canonical[canonical] = explicit_hits_by_canonical.get(canonical, 0) + 1
-                continue
+            tracked_matches = [value for value in tracked if domain in value or value in domain]
+            if tracked_matches:
+                # Generic domain anchors (e.g. github.com/google.com/claude.ai) are
+                # too broad to dominate project scoring on their own.
+                exact_generic_mapping = any(value == domain for value in tracked_matches)
+                if is_generic and all(_domain_is_generic(value) for value in tracked_matches) and not exact_generic_mapping:
+                    tracked_matches = []
+                else:
+                    score += visits * tracked_weight
+                    explicit_hits_by_canonical[canonical] = explicit_hits_by_canonical.get(canonical, 0) + 1
+                    continue
             if any(term and term in domain for term in terms):
                 score += visits * term_weight
                 term_hits_by_canonical[canonical] = term_hits_by_canonical.get(canonical, 0) + 1

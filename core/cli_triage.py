@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Annotated, Any, Optional
-from urllib.parse import urlparse
 
 import questionary
 import typer
@@ -15,12 +14,15 @@ import typer
 from collectors.chrome import chrome_ts
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
+from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
 from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from core.cli_prompts import prompt_for_timeframe
 from core.guided_project_config import build_guided_config_plan
+from core.triage_noise import extract_domain, filter_triage_noise_rows, is_triage_noise_row
 from core.triage_code_repos import build_code_repo_candidates
+from core.triage_domain_signals import domain_project_counts_from_events, github_repo_hint
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
     ProjectSuggestion,
@@ -40,24 +42,6 @@ NOTES_FOR_AGENTS = [
     "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
     "Triage uses a noise pre-pass that removes known Cursor SDK/skills/tooling chatter before project suggestions.",
 ]
-
-TRIAGE_NOISE_DOMAINS = {
-    "cursor.com",
-    "www.cursor.com",
-    "cursor.sh",
-    "www.cursor.sh",
-}
-
-TRIAGE_NOISE_TITLE_MARKERS = (
-    "canvas sdk mirror failed",
-    "skills-cursor",
-    "cursor sdk",
-    "mcp tool schema",
-    "cursor extension host",
-    "cursor diagnostics",
-)
-
-
 def load_triage_profiles(projects_config: str) -> list[dict]:
     payload = load_projects_config_payload(Path(projects_config))
     profiles: list[dict] = []
@@ -66,26 +50,23 @@ def load_triage_profiles(projects_config: str) -> list[dict]:
             continue
         profiles.append(normalize_profile(raw))
     return profiles
-
-
 def _extract_domain(url: str) -> str:
-    if not url:
-        return ""
-    try:
-        host = urlparse(url).netloc.lower().strip()
-    except Exception:
-        return ""
-    return host[4:] if host.startswith("www.") else host
+    return extract_domain(url)
 
 
 def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str, dict[str, Any]]:
     # Domain-level timing anchors for faster mapping decisions in onboarding UIs.
     by_domain: dict[str, list[int]] = {}
+    by_domain_repo_counts: dict[str, dict[str, int]] = {}
     for visit_time_cu, url, _title in chrome_rows:
         domain = _extract_domain(url)
         if not domain:
             continue
         by_domain.setdefault(domain, []).append(int(visit_time_cu))
+        repo_hint = github_repo_hint(url)
+        if repo_hint:
+            by_domain_repo_counts.setdefault(domain, {})
+            by_domain_repo_counts[domain][repo_hint] = by_domain_repo_counts[domain].get(repo_hint, 0) + 1
     out: dict[str, dict[str, Any]] = {}
     for domain, times in by_domain.items():
         if not times:
@@ -102,37 +83,41 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
                 "end": sample_end.isoformat(timespec="seconds"),
             },
         }
+        repo_counts = by_domain_repo_counts.get(domain, {})
+        if repo_counts:
+            top_repo = sorted(repo_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+            out[domain]["repo_hint"] = top_repo
     return out
+def _domain_project_counts_from_report(report) -> dict[str, list[dict[str, Any]]]:
+    return domain_project_counts_from_events(list(getattr(report, "included_events", []) or []))
 
 
 def _is_triage_noise_row(url: str, title: str) -> bool:
-    domain = _extract_domain(url)
-    if domain in TRIAGE_NOISE_DOMAINS:
-        return True
-    text = (title or "").strip().lower()
-    if not text:
-        return False
-    return any(marker in text for marker in TRIAGE_NOISE_TITLE_MARKERS)
+    return is_triage_noise_row(url, title)
 
 
 def _filter_triage_noise_rows(
     chrome_rows: list[tuple[int, str, str]],
 ) -> tuple[list[tuple[int, str, str]], int]:
-    filtered: list[tuple[int, str, str]] = []
-    dropped = 0
-    for row in chrome_rows:
-        _visit_time_cu, url, title = row
-        if _is_triage_noise_row(url, title):
-            dropped += 1
-            continue
-        filtered.append(row)
-    return filtered, dropped
-def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    return filter_triage_noise_rows(chrome_rows)
+def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if date_from or date_to or not sys.stdin.isatty():
+        return date_from, date_to
+    picked = prompt_for_timeframe()
+    return picked.get("date_from"), picked.get("date_to")
+def _site_to_plan_dict(
+    site: DayTopSite,
+    site_time_hints: dict[str, dict[str, Any]],
+    *,
+    include_sample_title: bool = False,
+) -> dict[str, Any]:
     payload = {
         "domain": site.domain,
         "visits": site.visits,
         "share": round(float(site.share), 6),
     }
+    if include_sample_title:
+        payload["sample_title"] = str(site.sample_title or "")
     timing = site_time_hints.get(site.domain)
     if timing:
         payload.update(timing)
@@ -196,6 +181,7 @@ def build_triage_plan_dict(
     max_days: int,
     max_sites: int,
     scoring_mode: str,
+    include_sample_title: bool = False,
     home: Optional[Path] = None,
 ) -> dict[str, Any]:
     """Assemble the read-only triage plan (same inputs as the CLI). Intended for --json and tests."""
@@ -212,6 +198,7 @@ def build_triage_plan_dict(
     )
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
     payload = analyze_screen_time_gaps(report)
+    domain_project_counts = _domain_project_counts_from_report(report)
     day_rows = select_triage_days(payload, max_days=max_days)
     profiles = load_triage_profiles(projects_config)
     projects_payload = load_projects_config_payload(Path(projects_config))
@@ -273,7 +260,14 @@ def build_triage_plan_dict(
             {
                 "day": day,
                 "gap": gap_data,
-                "top_sites": [_site_to_plan_dict(s, site_time_hints) for s in top_sites],
+                "top_sites": [
+                    _site_to_plan_dict(
+                        s,
+                        site_time_hints,
+                        include_sample_title=include_sample_title,
+                    )
+                    for s in top_sites
+                ],
                 "code_repos": code_repos,
                 "noise_rows_filtered": int(noise_rows_filtered),
                 "suggestions": [
@@ -301,6 +295,7 @@ def build_triage_plan_dict(
             "scoring_mode": scoring_mode,
         },
         "project_names": all_names,
+        "domain_project_counts": domain_project_counts,
         "empty_reason": empty_reason,
         "days": out_days,
         "guided_config": build_guided_config_plan(
@@ -362,21 +357,16 @@ def _render_triage_next_steps(projects_config: str) -> str:
     )
 
 
-def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[str], Optional[str]]:
-    """Use the shared timeframe picker when triage runs without date flags."""
-    if date_from or date_to:
-        return date_from, date_to
-    if not sys.stdin.isatty():
-        return date_from, date_to
-    print("No date flags provided - choose timeframe interactively.", file=sys.stderr)
-    picked = prompt_for_timeframe()
-    return picked.get("date_from"), picked.get("date_to")
-
-
 @app.command("triage")
 def triage(
-    date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
+    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
+    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
+    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
+    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
+    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
+    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
+    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
+    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     max_days: Annotated[int, typer.Option(help="Max unexplained days to review")] = 3,
     max_sites: Annotated[int, typer.Option(help="Top sites shown/mappable per day")] = 5,
@@ -409,14 +399,24 @@ def triage(
         )
         console.print(_render_triage_next_steps(projects_config))
         raise typer.Exit(code=1)
-    date_from, date_to = _resolve_date_range_with_picker(date_from=date_from, date_to=date_to)
+    date_from_s, date_to_s = resolve_date_window(
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        prompt_if_missing=sys.stdin.isatty(),
+    )
     if json_out:
         stderr_console = Console(stderr=True)
         stderr_console.print("[dim]Producing read-only triage JSON evidence (no config changes)...[/dim]")
         with stderr_console.status("[bold blue]Producing triage evidence JSON...[/bold blue]", spinner="dots"):
             plan = build_triage_plan_dict(
-                date_from=date_from,
-                date_to=date_to,
+                date_from=date_from_s,
+                date_to=date_to_s,
                 projects_config=projects_config,
                 max_days=max_days,
                 max_sites=max_sites,
@@ -426,8 +426,8 @@ def triage(
         raise typer.Exit(code=0)
 
     options = TimelogRunOptions(
-        date_from=date_from,
-        date_to=date_to,
+        date_from=date_from_s,
+        date_to=date_to_s,
         projects_config=projects_config,
         include_uncategorized=True,
         quiet=True,

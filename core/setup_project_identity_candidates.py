@@ -33,6 +33,8 @@ def _normalize_github_slug_hint(term: str) -> str:
             trimmed = remainder
         elif not remainder:
             trimmed = ""
+        else:
+            return ""
     trimmed = trimmed.split("?", 1)[0].split("#", 1)[0].strip().strip("/")
     if trimmed.startswith(("users/", "workspace/", "private/", "var/", "tmp/", "opt/", "home/")):
         return ""

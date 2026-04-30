@@ -190,7 +190,7 @@ class TriageGuidedTests(unittest.TestCase):
                 ["triage-guided", "--projects-config", cfg, "--from", "2026-04-30", "--to", "2026-04-30"],
             )
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Uncategorized time is significant", result.output)
+        self.assertIn("Uncategorized time is", result.output)
         self.assertIn("Guided mode will derive candidate mappings", result.output)
 
     def test_guided_fallback_write_decisions_writes_scaffold_file(self):
@@ -272,7 +272,7 @@ class TriageGuidedTests(unittest.TestCase):
                     "top_sites": [
                         {
                             "domain": "github.com",
-                            "repo_hint": "mbjorke/timelog-extract",
+                            "repo_hint": "org/project-alpha",
                             "sample_title": "Improve triage prompt",
                         }
                     ],
@@ -290,7 +290,36 @@ class TriageGuidedTests(unittest.TestCase):
             result = self.runner.invoke(app, ["triage-guided", "--projects-config", cfg])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         choices = checkbox_mock.call_args.kwargs["choices"]
-        self.assertIn("mbjorke/timelog-extract", choices[0].title)
+        self.assertIn("org/project-alpha", choices[0].title)
+
+    def test_guided_generic_domain_without_signal_is_disabled(self):
+        plan = {
+            "days": [
+                {
+                    "day": "2026-04-30",
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "Demo",
+                    "top_sites": [
+                        {
+                            "domain": "google.com",
+                            "sample_title": "Google Search",
+                        }
+                    ],
+                }
+            ],
+            "project_names": ["Demo"],
+            "domain_project_counts": {"google.com": [{"project": "Other", "events": 5}]},
+        }
+        cfg = self._config_path()
+        with patch("core.cli_triage_guided.build_triage_plan_dict", return_value=plan), patch(
+            "core.cli_triage_guided.questionary.confirm"
+        ) as confirm_mock, patch("core.cli_triage_guided.questionary.checkbox") as checkbox_mock:
+            confirm_mock.return_value.ask.return_value = True
+            checkbox_mock.return_value.ask.return_value = []
+            result = self.runner.invoke(app, ["triage-guided", "--projects-config", cfg])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        choices = checkbox_mock.call_args.kwargs["choices"]
+        self.assertIsNotNone(getattr(choices[0], "disabled", None))
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Optional
-from urllib.parse import urlparse
 
 import questionary
 import typer
@@ -23,6 +22,7 @@ from core.cli_prompts import prompt_for_timeframe
 from core.guided_project_config import build_guided_config_plan
 from core.triage_noise import extract_domain, filter_triage_noise_rows, is_triage_noise_row
 from core.triage_code_repos import build_code_repo_candidates
+from core.triage_domain_signals import domain_project_counts_from_events, github_repo_hint
 from scripts.calibration.gap_day_triage import (
     DayTopSite,
     ProjectSuggestion,
@@ -42,7 +42,6 @@ NOTES_FOR_AGENTS = [
     "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
     "Triage uses a noise pre-pass that removes known Cursor SDK/skills/tooling chatter before project suggestions.",
 ]
-
 def load_triage_profiles(projects_config: str) -> list[dict]:
     payload = load_projects_config_payload(Path(projects_config))
     profiles: list[dict] = []
@@ -51,8 +50,6 @@ def load_triage_profiles(projects_config: str) -> list[dict]:
             continue
         profiles.append(normalize_profile(raw))
     return profiles
-
-
 def _extract_domain(url: str) -> str:
     return extract_domain(url)
 
@@ -66,7 +63,7 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
         if not domain:
             continue
         by_domain.setdefault(domain, []).append(int(visit_time_cu))
-        repo_hint = _github_repo_hint(url)
+        repo_hint = github_repo_hint(url)
         if repo_hint:
             by_domain_repo_counts.setdefault(domain, {})
             by_domain_repo_counts[domain][repo_hint] = by_domain_repo_counts[domain].get(repo_hint, 0) + 1
@@ -91,65 +88,8 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
             top_repo = sorted(repo_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
             out[domain]["repo_hint"] = top_repo
     return out
-
-
-def _domain_from_event_detail(detail: str) -> str:
-    text = str(detail or "")
-    for token in text.split():
-        if not token.startswith("http://") and not token.startswith("https://"):
-            continue
-        try:
-            host = urlparse(token).netloc.lower().strip()
-        except Exception:
-            continue
-        if host.startswith("www."):
-            host = host[4:]
-        if host:
-            return host
-    return ""
-
-
-def _github_repo_hint(url: str) -> str:
-    text = str(url or "").strip()
-    if not text:
-        return ""
-    try:
-        parsed = urlparse(text)
-    except Exception:
-        return ""
-    host = parsed.netloc.lower().strip()
-    if host.startswith("www."):
-        host = host[4:]
-    if host != "github.com":
-        return ""
-    segments = [part.strip() for part in parsed.path.split("/") if part.strip()]
-    if len(segments) < 2:
-        return ""
-    owner, repo = segments[0], segments[1]
-    if not owner or not repo:
-        return ""
-    return f"{owner}/{repo}"
-
-
 def _domain_project_counts_from_report(report) -> dict[str, list[dict[str, Any]]]:
-    counts: dict[str, dict[str, int]] = {}
-    for event in list(getattr(report, "included_events", []) or []):
-        project = str(event.get("project") or "").strip()
-        if not project:
-            continue
-        domain = _domain_from_event_detail(str(event.get("detail") or ""))
-        if not domain:
-            continue
-        counts.setdefault(domain, {})
-        counts[domain][project] = counts[domain].get(project, 0) + 1
-    out: dict[str, list[dict[str, Any]]] = {}
-    for domain, per_project in counts.items():
-        ranked = sorted(per_project.items(), key=lambda item: (-item[1], item[0]))
-        out[domain] = [
-            {"project": project, "events": int(events)}
-            for project, events in ranked[:3]
-        ]
-    return out
+    return domain_project_counts_from_events(list(getattr(report, "included_events", []) or []))
 
 
 def _is_triage_noise_row(url: str, title: str) -> bool:
@@ -160,13 +100,24 @@ def _filter_triage_noise_rows(
     chrome_rows: list[tuple[int, str, str]],
 ) -> tuple[list[tuple[int, str, str]], int]:
     return filter_triage_noise_rows(chrome_rows)
-def _site_to_plan_dict(site: DayTopSite, site_time_hints: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if date_from or date_to or not sys.stdin.isatty():
+        return date_from, date_to
+    picked = prompt_for_timeframe()
+    return picked.get("date_from"), picked.get("date_to")
+def _site_to_plan_dict(
+    site: DayTopSite,
+    site_time_hints: dict[str, dict[str, Any]],
+    *,
+    include_sample_title: bool = False,
+) -> dict[str, Any]:
     payload = {
         "domain": site.domain,
         "visits": site.visits,
         "share": round(float(site.share), 6),
-        "sample_title": str(site.sample_title or ""),
     }
+    if include_sample_title:
+        payload["sample_title"] = str(site.sample_title or "")
     timing = site_time_hints.get(site.domain)
     if timing:
         payload.update(timing)
@@ -230,6 +181,7 @@ def build_triage_plan_dict(
     max_days: int,
     max_sites: int,
     scoring_mode: str,
+    include_sample_title: bool = False,
     home: Optional[Path] = None,
 ) -> dict[str, Any]:
     """Assemble the read-only triage plan (same inputs as the CLI). Intended for --json and tests."""
@@ -308,7 +260,14 @@ def build_triage_plan_dict(
             {
                 "day": day,
                 "gap": gap_data,
-                "top_sites": [_site_to_plan_dict(s, site_time_hints) for s in top_sites],
+                "top_sites": [
+                    _site_to_plan_dict(
+                        s,
+                        site_time_hints,
+                        include_sample_title=include_sample_title,
+                    )
+                    for s in top_sites
+                ],
                 "code_repos": code_repos,
                 "noise_rows_filtered": int(noise_rows_filtered),
                 "suggestions": [
@@ -396,17 +355,6 @@ def _render_triage_next_steps(projects_config: str) -> str:
         f"  3. Preview writes with [cyan]gittan triage-apply --dry-run --projects-config {projects_config} --input decisions.json[/cyan].\n"
         f"  4. Apply after review with [cyan]gittan triage-apply --interactive-review --projects-config {projects_config} --input decisions.json[/cyan]."
     )
-
-
-def _resolve_date_range_with_picker(*, date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[str], Optional[str]]:
-    """Use the shared timeframe picker when triage runs without date flags."""
-    if date_from or date_to:
-        return date_from, date_to
-    if not sys.stdin.isatty():
-        return date_from, date_to
-    print("No date flags provided - choose timeframe interactively.", file=sys.stderr)
-    picked = prompt_for_timeframe()
-    return picked.get("date_from"), picked.get("date_to")
 
 
 @app.command("triage")

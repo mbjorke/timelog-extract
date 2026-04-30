@@ -35,10 +35,22 @@ _DECISIONS_SCHEMA_VERSION = 1
 def _domain_checkbox_choices_with_context(
     top_sites: list[dict[str, Any]],
     *,
+    suggested_project: str,
     domain_project_counts: dict[str, list[dict[str, Any]]] | None,
 ) -> list[Choice]:
     choices: list[Choice] = []
     history_map = domain_project_counts or {}
+    project_key = str(suggested_project or "").strip().lower()
+    generic_domains = {
+        "google.com",
+        "github.com",
+        "claude.ai",
+        "accounts.google.com",
+        "mail.google.com",
+        "linkedin.com",
+        "messenger.com",
+        "tunnistautuminen.suomi.fi",
+    }
     for item in top_sites:
         domain = str(item.get("domain", "")).strip()
         if not domain:
@@ -62,7 +74,22 @@ def _domain_checkbox_choices_with_context(
         if history_preview:
             parts.append(f"often: {history_preview}")
         label = " — ".join(parts)
-        choices.append(Choice(title=label, value=domain))
+        is_generic = domain.lower() in generic_domains
+        direct_signal = bool(project_key and (project_key in domain.lower() or project_key in repo_hint.lower()))
+        hist = history_map.get(domain, [])
+        hist_total = sum(int(entry.get("events", 0) or 0) for entry in hist)
+        hist_target = sum(
+            int(entry.get("events", 0) or 0)
+            for entry in hist
+            if str(entry.get("project", "")).strip().lower() == project_key
+        )
+        hist_dominant = bool(hist_total > 0 and hist_target >= 3 and (hist_target / hist_total) >= 0.7)
+        low_confidence = is_generic and not (direct_signal or hist_dominant)
+        if low_confidence:
+            label = f"{label} — [low confidence: generic domain]"
+            choices.append(Choice(title=label, value=domain, disabled="Needs stronger signal"))
+        else:
+            choices.append(Choice(title=label, value=domain))
     return choices
 
 
@@ -80,6 +107,7 @@ def _build_guided_decisions(
         top_sites = day.get("top_sites", [])
         domain_choices = _domain_checkbox_choices_with_context(
             top_sites,
+            suggested_project=suggested,
             domain_project_counts=domain_project_counts,
         )
         if not domain_choices:
@@ -131,13 +159,16 @@ def _top_uncategorized_days(report, *, max_days: int) -> list[str]:
     ranked = sorted(uncategorized.items(), key=lambda item: item[1], reverse=True)
     out: list[str] = []
     candidates: list[str] = []
-    for day, unc_h in ranked[: max(1, int(max_days))]:
+    cap = max(1, int(max_days))
+    for day, unc_h in ranked:
         total_h = float((report.overall_days.get(day, {}) or {}).get("hours", 0.0) or 0.0)
         ratio = (unc_h / total_h) if total_h > 0 else 0.0
-        if unc_h < float(UNCATEGORIZED_NUDGE_THRESHOLD_HOURS) and ratio < float(UNCATEGORIZED_NUDGE_THRESHOLD_RATIO):
+        if unc_h < float(UNCATEGORIZED_NUDGE_THRESHOLD_HOURS) or ratio < float(UNCATEGORIZED_NUDGE_THRESHOLD_RATIO):
             continue
         out.append(day)
         candidates.append(f"{day} ({unc_h:.1f}h, {ratio:.0%})")
+        if len(out) >= cap:
+            break
     return out
 
 
@@ -152,7 +183,7 @@ def _render_uncategorized_fallback(*, report, date_from: Optional[str], date_to:
         range_args.append(f"--to {date_to}")
     range_hint = f" Range: {' '.join(range_args)}." if range_args else ""
     return (
-        "No unexplained gap days were found, but Uncategorized time is significant.\n"
+        "No eligible suggested days were available, but Uncategorized time is significant.\n"
         f"Candidates: {', '.join(candidates)}\n"
         "Guided mode will derive candidate mappings from top Chrome domains and still require explicit confirmation.\n"
         f"{range_hint}"
@@ -276,6 +307,7 @@ def triage_guided(
         max_days=max_days,
         max_sites=max_sites,
         scoring_mode=scoring_mode,
+        include_sample_title=True,
     )
     days = [d for d in plan.get("days", []) if not d.get("skip_reason")]
     domain_project_counts = {

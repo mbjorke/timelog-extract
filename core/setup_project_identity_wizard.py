@@ -278,7 +278,6 @@ def _collect_batch_mappings(
     action_finish = "__finish_mapping__"
     action_cancel = "__cancel_setup__"
     skip_assignment = "__skip_assignment__"
-
     def _short_preview(items: list[str], *, limit: int = 6) -> str:
         items_sorted = sorted(items, key=_ux_alpha_key)
         shown = ", ".join(items_sorted[:limit])

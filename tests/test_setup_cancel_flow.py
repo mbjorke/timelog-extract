@@ -82,7 +82,6 @@ class SetupCancelFlowTests(unittest.TestCase):
         self.assertIn("Step 5: Triage Review (optional)", output)
         self.assertIn("Not run inside setup", output)
 
-
 if __name__ == "__main__":
     unittest.main()
 

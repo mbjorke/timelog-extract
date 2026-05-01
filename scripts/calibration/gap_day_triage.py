@@ -30,16 +30,7 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
-
-GENERIC_DOMAINS = {
-    "google.com",
-    "github.com",
-    "claude.ai",
-    "id.atlassian.com",
-    "home.atlassian.com",
-    "atlassian.net",
-    "mail.google.com",
-}
+from core.triage_domain_signals import is_generic_triage_domain
 
 
 @dataclass(frozen=True)
@@ -118,15 +109,6 @@ def summarize_day_sites(rows: list[tuple[int, str, str]], *, limit: int = 5) -> 
     return out
 
 
-def _domain_is_generic(domain: str) -> bool:
-    value = domain.lower().strip()
-    if not value:
-        return False
-    if value in GENERIC_DOMAINS:
-        return True
-    return any(value.endswith(f".{root}") for root in GENERIC_DOMAINS)
-
-
 def score_projects_for_sites(
     profiles: list[dict],
     top_sites: list[DayTopSite],
@@ -159,7 +141,7 @@ def score_projects_for_sites(
         name_token = canonical.lower()
         score = 0
         for domain, visits in site_counts.items():
-            is_generic = _domain_is_generic(domain)
+            is_generic = is_generic_triage_domain(domain)
             if scoring_mode == "site-first":
                 tracked_weight = 8
                 term_weight = 1 if not is_generic else 0
@@ -175,7 +157,7 @@ def score_projects_for_sites(
                 # Generic domain anchors (e.g. github.com/google.com/claude.ai) are
                 # too broad to dominate project scoring on their own.
                 exact_generic_mapping = any(value == domain for value in tracked_matches)
-                if is_generic and all(_domain_is_generic(value) for value in tracked_matches) and not exact_generic_mapping:
+                if is_generic and all(is_generic_triage_domain(value) for value in tracked_matches) and not exact_generic_mapping:
                     tracked_matches = []
                 else:
                     score += visits * tracked_weight

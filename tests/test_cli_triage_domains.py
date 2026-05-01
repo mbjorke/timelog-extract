@@ -9,7 +9,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
-from core.cli_triage_domains import build_domain_project_candidates
+from core.cli_triage_domains import build_domain_project_candidates, _candidate_choice
 
 
 class TriageDomainsTests(unittest.TestCase):
@@ -49,6 +49,67 @@ class TriageDomainsTests(unittest.TestCase):
         self.assertEqual(out[0]["domain"], "demo.test")
         self.assertEqual(out[0]["project_name"], "Demo")
         self.assertEqual(out[0]["votes"], 2)
+
+    def test_build_domain_candidates_merges_www_and_bare_host(self):
+        plan = {
+            "days": [
+                {
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "Alpha",
+                    "top_sites": [{"domain": "www.merge.test"}],
+                },
+                {
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "Alpha",
+                    "top_sites": [{"domain": "merge.test"}],
+                },
+            ],
+            "domain_project_counts": {},
+        }
+        out = build_domain_project_candidates(plan, min_votes=1)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["domain"], "merge.test")
+        self.assertEqual(out[0]["votes"], 2)
+
+    def test_history_dominant_uses_merged_domain_project_counts(self):
+        plan = {
+            "days": [
+                {
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "Demo",
+                    "top_sites": [{"domain": "hist.test"}],
+                }
+            ],
+            "domain_project_counts": {
+                "www.hist.test": [{"project": "Demo", "events": 4}],
+                "hist.test": [{"project": "Demo", "events": 3}],
+            },
+        }
+        out = build_domain_project_candidates(plan, min_votes=5)
+        self.assertEqual(len(out), 1)
+        self.assertTrue(out[0]["history_dominant"])
+
+    def test_ambiguous_split_when_projects_nearly_tied(self):
+        plan = {
+            "days": [
+                {
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "A",
+                    "top_sites": [{"domain": "tie.test"}],
+                },
+                {
+                    "skip_reason": None,
+                    "resolved_project_for_top_suggestion": "B",
+                    "top_sites": [{"domain": "tie.test"}],
+                },
+            ],
+            "domain_project_counts": {},
+        }
+        out = build_domain_project_candidates(plan, min_votes=1)
+        self.assertEqual(len(out), 1)
+        self.assertTrue(out[0]["ambiguous_split"])
+        choice = _candidate_choice(out[0])
+        self.assertIn("ambiguous", choice.title)
 
     def test_triage_domains_happy_path_applies_after_confirm(self):
         cfg = self._config_path()

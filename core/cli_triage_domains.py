@@ -16,16 +16,13 @@ from core.cli_date_range import resolve_date_window
 from core.cli_triage import build_triage_plan_dict
 from core.cli_triage_apply import apply_triage_decisions_payload
 from core.config import default_projects_config_option
+from core.triage_domain_signals import (
+    canonical_domain_key,
+    is_generic_triage_domain,
+    merged_history_entries_for_canonical,
+)
 
 _DECISIONS_SCHEMA_VERSION = 1
-_GENERIC_DOMAINS = {
-    "google.com",
-    "github.com",
-    "claude.ai",
-    "linkedin.com",
-    "accounts.google.com",
-    "mail.google.com",
-}
 
 
 def _is_history_dominant(
@@ -34,7 +31,7 @@ def _is_history_dominant(
     project_name: str,
     domain_project_counts: dict[str, list[dict[str, Any]]],
 ) -> bool:
-    history = domain_project_counts.get(domain, [])
+    history = merged_history_entries_for_canonical(domain, domain_project_counts)
     total = sum(int(item.get("events", 0) or 0) for item in history)
     if total <= 0:
         return False
@@ -64,7 +61,10 @@ def build_domain_project_candidates(
         if not project_name:
             continue
         for site in day.get("top_sites", []):
-            domain = str(site.get("domain", "")).strip()
+            domain_raw = str(site.get("domain", "")).strip()
+            if not domain_raw:
+                continue
+            domain = canonical_domain_key(domain_raw)
             if not domain:
                 continue
             info = by_domain.setdefault(
@@ -95,8 +95,12 @@ def build_domain_project_candidates(
         )
         if top_votes < int(min_votes) and not history_dominant:
             continue
-        generic = domain.lower() in _GENERIC_DOMAINS
+        generic = is_generic_triage_domain(domain)
         low_confidence = generic and not (history_dominant or bool(info["repo_hint"]))
+        ambiguous_split = False
+        if len(ranked) >= 2:
+            second_votes = int(ranked[1][1])
+            ambiguous_split = second_votes >= int(top_votes) - 1 and int(top_votes) > 0
         out.append(
             {
                 "domain": domain,
@@ -108,6 +112,7 @@ def build_domain_project_candidates(
                 "repo_hint": str(info["repo_hint"] or ""),
                 "history_dominant": history_dominant,
                 "low_confidence": low_confidence,
+                "ambiguous_split": ambiguous_split,
             }
         )
     out.sort(key=lambda item: (-item["votes"], -item["dominance"], item["domain"]))
@@ -129,6 +134,8 @@ def _candidate_choice(item: dict[str, Any]) -> Choice:
     if title_preview:
         parts.append(title_preview)
     label = " — ".join(parts)
+    if bool(item.get("ambiguous_split")):
+        label = f"{label} — [ambiguous: competing projects]"
     if bool(item.get("low_confidence")):
         return Choice(title=f"{label} — [low confidence: generic domain]", value=domain, disabled="Needs stronger signal")
     return Choice(title=label, value=domain)

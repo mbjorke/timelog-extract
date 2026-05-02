@@ -9,6 +9,8 @@ echo "==> $PY $ENTRY -V"
 "$PY" "$ENTRY" -V
 echo "==> report --today --source-summary --quiet"
 "$PY" "$ENTRY" report --today --source-summary --quiet
+echo "==> projects-audit (narrow window, JSON)"
+"$PY" "$ENTRY" projects-audit --from 2099-01-01 --to 2099-01-01 --json > /dev/null
 echo "==> ux-heroes"
 "$PY" "$ENTRY" ux-heroes
 echo "==> handoff: run CI fixtures with scripts/run_cli_experiments_ci.sh (report-only by default)"

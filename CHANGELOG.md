@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CLI: `gittan projects-audit` reports per-rule hit counts for `match_terms` / `tracked_urls` over a date window (same deduped collector pool as reports; optional `--json`). `gittan projects-trim` removes explicit rules from `timelog_projects.json` via a small JSON payload (`--dry-run` supported, backup before write).
+
 ## 0.2.15 - 2026-04-28
 
 - Setup UX: finalized first-time onboarding flow around the 5-step setup sequence (global timelog, bootstrap, mapping, doctor, optional triage) with safer rerun/cancel behavior and clearer customer/project mapping prompts.

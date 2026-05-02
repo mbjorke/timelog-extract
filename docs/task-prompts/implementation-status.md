@@ -26,7 +26,7 @@ Track prompt execution reality, not only intended state in old prompt metadata.
 | `docs/task-prompts/agent-inline-cli-ux-validation-task.md` | `not built`    | Approved task prompt, but traceability still says not built.                                                                                        |
 | `docs/task-prompts/dev-main-alignment-handoff.md`          | `not built`    | Operational handoff doc; execution is runbook-driven and out-of-band.                                                                               |
 | `docs/task-prompts/task-traceability-template.md`          | `not built`    | Template file, not an implementation task; excluded from execution tracking decisions.                                                              |
-| `docs/task-prompts/projects-config-trimming-task.md`       | `not built`    | Draft: usage audit + optional manual trim for `timelog_projects.json`; no implementation yet.                                                       |
+| `docs/task-prompts/projects-config-trimming-task.md`       | `built`        | `gittan projects-audit` / `projects-trim`, `core/projects_audit.py`, `tests/test_projects_audit.py`.                                                |
 
 
 ## Update routine

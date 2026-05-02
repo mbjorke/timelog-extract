@@ -8,31 +8,32 @@ and triage flows that require Screen Time gap days.
 
 - story_id: GH-123
 - spec_status: draft
-- implementation_status: not built
+- implementation_status: built
 - created_at: 2026-05-02
 - last_updated_at: 2026-05-02
 - implementation.pr: pending
 - implementation.branch: pending
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: `python3 -m unittest tests/test_projects_audit.py` and `bash scripts/run_autotests.sh`
+- validation.decision: conditional GO
 - changelog:
   - 2026-05-02: Initial draft from planning thread (phased audit + manual apply).
+  - 2026-05-02: Implemented `gittan projects-audit` and `gittan projects-trim` (v1); `remove_rule_from_project` in `core/config.py`.
 
 Replace `story_id` with a real GitHub issue reference when one exists.
 
 ## Goal
 
-1. **Phase 1 — Audit**: New CLI command (name TBD, e.g. `gittan projects-audit`)
+1. **Phase 1 — Audit**: CLI `gittan projects-audit` (`core/cli_projects_audit.py`, `core/projects_audit.py`)
    reports per-project hit counts for each `match_term` and `tracked_urls`
    fragment over a user-selected date window, using the same event collection
    path as reports. Optional `--json` stdout schema v1 (distinct from
    `gittan triage --json`). Clearly document that zero hits means “in this
    window”, not “safe to delete forever”.
 
-2. **Phase 2 — Trim**: Apply removals only with explicit human/agent approval:
-   `--dry-run`, timestamped backup via existing config helpers, optional
-   decisions JSON (pattern after `triage-apply`), then re-run `projects-lint`.
+2. **Phase 2 — Trim**: `gittan projects-trim -i trim.json` with `schema_version` 1
+   and `removals: [{project_name, rule_type, rule_value}]`; `--dry-run` uses a deep
+   copy; writes call `backup_projects_config_if_exists` then `save_projects_config_payload`.
 
 ## Non-goals
 

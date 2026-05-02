@@ -288,3 +288,54 @@ def apply_rule_to_project(
     target.clear()
     target.update(normalized)
     return rule_type, cleaned_value, created
+
+
+def remove_rule_from_project(
+    payload: dict,
+    *,
+    project_name: str,
+    rule_type: str,
+    rule_value: str,
+) -> bool:
+    """Remove one match_terms or tracked_urls value from a project. Returns True if a row was removed."""
+    cleaned_name = str(project_name).strip()
+    cleaned_val = str(rule_value).strip()
+    if not cleaned_name or not cleaned_val:
+        raise ValueError("project_name and rule_value are required")
+    if rule_type not in {"match_terms", "tracked_urls"}:
+        raise ValueError(f"unsupported rule_type: {rule_type}")
+
+    projects = payload.get("projects", [])
+    if not isinstance(projects, list):
+        raise ValueError("payload.projects must be a list")
+
+    for target in projects:
+        if not isinstance(target, dict):
+            continue
+        if str(target.get("name", "")).strip().lower() != cleaned_name.lower():
+            continue
+        key = rule_type
+        raw_list = as_list(target.get(key))
+        if not raw_list:
+            return False
+        kept = [v for v in raw_list if str(v).strip().lower() != cleaned_val.lower()]
+        if len(kept) == len(raw_list):
+            return False
+        target[key] = kept
+        normalized = normalize_profile(target)
+        normalized["enabled"] = bool(target.get("enabled", True))
+        normalized["project_id"] = str(target.get("project_id", "")).strip() or cleaned_name
+        normalized["ticket_mode"] = str(target.get("ticket_mode", "")).strip().lower() or "optional"
+        if normalized["ticket_mode"] not in {"required", "optional", "none"}:
+            normalized["ticket_mode"] = "optional"
+        normalized["default_client"] = str(target.get("default_client", "")).strip() or str(
+            target.get("customer", "")
+        ).strip() or cleaned_name
+        normalized["email"] = str(target.get("email", "")).strip()
+        normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
+        normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()
+        normalized["customer"] = str(target.get("customer", "")).strip() or cleaned_name
+        target.clear()
+        target.update(normalized)
+        return True
+    return False

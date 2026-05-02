@@ -49,6 +49,10 @@ def projects_audit(
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
     json_out: Annotated[bool, typer.Option("--json", help="Print audit JSON to stdout")] = False,
     screen_time: Annotated[str, typer.Option(help="Screen time: auto/on/off")] = "auto",
+    max_top_hosts: Annotated[
+        int,
+        typer.Option(help="Max http(s) hosts to list in top_hosts (0 disables)"),
+    ] = 30,
 ) -> None:
     """Count match_terms / tracked_urls hits over deduped collector events (read-only)."""
     from rich.console import Console
@@ -86,6 +90,7 @@ def projects_audit(
         date_to=dt,
         projects_config=projects_config,
         pool="deduped_all_events",
+        top_hosts_limit=max(0, int(max_top_hosts)),
     )
 
     if json_out:
@@ -116,6 +121,20 @@ def projects_audit(
         if first:
             table.add_row(pname, "(no rules)", "—")
     console.print(table)
+    if int(max_top_hosts) > 0 and payload.get("top_hosts"):
+        console.print()
+        console.print(f"[dim]{payload.get('top_hosts_note', '')}[/dim]")
+        ht = Table(show_header=True, header_style="bold")
+        ht.add_column("Host")
+        ht.add_column("Hits", justify="right")
+        ht.add_column("Anchored", justify="center")
+        for row in payload["top_hosts"]:
+            ht.add_row(
+                str(row.get("host", "")),
+                str(row.get("hits", 0)),
+                "yes" if row.get("anchored") else "no",
+            )
+        console.print(ht)
     console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
 
 

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - CLI: `gittan projects-audit` reports per-rule hit counts for `match_terms` / `tracked_urls` over a date window (same deduped collector pool as reports; optional `--json`). `gittan projects-trim` removes explicit rules from `timelog_projects.json` via a small JSON payload (`--dry-run` supported, backup before write).
+- CLI: `projects-audit` adds `top_hosts` (frequent http(s) hosts with `anchored` flag vs current rules) and `--max-top-hosts`.
 
 ## 0.2.15 - 2026-04-28
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
@@ -20,6 +21,12 @@ HIT_DEFINITION_V1 = (
     "appears as a substring of the detail if no URLs were parsed. "
     "Counts apply only to this date window and deduped collector events; zero hits does not "
     "prove a rule is unused outside the window."
+)
+
+TOP_HOSTS_NOTE = (
+    "top_hosts: http(s) hosts parsed from event details, counted once per host per event, sorted by "
+    "frequency. anchored=true if some profile already has a match_term substring of the host or a "
+    "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
 )
 
 
@@ -75,6 +82,39 @@ def event_matches_tracked_url(detail: str, raw_fragment: str) -> bool:
     return frag.lower() in haystack
 
 
+def is_host_anchored_by_profiles(host: str, profiles: list[dict[str, Any]]) -> bool:
+    """True if any enabled profile rule would match this host (mapping hint already present)."""
+    h = canonical_domain_key(host)
+    if not h:
+        return False
+    hay = h.lower()
+    stub_detail = f"https://{h}/"
+    for profile in profiles:
+        for term in profile.get("match_terms") or []:
+            t = str(term).strip().lower()
+            if t and t in hay:
+                return True
+        for raw in profile.get("tracked_urls") or []:
+            if event_matches_tracked_url(stub_detail, str(raw)):
+                return True
+    return False
+
+
+def aggregate_top_hosts(events: list[dict[str, Any]], *, limit: int) -> list[tuple[str, int]]:
+    """Count each canonical host at most once per event; return (host, count) descending."""
+    counts: Counter[str] = Counter()
+    for event in events:
+        detail = str(event.get("detail") or "")
+        seen: set[str] = set()
+        for raw_host in extract_hosts_from_detail(detail):
+            key = canonical_domain_key(raw_host)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            counts[key] += 1
+    return counts.most_common(max(0, int(limit)))
+
+
 def build_projects_audit_payload(
     *,
     events: list[dict[str, Any]],
@@ -83,6 +123,7 @@ def build_projects_audit_payload(
     date_to: str | None,
     projects_config: str,
     pool: str,
+    top_hosts_limit: int = 30,
 ) -> dict[str, Any]:
     """Assemble read-only audit JSON (`schema_version` = AUDIT_SCHEMA_VERSION)."""
     match_counts: dict[str, dict[str, int]] = {}
@@ -130,16 +171,29 @@ def build_projects_audit_payload(
             }
         )
 
+    top_rows = aggregate_top_hosts(events, limit=top_hosts_limit)
+    top_hosts_out = [
+        {
+            "host": host,
+            "hits": int(n),
+            "anchored": is_host_anchored_by_profiles(host, profiles),
+        }
+        for host, n in top_rows
+    ]
+
     return {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "command": "gittan projects-audit",
         "hit_definition": HIT_DEFINITION_V1,
+        "top_hosts_note": TOP_HOSTS_NOTE,
         "pool": pool,
         "options": {
             "date_from": date_from,
             "date_to": date_to,
             "projects_config": projects_config,
+            "top_hosts_limit": int(top_hosts_limit),
         },
         "event_count": len(events),
         "projects": projects_out,
+        "top_hosts": top_hosts_out,
     }

@@ -4,15 +4,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 from scripts.calibration.gap_day_triage import (
-    DayTopSite,
-    ProjectSuggestion,
     apply_domain_mappings,
     day_gap_row,
     load_gap_payload,
     parse_map_assignments,
     render_report,
-    score_projects_for_sites,
     summarize_day_sites,
 )
 

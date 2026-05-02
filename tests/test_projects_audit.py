@@ -33,12 +33,14 @@ class ProjectsAuditTests(unittest.TestCase):
                 "project": "project-alpha",
             },
         ]
+        tmp_cfg = self._temp_json()
+        self.addCleanup(Path(tmp_cfg).unlink, missing_ok=True)
         payload = build_projects_audit_payload(
             events=events,
             profiles=profiles,
             date_from="2026-05-01",
             date_to="2026-05-02",
-            projects_config="/tmp/x.json",
+            projects_config=tmp_cfg,
             pool="deduped_all_events",
         )
         self.assertEqual(payload["event_count"], 2)
@@ -67,12 +69,14 @@ class ProjectsAuditTests(unittest.TestCase):
                 "project": "acme",
             },
         ]
+        tmp_cfg = self._temp_json()
+        self.addCleanup(Path(tmp_cfg).unlink, missing_ok=True)
         payload = build_projects_audit_payload(
             events=events,
             profiles=profiles,
             date_from="2026-05-01",
             date_to="2026-05-02",
-            projects_config="/tmp/x.json",
+            projects_config=tmp_cfg,
             pool="deduped_all_events",
             top_hosts_limit=10,
         )
@@ -134,6 +138,7 @@ class ProjectsAuditTests(unittest.TestCase):
 
     def test_trim_roundtrip_tmp_file(self) -> None:
         tmp = Path(self._temp_json())
+        self.addCleanup(tmp.unlink, missing_ok=True)
         cfg = {
             "projects": [
                 {
@@ -152,7 +157,6 @@ class ProjectsAuditTests(unittest.TestCase):
         terms_lower = [str(t).lower() for t in again["projects"][0]["match_terms"]]
         self.assertNotIn("b", terms_lower)
         self.assertIn("a", terms_lower)
-        tmp.unlink(missing_ok=True)
 
     def _temp_json(self) -> str:
         import tempfile

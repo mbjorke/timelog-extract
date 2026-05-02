@@ -192,6 +192,22 @@ def backup_projects_config_if_exists(config_path: Path) -> Optional[Path]:
     return backup_path
 
 
+def _preserve_non_normalized_fields(normalized: dict, target: dict, fallback_name: str) -> None:
+    """Copy runtime-editable fields from target into normalized profile dict."""
+    normalized["enabled"] = bool(target.get("enabled", True))
+    normalized["project_id"] = str(target.get("project_id", "")).strip() or fallback_name
+    normalized["ticket_mode"] = str(target.get("ticket_mode", "")).strip().lower() or "optional"
+    if normalized["ticket_mode"] not in {"required", "optional", "none"}:
+        normalized["ticket_mode"] = "optional"
+    normalized["default_client"] = str(target.get("default_client", "")).strip() or str(
+        target.get("customer", "")
+    ).strip() or fallback_name
+    normalized["email"] = str(target.get("email", "")).strip()
+    normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
+    normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()
+    normalized["customer"] = str(target.get("customer", "")).strip() or fallback_name
+
+
 def save_projects_config_payload(config_path: Path, payload: dict) -> None:
     parent_dir = config_path.parent
     parent_dir.mkdir(parents=True, exist_ok=True)
@@ -273,18 +289,7 @@ def apply_rule_to_project(
     target[rule_type] = sorted({value for value in values if value})
 
     normalized = normalize_profile(target)
-    normalized["enabled"] = bool(target.get("enabled", True))
-    normalized["project_id"] = str(target.get("project_id", "")).strip() or cleaned_name
-    normalized["ticket_mode"] = str(target.get("ticket_mode", "")).strip().lower() or "optional"
-    if normalized["ticket_mode"] not in {"required", "optional", "none"}:
-        normalized["ticket_mode"] = "optional"
-    normalized["default_client"] = str(target.get("default_client", "")).strip() or str(
-        target.get("customer", "")
-    ).strip() or cleaned_name
-    normalized["email"] = str(target.get("email", "")).strip()
-    normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
-    normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()
-    normalized["customer"] = str(target.get("customer", "")).strip() or cleaned_name
+    _preserve_non_normalized_fields(normalized, target, cleaned_name)
     target.clear()
     target.update(normalized)
     return rule_type, cleaned_value, created
@@ -323,18 +328,7 @@ def remove_rule_from_project(
             return False
         target[key] = kept
         normalized = normalize_profile(target)
-        normalized["enabled"] = bool(target.get("enabled", True))
-        normalized["project_id"] = str(target.get("project_id", "")).strip() or cleaned_name
-        normalized["ticket_mode"] = str(target.get("ticket_mode", "")).strip().lower() or "optional"
-        if normalized["ticket_mode"] not in {"required", "optional", "none"}:
-            normalized["ticket_mode"] = "optional"
-        normalized["default_client"] = str(target.get("default_client", "")).strip() or str(
-            target.get("customer", "")
-        ).strip() or cleaned_name
-        normalized["email"] = str(target.get("email", "")).strip()
-        normalized["invoice_title"] = str(target.get("invoice_title", "")).strip()
-        normalized["invoice_description"] = str(target.get("invoice_description", "")).strip()
-        normalized["customer"] = str(target.get("customer", "")).strip() or cleaned_name
+        _preserve_non_normalized_fields(normalized, target, cleaned_name)
         target.clear()
         target.update(normalized)
         return True

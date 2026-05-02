@@ -6,8 +6,6 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Optional
-from urllib.parse import urlparse
-
 import questionary
 import typer
 from questionary import Choice
@@ -21,8 +19,9 @@ from core.triage_domain_signals import (
     canonical_domain_key,
     is_generic_triage_domain,
     merged_history_entries_for_canonical,
+    tracked_fragment_matches_domain,
 )
-from scripts.calibration.gap_day_triage import DayTopSite, score_projects_for_sites
+from core.triage_site_scoring import DayTopSite, score_projects_for_sites
 
 _DECISIONS_SCHEMA_VERSION = 1
 
@@ -85,33 +84,6 @@ def _uniform_resolved_project_across_days(plan: dict[str, Any]) -> Optional[str]
     return None
 
 
-def _tracked_fragment_matches_domain(domain: str, raw_fragment: str) -> bool:
-    """True when a tracked_urls entry clearly refers to this host (not loose substring noise)."""
-    d = canonical_domain_key(domain)
-    t = str(raw_fragment or "").strip().lower().rstrip("/")
-    if not d or not t:
-        return False
-    if "://" in t:
-        try:
-            host = urlparse(t).netloc.lower()
-        except ValueError:
-            return False
-        if host.startswith("www."):
-            host = host[4:]
-        if host == d:
-            return True
-        if len(d) >= 5 and d in t and d in host:
-            return True
-        return False
-    if t == d:
-        return True
-    if len(t) >= 5 and t in d:
-        return True
-    if len(d) >= 5 and d in t:
-        return True
-    return False
-
-
 def _best_profile_for_tracked_domain(domain: str, profiles: list[dict[str, Any]]) -> Optional[str]:
     """Pick the project whose tracked_urls best matches this host (longest fragment wins)."""
     best_len = 0
@@ -123,7 +95,7 @@ def _best_profile_for_tracked_domain(domain: str, profiles: list[dict[str, Any]]
         for raw in profile.get("tracked_urls") or []:
             if not raw:
                 continue
-            if not _tracked_fragment_matches_domain(domain, str(raw)):
+            if not tracked_fragment_matches_domain(domain, str(raw)):
                 continue
             frag = str(raw).strip().lower()
             if len(frag) > best_len:

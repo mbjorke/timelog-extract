@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
-# Union of generic roots used by site-first scoring (`gap_day_triage`) and
+# Union of generic roots used by site-first scoring (`core.triage_site_scoring`) and
 # triage-domains guardrails; subdomain hosts count as generic when they end with
 # `.<root>` (e.g. mail.google.com).
 GENERIC_TRIAGE_ROOT_DOMAINS: frozenset[str] = frozenset(
@@ -121,3 +121,30 @@ def domain_project_counts_from_events(events: list[dict[str, Any]]) -> dict[str,
             for project, events_count in ranked[:3]
         ]
     return out
+
+
+def tracked_fragment_matches_domain(domain: str, raw_fragment: str) -> bool:
+    """True when a tracked_urls entry clearly refers to this host (not loose substring noise)."""
+    d = canonical_domain_key(domain)
+    t = str(raw_fragment or "").strip().lower().rstrip("/")
+    if not d or not t:
+        return False
+    if "://" in t:
+        try:
+            host = urlparse(t).netloc.lower()
+        except ValueError:
+            return False
+        if host.startswith("www."):
+            host = host[4:]
+        if host == d:
+            return True
+        if len(d) >= 5 and d in t and d in host:
+            return True
+        return False
+    if t == d:
+        return True
+    if len(t) >= 5 and t in d:
+        return True
+    if len(d) >= 5 and d in t:
+        return True
+    return False

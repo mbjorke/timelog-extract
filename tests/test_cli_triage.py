@@ -24,7 +24,7 @@ from core.cli_triage import (
     resolve_target_project_name,
     select_triage_days,
 )
-from scripts.calibration.gap_day_triage import ProjectSuggestion
+from core.triage_site_scoring import ProjectSuggestion
 
 
 class CliTriageHelpersTests(unittest.TestCase):

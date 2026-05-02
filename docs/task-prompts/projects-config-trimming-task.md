@@ -10,8 +10,8 @@ and triage flows that require Screen Time gap days.
 - spec_status: draft
 - implementation_status: built
 - created_at: 2026-05-02
-- last_updated_at: 2026-05-02
-- implementation.pr: pending
+- last_updated_at: 2026-05-03
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/119
 - implementation.branch: task/projects-config-trimming
 - implementation.commits: []
 - validation.evidence: `python3 -m unittest tests/test_projects_audit.py` and `bash scripts/run_autotests.sh`
@@ -20,6 +20,7 @@ and triage flows that require Screen Time gap days.
   - 2026-05-02: Initial draft from planning thread (phased audit + manual apply).
   - 2026-05-02: Implemented `gittan projects-audit` and `gittan projects-trim` (v1); `remove_rule_from_project` in `core/config.py`.
   - 2026-05-02: Traceability `implementation.branch`; CodeRabbit follow-up on playbook Markdown.
+  - 2026-05-03: CodeRabbit close-out — shared `tracked_fragment_matches_domain`, `core/triage_site_scoring`, config helper, test hygiene; `implementation.pr` set to PR #119.
 
 Replace `story_id` with a real GitHub issue reference when one exists.
 

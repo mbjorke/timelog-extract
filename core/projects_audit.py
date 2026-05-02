@@ -7,7 +7,7 @@ from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
-from core.triage_domain_signals import canonical_domain_key
+from core.triage_domain_signals import canonical_domain_key, tracked_fragment_matches_domain
 
 _URL_RE = re.compile(r"https?://[^\s)>\"']+", re.IGNORECASE)
 
@@ -17,7 +17,8 @@ HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
     "substring of the event detail (same text field used by project classification). "
     "tracked_urls: counted when any http(s) host parsed from the detail matches the stored "
-    "fragment using the same host rules as triage-domains, or when the fragment (no scheme) "
+    "fragment using the same host rules as triage-domains "
+    "(core.triage_domain_signals.tracked_fragment_matches_domain), or when the fragment (no scheme) "
     "appears as a substring of the detail if no URLs were parsed. "
     "Counts apply only to this date window and deduped collector events; zero hits does not "
     "prove a rule is unused outside the window."
@@ -28,33 +29,6 @@ TOP_HOSTS_NOTE = (
     "frequency. anchored=true if some profile already has a match_term substring of the host or a "
     "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
 )
-
-
-def _tracked_fragment_matches_domain(domain: str, raw_fragment: str) -> bool:
-    """Align with `core.cli_triage_domains._tracked_fragment_matches_domain`."""
-    d = canonical_domain_key(domain)
-    t = str(raw_fragment or "").strip().lower().rstrip("/")
-    if not d or not t:
-        return False
-    if "://" in t:
-        try:
-            host = urlparse(t).netloc.lower()
-        except ValueError:
-            return False
-        if host.startswith("www."):
-            host = host[4:]
-        if host == d:
-            return True
-        if len(d) >= 5 and d in t and d in host:
-            return True
-        return False
-    if t == d:
-        return True
-    if len(t) >= 5 and t in d:
-        return True
-    if len(d) >= 5 and d in t:
-        return True
-    return False
 
 
 def extract_hosts_from_detail(detail: str) -> list[str]:
@@ -78,7 +52,7 @@ def event_matches_tracked_url(detail: str, raw_fragment: str) -> bool:
     haystack = (detail or "").lower()
     hosts = extract_hosts_from_detail(detail)
     if hosts:
-        return any(_tracked_fragment_matches_domain(h, frag) for h in hosts)
+        return any(tracked_fragment_matches_domain(h, frag) for h in hosts)
     return frag.lower() in haystack
 
 

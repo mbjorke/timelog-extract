@@ -12,13 +12,14 @@ and triage flows that require Screen Time gap days.
 - created_at: 2026-05-02
 - last_updated_at: 2026-05-02
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/projects-config-trimming
 - implementation.commits: []
 - validation.evidence: `python3 -m unittest tests/test_projects_audit.py` and `bash scripts/run_autotests.sh`
 - validation.decision: conditional GO
 - changelog:
   - 2026-05-02: Initial draft from planning thread (phased audit + manual apply).
   - 2026-05-02: Implemented `gittan projects-audit` and `gittan projects-trim` (v1); `remove_rule_from_project` in `core/config.py`.
+  - 2026-05-02: Traceability `implementation.branch`; CodeRabbit follow-up on playbook Markdown.
 
 Replace `story_id` with a real GitHub issue reference when one exists.
 

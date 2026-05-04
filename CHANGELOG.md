@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Setup / bootstrap: `discover_local_git_repos` no longer caps at 40 repos by default (`limit=None`); project bootstrap and setup candidate scans can include every repo found under the chosen root (within `max_depth`). Pass a positive `limit` only when an artificial cap is desired.
+- Setup / bootstrap: `discover_local_git_repos` has no default repo cap (`limit=None`). Project bootstrap uses **`max_depth=6`** (was 3) under the chosen root so deeper clone paths are discovered; scan status line shows depth and confirms no repo cap.
 - Contributor tooling: `scripts/contributor_setup_scenarios.sh projects-audit-trim-sandbox` runs a non-interactive projects-audit → `--write-trim-plan` → `projects-trim --dry-run` chain against a temp config copy; optional `GITTAN_AUDIT_FROM` / `GITTAN_AUDIT_TO` for a richer audit window. `scripts/cli_impact_smoke.sh` also smoke-tests `projects-trim --dry-run` after generating a trim plan.
 - CLI: `gittan projects-audit --write-trim-plan PATH` writes a `projects-trim` JSON plan (schema v1) with **candidate** removals pre-filled from rules that had zero hits in the audit window (review before `projects-trim -i`; never auto-applies).
 - CLI: `gittan projects-audit` reports per-rule hit counts for `match_terms` / `tracked_urls` over a date window (same deduped collector pool as reports; optional `--json`). `gittan projects-trim` removes explicit rules from `timelog_projects.json` via a small JSON payload (`--dry-run` supported, backup before write).

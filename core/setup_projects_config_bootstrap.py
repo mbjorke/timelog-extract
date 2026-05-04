@@ -19,6 +19,10 @@ from core.git_project_bootstrap import (
     suggest_bootstrap_root,
 )
 
+# Home-root scans need enough depth to reach clones under e.g. ~/Workspace/Client/…/repo.
+# This is a directory-walk depth cap (not a repo count cap); `discover_local_git_repos` has no repo limit by default.
+BOOTSTRAP_MAX_DEPTH = 6
+
 
 @dataclass(frozen=True)
 class ProjectsConfigBootstrapResult:
@@ -206,9 +210,12 @@ def ensure_projects_config(
     console.print("[dim]Scanning local directories for git repositories...[/dim]")
     scan_started = time.perf_counter()
     with console.status("[bold blue]Scanning repositories for bootstrap...[/bold blue]", spinner="dots"):
-        repos = discover_local_git_repos(root_path, max_depth=3)
+        repos = discover_local_git_repos(root_path, max_depth=BOOTSTRAP_MAX_DEPTH, limit=None)
     scan_elapsed = time.perf_counter() - scan_started
-    console.print(f"[dim]Repository scan complete: {len(repos)} candidate repos ({scan_elapsed:.1f}s).[/dim]")
+    console.print(
+        f"[dim]Repository scan complete: {len(repos)} candidate repos "
+        f"(max_depth={BOOTSTRAP_MAX_DEPTH}, no repo cap; {scan_elapsed:.1f}s).[/dim]"
+    )
     seeds = [seed for repo in repos if (seed := build_repo_project_seed(repo)) is not None]
     merged_payload, summary = merge_repo_project_seeds(payload, seeds, root=root_path)
     summary = RepoBootstrapSummary(

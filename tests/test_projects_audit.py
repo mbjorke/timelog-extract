@@ -3,7 +3,12 @@
 import json
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from typer.testing import CliRunner
+
+from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
     build_inline_mapping_suggestions,
@@ -15,6 +20,9 @@ from core.projects_audit import (
 
 
 class ProjectsAuditTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.runner = CliRunner()
+
     def test_match_term_hits_substring(self) -> None:
         profiles = [
             {
@@ -91,6 +99,56 @@ class ProjectsAuditTests(unittest.TestCase):
     def test_trim_plan_rejects_wrong_audit_schema(self) -> None:
         with self.assertRaises(ValueError):
             build_zero_hit_trim_plan_from_audit({"schema_version": 99, "projects": []})
+
+    def test_projects_audit_write_trim_plan_outputs_schema_v1_json(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {
+                "projects": [
+                    {
+                        "name": "project-beta",
+                        "match_terms": ["used-term", "unused-term"],
+                        "tracked_urls": ["tracked.example.com", "stale.example.org"],
+                    }
+                ]
+            },
+        )
+        report = SimpleNamespace(
+            all_events=[
+                {
+                    "source": "Chrome",
+                    "detail": "used-term and https://tracked.example.com/x",
+                    "project": "project-beta",
+                }
+            ],
+            profiles=load_projects_config_payload(cfg_path).get("projects", []),
+        )
+        with patch("core.report_service.run_timelog_report", return_value=report):
+            result = self.runner.invoke(
+                app,
+                [
+                    "projects-audit",
+                    "--projects-config",
+                    str(cfg_path),
+                    "--from",
+                    "2026-05-01",
+                    "--to",
+                    "2026-05-02",
+                    "--write-trim-plan",
+                    str(plan_path),
+                ],
+            )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        self.assertEqual(plan["schema_version"], 1)
+        self.assertEqual(plan["meta"]["zero_hit_candidates"], 2)
+        removals = {(row["rule_type"], row["rule_value"]) for row in plan["removals"]}
+        self.assertIn(("match_terms", "unused-term"), removals)
+        self.assertIn(("tracked_urls", "stale.example.org"), removals)
 
     def test_top_hosts_and_anchored(self) -> None:
         profiles = [

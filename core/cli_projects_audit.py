@@ -21,7 +21,11 @@ from core.config import (
     remove_rule_from_project,
     save_projects_config_payload,
 )
-from core.projects_audit import build_projects_audit_payload
+from core.projects_audit import (
+    TRIM_PLAN_SCHEMA_VERSION,
+    build_projects_audit_payload,
+    build_zero_hit_trim_plan_from_audit,
+)
 
 
 def _default_date_window() -> tuple[str, str]:
@@ -53,12 +57,25 @@ def projects_audit(
         int,
         typer.Option(help="Max http(s) hosts to list in top_hosts (0 disables)"),
     ] = 30,
+    write_trim_plan: Annotated[
+        Optional[str],
+        typer.Option(
+            "--write-trim-plan",
+            help=(
+                "Write trim-plan JSON (schema v1) to PATH: removals pre-filled with rules that had "
+                "zero hits in this audit window only — not proof they are unused elsewhere. "
+                "Does not edit the config; review then: projects-trim -i PATH --dry-run."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Count match_terms / tracked_urls hits over deduped collector events (read-only)."""
     from rich.console import Console
     from rich.table import Table
 
     from core.report_service import run_timelog_report
+
+    console = Console()
 
     df, dt = resolve_date_window(
         date_from=date_from,
@@ -93,11 +110,21 @@ def projects_audit(
         top_hosts_limit=max(0, int(max_top_hosts)),
     )
 
+    if write_trim_plan:
+        plan = build_zero_hit_trim_plan_from_audit(payload)
+        out_path = Path(write_trim_plan).expanduser()
+        out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        if not json_out:
+            console.print(
+                f"[dim]Wrote trim plan ({plan['meta']['zero_hit_candidates']} zero-hit candidates) "
+                f"to {out_path} (schema v{TRIM_PLAN_SCHEMA_VERSION}). "
+                f"Review; then `gittan projects-trim -i {out_path}` --dry-run.[/dim]"
+            )
+
     if json_out:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
 
-    console = Console()
     console.print(
         f"[bold]projects-audit[/bold] schema v{payload['schema_version']} — "
         f"{payload['event_count']} deduped events, {df} → {dt}"
@@ -138,9 +165,6 @@ def projects_audit(
     console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
 
 
-_TRIM_SCHEMA_VERSION = 1
-
-
 def _load_trim_decisions(path: Optional[str]) -> list[dict[str, Any]]:
     if path and path != "-":
         raw = Path(path).expanduser().read_text(encoding="utf-8")
@@ -149,8 +173,8 @@ def _load_trim_decisions(path: Optional[str]) -> list[dict[str, Any]]:
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("trim input must be a JSON object")
-    if int(data.get("schema_version", 0)) != _TRIM_SCHEMA_VERSION:
-        raise ValueError(f"schema_version must be {_TRIM_SCHEMA_VERSION}")
+    if int(data.get("schema_version", 0)) != TRIM_PLAN_SCHEMA_VERSION:
+        raise ValueError(f"schema_version must be {TRIM_PLAN_SCHEMA_VERSION}")
     removals = data.get("removals")
     if not isinstance(removals, list):
         raise ValueError("'removals' must be an array")

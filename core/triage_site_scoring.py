@@ -68,8 +68,10 @@ def score_projects_for_sites(
             else:
                 tracked_weight = 6
                 term_weight = 1 if is_generic else 2
-                alias_weight = max(1, visits // 2) if is_generic else visits
-                name_weight = max(1, visits // 2) if is_generic else visits
+                # Keep alias/name hints linear in visits. Multiplying by visits
+                # again here causes an unintended quadratic effect.
+                alias_weight = 1 if is_generic else 2
+                name_weight = 1 if is_generic else 2
             tracked_matches = [value for value in tracked if domain in value or value in domain]
             if tracked_matches:
                 # Generic domain anchors (e.g. github.com/google.com/claude.ai) are

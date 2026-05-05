@@ -48,6 +48,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **On-stage cheat sheet (3-5 min onboarding demo)** → [`runbooks/onboarding-demo-stage-card.md`](runbooks/onboarding-demo-stage-card.md)
 - **Beta onboarding path for project config friction** → [`runbooks/beta-onboarding-config.md`](runbooks/beta-onboarding-config.md)
 - **Classification trust recovery playbook** → [`runbooks/classification-trust-recovery.md`](runbooks/classification-trust-recovery.md)
+- **Multiple GitHub logins / Enterprise Server API host** → [`runbooks/multi-account-git-sources.md`](runbooks/multi-account-git-sources.md) (GitLab-style hosts: [`runbooks/gitlab-self-hosted-future.md`](runbooks/gitlab-self-hosted-future.md))
 - **Fast project mapping (~10 min retrospective window)** → [`ideas/fast-project-mapping-playbook.md`](ideas/fast-project-mapping-playbook.md)
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy

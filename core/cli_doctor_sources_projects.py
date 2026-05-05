@@ -51,7 +51,7 @@ def doctor(
         Optional[str],
         typer.Option(
             "--github-user",
-            help="GitHub username for public events (doctor visibility only).",
+            help="GitHub username(s) for public events; comma-separated for multiple (doctor visibility only).",
         ),
     ] = None,
     toggl_source: Annotated[
@@ -68,7 +68,7 @@ def doctor(
     Parameters:
         worklog (Optional[str]): Path to TIMELOG.md that overrides the configured/workspace worklog.
         github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
-        github_user (Optional[str]): GitHub username to use when evaluating public event checks (visibility only).
+        github_user (Optional[str]): GitHub username(s), comma-separated for multiple, used when evaluating public event checks (visibility only).
         toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).
     """
     from rich.console import Console

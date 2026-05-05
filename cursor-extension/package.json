@@ -101,7 +101,7 @@
         "timelogExtract.githubUser": {
           "type": "string",
           "default": "",
-          "description": "Optional GitHub login for public activity source."
+          "description": "Optional GitHub login(s) for public activity source; comma-separated for multiple accounts."
         },
         "timelogExtract.consentAccepted": {
           "type": "boolean",
@@ -113,7 +113,8 @@
   },
   "scripts": {
     "build": "tsc -p .",
-    "watch": "tsc -w -p ."
+    "watch": "tsc -w -p .",
+    "test": "npm run build && node --test dist/**/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

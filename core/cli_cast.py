@@ -18,6 +18,7 @@ import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from pathlib import Path
 from typing import Annotated
 
@@ -301,10 +302,33 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
         warn("GitHub Copilot CLI", "Path not found")
 
     # GitHub Source
-    gh_user = os.environ.get("GITHUB_USER", "").strip()
+    from collectors.github import (
+        DEFAULT_GITHUB_API_BASE,
+        resolve_github_api_base,
+        resolve_github_usernames,
+    )
+
+    gh_users = resolve_github_usernames(SimpleNamespace(github_user=None))
     gh_token = bool(os.environ.get("GITHUB_TOKEN", "").strip())
-    if gh_user:
-        ok("GitHub Source", f"Enabled (auto) for user '{gh_user}' — {'token present' if gh_token else 'no GITHUB_TOKEN'}")
+    api_base = resolve_github_api_base()
+    api_note = ""
+    warn_note = ""
+    if api_base.rstrip("/") != DEFAULT_GITHUB_API_BASE.rstrip("/"):
+        api_note = f"; API {api_base}"
+        lowered = api_base.lower()
+        if not (lowered.startswith("http://") or lowered.startswith("https://")):
+            warn_note = "; warning: GITHUB_API_BASE_URL should start with http:// or https://"
+        elif "/api/v3" not in lowered:
+            warn_note = "; warning: enterprise hosts usually need /api/v3"
+    if gh_users:
+        if len(gh_users) == 1:
+            umsg = f"user '{gh_users[0]}'"
+        else:
+            umsg = f"{len(gh_users)} users"
+        ok(
+            "GitHub Source",
+            f"Enabled (auto) for {umsg} — {'token present' if gh_token else 'no GITHUB_TOKEN'}{api_note}{warn_note}",
+        )
     else:
         warn("GitHub Source", "Set GITHUB_USER env var to enable")
 

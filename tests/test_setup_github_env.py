@@ -37,6 +37,7 @@ class SetupGithubEnvTests(unittest.TestCase):
         self.assertEqual(status, "PASS")
         self.assertIn("dry-run", note)
         self.assertTrue(any("gittan doctor --github-source auto" in step for step in steps))
+        self.assertTrue(any("GITHUB_API_BASE_URL" in step for step in steps))
 
     def test_configure_github_env_requires_user_for_pass(self):
         console = Console(record=True)
@@ -75,6 +76,7 @@ class SetupGithubEnvTests(unittest.TestCase):
             status, _note, steps = ghe.configure_github_env_for_setup(console, yes=True, dry_run=True)
         self.assertEqual(status, "ACTION_REQUIRED")
         self.assertTrue(any("Set GITHUB_USER manually" in step for step in steps))
+        self.assertTrue(any("GITHUB_API_BASE_URL" in step for step in steps))
 
 
 if __name__ == "__main__":

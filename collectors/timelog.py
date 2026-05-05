@@ -43,6 +43,11 @@ def _collect_worklog_md(worklog_path, dt_from, dt_to, profiles, local_tz, classi
             start = match.end()
             snippet = text[start:start + 220].strip().split("\n")[0][:120]
             project = classify_project(snippet, profiles)
+            if project == "Uncategorized":
+                # Guarded fallback: only enrich with worklog path context when primary
+                # snippet classification cannot determine a project.
+                fallback_haystack = f"{snippet} {wl} {wl.parent} {wl.parent.name}"
+                project = classify_project(fallback_haystack, profiles)
             results.append(make_event(source_name, ts, snippet or "worklog", project))
     except OSError:
         pass
@@ -75,6 +80,9 @@ def _collect_worklog_gtimelog(worklog_path, dt_from, dt_to, profiles, local_tz, 
                 continue
             snippet = (title or "worklog").strip()[:120]
             project = classify_project(snippet, profiles)
+            if project == "Uncategorized":
+                fallback_haystack = f"{snippet} {wl} {wl.parent} {wl.parent.name}"
+                project = classify_project(fallback_haystack, profiles)
             results.append(make_event(source_name, ts, snippet, project))
     except OSError:
         pass

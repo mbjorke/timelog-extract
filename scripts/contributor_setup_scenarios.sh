@@ -29,6 +29,10 @@ Optional env for non-interactive triage recordings:
   GITTAN_TRIAGE_MAX_DAYS=1
   GITTAN_TRIAGE_MAX_SITES=5
 
+Optional env for projects-audit-trim-sandbox (audit window; default is a fast empty/minimal range):
+  GITTAN_AUDIT_FROM=YYYY-MM-DD
+  GITTAN_AUDIT_TO=YYYY-MM-DD
+
 Scenarios:
   new-customer-from-scratch
       Empty project config + interactive setup + triage JSON.
@@ -46,6 +50,11 @@ Scenarios:
       Copy your real projects config to a temporary sandbox file.
       Focus: validate setup + triage behavior on realistic data without touching source config.
 
+  projects-audit-trim-sandbox
+      Copy your real projects config to a temp sandbox, then run a non-interactive chain:
+      projects-audit → --write-trim-plan → projects-trim --dry-run.
+      Focus: audit + trim-plan + trim wiring without modifying your original config.
+
   anonymized-demo-config
       Build an anonymized temporary config derived from real config.
       Focus: demo-safe structure preserving project count and mapping shape.
@@ -55,6 +64,8 @@ Examples:
   bash scripts/contributor_setup_scenarios.sh mapping-rerun-safety
   bash scripts/contributor_setup_scenarios.sh triage-only-evidence-review
   bash scripts/contributor_setup_scenarios.sh real-config-sandbox
+  bash scripts/contributor_setup_scenarios.sh projects-audit-trim-sandbox
+  bash scripts/contributor_setup_scenarios.sh projects-audit-trim-sandbox /path/to/timelog_projects.json
   bash scripts/contributor_setup_scenarios.sh anonymized-demo-config
   bash scripts/contributor_setup_scenarios.sh real-config-sandbox /path/to/timelog_projects.json
 EOF
@@ -83,6 +94,13 @@ print_checklist() {
     echo "  1) Does setup preserve your intended mappings on realistic data?"
     echo "  2) Do triage candidates look sensible for your active projects?"
     echo "  3) Is your original config file unchanged after the run?"
+  fi
+  if [[ "$scenario" == "projects-audit-trim-sandbox" ]]; then
+    echo "  1) Does projects-audit output look sane for the sandbox config?"
+    echo "  2) Does --write-trim-plan produce a JSON file you can inspect?"
+    echo "  3) Does projects-trim --dry-run list expected removes/skips without writing the sandbox?"
+    echo "  4) Default audit dates (2099) may yield an empty or minimal trim plan — OK for smoke."
+    echo "     For richer manual testing, set GITTAN_AUDIT_FROM and GITTAN_AUDIT_TO to a real window."
   fi
   if [[ "$scenario" == "anonymized-demo-config" ]]; then
     echo "  1) Are project/customer names anonymized consistently?"
@@ -263,6 +281,48 @@ PY
   echo "Anonymized demo config kept for inspection: $tmpcfg"
 }
 
+run_projects_audit_trim_sandbox() {
+  local source_cfg="$1"
+  local tmpcfg
+  tmpcfg="$(mktemp /tmp/gittan-contrib-audit-trim.XXXXXX)"
+  cp "$source_cfg" "$tmpcfg"
+
+  local audit_from="${GITTAN_AUDIT_FROM:-2099-01-01}"
+  local audit_to="${GITTAN_AUDIT_TO:-2099-01-01}"
+  local trim_plan
+  trim_plan="$(mktemp /tmp/gittan-contrib-trim-plan.XXXXXX)"
+
+  echo "Source config: $source_cfg"
+  echo "Sandbox copy:  $tmpcfg"
+  echo "Trim plan out: $trim_plan"
+  echo "Audit window:  $audit_from .. $audit_to (override with GITTAN_AUDIT_FROM / GITTAN_AUDIT_TO)"
+  echo "Original config file is not modified (only the sandbox copy is used)."
+  echo
+
+  (
+    cd "$ROOT_DIR"
+    export GITTAN_PROJECTS_CONFIG="$tmpcfg"
+    echo "==> projects-audit (terminal)"
+    python3 timelog_extract.py projects-audit \
+      --from "$audit_from" --to "$audit_to" \
+      --screen-time off --max-top-hosts 10
+    echo
+    echo "==> projects-audit --write-trim-plan"
+    python3 timelog_extract.py projects-audit \
+      --from "$audit_from" --to "$audit_to" \
+      --screen-time off --max-top-hosts 10 \
+      --write-trim-plan "$trim_plan"
+    echo
+    echo "==> projects-trim --dry-run"
+    python3 timelog_extract.py projects-trim -i "$trim_plan" --dry-run
+  )
+
+  echo
+  echo "Scenario completed."
+  echo "Sandbox config (inspect / diff): $tmpcfg"
+  echo "Trim plan file:                  $trim_plan"
+}
+
 main() {
   if [[ $# -lt 1 || $# -gt 2 ]]; then
     usage
@@ -287,6 +347,15 @@ main() {
         exit 1
       fi
       run_real_config_sandbox "$source_cfg_arg"
+      ;;
+    projects-audit-trim-sandbox)
+      print_checklist "$1"
+      source_cfg_arg="$(resolve_real_config_path "$source_cfg_arg")"
+      if [[ ! -f "$source_cfg_arg" ]]; then
+        echo "Source config not found: $source_cfg_arg" >&2
+        exit 1
+      fi
+      run_projects_audit_trim_sandbox "$source_cfg_arg"
       ;;
     anonymized-demo-config)
       print_checklist "$1"

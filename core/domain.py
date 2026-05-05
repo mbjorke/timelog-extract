@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+import re
+from urllib.parse import urlparse, urlunparse
 
 GENERIC_TOOL_TERMS = {
     "cloudflare",
@@ -19,12 +21,49 @@ def _is_path_like_term(term: str) -> bool:
     return "/" in t or "\\" in t or t.startswith("users/") or t.startswith("workspace/")
 
 
+_URL_TOKEN_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+
+
+def _normalize_lovable_url_token(url: str) -> str:
+    raw = (url or "").strip().rstrip(".,;)")
+    if not raw:
+        return ""
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return ""
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+    host = (parsed.netloc or "").lower().strip().rstrip(".")
+    if not host:
+        return ""
+    if host.endswith(".lovableproject"):
+        host = f"{host}.com"
+    elif host == "lovableproject":
+        host = "lovableproject.com"
+    rebuilt = urlunparse(
+        (parsed.scheme, host, parsed.path or "", parsed.params or "", parsed.query or "", parsed.fragment or "")
+    )
+    return rebuilt.lower()
+
+
+def _normalized_url_variants(text: str) -> str:
+    variants = []
+    for token in _URL_TOKEN_RE.findall(text or ""):
+        normalized = _normalize_lovable_url_token(token)
+        if normalized:
+            variants.append(normalized)
+    return " ".join(variants)
+
+
 def classify_project(text, profiles, fallback):
     haystack = (text or "").lower()
+    normalized_variants = _normalized_url_variants(text or "")
+    haystack_with_variants = f"{haystack} {normalized_variants}".strip()
     best_name = fallback
     best_rank = (0.0, 0, 0, 0)
     for profile in profiles:
-        matched = {term for term in profile["match_terms"] if term and term in haystack}
+        matched = {term for term in profile["match_terms"] if term and term in haystack_with_variants}
         weighted_score = 0.0
         specific_hits = 0
         generic_hits = 0
@@ -39,12 +78,12 @@ def classify_project(text, profiles, fallback):
             else:
                 weighted_score += 1.0
                 specific_hits += 1
-        if profile["name"].lower() in haystack:
+        if profile["name"].lower() in haystack_with_variants:
             weighted_score += 1.0
             specific_hits += 1
         for url in profile.get("tracked_urls") or []:
             fragment = str(url).strip().lower()
-            if fragment and fragment in haystack:
+            if fragment and fragment in haystack_with_variants:
                 weighted_score += 2.0
                 specific_hits += 1
         rank = (weighted_score, specific_hits, -generic_hits, len(matched))

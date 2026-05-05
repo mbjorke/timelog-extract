@@ -4,15 +4,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 from scripts.calibration.gap_day_triage import (
-    DayTopSite,
-    ProjectSuggestion,
     apply_domain_mappings,
     day_gap_row,
     load_gap_payload,
     parse_map_assignments,
     render_report,
-    score_projects_for_sites,
     summarize_day_sites,
 )
 
@@ -222,6 +220,29 @@ class GapDayTriageTests(unittest.TestCase):
     def test_invalid_scoring_mode_raises(self):
         with self.assertRaises(ValueError):
             score_projects_for_sites([], [], scoring_mode="unknown")
+
+    def test_balanced_alias_name_weight_is_linear_in_visits(self):
+        profiles = [
+            {
+                "name": "Alpha",
+                "canonical_project": "Alpha",
+                "aliases": ["alpha-app"],
+                "tracked_urls": [],
+                "match_terms": [],
+            }
+        ]
+        low = score_projects_for_sites(
+            profiles,
+            [DayTopSite(domain="alpha-app.example.com", visits=1, share=1.0, sample_title="one")],
+            scoring_mode="balanced",
+        )
+        high = score_projects_for_sites(
+            profiles,
+            [DayTopSite(domain="alpha-app.example.com", visits=10, share=1.0, sample_title="ten")],
+            scoring_mode="balanced",
+        )
+        self.assertEqual(low[0].score, 2)
+        self.assertEqual(high[0].score, 20)
 
     def test_alias_cluster_rolls_up_under_one_canonical(self):
         profiles = [

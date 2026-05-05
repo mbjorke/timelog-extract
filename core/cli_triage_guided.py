@@ -197,7 +197,8 @@ def _render_uncategorized_fallback(*, report, date_from: Optional[str], date_to:
 
 
 def _build_uncategorized_plan_days(*, report, projects_config: str, max_days: int, max_sites: int, scoring_mode: str) -> list[dict[str, Any]]:
-    from scripts.calibration.gap_day_triage import fetch_chrome_rows_for_day, score_projects_for_sites, summarize_day_sites
+    from core.triage_site_scoring import score_projects_for_sites
+    from scripts.calibration.gap_day_triage import fetch_chrome_rows_for_day, summarize_day_sites
 
     profiles = load_triage_profiles(projects_config)
     days = _top_uncategorized_days(report, max_days=max_days)

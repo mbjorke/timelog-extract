@@ -89,7 +89,7 @@ def _discover_git_repos(console: Console) -> list[Path]:
         if root in seen_roots or not root.exists() or not root.is_dir():
             continue
         seen_roots.add(root)
-        discovered = discover_local_git_repos(root, max_depth=3, limit=120)
+        discovered = discover_local_git_repos(root, max_depth=3, limit=None)
         console.print(f"[dim]- scanned {root} -> {len(discovered)} candidate repos[/dim]")
         candidates.extend(discovered)
         if len(candidates) >= 240:

@@ -23,12 +23,10 @@ from core.guided_project_config import build_guided_config_plan
 from core.triage_noise import extract_domain, filter_triage_noise_rows, is_triage_noise_row
 from core.triage_code_repos import build_code_repo_candidates
 from core.triage_domain_signals import domain_project_counts_from_events, github_repo_hint
+from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 from scripts.calibration.gap_day_triage import (
-    DayTopSite,
-    ProjectSuggestion,
     apply_domain_mappings,
     fetch_chrome_rows_for_day,
-    score_projects_for_sites,
     summarize_day_sites,
 )
 

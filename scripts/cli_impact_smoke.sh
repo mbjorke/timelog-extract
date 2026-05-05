@@ -9,6 +9,14 @@ echo "==> $PY $ENTRY -V"
 "$PY" "$ENTRY" -V
 echo "==> report --today --source-summary --quiet"
 "$PY" "$ENTRY" report --today --source-summary --quiet
+echo "==> projects-audit (narrow window, JSON)"
+"$PY" "$ENTRY" projects-audit --from 2099-01-01 --to 2099-01-01 --json > /dev/null
+echo "==> projects-audit --write-trim-plan"
+TMP_TRIM_PLAN="$(mktemp -t gittan-trim-plan.XXXXXX.json)"
+"$PY" "$ENTRY" projects-audit --from 2099-01-01 --to 2099-01-01 --write-trim-plan "$TMP_TRIM_PLAN"
+echo "==> projects-trim --dry-run (trim plan from audit)"
+"$PY" "$ENTRY" projects-trim -i "$TMP_TRIM_PLAN" --dry-run
+rm -f "$TMP_TRIM_PLAN"
 echo "==> ux-heroes"
 "$PY" "$ENTRY" ux-heroes
 echo "==> handoff: run CI fixtures with scripts/run_cli_experiments_ci.sh (report-only by default)"

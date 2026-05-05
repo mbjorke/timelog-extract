@@ -162,14 +162,16 @@ def suggest_bootstrap_root(cwd: Path) -> Path:
     return cwd.resolve()
 
 
-def discover_local_git_repos(root: Path, *, max_depth: int = 2, limit: int = 40) -> list[Path]:
+def discover_local_git_repos(root: Path, *, max_depth: int = 2, limit: int | None = None) -> list[Path]:
+    """Discover git repo roots under ``root`` (BFS). ``limit`` caps how many repos are returned;
+    ``None`` means no cap (scan until the queue is exhausted)."""
     resolved_root = root.expanduser().resolve()
     if not resolved_root.exists() or not resolved_root.is_dir():
         return []
     queue: list[tuple[Path, int]] = [(resolved_root, 0)]
     seen: set[Path] = set()
     repos: list[Path] = []
-    while queue and len(repos) < limit:
+    while queue and (limit is None or len(repos) < limit):
         current, depth = queue.pop(0)
         if current in seen:
             continue

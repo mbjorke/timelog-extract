@@ -39,7 +39,13 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         markers.extend(strict_markers)
     if profile == "ultra-strict":
         markers.extend(ultra_strict_markers)
-    return any(marker in text for marker in markers)
+    if any(marker in text for marker in markers):
+        return True
+    # Local Gittan sync/diagnostic artifacts should not count as user work.
+    if ".gittan" in text and ("timelog_projects.json" in text or "decisions-" in text):
+        if any(marker in text for marker in ("upload", "sync", "error", "enoent", "failed")):
+            return True
+    return False
 
 
 def load_cursor_workspaces(home: Path):

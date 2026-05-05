@@ -222,6 +222,38 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(len(out), 1)
 
+    def test_skips_gittan_sync_artifact_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "1" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-05-01 11:18:02 [error] upload sync failed "
+                        "/Users/me/.gittan-task/projects-config-trimming/timelog_projects.json "
+                        "decisions-2026-05-01.json workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 5, 1, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 5, 1, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "timelog-extract",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+            self.assertEqual(out, [])
+
 
 if __name__ == "__main__":
     unittest.main()

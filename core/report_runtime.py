@@ -141,19 +141,31 @@ def build_run_context(
         )
         if not is_machine_readable:
             args.source_summary = True
-    worklog_path = resolve_worklog_path_fn(
-        args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
+    workspace_worklog = workspace.get("worklog")
+    profile_worklog_paths = resolve_profile_worklog_paths(
+        profiles,
+        config_path=loaded_config_path,
+        script_dir=repo_root,
     )
-    worklog_paths: list[Path] = [worklog_path]
-    # Preserve explicit --worklog override behavior as a single authoritative path.
-    if args.worklog is None:
-        for candidate in resolve_profile_worklog_paths(
-            profiles,
-            config_path=loaded_config_path,
-            script_dir=repo_root,
-        ):
-            if candidate not in worklog_paths:
-                worklog_paths.append(candidate)
+    has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)
+
+    # In per-project mode (profile worklogs configured without an explicit base),
+    # do not implicitly inject legacy repo TIMELOG.md into the active worklog set.
+    if profile_worklog_paths and not has_explicit_base_worklog:
+        worklog_paths = list(profile_worklog_paths)
+        worklog_path = worklog_paths[0]
+        has_implicit_base_worklog = False
+    else:
+        worklog_path = resolve_worklog_path_fn(
+            args.worklog, loaded_config_path, workspace_worklog, repo_root
+        )
+        worklog_paths = [worklog_path]
+        has_implicit_base_worklog = True
+        # Preserve explicit --worklog override behavior as a single authoritative path.
+        if args.worklog is None:
+            for candidate in profile_worklog_paths:
+                if candidate not in worklog_paths:
+                    worklog_paths.append(candidate)
     args.worklog_paths = [str(path) for path in worklog_paths]
     _resolve_only_project_filter(args, profiles)
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
@@ -195,8 +207,11 @@ def build_run_context(
             print(f"Only customer: {args.customer!r}")
         print(f"Local timezone: {local_tz}")
         print(f"Project profiles: {len(profiles)}")
-        print(f"Worklog: {worklog_path}")
-        if len(worklog_paths) > 1:
+        if has_implicit_base_worklog:
+            print(f"Worklog: {worklog_path}")
+        else:
+            print(f"Worklogs: {len(worklog_paths)} per-project paths")
+        if has_implicit_base_worklog and len(worklog_paths) > 1:
             print(f"Per-project worklogs: {len(worklog_paths) - 1} additional paths")
         if chosen_strategy == "worklog-first" and not worklog_exists:
             if worklog_path.exists() and worklog_path.is_file():

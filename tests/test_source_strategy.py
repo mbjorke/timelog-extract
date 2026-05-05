@@ -111,8 +111,8 @@ class SourceStrategyTests(unittest.TestCase):
                 resolve_worklog_path_fn=lambda _cli, _cfg, _ws, _root: central,
                 want_log_fn=lambda _a: False,
             )
-            self.assertEqual(ctx.worklog_path, central)
-            self.assertEqual(ctx.worklog_paths, [central, project_log.resolve()])
+            self.assertEqual(ctx.worklog_path, project_log.resolve())
+            self.assertEqual(ctx.worklog_paths, [project_log.resolve()])
 
     def test_explicit_worklog_flag_keeps_single_worklog_behavior(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -141,6 +141,38 @@ class SourceStrategyTests(unittest.TestCase):
                 want_log_fn=lambda _a: False,
             )
             self.assertEqual(ctx.worklog_paths, [override])
+
+    def test_top_level_worklog_keeps_base_plus_per_project_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            central = repo / "workspace.md"
+            central.write_text("# workspace\n", encoding="utf-8")
+            project_log = repo / "client-a" / "TIMELOG.md"
+            project_log.parent.mkdir(parents=True, exist_ok=True)
+            project_log.write_text("# client-a\n", encoding="utf-8")
+
+            ctx = build_run_context(
+                config_path="timelog_projects.json",
+                date_from="2026-04-01",
+                date_to="2026-04-01",
+                options=self._options("auto", None),
+                local_tz=timezone.utc,
+                repo_root=repo,
+                as_run_options_fn=lambda o: o,
+                get_date_range_fn=lambda _f, _t: (
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                ),
+                load_profiles_fn=lambda _cfg, _args: (
+                    [{"name": "client-a", "worklog": "client-a/TIMELOG.md"}],
+                    repo / "timelog_projects.json",
+                    {"worklog": str(central)},
+                ),
+                resolve_worklog_path_fn=lambda _cli, _cfg, _ws, _root: central,
+                want_log_fn=lambda _a: False,
+            )
+            self.assertEqual(ctx.worklog_path, central)
+            self.assertEqual(ctx.worklog_paths, [central, project_log.resolve()])
 
 if __name__ == "__main__":
     unittest.main()

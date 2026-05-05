@@ -171,7 +171,12 @@ def _record_doctor(w: CastWriter) -> None:
 
 def _collect_doctor_rows() -> list[dict[str, str]]:
     """Run all doctor checks and return structured rows — no Rich output."""
-    from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
+    from core.config import (
+        load_profiles,
+        resolve_profile_worklog_paths,
+        resolve_projects_config_path,
+        resolve_worklog_path,
+    )
     from core.git_project_bootstrap import assess_match_terms_coverage
     from collectors.lovable_desktop import lovable_desktop_history_candidates
 
@@ -225,17 +230,39 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     projects_cfg = resolve_projects_config_path().expanduser()
     ns = argparse.Namespace(project="default-project", keywords="", email="")
     _profiles, loaded_cfg, workspace = load_profiles(str(projects_cfg), ns)
-    worklog_path = resolve_worklog_path(None, loaded_cfg, workspace.get("worklog"), runtime_workspace_root())
+    workspace_worklog = workspace.get("worklog")
+    worklog_path = resolve_worklog_path(None, loaded_cfg, workspace_worklog, runtime_workspace_root())
+    profile_worklogs = resolve_profile_worklog_paths(
+        _profiles,
+        config_path=loaded_cfg,
+        script_dir=runtime_workspace_root(),
+    )
 
     if projects_cfg.exists():
         ok("Project Config", "Accessible")
     else:
         warn("Project Config", f"Not found: {projects_cfg}")
 
-    if worklog_path.exists():
-        ok("Worklog (Local)", "Accessible")
+    using_single_worklog = bool(workspace_worklog)
+    if using_single_worklog:
+        if worklog_path.exists():
+            ok("Worklog (Local)", "Accessible")
+        else:
+            warn("Worklog (Local)", f"Not found: {worklog_path}")
+    elif profile_worklogs:
+        readable = len([path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)])
+        total = len(profile_worklogs)
+        if readable == total:
+            ok("Worklogs (Per-project)", f"Per-project worklogs configured ({readable}/{total} accessible)")
+        elif readable > 0:
+            warn("Worklogs (Per-project)", f"Per-project worklogs configured ({readable}/{total} accessible)")
+        else:
+            warn("Worklogs (Per-project)", f"Per-project worklogs configured (0/{total} accessible)")
     else:
-        warn("Worklog (Local)", f"Not found: {worklog_path}")
+        if worklog_path.exists():
+            ok("Worklog (Local)", "Accessible")
+        else:
+            warn("Worklog (Local)", f"Not found: {worklog_path}")
 
     # Git match_terms coverage
     coverage = assess_match_terms_coverage(Path.cwd(), _profiles)

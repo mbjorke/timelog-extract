@@ -332,6 +332,7 @@ def run_setup_wizard(
         build_setup_next_steps(
             dry_run=dry_run,
             projects_status=projects_status,
+            mapping_status=next((result for step, result, _ in summary_rows if step == "Step 3: Project Mapping"), "SKIPPED"),
             doctor_status=doctor_status,
             smoke_status=smoke_status,
             fast=fast,

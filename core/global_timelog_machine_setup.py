@@ -213,7 +213,13 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         _run_git_config(["core.hooksPath", str(hooks_dir)], dry_run=dry_run)
         if hook_path.exists():
             if _is_managed_hook(hook_path):
-                console.print("[green]Managed hook already present; keeping existing file.[/green]")
+                current = hook_path.read_text(encoding="utf-8")
+                if current != HOOK_BODY:
+                    console.print("[green]Managed hook already present; updating to latest script.[/green]")
+                    if not dry_run:
+                        hook_path.write_text(HOOK_BODY, encoding="utf-8")
+                else:
+                    console.print("[green]Managed hook already present and up to date.[/green]")
             else:
                 console.print("[yellow]Existing hook is not managed by Gittan, so overwrite confirmation is required.[/yellow]")
                 overwrite = yes or questionary.confirm(

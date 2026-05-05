@@ -15,10 +15,13 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         self.assertNotIn(" rg ", HOOK_BODY)
         self.assertNotIn("rg -Fx", HOOK_BODY)
 
-    def test_rejects_pathy_timelog_name(self):
-        self.assertIn('case "$CANDIDATE"', HOOK_BODY)
-        self.assertIn("*/", HOOK_BODY)
-        self.assertIn("*..*", HOOK_BODY)
+    def test_supports_absolute_and_tilde_paths(self):
+        self.assertIn('if [[ "$TIMELOG_NAME" == /* ]]; then', HOOK_BODY)
+        self.assertIn('elif [[ "$TIMELOG_NAME" == ~/* ]]; then', HOOK_BODY)
+
+    def test_prefers_project_scoped_worklog_when_present(self):
+        self.assertIn('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_ID}.md"', HOOK_BODY)
+        self.assertIn('"$CONFIGURED_CANDIDATE" == "TIMELOG.md"', HOOK_BODY)
 
 
 if __name__ == "__main__":

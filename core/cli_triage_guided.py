@@ -28,6 +28,7 @@ from core.report_nudges import (
     UNCATEGORIZED_NUDGE_THRESHOLD_RATIO,
     uncategorized_hours_by_day,
 )
+from core.triage_domain_signals import is_generic_triage_domain, merged_history_entries_for_canonical
 
 DEFAULT_GUIDED_RECENT_DAYS = 7
 _DECISIONS_SCHEMA_VERSION = 1
@@ -38,36 +39,34 @@ def _domain_checkbox_choices_with_context(
     *,
     suggested_project: str,
     domain_project_counts: dict[str, list[dict[str, Any]]] | None,
+    day_unexplained_hours: float = 0.0,
 ) -> list[Choice]:
     choices: list[Choice] = []
     history_map = domain_project_counts or {}
     project_key = str(suggested_project or "").strip().lower()
-    generic_domains = {
-        "google.com",
-        "github.com",
-        "claude.ai",
-        "accounts.google.com",
-        "mail.google.com",
-        "linkedin.com",
-        "messenger.com",
-        "tunnistautuminen.suomi.fi",
-    }
     for item in top_sites:
         domain = str(item.get("domain", "")).strip()
         if not domain:
             continue
         repo_hint = str(item.get("repo_hint", "")).strip()
+        visits = int(item.get("visits", 0) or 0)
+        share = float(item.get("share", 0.0) or 0.0)
+        impact_hours = max(0.0, float(day_unexplained_hours or 0.0) * max(0.0, share))
         sample_title = str(item.get("sample_title", "")).strip()
         title_preview = sample_title.replace("\n", " ").strip()
         if len(title_preview) > 60:
             title_preview = title_preview[:57].rstrip() + "..."
-        history = history_map.get(domain, [])
+        history = merged_history_entries_for_canonical(domain, history_map)
         history_preview = ", ".join(
             f"{str(entry.get('project', '')).strip()} ({int(entry.get('events', 0) or 0)})"
             for entry in history
             if str(entry.get("project", "")).strip()
         )
         parts = [domain]
+        if visits > 0:
+            parts.append(f"events: {visits}")
+        if impact_hours > 0:
+            parts.append(f"impact: {impact_hours:.1f}h")
         if repo_hint:
             parts.append(repo_hint)
         if title_preview:
@@ -75,9 +74,9 @@ def _domain_checkbox_choices_with_context(
         if history_preview:
             parts.append(f"often: {history_preview}")
         label = " — ".join(parts)
-        is_generic = domain.lower() in generic_domains
+        is_generic = is_generic_triage_domain(domain)
         direct_signal = bool(project_key and (project_key in domain.lower() or project_key in repo_hint.lower()))
-        hist = history_map.get(domain, [])
+        hist = history
         hist_total = sum(int(entry.get("events", 0) or 0) for entry in hist)
         hist_target = sum(
             int(entry.get("events", 0) or 0)
@@ -107,10 +106,12 @@ def _build_guided_decisions(
         if not suggested or suggested not in project_names:
             continue
         top_sites = day.get("top_sites", [])
+        day_unexplained_hours = float((day.get("gap") or {}).get("unexplained_screen_time_hours", 0.0) or 0.0)
         domain_choices = _domain_checkbox_choices_with_context(
             top_sites,
             suggested_project=suggested,
             domain_project_counts=domain_project_counts,
+            day_unexplained_hours=day_unexplained_hours,
         )
         if not domain_choices:
             continue
@@ -202,6 +203,7 @@ def _build_uncategorized_plan_days(*, report, projects_config: str, max_days: in
 
     profiles = load_triage_profiles(projects_config)
     days = _top_uncategorized_days(report, max_days=max_days)
+    uncategorized_hours = uncategorized_hours_by_day(report)
     if not days:
         return []
     plan_days: list[dict[str, Any]] = []
@@ -226,11 +228,16 @@ def _build_uncategorized_plan_days(*, report, projects_config: str, max_days: in
                 "top_sites": [
                     {
                         "domain": site.domain,
+                        "visits": int(site.visits),
+                        "share": round(float(site.share), 6),
                         "sample_title": str(site.sample_title or ""),
                         "repo_hint": domain_repo_hints.get(site.domain, ""),
                     }
                     for site in top_sites
                 ],
+                "gap": {
+                    "unexplained_screen_time_hours": float(uncategorized_hours.get(day, 0.0) or 0.0),
+                },
             }
         )
     return plan_days

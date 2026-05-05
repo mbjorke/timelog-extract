@@ -208,19 +208,20 @@ def merge_github_public_events(
     out: List[Dict[str, Any]] = []
     for batch in batches:
         for ev in batch:
-            gid = ev.pop("_github_event_id", None)
+            normalized = dict(ev)
+            gid = normalized.pop("_github_event_id", None)
             if gid:
                 if gid in seen_ids:
                     continue
                 seen_ids.add(gid)
             else:
                 key = (
-                    ev.get("detail", ""),
-                    ev["timestamp"].astimezone(timezone.utc).isoformat(),
+                    normalized.get("detail", ""),
+                    normalized["timestamp"].astimezone(timezone.utc).isoformat(),
                 )
                 if key in seen_noid:
                     continue
                 seen_noid.add(key)
-            out.append(ev)
+            out.append(normalized)
     out.sort(key=lambda e: e["timestamp"])
     return out

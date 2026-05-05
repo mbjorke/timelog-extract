@@ -113,7 +113,8 @@
   },
   "scripts": {
     "build": "tsc -p .",
-    "watch": "tsc -w -p ."
+    "watch": "tsc -w -p .",
+    "test": "npm run build && node --test dist/**/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

@@ -63,6 +63,10 @@ class LovableDesktopTests(unittest.TestCase):
 
     def test_filter_lovable_storage_urls_strict_drops_invalid_host_variants(self):
         urls = [
+            "https://lovable.dev",
+            "https://lovable.dev/",
+            "https://www.lovable.dev",
+            "https://www.lovable.dev/",
             "https://lovable.dev/projects/abc",
             "https://id-preview--abc.lovable.app/path",
             "https://x.lovableproject.com/hello",
@@ -77,9 +81,17 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertNotIn("https://lovable.devyO", filtered)
         self.assertNotIn("https://lovable.dev116cS", filtered)
         self.assertNotIn("https://lovable.dev4:e", filtered)
+        self.assertNotIn("https://lovable.dev", filtered)
+        self.assertNotIn("https://lovable.dev/", filtered)
+        self.assertNotIn("https://www.lovable.dev", filtered)
+        self.assertNotIn("https://www.lovable.dev/", filtered)
 
     def test_filter_lovable_storage_urls_balanced_salvages_noisy_lovable_dev_variants(self):
         urls = [
+            "https://lovable.dev",
+            "https://lovable.dev/",
+            "https://www.lovable.dev",
+            "https://www.lovable.dev/",
             "https://lovable.dev/projects/abc",
             "https://id-preview--abc.lovable.app/path",
             "https://4a0b0b28-b23f-418c-aa1c-dfabc21b21ad.lovableproject.",
@@ -93,7 +105,10 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertIn("https://id-preview--abc.lovable.app/path", filtered)
         self.assertIn("https://4a0b0b28-b23f-418c-aa1c-dfabc21b21ad.lovableproject.com", filtered)
         self.assertIn("https://id-preview--4a0b0b28-b23f-418c-aa1c-dfabc21b21ad.lovable.app", filtered)
-        self.assertIn("https://lovable.dev", filtered)
+        self.assertNotIn("https://lovable.dev", filtered)
+        self.assertNotIn("https://lovable.dev/", filtered)
+        self.assertNotIn("https://www.lovable.dev", filtered)
+        self.assertNotIn("https://www.lovable.dev/", filtered)
 
     def test_filter_lovable_storage_urls_balanced_skips_malformed_urls_without_crashing(self):
         urls = [

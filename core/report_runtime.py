@@ -14,6 +14,7 @@ from core.noise_profiles import (
     LOVABLE_NOISE_PROFILES,
     NOISE_PROFILES,
 )
+from core.config import resolve_profile_worklog_paths
 
 from collectors import ai_logs as ai_logs_collector
 from collectors import chrome as chrome_collector
@@ -73,6 +74,7 @@ class RunContext:
     profiles: List[Dict[str, Any]]
     loaded_config_path: Optional[Path]
     worklog_path: Path
+    worklog_paths: List[Path]
     source_strategy_effective: str
 
 
@@ -142,6 +144,17 @@ def build_run_context(
     worklog_path = resolve_worklog_path_fn(
         args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
     )
+    worklog_paths: list[Path] = [worklog_path]
+    # Preserve explicit --worklog override behavior as a single authoritative path.
+    if args.worklog is None:
+        for candidate in resolve_profile_worklog_paths(
+            profiles,
+            config_path=loaded_config_path,
+            script_dir=repo_root,
+        ):
+            if candidate not in worklog_paths:
+                worklog_paths.append(candidate)
+    args.worklog_paths = [str(path) for path in worklog_paths]
     _resolve_only_project_filter(args, profiles)
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
     if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
@@ -183,6 +196,8 @@ def build_run_context(
         print(f"Local timezone: {local_tz}")
         print(f"Project profiles: {len(profiles)}")
         print(f"Worklog: {worklog_path}")
+        if len(worklog_paths) > 1:
+            print(f"Per-project worklogs: {len(worklog_paths) - 1} additional paths")
         if chosen_strategy == "worklog-first" and not worklog_exists:
             if worklog_path.exists() and worklog_path.is_file():
                 print("Source strategy: worklog-first requested, but worklog not readable; using balanced fallback.")
@@ -216,6 +231,7 @@ def build_run_context(
         profiles=profiles,
         loaded_config_path=loaded_config_path,
         worklog_path=worklog_path,
+        worklog_paths=worklog_paths,
         source_strategy_effective=source_strategy_effective,
     )
 
@@ -260,7 +276,7 @@ def collect_runtime_events(
         context.dt_from,
         context.dt_to,
         context.args,
-        context.worklog_path,
+        context.worklog_paths,
         home=home,
         chrome_history_path_fn=chrome_collector.chrome_history_path,
         detect_mail_root_fn=mail_collector.detect_mail_root,

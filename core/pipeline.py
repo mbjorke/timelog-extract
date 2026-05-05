@@ -13,7 +13,7 @@ def collect_all_events(
     dt_from,
     dt_to,
     args: Any,
-    worklog_path: Path,
+    worklog_paths: Path | list[Path],
     *,
     home: Path,
     chrome_history_path_fn: Callable,
@@ -43,7 +43,7 @@ def collect_all_events(
     mail_root, mail_msg = detect_mail_root_fn(home)
     collectors = build_collector_specs_fn(
         args,
-        worklog_path,
+        worklog_paths,
         chrome_history_exists=chrome_history_exists,
         lovable_desktop_history_exists=lovable_desktop_usable,
         mail_root=mail_root,

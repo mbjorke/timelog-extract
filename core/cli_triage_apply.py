@@ -19,6 +19,7 @@ from core.config import (
     load_projects_config_payload,
     save_projects_config_payload,
 )
+from core.triage_domain_signals import is_generic_triage_domain
 
 _VALID_RULE_TYPES = {"tracked_urls", "match_terms"}
 _SCHEMA_VERSION = 1
@@ -71,6 +72,17 @@ def _project_exists(payload: dict, project_name: str) -> bool:
         if str(p.get("name", "")).strip().lower() == clean:
             return True
     return False
+
+
+def _is_auto_disallowed_tracked_url(rule_type: str, rule_value: str) -> bool:
+    if rule_type != "tracked_urls":
+        return False
+    candidate = str(rule_value or "").strip().lower()
+    if not candidate:
+        return False
+    # Guard auto-apply flows from adding broad generic roots;
+    # manual config edits remain fully supported.
+    return is_generic_triage_domain(candidate)
 
 
 def _render_plan_preview(validated: list[tuple[str, str, str]]) -> str:
@@ -126,6 +138,8 @@ def apply_triage_decisions_payload(
             errors.append(
                 f"Decision #{idx}: project '{project_name}' not in config (use --allow-create to create)"
             )
+            continue
+        if _is_auto_disallowed_tracked_url(rule_type, rule_value):
             continue
         deduped_value = rule_value.lower() if rule_type == "match_terms" else rule_value
         key = (project_name.lower(), rule_type, deduped_value)

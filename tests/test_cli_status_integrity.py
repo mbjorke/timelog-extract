@@ -152,7 +152,7 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertEqual(getattr(options, "noise_profile", ""), "ultra-strict")
         self.assertEqual(getattr(options, "lovable_noise_profile", ""), "strict")
 
-    def test_status_shows_bounded_mapping_suggestions(self):
+    def test_status_does_not_show_inline_mapping_suggestions(self):
         start = datetime(2026, 4, 22, 8, 0, tzinfo=timezone.utc)
         end = datetime(2026, 4, 22, 8, 30, tzinfo=timezone.utc)
         report = _FakeReport(
@@ -173,9 +173,23 @@ class StatusIntegrityTests(unittest.TestCase):
         with patch("core.report_service.run_timelog_report", return_value=report):
             r = self.runner.invoke(app, ["status", "--yesterday"])
         self.assertEqual(r.exit_code, 0, msg=r.output)
-        self.assertIn("Mapping suggestions", r.output)
-        self.assertIn("consider adding tracked_urls", r.output)
-        self.assertLessEqual(r.output.count("consider "), 3)
+        self.assertNotIn("Mapping suggestions", r.output)
+        self.assertNotIn("consider adding tracked_urls", r.output)
+        self.assertEqual(r.output.count("consider "), 0)
+
+    def test_status_shows_timelog_evidence_projects_note(self):
+        report = _FakeReport(
+            project_reports={"A": {"2026-04-22": {"hours": 1.0, "sessions": [1]}}},
+            overall_days={"2026-04-22": {"hours": 1.0, "sessions": [1]}},
+            included_events=[
+                {"project": "A", "source": "TIMELOG.md"},
+                {"project": "B", "source": "Chrome"},
+            ],
+        )
+        with patch("core.report_service.run_timelog_report", return_value=report):
+            r = self.runner.invoke(app, ["status", "--yesterday"])
+        self.assertEqual(r.exit_code, 0, msg=r.output)
+        self.assertIn("TIMELOG evidence projects in window: A", r.output)
 
 
 if __name__ == "__main__":

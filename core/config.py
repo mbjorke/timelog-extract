@@ -68,7 +68,10 @@ def normalize_profile(raw):
     name = str(raw.get("name", "")).strip()
     if not name:
         raise ValueError("Each project profile must have 'name'")
-    match_terms_input = as_list(raw.get("match_terms")) or [name]
+    if "match_terms" in raw:
+        match_terms_input = as_list(raw.get("match_terms"))
+    else:
+        match_terms_input = [name]
     tracked_urls = as_list(raw.get("tracked_urls"))
     email = str(raw.get("email", "")).strip()
     customer = str(raw.get("customer", "")).strip() or name
@@ -83,16 +86,10 @@ def normalize_profile(raw):
     canonical_project = str(raw.get("canonical_project", "")).strip() or name
     aliases = as_list(raw.get("aliases"))
     merged_aliases = sorted({alias for alias in aliases + [name, canonical_project] if alias})
-    terms = sorted(
-        {
-            t.lower()
-            for t in (match_terms_input + [name])
-            if t
-        }
-    )
+    terms = sorted({t.lower() for t in match_terms_input if t})
     merged_tracked_urls = sorted({url for url in tracked_urls if url})
     tags = sorted({str(t).strip().lower() for t in as_list(raw.get("tags")) if str(t).strip()})
-    return {
+    profile = {
         "name": name,
         "project_id": project_id,
         "enabled": enabled,
@@ -108,6 +105,10 @@ def normalize_profile(raw):
         "invoice_description": invoice_description,
         "tags": tags,
     }
+    worklog = str(raw.get("worklog", "")).strip()
+    if worklog:
+        profile["worklog"] = worklog
+    return profile
 
 
 def default_worklog_path(script_dir: Path) -> Path:
@@ -131,6 +132,30 @@ def resolve_worklog_path(cli_worklog, config_path, workspace_worklog, script_dir
             p = (base / p).resolve()
         return p
     return default_worklog_path(script_dir)
+
+
+def resolve_profile_worklog_paths(
+    profiles,
+    *,
+    config_path: Optional[Path],
+    script_dir: Path,
+) -> list[Path]:
+    """Resolve optional per-project worklog paths from normalized profiles."""
+    out: list[Path] = []
+    seen: set[Path] = set()
+    base = Path(config_path).parent if config_path else script_dir
+    for profile in profiles or []:
+        raw = str((profile or {}).get("worklog", "")).strip()
+        if not raw:
+            continue
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = (base / path).resolve()
+        if path in seen:
+            continue
+        seen.add(path)
+        out.append(path)
+    return out
 
 
 def load_profiles(config_path, args):
@@ -326,10 +351,19 @@ def remove_rule_from_project(
         kept = [v for v in raw_list if str(v).strip().lower() != cleaned_val.lower()]
         if len(kept) == len(raw_list):
             return False
-        target[key] = kept
-        normalized = normalize_profile(target)
-        _preserve_non_normalized_fields(normalized, target, cleaned_name)
-        target.clear()
-        target.update(normalized)
+        # Keep project shape as-is after removals; normalizing here would
+        # re-introduce fallback match_terms like the project name.
+        compact: list[str] = []
+        seen: set[str] = set()
+        for value in kept:
+            sval = str(value).strip()
+            if not sval:
+                continue
+            marker = sval.lower()
+            if marker in seen:
+                continue
+            seen.add(marker)
+            compact.append(sval)
+        target[key] = compact
         return True
     return False

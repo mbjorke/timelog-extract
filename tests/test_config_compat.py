@@ -32,6 +32,15 @@ class ConfigCompatibilityTests(unittest.TestCase):
         self.assertIn("alpha", profile["match_terms"])
         self.assertNotIn("beta", profile["match_terms"])
 
+    def test_normalize_profile_keeps_explicit_empty_match_terms(self):
+        profile = normalize_profile(
+            {
+                "name": "Demo",
+                "match_terms": [],
+            }
+        )
+        self.assertEqual(profile["match_terms"], [])
+
     def test_normalize_profile_uses_tracked_urls(self):
         """Uses tracked_urls as canonical URL field."""
         profile = normalize_profile(
@@ -41,6 +50,15 @@ class ConfigCompatibilityTests(unittest.TestCase):
             }
         )
         self.assertEqual(profile["tracked_urls"], ["https://example.com/a"])
+
+    def test_normalize_profile_preserves_optional_project_worklog(self):
+        profile = normalize_profile(
+            {
+                "name": "Demo",
+                "worklog": "clients/demo/TIMELOG.md",
+            }
+        )
+        self.assertEqual(profile.get("worklog"), "clients/demo/TIMELOG.md")
 
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(

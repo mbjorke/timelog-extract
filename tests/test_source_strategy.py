@@ -82,5 +82,65 @@ class SourceStrategyTests(unittest.TestCase):
             )
             self.assertEqual(ctx.source_strategy_effective, "balanced")
 
+    def test_context_collects_per_project_worklog_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            central = repo / "TIMELOG.md"
+            central.write_text("# central\n", encoding="utf-8")
+            project_log = repo / "client-a" / "TIMELOG.md"
+            project_log.parent.mkdir(parents=True, exist_ok=True)
+            project_log.write_text("# client-a\n", encoding="utf-8")
+
+            ctx = build_run_context(
+                config_path="timelog_projects.json",
+                date_from="2026-04-01",
+                date_to="2026-04-01",
+                options=self._options("auto", None),
+                local_tz=timezone.utc,
+                repo_root=repo,
+                as_run_options_fn=lambda o: o,
+                get_date_range_fn=lambda _f, _t: (
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                ),
+                load_profiles_fn=lambda _cfg, _args: (
+                    [{"name": "client-a", "worklog": "client-a/TIMELOG.md"}],
+                    repo / "timelog_projects.json",
+                    {},
+                ),
+                resolve_worklog_path_fn=lambda _cli, _cfg, _ws, _root: central,
+                want_log_fn=lambda _a: False,
+            )
+            self.assertEqual(ctx.worklog_path, central)
+            self.assertEqual(ctx.worklog_paths, [central, project_log.resolve()])
+
+    def test_explicit_worklog_flag_keeps_single_worklog_behavior(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            override = repo / "override.md"
+            override.write_text("# override\n", encoding="utf-8")
+
+            ctx = build_run_context(
+                config_path="timelog_projects.json",
+                date_from="2026-04-01",
+                date_to="2026-04-01",
+                options=self._options("auto", str(override)),
+                local_tz=timezone.utc,
+                repo_root=repo,
+                as_run_options_fn=lambda o: o,
+                get_date_range_fn=lambda _f, _t: (
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                ),
+                load_profiles_fn=lambda _cfg, _args: (
+                    [{"name": "client-a", "worklog": "client-a/TIMELOG.md"}],
+                    repo / "timelog_projects.json",
+                    {},
+                ),
+                resolve_worklog_path_fn=lambda cli, _cfg, _ws, _root: Path(cli),
+                want_log_fn=lambda _a: False,
+            )
+            self.assertEqual(ctx.worklog_paths, [override])
+
 if __name__ == "__main__":
     unittest.main()

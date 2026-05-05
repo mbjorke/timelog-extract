@@ -189,28 +189,52 @@ class RuntimeCollectors:
 
     def collect_worklog(self, worklog_path, dt_from, dt_to, profiles):
         worklog_format = getattr(self.cli_args, "worklog_format", "auto") if self.cli_args is not None else "auto"
-        if hasattr(self.timelog, "collect_worklog"):
-            return self.timelog.collect_worklog(
-                worklog_path,
-                dt_from,
-                dt_to,
-                profiles,
-                self.local_tz,
-                self.classify_project,
-                self.make_event,
-                self.worklog_source,
-                worklog_format=worklog_format,
-            )
-        return self.timelog.collect_timelog(
-            worklog_path,
-            dt_from,
-            dt_to,
-            profiles,
-            self.local_tz,
-            self.classify_project,
-            self.make_event,
-            self.worklog_source,
-        )
+        paths: list[str]
+        if isinstance(worklog_path, (list, tuple, set)):
+            paths = [str(p) for p in worklog_path if str(p).strip()]
+        else:
+            paths = [str(worklog_path)]
+
+        merged: list[dict[str, Any]] = []
+        seen: set[tuple[Any, ...]] = set()
+        for one_path in paths:
+            if not one_path:
+                continue
+            if hasattr(self.timelog, "collect_worklog"):
+                rows = self.timelog.collect_worklog(
+                    one_path,
+                    dt_from,
+                    dt_to,
+                    profiles,
+                    self.local_tz,
+                    self.classify_project,
+                    self.make_event,
+                    self.worklog_source,
+                    worklog_format=worklog_format,
+                )
+            else:
+                rows = self.timelog.collect_timelog(
+                    one_path,
+                    dt_from,
+                    dt_to,
+                    profiles,
+                    self.local_tz,
+                    self.classify_project,
+                    self.make_event,
+                    self.worklog_source,
+                )
+            for event in rows:
+                key = (
+                    str(event.get("source", "")),
+                    event.get("timestamp"),
+                    str(event.get("detail", "")),
+                    str(event.get("project", "")),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(event)
+        return merged
 
     def collect_github(self, profiles, dt_from, dt_to):
         from collectors.github import merge_github_public_events, resolve_github_api_base, resolve_github_usernames

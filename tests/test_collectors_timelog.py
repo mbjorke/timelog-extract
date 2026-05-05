@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.timelog import collect_worklog
+from core.runtime_collectors import RuntimeCollectors
 
 
 class TimelogCollectorTests(unittest.TestCase):
@@ -45,6 +46,68 @@ class TimelogCollectorTests(unittest.TestCase):
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["project"], "timelog-extract")
             self.assertIn("chore: update commit summary", out[0]["detail"])
+
+    def test_runtime_collect_worklog_merges_multiple_paths_without_duplicates(self):
+        calls = []
+
+        class _FakeTimelogCollector:
+            @staticmethod
+            def collect_worklog(
+                worklog_path,
+                dt_from,
+                dt_to,
+                profiles,
+                local_tz,
+                classify_project,
+                make_event,
+                source_name,
+                *,
+                worklog_format="auto",
+            ):
+                calls.append(str(worklog_path))
+                return [
+                    {
+                        "source": source_name,
+                        "timestamp": dt_from,
+                        "detail": "same event",
+                        "project": "project-a",
+                    }
+                ]
+
+        runtime = RuntimeCollectors(
+            cli_args=type("Args", (), {"worklog_format": "auto"})(),
+            home=Path("."),
+            local_tz=timezone.utc,
+            chrome_epoch_delta_us=0,
+            uncategorized="Uncategorized",
+            cursor_checkpoints_dir=Path("."),
+            codex_ide_session_index=Path("."),
+            worklog_source="TIMELOG.md",
+            cursor_checkpoints_source="Cursor checkpoints",
+            classify_project_fn=lambda text, _profiles: text,
+            make_event_fn=lambda source, ts, detail, project: {
+                "source": source,
+                "timestamp": ts,
+                "detail": detail,
+                "project": project,
+            },
+            ai_logs_collector=object(),
+            chrome_collector=object(),
+            cursor_collector=object(),
+            mail_collector=object(),
+            timelog_collector=_FakeTimelogCollector(),
+            github_collector=object(),
+            toggl_collector=object(),
+        )
+        dt = datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc)
+        rows = runtime.collect_worklog(
+            ["/tmp/a/TIMELOG.md", "/tmp/b/TIMELOG.md"],
+            dt,
+            dt,
+            profiles=[],
+        )
+        self.assertEqual(calls, ["/tmp/a/TIMELOG.md", "/tmp/b/TIMELOG.md"])
+        self.assertEqual(len(rows), 1)
 
 
 if __name__ == "__main__":

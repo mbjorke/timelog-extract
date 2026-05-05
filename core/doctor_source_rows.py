@@ -15,6 +15,24 @@ from collectors.toggl import toggl_source_enabled
 from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED
 
 
+def _format_github_users(users: list[str]) -> str:
+    if len(users) == 1:
+        return f"user '{users[0]}'"
+    shown = users[:3]
+    tail = f", +{len(users) - 3} more" if len(users) > 3 else ""
+    return f"{len(users)} users ({', '.join(shown)}{tail})"
+
+
+def _github_api_base_warning(api_base: str) -> str:
+    lowered = api_base.lower()
+    if not (lowered.startswith("http://") or lowered.startswith("https://")):
+        return "; warning: GITHUB_API_BASE_URL should start with http:// or https://"
+    is_default = api_base.rstrip("/") == DEFAULT_GITHUB_API_BASE.rstrip("/")
+    if not is_default and "/api/v3" not in lowered:
+        return "; warning: enterprise hosts usually need /api/v3"
+    return ""
+
+
 def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -> None:
     """
     Append a GitHub source status row to the provided doctor health-check table.
@@ -35,6 +53,7 @@ def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -
     api_note = ""
     if api_base.rstrip("/") != DEFAULT_GITHUB_API_BASE.rstrip("/"):
         api_note = f"; API {api_base}"
+    warn_note = _github_api_base_warning(api_base)
     if gh_mode == "off":
         table.add_row(
             "GitHub Source",
@@ -49,14 +68,11 @@ def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -
         )
     else:
         token_note = "token present" if gh_token_present else "no token (public API limits apply)"
-        if len(gh_users) == 1:
-            user_note = f"user '{gh_users[0]}'"
-        else:
-            user_note = f"{len(gh_users)} users ({', '.join(gh_users)})"
+        user_note = _format_github_users(gh_users)
         table.add_row(
             "GitHub Source",
             OK_ICON,
-            f"[{STYLE_MUTED}]Enabled ({gh_mode}) for {user_note} — {token_note}{api_note}[/{STYLE_MUTED}]",
+            f"[{STYLE_MUTED}]Enabled ({gh_mode}) for {user_note} — {token_note}{api_note}{warn_note}[/{STYLE_MUTED}]",
         )
 
 

@@ -485,8 +485,9 @@ function getWizardHtml(): string {
       <option value="on">on</option>
       <option value="off">off</option>
     </select>
-    <label>GitHub user (optional, for GitHub source)</label>
-    <input id="githubUser" type="text" placeholder="your-login" />
+    <label>GitHub user(s) (optional, for GitHub source)</label>
+    <input id="githubUser" type="text" placeholder="work-user, personal-user" />
+    <p class="muted">Multiple accounts are comma-separated. Enterprise host uses GITHUB_API_BASE_URL in your shell environment.</p>
     <p id="scanSummary" class="muted"></p>
     <div>
       <button id="saveBtn">Save settings</button>

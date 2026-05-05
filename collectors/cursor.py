@@ -49,6 +49,13 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         markers.extend(ultra_strict_markers)
     if any(marker in text for marker in markers):
         return True
+    # Narrow strict-profile guard: query-parser diagnostics often embed unrelated
+    # repo slugs (for example ass-membra) and can skew project attribution.
+    if profile in {"strict", "ultra-strict"} and "unsupported query" in text:
+        if "regex" in text:
+            return True
+        if "(" in text and "|" in text:
+            return True
     # Local Gittan sync/diagnostic artifacts should not count as user work.
     if ".gittan" in text and ("timelog_projects.json" in text or "decisions-" in text):
         if any(marker in text for marker in ("upload", "sync", "error", "enoent", "failed")):

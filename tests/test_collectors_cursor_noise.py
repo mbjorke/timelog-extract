@@ -286,6 +286,103 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_strict_skips_unsupported_query_regex_noise_with_repo_slug(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "2" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-03-14 10:10:10 [warn] unsupported query in tooling log; "
+                        "regex=(ass-membra|foo) workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+                noise_profile="strict",
+            )
+            self.assertEqual(out, [])
+
+    def test_lenient_keeps_unsupported_query_regex_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "3" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-03-14 10:10:10 [warn] unsupported query in tooling log; "
+                        "regex=(ass-membra|foo) workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+                noise_profile="lenient",
+            )
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["project"], "ÅSS: Membra")
+
+    def test_strict_skips_unsupported_query_pattern_without_regex_word(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "4" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-03-14 10:10:10 [warn] Unsupported query "
+                        "\"(ass-membra|financing-portal)\\.md\" workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+                noise_profile="strict",
+            )
+            self.assertEqual(out, [])
+
 
 if __name__ == "__main__":
     unittest.main()

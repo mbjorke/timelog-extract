@@ -121,7 +121,7 @@ def report(
         typer.Option(help="GitHub login(s) for public events; comma-separated for multiple accounts"),
     ] = None,
     exclude: Annotated[str, typer.Option(help="Exclude keywords")] = "",
-    worklog: Annotated[Optional[str], typer.Option(help="Path to TIMELOG.md")] = None,
+    worklog: Annotated[Optional[str], typer.Option(help="Path to a worklog file (legacy fallback may be TIMELOG.md)")] = None,
     worklog_format: Annotated[str, typer.Option(help="auto/md/gtimelog")] = "auto",
     source_strategy: Annotated[str, typer.Option(help="auto/worklog-first/balanced")] = "auto",
     screen_time: Annotated[str, typer.Option(help="auto/on/off")] = "auto",

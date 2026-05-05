@@ -43,8 +43,13 @@ class SetupProjectsConfigTests(unittest.TestCase):
                     cfg.write_text(
                         json.dumps(
                             {
-                                "worklog": "TIMELOG.md",
-                                "projects": [{"name": "keep-me", "match_terms": ["keep"]}],
+                                "projects": [
+                                    {
+                                        "name": "keep-me",
+                                        "worklog": "~/.gittan/worklogs/keep-me.md",
+                                        "match_terms": ["keep"],
+                                    }
+                                ],
                             }
                         ),
                         encoding="utf-8",
@@ -120,7 +125,17 @@ class SetupProjectsConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "timelog_projects.json"
             cfg.write_text(
-                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "name": "existing",
+                                "worklog": "~/.gittan/worklogs/existing.md",
+                                "match_terms": ["existing"],
+                            }
+                        ]
+                    }
+                ),
                 encoding="utf-8",
             )
             with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm") as confirm_mock:
@@ -144,7 +159,17 @@ class SetupProjectsConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "timelog_projects.json"
             cfg.write_text(
-                json.dumps({"worklog": "TIMELOG.md", "projects": [{"name": "existing", "match_terms": ["existing"]}]}),
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "name": "existing",
+                                "worklog": "~/.gittan/worklogs/existing.md",
+                                "match_terms": ["existing"],
+                            }
+                        ]
+                    }
+                ),
                 encoding="utf-8",
             )
             with mock.patch("core.setup_projects_config_bootstrap.questionary.text") as text_mock, mock.patch(

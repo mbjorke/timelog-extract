@@ -1,8 +1,8 @@
 {
-  "worklog": "TIMELOG.md",
   "projects": [
     {
       "name": "example-project-alpha",
+      "worklog": "~/.gittan/worklogs/example-project-alpha.md",
       "canonical_project": "Example Internal Platform",
       "aliases": ["example-project-alpha", "alpha-ui", "example-desktop"],
       "customer": "Example Customer A",
@@ -15,6 +15,7 @@
     },
     {
       "name": "example-project",
+      "worklog": "~/.gittan/worklogs/example-project.md",
       "customer": "Example Customer B",
       "invoice_title": "Strategic development & delivery",
       "invoice_description": "Analysis, implementation, and iterative improvements in priority project areas with focus on stability and business value.",

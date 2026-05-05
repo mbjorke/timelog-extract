@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 _URL_RE = re.compile(r"https?://[^\s)>\"]+")
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9._/-]{2,}", re.IGNORECASE)
+_DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _STOPWORDS = {
     "error",
     "info",
@@ -23,6 +24,25 @@ _STOPWORDS = {
     "project",
     "session",
 }
+
+
+def _is_noise_detail(text: str) -> bool:
+    lower = (text or "").lower()
+    # Cursor marketplace internals are not actionable project signals.
+    if "loadfrommarketplacesource" in lower:
+        return True
+    # Extension metadata churn tends to create misleading uncategorized clusters.
+    if "extensions.json" in lower and ("install" in lower or "update" in lower):
+        return True
+    return False
+
+
+def _is_noise_rule_value(rule_type: str, rule_value: str) -> bool:
+    if not rule_value:
+        return True
+    if rule_type == "match_terms" and _DATE_ONLY_RE.match(rule_value):
+        return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -71,6 +91,8 @@ def build_uncategorized_clusters(
     grouped: dict[tuple[str, str, str], list[dict]] = {}
     for event in events:
         detail = str(event.get("detail") or "")
+        if _is_noise_detail(detail):
+            continue
         source = str(event.get("source") or "Unknown")
         domain = _extract_domain(detail)
         if domain:
@@ -80,6 +102,8 @@ def build_uncategorized_clusters(
             if not term:
                 continue
             key = ("match_terms", term, source)
+        if _is_noise_rule_value(key[0], key[1]):
+            continue
         grouped.setdefault(key, []).append(event)
 
     clusters: list[UncategorizedCluster] = []

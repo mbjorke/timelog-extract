@@ -30,6 +30,7 @@ class DoctorNextStepsTests(unittest.TestCase):
             self.assertNotIn("gittan projects --config", joined)
             self.assertIn(f"Create `{config_path.name}`", joined)
             self.assertIn(str(worklog_path), joined)
+            self.assertIn("per-project `worklog` paths in `timelog_projects.json`", joined)
             self.assertIn("repo-specific `match_terms`", joined)
             self.assertIn("pipx ensurepath", joined)
 
@@ -74,6 +75,7 @@ class DoctorNextStepsTests(unittest.TestCase):
             joined = "\n".join(steps)
             self.assertNotIn("Run `gittan setup`", joined)
             self.assertIn(str(worklog_path), joined)
+            self.assertIn("legacy fallback may resolve to `TIMELOG.md`", joined)
 
 
 class SetupNextStepsTests(unittest.TestCase):

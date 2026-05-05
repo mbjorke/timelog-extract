@@ -37,7 +37,7 @@ def doctor(
         Optional[str],
         typer.Option(
             "--worklog",
-            help="Path to TIMELOG.md (overrides config; default matches report: config worklog, else project default).",
+            help="Path to a worklog file (overrides config; recommended: per-project paths in timelog_projects.json).",
         ),
     ] = None,
     github_source: Annotated[
@@ -66,7 +66,7 @@ def doctor(
     Check source access and local integration health, then print a diagnostic table.
     
     Parameters:
-        worklog (Optional[str]): Path to TIMELOG.md that overrides the configured/workspace worklog.
+        worklog (Optional[str]): Path to a worklog file that overrides the configured/workspace worklog.
         github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
         github_user (Optional[str]): GitHub username to use when evaluating public event checks (visibility only).
         toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).

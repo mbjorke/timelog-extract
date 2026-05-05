@@ -185,7 +185,10 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     current_excludes_file = _read_global_git_config("core.excludesFile")
 
     print_command_hero(console, "setup-global-timelog")
-    console.print("This will configure global git hooks so each commit appends an entry to repo-local `TIMELOG.md`.")
+    console.print(
+        "This will configure global git hooks for commit-to-worklog automation. "
+        "Recommended model: per-project files in `~/.gittan/worklogs/<project-id>.md` via project profile `worklog` paths."
+    )
     table = Table(title="Current global git status", box=box.ROUNDED)
     table.border_style = STYLE_BORDER
     table.header_style = f"bold {STYLE_LABEL}"
@@ -245,7 +248,11 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         if not dry_run
         else "\n[green]Global timelog dry run completed.[/green]"
     )
-    console.print("Added `TIMELOG.md` to global gitignore." if added_ignore else "`TIMELOG.md` already present in global gitignore.")
+    console.print(
+        "Updated global gitignore with configured timelog filename and legacy `TIMELOG.md` fallback."
+        if added_ignore
+        else "Configured timelog filename and legacy `TIMELOG.md` fallback already present in global gitignore."
+    )
     verify_hooks = _read_global_git_config("core.hooksPath") if not dry_run else str(hooks_dir)
     verify_excludes = _read_global_git_config("core.excludesFile") if not dry_run else str(ignore_path)
     console.print("\n[bold]Verify:[/bold]")

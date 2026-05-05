@@ -3,7 +3,7 @@
 **Canonical command:** `gittan setup-global-timelog`  
 Use **`--dry-run`** first to preview changes.
 
-This configures Git so commits can append to a repo-local `TIMELOG.md` via a global hook path, scoped to the repositories you choose (or all). It is the maintained reference for this feature — use it from onboarding, docs, and CLI output.
+This configures Git so commits can append to a per-repo timelog file via a global hook path, scoped to the repositories you choose (or all). Pair this with explicit per-project worklog paths in `timelog_projects.json` so your reporting model stays locked to central per-project files. It is the maintained reference for this feature — use it from onboarding, docs, and CLI output.
 
 ## Quick use
 
@@ -14,7 +14,7 @@ gittan setup-global-timelog --yes       # apply
 
 ## Policy
 
-- Do not commit `TIMELOG.md` — it stays local (global gitignore / excludes as configured).
+- Do not commit local worklog files (including legacy `TIMELOG.md`) — they stay local (global gitignore / excludes as configured).
 - Treat `timelog_projects.json` as critical local data; the CLI warns if you move it carelessly.
 - Default behavior is automatic: if no env vars are set and no repo-local config exists, the CLI uses `~/.gittan-<user>/timelog_projects.json`.
 - `GITTAN_PROJECTS_CONFIG` (exact file) and `GITTAN_HOME` (directory containing `timelog_projects.json`) are optional overrides when you need custom paths.
@@ -23,7 +23,7 @@ gittan setup-global-timelog --yes       # apply
 
 Use one central directory for per-project history:
 
-- `~/.gittan/worklogs/<project>.md`
+- `~/.gittan/worklogs/<project-id>.md`
 - Keep source repo files in place during migration; copy/append instead of move/delete.
 - Add each project worklog path in `timelog_projects.json` as profile-level `worklog`.
 
@@ -38,7 +38,7 @@ Example profile fragment:
 
 ## Migration helper script (safe + idempotent)
 
-Use `scripts/migrate_project_worklogs.py` to migrate from repo-local `TIMELOG.md`
+Use `scripts/migrate_project_worklogs.py` to migrate from legacy repo-local `TIMELOG.md`
 files into central per-project files.
 
 Preview first:

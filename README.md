@@ -67,7 +67,7 @@ Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/ver
 
 ## First run
 
-Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you expect:
+Use a git checkout (usually the **repo root**) and lock your worklogs to per-project files:
 
 1. **`gittan doctor`** — see what collectors can see on this machine.  
 2. **`gittan setup`** — wire optional hooks and `timelog_projects.json` (`--dry-run` / `--interactive` if you want previews).  
@@ -82,7 +82,13 @@ Use a git checkout (usually the **repo root**) so `TIMELOG.md` lands where you e
 
 You usually do not need to set any env vars; defaults are automatic per user.
 
-**Where `TIMELOG.md` is resolved** (same order as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md)):
+**Worklog model (locked standard):**
+
+- Primary: per-project files in `~/.gittan/worklogs/<project-id>.md`.
+- Store each path in that project profile as `"worklog"` inside `timelog_projects.json`.
+- Legacy fallback: repo-local `TIMELOG.md` remains supported for compatibility, but is not the recommended default.
+
+**Legacy fallback resolution order** (same order as [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md)):
 
 1. **`--worklog PATH`** if you pass it.  
 2. Else the top-level **`worklog`** field in `timelog_projects.json`, if set.  
@@ -119,7 +125,8 @@ gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/tr
 
 | | |
 |--|--|
-| **`TIMELOG.md`** | Human-readable journal; safe to treat as a diary. |
+| **Per-project worklogs (`~/.gittan/worklogs/<project-id>.md`)** | Primary standard; each profile in `timelog_projects.json` should carry explicit `"worklog"` path. |
+| **`TIMELOG.md`** | Legacy fallback (compatibility only); still supported for existing setups. |
 | **`timelog_projects.json`** | Machine rules; **back it up**. Setup writes timestamped backups before replacing broken JSON. |
 
 ---

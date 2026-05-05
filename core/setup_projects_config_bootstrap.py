@@ -197,7 +197,7 @@ def ensure_projects_config(
         if not should_create:
             console.print("[yellow]Skipped project config bootstrap.[/yellow]")
             return ProjectsConfigBootstrapResult("SKIPPED", "Project config bootstrap skipped.", [])
-        payload = {"worklog": "TIMELOG.md", "projects": []}
+        payload = {"projects": []}
 
     root_path = Path(bootstrap_root).expanduser() if bootstrap_root else suggest_bootstrap_root(Path.cwd())
     if (not yes or prompt_bootstrap_root) and bootstrap_root is None:

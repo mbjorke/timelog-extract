@@ -27,6 +27,40 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         # hyphenated tokens make more specific match_terms suggestions.
         self.assertIn(("match_terms", "acme-feature"), cluster_keys)
 
+    def test_build_clusters_excludes_marketplace_and_extension_metadata_noise(self):
+        events = [
+            {
+                "source": "Cursor",
+                "detail": "loadFromMarketplaceSource id=5d300c892a43513c4c5d3ecb534bf9c78b6d6389",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Updated extensions.json metadata for install state",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Implemented acme-feature review flow",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
+
+    def test_build_clusters_excludes_date_only_match_term_keys(self):
+        events = [
+            {"source": "Cursor", "detail": "2026-05-05", "project": "Uncategorized"},
+            {"source": "Cursor", "detail": "Worked on acme-feature implementation", "project": "Uncategorized"},
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "2026-05-05"), cluster_keys)
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
 
 class UncategorizedReviewConfigTests(unittest.TestCase):
     def test_apply_rule_to_project_writes_without_duplicates(self):

@@ -29,7 +29,7 @@ def build_doctor_next_steps(
             steps.append(f"Create `{config_path.name}` in this repository with at least one enabled project profile.")
     if not worklog_ok:
         steps.append(
-            f"Create `{worklog_path}` or point Gittan at another file with `--worklog {shlex.quote(str(worklog_path))}`."
+            f"Create the expected worklog file at `{worklog_path}` (legacy fallback may resolve to `TIMELOG.md`) or set per-project `worklog` paths in `timelog_projects.json`."
         )
     if not match_terms_ok:
         if cli_on_path:

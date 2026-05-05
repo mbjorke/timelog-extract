@@ -101,7 +101,7 @@
         "timelogExtract.githubUser": {
           "type": "string",
           "default": "",
-          "description": "Optional GitHub login for public activity source."
+          "description": "Optional GitHub login(s) for public activity source; comma-separated for multiple accounts."
         },
         "timelogExtract.consentAccepted": {
           "type": "boolean",

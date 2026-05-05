@@ -46,7 +46,7 @@ If **no** events survive deduplication and inclusion filters, or every collector
 
 1. `gittan doctor` — paths and permissions for local files (Chrome, Mail, Cursor, etc.).
 2. `--format json` — inspect `collector_status` and `totals.event_count`.
-3. Ensure **opt-in sources** are actually enabled (e.g. GitHub username + `--github-source` when you want it on).
+3. Ensure **opt-in sources** are actually enabled (e.g. GitHub username + `--github-source` when you want it on). For **several GitHub logins** or **GitHub Enterprise Server** (`GITHUB_API_BASE_URL`), see [`docs/runbooks/multi-account-git-sources.md`](../runbooks/multi-account-git-sources.md).
 4. For **project classification**, remember that **uncategorized** events may be hidden unless `--include-uncategorized` (see `core/events.py`).
 
 ## Related docs

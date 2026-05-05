@@ -213,20 +213,26 @@ class RuntimeCollectors:
         )
 
     def collect_github(self, profiles, dt_from, dt_to):
-        from collectors.github import resolve_github_username
+        from collectors.github import merge_github_public_events, resolve_github_api_base, resolve_github_usernames
 
-        user = resolve_github_username(self.cli_args) if self.cli_args is not None else ""
-        if not user:
+        users = resolve_github_usernames(self.cli_args) if self.cli_args is not None else []
+        if not users:
             return []
-        return self.github.collect_public_events(
-            profiles,
-            dt_from,
-            dt_to,
-            username=user,
-            token=self.github_token,
-            classify_project=self.classify_project,
-            make_event=self.make_event,
-        )
+        api_base = resolve_github_api_base()
+        batches = [
+            self.github.collect_public_events(
+                profiles,
+                dt_from,
+                dt_to,
+                username=u,
+                token=self.github_token,
+                classify_project=self.classify_project,
+                make_event=self.make_event,
+                api_base=api_base,
+            )
+            for u in users
+        ]
+        return merge_github_public_events(batches)
 
     def collect_toggl(self, profiles, dt_from, dt_to):
         return self.toggl.collect_workspace_events(

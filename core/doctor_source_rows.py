@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 from rich import markup
 from rich.table import Table
 
+from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
 from collectors.toggl import toggl_source_enabled
 from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED
 
@@ -27,15 +29,19 @@ def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -
         gh_mode (str): The configured GitHub mode (e.g., "off" or "on"); "off" produces a disabled row.
         github_user (str | None): Optional explicit GitHub username to use instead of the `GITHUB_USER` env var.
     """
-    gh_user = (github_user or os.getenv("GITHUB_USER") or "").strip()
+    gh_users = resolve_github_usernames(SimpleNamespace(github_user=github_user))
     gh_token_present = bool((os.getenv("GITHUB_TOKEN") or "").strip())
+    api_base = resolve_github_api_base()
+    api_note = ""
+    if api_base.rstrip("/") != DEFAULT_GITHUB_API_BASE.rstrip("/"):
+        api_note = f"; API {api_base}"
     if gh_mode == "off":
         table.add_row(
             "GitHub Source",
             NA_ICON,
             f"[{STYLE_MUTED}]Disabled ({gh_mode}); enable with --github-source on[/{STYLE_MUTED}]",
         )
-    elif not gh_user:
+    elif not gh_users:
         table.add_row(
             "GitHub Source",
             NA_ICON,
@@ -43,10 +49,14 @@ def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -
         )
     else:
         token_note = "token present" if gh_token_present else "no token (public API limits apply)"
+        if len(gh_users) == 1:
+            user_note = f"user '{gh_users[0]}'"
+        else:
+            user_note = f"{len(gh_users)} users ({', '.join(gh_users)})"
         table.add_row(
             "GitHub Source",
             OK_ICON,
-            f"[{STYLE_MUTED}]Enabled ({gh_mode}) for user '{gh_user}' — {token_note}[/{STYLE_MUTED}]",
+            f"[{STYLE_MUTED}]Enabled ({gh_mode}) for {user_note} — {token_note}{api_note}[/{STYLE_MUTED}]",
         )
 
 

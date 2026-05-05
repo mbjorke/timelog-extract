@@ -81,6 +81,26 @@ class AddGithubDoctorRowTests(unittest.TestCase):
         _, _, msg = rows[0]
         self.assertIn("envuser2", msg)
 
+    def test_github_multiple_env_users_shows_count(self):
+        table, rows = _make_table()
+        with patch.dict("os.environ", {"GITHUB_USER": "a,b", "GITHUB_TOKEN": ""}, clear=False):
+            add_github_doctor_row(table, "auto", None)
+        _, _, msg = rows[0]
+        self.assertIn("2 users", msg)
+        self.assertIn("a", msg)
+        self.assertIn("b", msg)
+
+    def test_github_custom_api_base_noted_in_message(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {"GITHUB_USER": "u1", "GITHUB_TOKEN": "", "GITHUB_API_BASE_URL": "https://ghe.example.com/api/v3"},
+            clear=False,
+        ):
+            add_github_doctor_row(table, "auto", None)
+        _, _, msg = rows[0]
+        self.assertIn("ghe.example.com", msg)
+
 
 class AddTogglDoctorRowTests(unittest.TestCase):
     """Tests for add_toggl_doctor_row added in PR (extracted from cli_doctor_sources_projects)."""

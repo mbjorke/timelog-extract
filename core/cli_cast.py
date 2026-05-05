@@ -18,6 +18,7 @@ import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from pathlib import Path
 from typing import Annotated
 
@@ -301,10 +302,16 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
         warn("GitHub Copilot CLI", "Path not found")
 
     # GitHub Source
-    gh_user = os.environ.get("GITHUB_USER", "").strip()
+    from collectors.github import resolve_github_usernames
+
+    gh_users = resolve_github_usernames(SimpleNamespace(github_user=None))
     gh_token = bool(os.environ.get("GITHUB_TOKEN", "").strip())
-    if gh_user:
-        ok("GitHub Source", f"Enabled (auto) for user '{gh_user}' — {'token present' if gh_token else 'no GITHUB_TOKEN'}")
+    if gh_users:
+        if len(gh_users) == 1:
+            umsg = f"user '{gh_users[0]}'"
+        else:
+            umsg = f"{len(gh_users)} users ({', '.join(gh_users)})"
+        ok("GitHub Source", f"Enabled (auto) for {umsg} — {'token present' if gh_token else 'no GITHUB_TOKEN'}")
     else:
         warn("GitHub Source", "Set GITHUB_USER env var to enable")
 

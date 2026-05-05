@@ -51,7 +51,7 @@ def doctor(
         Optional[str],
         typer.Option(
             "--github-user",
-            help="GitHub username for public events (doctor visibility only).",
+            help="GitHub username(s) for public events; comma-separated for multiple (doctor visibility only).",
         ),
     ] = None,
     toggl_source: Annotated[

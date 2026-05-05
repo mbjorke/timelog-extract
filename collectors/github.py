@@ -19,13 +19,36 @@ USER_AGENT = (
 PER_PAGE = 100
 MAX_PAGES = 10
 
+DEFAULT_GITHUB_API_BASE = "https://api.github.com"
+_ENV_API_BASE = "GITHUB_API_BASE_URL"
+
+
+def resolve_github_api_base() -> str:
+    """REST API root: github.com uses https://api.github.com; Enterprise Server uses https://host/api/v3."""
+    raw = (os.environ.get(_ENV_API_BASE) or "").strip()
+    base = raw or DEFAULT_GITHUB_API_BASE
+    return base.rstrip("/")
+
+
+def _split_logins(raw: str) -> List[str]:
+    if not raw or not raw.strip():
+        return []
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+def resolve_github_usernames(args: Any) -> List[str]:
+    """CLI `--github-user` (comma-separated) overrides `GITHUB_USER` / `GITHUB_LOGIN` (comma-separated)."""
+    explicit = getattr(args, "github_user", None)
+    if explicit is not None and str(explicit).strip():
+        return _split_logins(str(explicit))
+    env = (os.environ.get("GITHUB_USER") or os.environ.get("GITHUB_LOGIN") or "").strip()
+    return _split_logins(env)
+
 
 def resolve_github_username(args: Any) -> str:
-    """CLI `--github-user` overrides `GITHUB_USER` / `GITHUB_LOGIN`."""
-    explicit = getattr(args, "github_user", None)
-    if explicit and str(explicit).strip():
-        return str(explicit).strip()
-    return (os.environ.get("GITHUB_USER") or os.environ.get("GITHUB_LOGIN") or "").strip()
+    """First GitHub login, or empty (backward compatibility for single-user callers)."""
+    users = resolve_github_usernames(args)
+    return users[0] if users else ""
 
 
 def github_source_enabled(args: Any) -> tuple[bool, Optional[str]]:
@@ -33,12 +56,12 @@ def github_source_enabled(args: Any) -> tuple[bool, Optional[str]]:
     mode = getattr(args, "github_source", "auto")
     if mode == "off":
         return False, "GitHub source disabled via --github-source off"
-    user = resolve_github_username(args)
-    if mode == "on" and not user:
+    users = resolve_github_usernames(args)
+    if mode == "on" and not users:
         return False, "GitHub on but no username (use --github-user or GITHUB_USER)"
-    if mode == "auto" and not user:
+    if mode == "auto" and not users:
         return False, "no GitHub username (set --github-user or GITHUB_USER for this source)"
-    if not user:
+    if not users:
         return False, "no GitHub username"
     return True, None
 
@@ -109,6 +132,7 @@ def collect_public_events(
     token: Optional[str],
     classify_project: Callable[..., str],
     make_event: Callable[..., Dict[str, Any]],
+    api_base: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Fetch `/users/{username}/events/public` (newest first; GitHub retains ~300 recent events).
@@ -117,6 +141,8 @@ def collect_public_events(
     """
     if not username:
         return []
+
+    base = (api_base or resolve_github_api_base()).rstrip("/")
 
     results: List[Dict[str, Any]] = []
     # Normalize bounds to aware UTC for comparison
@@ -128,7 +154,7 @@ def collect_public_events(
     dt_to_utc = dt_to.astimezone(timezone.utc)
 
     for page in range(1, MAX_PAGES + 1):
-        url = f"https://api.github.com/users/{username}/events/public?per_page={PER_PAGE}&page={page}"
+        url = f"{base}/users/{username}/events/public?per_page={PER_PAGE}&page={page}"
         req = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"})
         if token:
             req.add_header("Authorization", f"Bearer {token}")
@@ -159,7 +185,11 @@ def collect_public_events(
             repo = (ev.get("repo") or {}).get("name") or ""
             haystack = f"{repo} {detail}"
             project = classify_project(haystack, profiles)
-            results.append(make_event(GITHUB_SOURCE, ts, detail, project))
+            row = make_event(GITHUB_SOURCE, ts, detail, project)
+            eid = ev.get("id")
+            if eid is not None:
+                row["_github_event_id"] = str(eid)
+            results.append(row)
 
         if stop_paging:
             break
@@ -167,3 +197,30 @@ def collect_public_events(
             break
 
     return results
+
+
+def merge_github_public_events(
+    batches: List[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """Drop duplicate public events (same REST `id`) and strip internal keys."""
+    seen_ids: set[str] = set()
+    seen_noid: set[tuple[str, str]] = set()
+    out: List[Dict[str, Any]] = []
+    for batch in batches:
+        for ev in batch:
+            gid = ev.pop("_github_event_id", None)
+            if gid:
+                if gid in seen_ids:
+                    continue
+                seen_ids.add(gid)
+            else:
+                key = (
+                    ev.get("detail", ""),
+                    ev["timestamp"].astimezone(timezone.utc).isoformat(),
+                )
+                if key in seen_noid:
+                    continue
+                seen_noid.add(key)
+            out.append(ev)
+    out.sort(key=lambda e: e["timestamp"])
+    return out

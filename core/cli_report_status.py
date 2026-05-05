@@ -15,6 +15,7 @@ from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
+from core.projects_audit import build_inline_mapping_suggestions
 from core.report_nudges import build_unexplained_gap_nudge
 
 def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
@@ -42,14 +43,7 @@ def _resolve_timeframe_args(
     last_14_days: bool,
     last_month: bool,
 ) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
-    """Normalize timeframe flags into strings + booleans shared by `report` and `search`.
-
-    If no explicit timeframe is provided, prompts via `prompt_for_timeframe()` (same behavior as before).
-
-    Returns:
-        `(date_from, date_to, today, yesterday, last_3_days, last_week, last_14_days, last_month)`
-        where `date_from`/`date_to` are `YYYY-MM-DD` strings or `None`.
-    """
+    """Normalize timeframe flags for `report`/`search`; prompt when omitted."""
     if not (
         today
         or yesterday
@@ -123,7 +117,10 @@ def report(
     chrome_source: Annotated[str, typer.Option(help="on/off")] = "on",
     mail_source: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
     github_source: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
-    github_user: Annotated[Optional[str], typer.Option(help="GitHub login")] = None,
+    github_user: Annotated[
+        Optional[str],
+        typer.Option(help="GitHub login(s) for public events; comma-separated for multiple accounts"),
+    ] = None,
     exclude: Annotated[str, typer.Option(help="Exclude keywords")] = "",
     worklog: Annotated[Optional[str], typer.Option(help="Path to TIMELOG.md")] = None,
     worklog_format: Annotated[str, typer.Option(help="auto/md/gtimelog")] = "auto",
@@ -488,6 +485,10 @@ def status(
         nudge = build_unexplained_gap_nudge(report)
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
+        suggestions = build_inline_mapping_suggestions(events=report.all_events, profiles=report.profiles, max_candidates=3)
+        if suggestions:
+            console.print(f"[bold {STYLE_LABEL}]Mapping suggestions[/bold {STYLE_LABEL}]")
+            console.print("\n".join(f"[{STYLE_MUTED}]- {line}[/{STYLE_MUTED}]" for line in suggestions))
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
 
     except Exception as e:

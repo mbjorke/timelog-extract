@@ -6,7 +6,9 @@ from pathlib import Path
 
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
+    build_inline_mapping_suggestions,
     build_projects_audit_payload,
+    build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
     is_host_anchored_by_profiles,
 )
@@ -48,6 +50,47 @@ class ProjectsAuditTests(unittest.TestCase):
         by_val = {r["value"]: r["hits"] for r in proj["match_terms"]}
         self.assertEqual(by_val.get("alpha-token"), 1)
         self.assertEqual(by_val.get("shared"), 0)
+
+    def test_trim_plan_shape_and_zero_hit_rules(self) -> None:
+        profiles = [
+            {
+                "name": "project-beta",
+                "match_terms": ["used-term", "unused-term"],
+                "tracked_urls": ["tracked.example.com", "stale.example.org"],
+            }
+        ]
+        events = [
+            {
+                "source": "Chrome",
+                "detail": "used-term and https://tracked.example.com/x",
+                "project": "project-beta",
+            },
+        ]
+        tmp_cfg = self._temp_json()
+        self.addCleanup(Path(tmp_cfg).unlink, missing_ok=True)
+        audit = build_projects_audit_payload(
+            events=events,
+            profiles=profiles,
+            date_from="2026-05-01",
+            date_to="2026-05-02",
+            projects_config=tmp_cfg,
+            pool="deduped_all_events",
+        )
+        plan = build_zero_hit_trim_plan_from_audit(audit)
+        self.assertEqual(plan["schema_version"], 1)
+        self.assertIn("note", plan)
+        self.assertIn("meta", plan)
+        self.assertEqual(plan["meta"]["zero_hit_candidates"], 2)
+        removals = plan["removals"]
+        types_vals = {(r["rule_type"], r["rule_value"]) for r in removals}
+        self.assertIn(("match_terms", "unused-term"), types_vals)
+        self.assertIn(("tracked_urls", "stale.example.org"), types_vals)
+        self.assertNotIn(("match_terms", "used-term"), types_vals)
+        self.assertNotIn(("tracked_urls", "tracked.example.com"), types_vals)
+
+    def test_trim_plan_rejects_wrong_audit_schema(self) -> None:
+        with self.assertRaises(ValueError):
+            build_zero_hit_trim_plan_from_audit({"schema_version": 99, "projects": []})
 
     def test_top_hosts_and_anchored(self) -> None:
         profiles = [
@@ -135,6 +178,45 @@ class ProjectsAuditTests(unittest.TestCase):
         )
         self.assertTrue(ok2)
         self.assertEqual(proj.get("tracked_urls"), [])
+
+    def test_inline_mapping_suggestions_bounds_and_words(self) -> None:
+        profiles = [
+            {
+                "name": "project-alpha",
+                "match_terms": ["alpha-token", "stale-term"],
+                "tracked_urls": [],
+            }
+        ]
+        events = []
+        for idx in range(5):
+            events.append(
+                {
+                    "source": "Chrome",
+                    "detail": f"https://unmapped.example.dev/page-{idx} alpha-token",
+                    "project": "project-alpha",
+                }
+            )
+        suggestions = build_inline_mapping_suggestions(
+            events=events,
+            profiles=profiles,
+            max_candidates=2,
+        )
+        self.assertGreaterEqual(len(suggestions), 1)
+        self.assertLessEqual(len(suggestions), 2)
+        self.assertTrue(any("consider adding tracked_urls" in row for row in suggestions))
+
+    def test_inline_mapping_suggestions_quiet_when_low_signal(self) -> None:
+        profiles = [{"name": "project-alpha", "match_terms": ["alpha"], "tracked_urls": []}]
+        events = [
+            {"source": "Chrome", "detail": "alpha only", "project": "project-alpha"},
+            {"source": "Chrome", "detail": "alpha only", "project": "project-alpha"},
+        ]
+        suggestions = build_inline_mapping_suggestions(
+            events=events,
+            profiles=profiles,
+            max_candidates=3,
+        )
+        self.assertEqual(suggestions, [])
 
     def test_trim_roundtrip_tmp_file(self) -> None:
         tmp = Path(self._temp_json())

@@ -13,6 +13,8 @@ _URL_RE = re.compile(r"https?://[^\s)>\"']+", re.IGNORECASE)
 
 AUDIT_SCHEMA_VERSION = 1
 
+TRIM_PLAN_SCHEMA_VERSION = 1
+
 HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
     "substring of the event detail (same text field used by project classification). "
@@ -171,3 +173,131 @@ def build_projects_audit_payload(
         "projects": projects_out,
         "top_hosts": top_hosts_out,
     }
+
+
+def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[str, Any]:
+    """Build a `projects-trim` JSON plan (schema v1) with **candidate** removals.
+
+    Each entry is a rule that had **zero hits** in the audit's date window. That does not prove the
+    rule is unused outside the window — review before applying.
+    """
+    sv = int(audit_payload.get("schema_version", 0))
+    if sv != AUDIT_SCHEMA_VERSION:
+        raise ValueError(f"audit schema_version must be {AUDIT_SCHEMA_VERSION}, got {sv}")
+
+    removals: list[dict[str, str]] = []
+    for block in audit_payload.get("projects") or []:
+        pname = str(block.get("name", "")).strip()
+        if not pname:
+            continue
+        for row in block.get("match_terms") or []:
+            if int(row.get("hits", 0)) != 0:
+                continue
+            val = str(row.get("value", "")).strip()
+            if val:
+                removals.append(
+                    {"project_name": pname, "rule_type": "match_terms", "rule_value": val}
+                )
+        for row in block.get("tracked_urls") or []:
+            if int(row.get("hits", 0)) != 0:
+                continue
+            val = str(row.get("value", "")).strip()
+            if val:
+                removals.append(
+                    {"project_name": pname, "rule_type": "tracked_urls", "rule_value": val}
+                )
+
+    note = (
+        "Candidate removals: rules with zero hits in the audit window only (see audit hit_definition). "
+        "Review or delete rows you want to keep. Apply: gittan projects-trim -i <file> --dry-run "
+        "then rerun without --dry-run."
+    )
+
+    return {
+        "schema_version": TRIM_PLAN_SCHEMA_VERSION,
+        "note": note,
+        "removals": removals,
+        "meta": {
+            "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
+            "audit_options": audit_payload.get("options", {}),
+            "zero_hit_candidates": len(removals),
+        },
+    }
+
+
+def build_inline_mapping_suggestions(
+    *,
+    events: list[dict[str, Any]],
+    profiles: list[dict[str, Any]],
+    max_candidates: int = 3,
+) -> list[str]:
+    """Build concise rule-mapping hints for report/status terminal output.
+
+    Uses the same counting semantics as projects-audit and returns at most
+    `max_candidates` user-facing suggestion lines.
+    """
+    limit = max(0, int(max_candidates))
+    if limit == 0 or not events or not profiles:
+        return []
+
+    payload = build_projects_audit_payload(
+        events=events,
+        profiles=profiles,
+        date_from=None,
+        date_to=None,
+        projects_config="",
+        pool="deduped_all_events",
+        top_hosts_limit=max(6, limit * 2),
+    )
+    if int(payload.get("event_count", 0)) < 5:
+        return []
+
+    suggestions: list[str] = []
+
+    for row in payload.get("top_hosts", []):
+        if len(suggestions) >= limit:
+            break
+        hits = int(row.get("hits", 0))
+        if bool(row.get("anchored")) or hits < 3:
+            continue
+        host = str(row.get("host", "")).strip()
+        if not host:
+            continue
+        suggestions.append(
+            f"Host '{host}' appears in {hits} events; consider adding tracked_urls in the right project."
+        )
+
+    if len(suggestions) >= limit:
+        return suggestions
+
+    per_project_totals: dict[str, int] = {}
+    for block in payload.get("projects", []):
+        name = str(block.get("name", "")).strip()
+        if not name:
+            continue
+        total = 0
+        for row in block.get("match_terms", []) or []:
+            total += int(row.get("hits", 0))
+        for row in block.get("tracked_urls", []) or []:
+            total += int(row.get("hits", 0))
+        per_project_totals[name] = total
+
+    for block in payload.get("projects", []):
+        if len(suggestions) >= limit:
+            break
+        name = str(block.get("name", "")).strip()
+        if not name or per_project_totals.get(name, 0) < 3:
+            continue
+        for row in block.get("match_terms", []) or []:
+            if len(suggestions) >= limit:
+                break
+            if int(row.get("hits", 0)) != 0:
+                continue
+            value = str(row.get("value", "")).strip()
+            if not value:
+                continue
+            suggestions.append(
+                f"Project '{name}' term '{value}' had zero hits; consider moving term or removing it."
+            )
+
+    return suggestions[:limit]

@@ -19,6 +19,7 @@ from core.report_service import (
     generate_invoice_pdf,
     run_timelog_report,
 )
+from core.projects_audit import build_inline_mapping_suggestions
 from core.report_nudges import build_unexplained_gap_nudge
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
@@ -153,6 +154,15 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.args,
         report.config_path,
     )
+    suggestions = build_inline_mapping_suggestions(
+        events=report.all_events,
+        profiles=report.profiles,
+        max_candidates=3,
+    )
+    if suggestions:
+        print("Mapping suggestions:")
+        for line in suggestions:
+            print(f"- {line}")
     nudge = build_unexplained_gap_nudge(report)
     if nudge:
         print(nudge)

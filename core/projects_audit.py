@@ -240,6 +240,39 @@ def build_inline_mapping_suggestions(
     if limit == 0 or not events or not profiles:
         return []
 
+    candidates = build_inline_mapping_candidates(
+        events=events,
+        profiles=profiles,
+        max_candidates=max_candidates,
+    )
+    suggestions: list[str] = []
+    for candidate in candidates:
+        if candidate.get("kind") == "host":
+            host = str(candidate.get("host", "")).strip()
+            hits = int(candidate.get("hits", 0))
+            suggestions.append(
+                f"Host '{host}' appears in {hits} events; consider adding tracked_urls in the right project."
+            )
+            continue
+        if candidate.get("kind") == "stale_term":
+            project = str(candidate.get("project_name", "")).strip()
+            value = str(candidate.get("rule_value", "")).strip()
+            suggestions.append(
+                f"Project '{project}' term '{value}' had zero hits; consider moving term or removing it."
+            )
+    return suggestions[: max(0, int(max_candidates))]
+
+
+def build_inline_mapping_candidates(
+    *,
+    events: list[dict[str, Any]],
+    profiles: list[dict[str, Any]],
+    max_candidates: int = 3,
+) -> list[dict[str, Any]]:
+    """Build structured host/stale-term candidates for inline terminal review."""
+    limit = max(0, int(max_candidates))
+    if limit == 0 or not events or not profiles:
+        return []
     payload = build_projects_audit_payload(
         events=events,
         profiles=profiles,
@@ -252,10 +285,10 @@ def build_inline_mapping_suggestions(
     if int(payload.get("event_count", 0)) < 5:
         return []
 
-    suggestions: list[str] = []
+    candidates: list[dict[str, Any]] = []
 
     for row in payload.get("top_hosts", []):
-        if len(suggestions) >= limit:
+        if len(candidates) >= limit:
             break
         hits = int(row.get("hits", 0))
         if bool(row.get("anchored")) or hits < 3:
@@ -263,12 +296,10 @@ def build_inline_mapping_suggestions(
         host = str(row.get("host", "")).strip()
         if not host:
             continue
-        suggestions.append(
-            f"Host '{host}' appears in {hits} events; consider adding tracked_urls in the right project."
-        )
+        candidates.append({"kind": "host", "host": host, "hits": hits})
 
-    if len(suggestions) >= limit:
-        return suggestions
+    if len(candidates) >= limit:
+        return candidates
 
     per_project_totals: dict[str, int] = {}
     for block in payload.get("projects", []):
@@ -283,21 +314,26 @@ def build_inline_mapping_suggestions(
         per_project_totals[name] = total
 
     for block in payload.get("projects", []):
-        if len(suggestions) >= limit:
+        if len(candidates) >= limit:
             break
         name = str(block.get("name", "")).strip()
         if not name or per_project_totals.get(name, 0) < 3:
             continue
         for row in block.get("match_terms", []) or []:
-            if len(suggestions) >= limit:
+            if len(candidates) >= limit:
                 break
             if int(row.get("hits", 0)) != 0:
                 continue
             value = str(row.get("value", "")).strip()
             if not value:
                 continue
-            suggestions.append(
-                f"Project '{name}' term '{value}' had zero hits; consider moving term or removing it."
+            candidates.append(
+                {
+                    "kind": "stale_term",
+                    "project_name": name,
+                    "rule_type": "match_terms",
+                    "rule_value": value,
+                }
             )
 
-    return suggestions[:limit]
+    return candidates[:limit]

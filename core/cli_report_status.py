@@ -14,6 +14,7 @@ from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import default_projects_config_option
+from core.inline_mapping_apply import run_inline_mapping_apply_loop
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 from core.projects_audit import build_inline_mapping_suggestions
 from core.report_nudges import build_unexplained_gap_nudge
@@ -489,6 +490,9 @@ def status(
         if suggestions:
             console.print(f"[bold {STYLE_LABEL}]Mapping suggestions[/bold {STYLE_LABEL}]")
             console.print("\n".join(f"[{STYLE_MUTED}]- {line}[/{STYLE_MUTED}]" for line in suggestions))
+            run_inline_mapping_apply_loop(
+                events=report.all_events, profiles=report.profiles, projects_config=options.projects_config, max_candidates=3
+            )
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
 
     except Exception as e:

@@ -81,6 +81,7 @@ class SetupNextStepsTests(unittest.TestCase):
         steps = build_setup_next_steps(
             dry_run=True,
             projects_status="PASS (dry-run)",
+            mapping_status="PASS (dry-run)",
             doctor_status="PASS (dry-run)",
             smoke_status="SKIPPED",
         )
@@ -93,6 +94,7 @@ class SetupNextStepsTests(unittest.TestCase):
         steps = build_setup_next_steps(
             dry_run=False,
             projects_status="PASS",
+            mapping_status="PASS",
             doctor_status="ACTION_REQUIRED",
             smoke_status="FAIL",
         )
@@ -105,6 +107,7 @@ class SetupNextStepsTests(unittest.TestCase):
         steps = build_setup_next_steps(
             dry_run=False,
             projects_status="PASS",
+            mapping_status="PASS",
             doctor_status="PASS",
             smoke_status="PASS",
         )
@@ -120,6 +123,7 @@ class SetupNextStepsTests(unittest.TestCase):
         steps = build_setup_next_steps(
             dry_run=False,
             projects_status="PASS",
+            mapping_status="PASS",
             doctor_status="PASS",
             smoke_status="SKIPPED",
             fast=True,
@@ -131,11 +135,22 @@ class SetupNextStepsTests(unittest.TestCase):
         steps = build_setup_next_steps(
             dry_run=True,
             projects_status="PASS (dry-run)",
+            mapping_status="PASS (dry-run)",
             doctor_status="PASS (dry-run)",
             smoke_status="SKIPPED",
             fast=True,
         )
         self.assertIn("Next: run `gittan setup --fast` without `--dry-run`", steps[0])
+
+    def test_setup_mapping_skip_points_to_plain_setup_retry(self):
+        steps = build_setup_next_steps(
+            dry_run=False,
+            projects_status="PASS",
+            mapping_status="SKIPPED",
+            doctor_status="PASS",
+            smoke_status="PASS",
+        )
+        self.assertIn("run `gittan setup` again and complete the project mapping step", "\n".join(steps))
 
 
 if __name__ == "__main__":

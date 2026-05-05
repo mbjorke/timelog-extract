@@ -48,6 +48,7 @@ def build_setup_next_steps(
     *,
     dry_run: bool,
     projects_status: str,
+    mapping_status: str,
     doctor_status: str,
     smoke_status: str,
     fast: bool = False,
@@ -66,6 +67,10 @@ def build_setup_next_steps(
         steps.append("Then: run `gittan projects` to repair project entries, then verify `match_terms` and worklog path.")
     if projects_status in {PROJECT_STATUS_SKIPPED, PROJECT_STATUS_ACTION_REQUIRED}:
         steps.append("Then: use `gittan projects` to review project names, `match_terms`, and worklog path.")
+    if mapping_status in {PROJECT_STATUS_SKIPPED, PROJECT_STATUS_ACTION_REQUIRED}:
+        steps.append(
+            "Then: run `gittan setup` again and complete the project mapping step so reports classify work to the right project."
+        )
     if smoke_status in {PROJECT_STATUS_FAIL, PROJECT_STATUS_ACTION_REQUIRED, PROJECT_STATUS_SKIPPED}:
         steps.append("Then: run `gittan report --today --source-summary` to confirm you get a useful local report.")
     if not steps:

@@ -14,6 +14,8 @@ class _FakeReport:
         self.project_reports = project_reports
         self.overall_days = overall_days
         self.included_events = included_events
+        self.all_events = []
+        self.profiles = []
         self.args = type("Args", (), {"min_session": 15, "min_session_passive": 5, "noise_profile": "strict"})()
 
 
@@ -149,6 +151,31 @@ class StatusIntegrityTests(unittest.TestCase):
         options = run_mock.call_args[0][3]
         self.assertEqual(getattr(options, "noise_profile", ""), "ultra-strict")
         self.assertEqual(getattr(options, "lovable_noise_profile", ""), "strict")
+
+    def test_status_shows_bounded_mapping_suggestions(self):
+        start = datetime(2026, 4, 22, 8, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 4, 22, 8, 30, tzinfo=timezone.utc)
+        report = _FakeReport(
+            project_reports={"A": {"2026-04-22": {"hours": 1.0, "sessions": [(start, end, [{"project": "A"}])]}}},
+            overall_days={
+                "2026-04-22": {
+                    "hours": 1.0,
+                    "sessions": [(start, end, [{"project": "A", "source": "Cursor"}])],
+                }
+            },
+            included_events=[{"project": "A"}],
+        )
+        report.profiles = [{"name": "A", "match_terms": ["alpha"], "tracked_urls": []}]
+        report.all_events = [
+            {"source": "Chrome", "detail": f"https://unmapped.example.dev/{idx} alpha", "project": "A"}
+            for idx in range(6)
+        ]
+        with patch("core.report_service.run_timelog_report", return_value=report):
+            r = self.runner.invoke(app, ["status", "--yesterday"])
+        self.assertEqual(r.exit_code, 0, msg=r.output)
+        self.assertIn("Mapping suggestions", r.output)
+        self.assertIn("consider adding tracked_urls", r.output)
+        self.assertLessEqual(r.output.count("consider "), 3)
 
 
 if __name__ == "__main__":

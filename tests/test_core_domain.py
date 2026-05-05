@@ -119,6 +119,17 @@ class CoreDomainTests(unittest.TestCase):
         text = "https://dash.cloudflare.com/accounts/alpha overview"
         self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
 
+    def test_classify_project_normalizes_lovableproject_host_variants_for_tracked_urls(self):
+        profiles = [
+            {
+                "name": "Project Alpha",
+                "match_terms": [],
+                "tracked_urls": ["https://id-preview--abc.lovableproject.com/editor"],
+            }
+        ]
+        text = "storage signal - https://id-preview--abc.lovableproject./editor?tab=code"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
+
 
 if __name__ == "__main__":
     unittest.main()

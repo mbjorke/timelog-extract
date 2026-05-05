@@ -119,7 +119,7 @@ def _local_owner_activity_summary() -> tuple[dict[str, int], dict[str, str], dic
         if root_resolved in seen_roots or not root_resolved.exists() or not root_resolved.is_dir():
             continue
         seen_roots.add(root_resolved)
-        repos.extend(discover_local_git_repos(root_resolved, max_depth=4, limit=300))
+        repos.extend(discover_local_git_repos(root_resolved, max_depth=4, limit=None))
 
     owner_to_slugs: dict[str, set[str]] = {}
     owner_best_slug: dict[str, str] = {}

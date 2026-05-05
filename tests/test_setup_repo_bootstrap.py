@@ -99,6 +99,18 @@ class SetupRepoBootstrapTests(unittest.TestCase):
             self.assertIn(parent_repo.resolve(), repos)
             self.assertNotIn(nested_repo.resolve(), repos)
 
+    def test_discover_local_git_repos_respects_numeric_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for i in range(5):
+                r = root / f"repo-{i}"
+                r.mkdir()
+                (r / ".git").mkdir()
+            repos = discover_local_git_repos(root, max_depth=1, limit=2)
+            self.assertEqual(len(repos), 2)
+            all_repos = discover_local_git_repos(root, max_depth=1, limit=None)
+            self.assertEqual(len(all_repos), 5)
+
     def test_merge_repo_project_seeds_updates_terms_without_overwrite(self):
         payload = {
             "worklog": "TIMELOG.md",

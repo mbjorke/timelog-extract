@@ -23,6 +23,14 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         "git_status: false",
         "candidate index",
         "exthostsearch [cursorignore] internal filesearch start",
+        # Cursor startup/indexing chatter often references unrelated repos.
+        "cursor_agent_exec.startup.workspace_paths",
+        "[model][openrepository] opened repository",
+        "bootstrapping repository index at",
+        "skipping acquiring lock for",
+        "project config path (",
+        "claude project config path (",
+        "claude project local config path (",
     )
     ultra_strict_markers = (
         # Extra aggressive filtering for repository churn and diagnostics floods.

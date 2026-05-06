@@ -127,6 +127,71 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_strict_skips_canvas_sdk_mirror_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "h" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-05-03 00:03:21.226 [warning] Canvas SDK mirror failed "
+                        '{"error":"Error: EEXIST: file already exists"} '
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 5, 3, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 5, 3, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "Project Alpha",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+                noise_profile="strict",
+            )
+            self.assertEqual(out, [])
+
+    def test_strict_skips_failed_to_persist_sync_manifest_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "i" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-05-03 00:33:21.765 [warning] Failed to persist sync manifest "
+                        '{"skillDir":"/Users/me/.cursor/skills-cursor"} workspaceStorage/' + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 5, 3, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 5, 3, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "Project Alpha",
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+                noise_profile="strict",
+            )
+            self.assertEqual(out, [])
+
     def test_skips_cursor_git_status_heartbeat_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

@@ -31,6 +31,9 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         "project config path (",
         "claude project config path (",
         "claude project local config path (",
+        # Cursor/Canvas SDK sync/mirror diagnostics can flood the timeline without user intent.
+        "canvas sdk mirror failed",
+        "failed to persist sync manifest",
     )
     ultra_strict_markers = (
         # Extra aggressive filtering for repository churn and diagnostics floods.

@@ -34,6 +34,15 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
         self.assertAlmostEqual(snap["screen_time_hours"], 2.0, places=3)
         self.assertAlmostEqual(snap["delta_hours"], 1.0, places=3)
 
+    def test_snapshot_sums_hours_when_daily_peaks_stay_below_seconds_heuristic(self):
+        report = SimpleNamespace(
+            included_events=[],
+            overall_days={"2026-05-04": {"hours": 1.0}},
+            screen_time_days={"2026-05-04": 7.6, "2026-05-05": 8.0},
+        )
+        snap = build_evidence_snapshot(report)
+        self.assertAlmostEqual(snap["screen_time_hours"], 15.6, places=3)
+
     def test_warnings_trigger_on_gap_low_diversity_and_low_chrome(self):
         snapshot = {
             "delta_hours": 5.0,

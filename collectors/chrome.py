@@ -220,7 +220,11 @@ def collect_chrome(
 ):
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     if include_all:
-        where_clause = "1=1"
+        # Avoid double-counting with dedicated Claude.ai / Gemini (web) collectors.
+        where_clause = (
+            "NOT (LOWER(u.url) LIKE '%claude.ai%') "
+            "AND NOT (LOWER(u.url) LIKE '%gemini.google.com%')"
+        )
         clause_params = ()
     else:
         all_keywords = sorted(

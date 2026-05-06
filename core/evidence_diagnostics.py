@@ -11,8 +11,15 @@ def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     source_counts.pop("", None)
     observed_hours = float(sum(float(day.get("hours", 0.0) or 0.0) for day in report.overall_days.values()))
     screen_values = [float(v or 0.0) for v in (report.screen_time_days or {}).values()]
-    # Some runtime paths expose Screen Time as seconds/day; normalize to hours.
-    screen_time_hours = float(sum(v / 3600.0 for v in screen_values)) if any(v > 24.0 for v in screen_values) else float(sum(screen_values))
+    # Screen Time may be stored as seconds/day (large integers) or hours/day (small floats).
+    # Daily wall-clock Screen Time in hours rarely exceeds ~24h; values >> that are seconds.
+    if screen_values:
+        mx = max(screen_values)
+        screen_time_hours = (
+            float(sum(v / 3600.0 for v in screen_values)) if mx > 48.0 else float(sum(screen_values))
+        )
+    else:
+        screen_time_hours = 0.0
     delta_hours = screen_time_hours - observed_hours
     return {
         "observed_hours": observed_hours,

@@ -36,6 +36,7 @@ def _payload_from_report(report) -> Dict[str, Any]:
         min_session_minutes=report.args.min_session,
         min_session_passive_minutes=report.args.min_session_passive,
         session_duration_hours_fn=_session_duration_hours,
+        chrome_raw=bool(getattr(report.args, "chrome_raw", False)),
     )
 
 

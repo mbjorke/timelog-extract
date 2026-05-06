@@ -55,6 +55,25 @@ class CollectChromeProfilesAndRawTests(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["detail"], "Profile 1 hit")
 
+    def test_include_all_excludes_urls_covered_by_other_collectors(self):
+        ts = datetime(2026, 4, 10, 17, 0, tzinfo=timezone.utc)
+        insert_visit(self.db_path, "https://example.org/ok-page", "Ok", ts)
+        insert_visit(self.db_path, "https://claude.ai/chat/abc", "Claude chat", ts)
+        insert_visit(self.db_path, "https://gemini.google.com/app/deadbeef", "Gemini", ts)
+        results = collect_chrome(
+            [{"name": "Proj", "match_terms": ["myproject"]}],
+            datetime(2026, 4, 10, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 4, 11, 0, 0, tzinfo=timezone.utc),
+            collapse_minutes=0,
+            home=self.home,
+            epoch_delta_us=EPOCH_DELTA_US,
+            classify_project=lambda text, profs: "Proj",
+            make_event=make_event,
+            include_all=True,
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIn("example.org/ok-page", results[0]["detail"])
+
     def test_include_all_returns_non_matching_url_rows(self):
         ts = datetime(2026, 4, 10, 17, 0, tzinfo=timezone.utc)
         insert_visit(self.db_path, "https://example.org/non-project-page", "Random page", ts)

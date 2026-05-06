@@ -176,8 +176,24 @@ def search(
     project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
-    chrome_raw: Annotated[bool, typer.Option("--chrome-raw", help="Include all Chrome visits (raw triage mode)")] = False,
-    chrome_contains_url: Annotated[Optional[str], typer.Option("--contains-url", help="Filter Chrome visits by URL substring (use with --chrome-raw)")] = None,
+    chrome_raw: Annotated[
+        bool,
+        typer.Option(
+            "--chrome-raw",
+            help=(
+                "Near-complete Chrome history for triage (still excludes claude.ai and gemini.google.com "
+                "URLs covered by other collectors). Sensitive URLs may appear in terminal output; "
+                "--format json redacts Chrome detail text to titles only while this flag is on."
+            ),
+        ),
+    ] = False,
+    chrome_contains_url: Annotated[
+        Optional[str],
+        typer.Option(
+            "--contains-url",
+            help="With --chrome-raw: keep visits whose URL contains this substring (case-insensitive).",
+        ),
+    ] = None,
     attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
     noise_profile: Annotated[
@@ -195,6 +211,7 @@ def search(
     Common use cases:
     - Why did project X get time? `gittan search --today --project "X" --noise-profile lenient --lovable-noise-profile balanced`
     - Conservative audit view: `gittan search --today --project "X" --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Raw Chrome triage: `gittan search --chrome-raw` (see `--chrome-raw` help for privacy / JSON behavior).
     """
     from core.report_cli import run_timelog_cli
 

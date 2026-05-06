@@ -101,7 +101,10 @@ def configure_github_env_for_setup(
 
     if not yes:
         if not questionary.confirm("Configure GitHub env vars for source reliability now?", default=True).ask():
-            return "SKIPPED", "User skipped GitHub env bootstrap.", ["Optional: set GITHUB_USER/GITHUB_TOKEN for GitHub source stability."]
+            return "SKIPPED", "User skipped GitHub env bootstrap.", [
+                "Optional: set GITHUB_USER (comma-separated for multiple logins) and optionally GITHUB_TOKEN for GitHub source stability.",
+                "Enterprise host? Set GITHUB_API_BASE_URL (for example https://github.company.com/api/v3).",
+            ]
 
     profile = _shell_profile_path()
     user = existing_user
@@ -117,7 +120,9 @@ def configure_github_env_for_setup(
             if user or token:
                 mode = "gh"
     if not user and not yes:
-        user = (questionary.text("GitHub username (for public events):").ask() or "").strip()
+        user = (
+            questionary.text("GitHub username(s) for public events (comma-separated for multiple):").ask() or ""
+        ).strip()
         if user:
             mode = "manual"
     if not token and not yes:
@@ -133,7 +138,10 @@ def configure_github_env_for_setup(
         )
 
     if not user and not token:
-        return "ACTION_REQUIRED", "GitHub env vars still unset after setup attempt.", ["Set GITHUB_USER and optionally GITHUB_TOKEN, then rerun `gittan doctor`."]
+        return "ACTION_REQUIRED", "GitHub env vars still unset after setup attempt.", [
+            "Set GITHUB_USER (comma-separated for multiple accounts) and optionally GITHUB_TOKEN, then rerun `gittan doctor`.",
+            "If using GitHub Enterprise Server, also set GITHUB_API_BASE_URL (for example https://github.company.com/api/v3).",
+        ]
 
     changed_parts: list[str] = []
     if user and (not existing_user or user != existing_user):
@@ -151,10 +159,13 @@ def configure_github_env_for_setup(
         steps.append(f"Reload shell profile (`{reload_hint}`) and run `gittan doctor --github-source auto`.")
     if not user:
         steps.append(
-            "Set GITHUB_USER manually (or run `gh api user --jq .login` and export it), then rerun `gittan doctor --github-source auto`."
+            "Set GITHUB_USER manually (comma-separated for multiple accounts), or run `gh api user --jq .login` for a single login, then rerun `gittan doctor --github-source auto`."
         )
     elif not steps:
         steps.append("Run `gittan doctor --github-source auto` to verify GitHub source status.")
+    steps.append(
+        "GitHub Enterprise Server? Set GITHUB_API_BASE_URL (for example `https://github.company.com/api/v3`) before running reports."
+    )
     status = "PASS" if user else "ACTION_REQUIRED"
     if dry_run:
         token_note = " with GITHUB_TOKEN persisted" if persist_token_choice else " without persisting GITHUB_TOKEN"

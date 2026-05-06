@@ -32,11 +32,6 @@ TOP_HOSTS_NOTE = (
     "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
 )
 
-TIMELOG_EVIDENCE_NOTE = (
-    "timelog_evidence_projects: projects that had at least one event from a TIMELOG source "
-    "in this audit window."
-)
-
 
 def extract_hosts_from_detail(detail: str) -> list[str]:
     hosts: list[str] = []
@@ -161,22 +156,12 @@ def build_projects_audit_payload(
         }
         for host, n in top_rows
     ]
-    timelog_projects = sorted(
-        {
-            str(event.get("project", "")).strip()
-            for event in events
-            if "timelog" in str(event.get("source", "")).lower()
-            and str(event.get("project", "")).strip()
-        },
-        key=lambda name: name.lower(),
-    )
 
     return {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "command": "gittan projects-audit",
         "hit_definition": HIT_DEFINITION_V1,
         "top_hosts_note": TOP_HOSTS_NOTE,
-        "timelog_evidence_note": TIMELOG_EVIDENCE_NOTE,
         "pool": pool,
         "options": {
             "date_from": date_from,
@@ -187,7 +172,6 @@ def build_projects_audit_payload(
         "event_count": len(events),
         "projects": projects_out,
         "top_hosts": top_hosts_out,
-        "timelog_evidence_projects": timelog_projects,
     }
 
 

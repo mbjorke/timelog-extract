@@ -72,8 +72,8 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 09:00:00 [info] opened file "
-                        "/Users/me/Workspace/Project/timelog-extract/core/cli.py workspaceStorage/" + wid
+                        "2026-04-22 09:00:00 [info] cursor_agent_exec.startup.workspace_paths "
+                        "{\"workspacePathCount\":1} workspaceStorage/" + wid
                     )
                 ],
             )
@@ -94,103 +94,6 @@ class CursorNoiseFilterTests(unittest.TestCase):
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Cursor")
             self.assertEqual(out[0]["project"], "Gittan CLI")
-
-    def test_strict_skips_cursor_startup_repository_lines(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "g" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-04-22 09:00:00 [info] cursor_agent_exec.startup.workspace_paths "
-                        "{\"workspacePathCount\":1} workspaceStorage/" + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="strict",
-            )
-            self.assertEqual(out, [])
-
-    def test_strict_skips_canvas_sdk_mirror_noise(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "h" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-05-03 00:03:21.226 [warning] Canvas SDK mirror failed "
-                        '{"error":"Error: EEXIST: file already exists"} '
-                        "workspaceStorage/" + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 5, 3, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 5, 3, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="strict",
-            )
-            self.assertEqual(out, [])
-
-    def test_strict_skips_failed_to_persist_sync_manifest_noise(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "i" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-05-03 00:33:21.765 [warning] Failed to persist sync manifest "
-                        '{"skillDir":"/Users/me/.cursor/skills-cursor"} workspaceStorage/' + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 5, 3, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 5, 3, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="strict",
-            )
-            self.assertEqual(out, [])
 
     def test_skips_cursor_git_status_heartbeat_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -348,103 +251,6 @@ class CursorNoiseFilterTests(unittest.TestCase):
                     "detail": detail,
                     "project": project,
                 },
-            )
-            self.assertEqual(out, [])
-
-    def test_strict_skips_unsupported_query_regex_noise_with_repo_slug(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "2" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-03-14 10:10:10 [warn] unsupported query in tooling log; "
-                        "regex=(ass-membra|foo) workspaceStorage/" + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="strict",
-            )
-            self.assertEqual(out, [])
-
-    def test_lenient_keeps_unsupported_query_regex_noise(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "3" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-03-14 10:10:10 [warn] unsupported query in tooling log; "
-                        "regex=(ass-membra|foo) workspaceStorage/" + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="lenient",
-            )
-            self.assertEqual(len(out), 1)
-            self.assertEqual(out[0]["project"], "ÅSS: Membra")
-
-    def test_strict_skips_unsupported_query_pattern_without_regex_word(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            wid = "4" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/ass-membra")
-            self._write_log(
-                home,
-                "main/window.log",
-                [
-                    (
-                        "2026-03-14 10:10:10 [warn] Unsupported query "
-                        "\"(ass-membra|financing-portal)\\.md\" workspaceStorage/" + wid
-                    )
-                ],
-            )
-            out = collect_cursor(
-                profiles=[],
-                dt_from=datetime(2026, 3, 14, 0, 0, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 3, 14, 23, 59, tzinfo=timezone.utc),
-                home=home,
-                local_tz=timezone.utc,
-                classify_project=lambda _hay, _profiles: "ÅSS: Membra",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
-                noise_profile="strict",
             )
             self.assertEqual(out, [])
 

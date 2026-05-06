@@ -23,6 +23,18 @@ Use a **personal access token issued on that instance** in `GITHUB_TOKEN`, not a
 
 **SSO / SAML:** If the org requires SSO authorization for tokens, authorize the PAT in the GitHub (Enterprise) UI the same way you would for github.com SaaS.
 
+## Quick manual UX checks
+
+1. **github.com + multiple users**
+ - Set `GITHUB_USER=workuser,personaluser` and run `gittan doctor --github-source auto`.
+ - Expected: doctor row says enabled for multiple users (compact list/count), with token status.
+2. **Enterprise host sanity warning**
+ - Set `GITHUB_API_BASE_URL=https://git.example.com` (without `/api/v3`) and run doctor.
+ - Expected: doctor row includes a warning hint that enterprise hosts usually need `/api/v3`.
+3. **Enterprise host configured**
+ - Set `GITHUB_API_BASE_URL=https://git.example.com/api/v3` and rerun doctor/report.
+ - Expected: doctor shows custom API host and no format warning.
+
 ## When the Git host is not GitHub at all
 
 GitLab, Azure DevOps, Gitea, etc. are **not** covered by the GitHub collector. Activity there often still appears via **Chrome** (web UI), **IDE logs** (local clones), and **TIMELOG** entries. Use `match_terms` / triage domain mapping in `timelog_projects.json` to classify that traffic.

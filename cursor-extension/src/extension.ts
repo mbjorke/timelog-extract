@@ -3,6 +3,7 @@ import * as os from "os";
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
 import { spawn } from "child_process";
+import { mergeWizardSettings, type WizardSettings } from "./wizard_settings";
 
 type RunOptions = {
   dateFrom?: string;
@@ -378,16 +379,40 @@ function openWizard(context: vscode.ExtensionContext): void {
         void vscode.window.showErrorMessage("Please accept consent before saving settings.");
         return;
       }
-      await cfg.update("projectsConfig", msg.projectsConfig, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("worklogPath", msg.worklogPath, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("includeUncategorized", Boolean(msg.includeUncategorized), vscode.ConfigurationTarget.Workspace);
-      await cfg.update("generatePdf", Boolean(msg.generatePdf), vscode.ConfigurationTarget.Workspace);
-      await cfg.update("chromeSource", msg.chromeSource, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("mailSource", msg.mailSource, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("githubSource", msg.githubSource, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("screenTime", msg.screenTime, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("githubUser", msg.githubUser, vscode.ConfigurationTarget.Workspace);
-      await cfg.update("consentAccepted", true, vscode.ConfigurationTarget.Workspace);
+      const current: WizardSettings = {
+        projectsConfig: cfg.get<string>("projectsConfig", "${workspaceFolder}/timelog_projects.json"),
+        worklogPath: cfg.get<string>("worklogPath", "${workspaceFolder}/TIMELOG.md"),
+        includeUncategorized: cfg.get<boolean>("includeUncategorized", false),
+        generatePdf: cfg.get<boolean>("generatePdf", true),
+        chromeSource: cfg.get<"on" | "off">("chromeSource", "on"),
+        mailSource: cfg.get<SourceMode>("mailSource", "auto"),
+        githubSource: cfg.get<SourceMode>("githubSource", "auto"),
+        screenTime: cfg.get<SourceMode>("screenTime", "auto"),
+        githubUser: cfg.get<string>("githubUser", ""),
+        consentAccepted: cfg.get<boolean>("consentAccepted", false),
+      };
+      const merged = mergeWizardSettings(current, {
+        projectsConfig: msg.projectsConfig,
+        worklogPath: msg.worklogPath,
+        includeUncategorized: msg.includeUncategorized,
+        generatePdf: msg.generatePdf,
+        chromeSource: msg.chromeSource,
+        mailSource: msg.mailSource,
+        githubSource: msg.githubSource,
+        screenTime: msg.screenTime,
+        githubUser: msg.githubUser,
+        consentAccepted: true,
+      });
+      await cfg.update("projectsConfig", merged.projectsConfig, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("worklogPath", merged.worklogPath, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("includeUncategorized", merged.includeUncategorized, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("generatePdf", merged.generatePdf, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("chromeSource", merged.chromeSource, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("mailSource", merged.mailSource, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("githubSource", merged.githubSource, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("screenTime", merged.screenTime, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("githubUser", merged.githubUser, vscode.ConfigurationTarget.Workspace);
+      await cfg.update("consentAccepted", merged.consentAccepted, vscode.ConfigurationTarget.Workspace);
       void vscode.window.showInformationMessage("Timelog settings saved to workspace.");
     }
     if (msg?.type === "runToday") {
@@ -485,8 +510,9 @@ function getWizardHtml(): string {
       <option value="on">on</option>
       <option value="off">off</option>
     </select>
-    <label>GitHub user (optional, for GitHub source)</label>
-    <input id="githubUser" type="text" placeholder="your-login" />
+    <label>GitHub user(s) (optional, for GitHub source)</label>
+    <input id="githubUser" type="text" placeholder="work-user, personal-user" />
+    <p class="muted">Multiple accounts are comma-separated. Enterprise host uses GITHUB_API_BASE_URL in your shell environment.</p>
     <p id="scanSummary" class="muted"></p>
     <div>
       <button id="saveBtn">Save settings</button>

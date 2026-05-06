@@ -171,12 +171,7 @@ def _record_doctor(w: CastWriter) -> None:
 
 def _collect_doctor_rows() -> list[dict[str, str]]:
     """Run all doctor checks and return structured rows — no Rich output."""
-    from core.config import (
-        load_profiles,
-        resolve_profile_worklog_paths,
-        resolve_projects_config_path,
-        resolve_worklog_path,
-    )
+    from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
     from core.git_project_bootstrap import assess_match_terms_coverage
     from collectors.lovable_desktop import lovable_desktop_history_candidates
 
@@ -230,39 +225,17 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     projects_cfg = resolve_projects_config_path().expanduser()
     ns = argparse.Namespace(project="default-project", keywords="", email="")
     _profiles, loaded_cfg, workspace = load_profiles(str(projects_cfg), ns)
-    workspace_worklog = workspace.get("worklog")
-    worklog_path = resolve_worklog_path(None, loaded_cfg, workspace_worklog, runtime_workspace_root())
-    profile_worklogs = resolve_profile_worklog_paths(
-        _profiles,
-        config_path=loaded_cfg,
-        script_dir=runtime_workspace_root(),
-    )
+    worklog_path = resolve_worklog_path(None, loaded_cfg, workspace.get("worklog"), runtime_workspace_root())
 
     if projects_cfg.exists():
         ok("Project Config", "Accessible")
     else:
         warn("Project Config", f"Not found: {projects_cfg}")
 
-    using_single_worklog = bool(workspace_worklog)
-    if using_single_worklog:
-        if worklog_path.exists():
-            ok("Worklog (Local)", "Accessible")
-        else:
-            warn("Worklog (Local)", f"Not found: {worklog_path}")
-    elif profile_worklogs:
-        readable = len([path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)])
-        total = len(profile_worklogs)
-        if readable == total:
-            ok("Worklogs (Per-project)", f"Per-project worklogs configured ({readable}/{total} accessible)")
-        elif readable > 0:
-            warn("Worklogs (Per-project)", f"Per-project worklogs configured ({readable}/{total} accessible)")
-        else:
-            warn("Worklogs (Per-project)", f"Per-project worklogs configured (0/{total} accessible)")
+    if worklog_path.exists():
+        ok("Worklog (Local)", "Accessible")
     else:
-        if worklog_path.exists():
-            ok("Worklog (Local)", "Accessible")
-        else:
-            warn("Worklog (Local)", f"Not found: {worklog_path}")
+        warn("Worklog (Local)", f"Not found: {worklog_path}")
 
     # Git match_terms coverage
     coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
@@ -329,16 +302,33 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
         warn("GitHub Copilot CLI", "Path not found")
 
     # GitHub Source
-    from collectors.github import resolve_github_usernames
+    from collectors.github import (
+        DEFAULT_GITHUB_API_BASE,
+        resolve_github_api_base,
+        resolve_github_usernames,
+    )
 
     gh_users = resolve_github_usernames(SimpleNamespace(github_user=None))
     gh_token = bool(os.environ.get("GITHUB_TOKEN", "").strip())
+    api_base = resolve_github_api_base()
+    api_note = ""
+    warn_note = ""
+    if api_base.rstrip("/") != DEFAULT_GITHUB_API_BASE.rstrip("/"):
+        api_note = f"; API {api_base}"
+        lowered = api_base.lower()
+        if not (lowered.startswith("http://") or lowered.startswith("https://")):
+            warn_note = "; warning: GITHUB_API_BASE_URL should start with http:// or https://"
+        elif "/api/v3" not in lowered:
+            warn_note = "; warning: enterprise hosts usually need /api/v3"
     if gh_users:
         if len(gh_users) == 1:
             umsg = f"user '{gh_users[0]}'"
         else:
-            umsg = f"{len(gh_users)} users ({', '.join(gh_users)})"
-        ok("GitHub Source", f"Enabled (auto) for {umsg} — {'token present' if gh_token else 'no GITHUB_TOKEN'}")
+            umsg = f"{len(gh_users)} users"
+        ok(
+            "GitHub Source",
+            f"Enabled (auto) for {umsg} — {'token present' if gh_token else 'no GITHUB_TOKEN'}{api_note}{warn_note}",
+        )
     else:
         warn("GitHub Source", "Set GITHUB_USER env var to enable")
 

@@ -18,7 +18,6 @@ GENERIC_TRIAGE_ROOT_DOMAINS: frozenset[str] = frozenset(
         "home.atlassian.com",
         "id.atlassian.com",
         "linkedin.com",
-        "lovable.dev",
         "mail.google.com",
     }
 )

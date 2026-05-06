@@ -51,24 +51,24 @@ class ReportSuggestionTests(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
 
-    def test_report_does_not_show_inline_mapping_suggestions(self):
+    def test_report_shows_mapping_suggestions_when_signal_exists(self):
         report = _FakeReport()
         with patch("core.report_cli.run_timelog_report", return_value=report), patch(
             "core.report_cli._print_report", return_value=None
         ):
             result = self.runner.invoke(app, ["report", "--today"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertNotIn("Mapping suggestions:", result.output)
-        self.assertNotIn("consider adding tracked_urls", result.output)
+        self.assertIn("Mapping suggestions:", result.output)
+        self.assertIn("consider adding tracked_urls", result.output)
 
-    def test_report_output_has_no_inline_suggestion_lines(self):
+    def test_report_suggestions_are_bounded(self):
         report = _FakeReport()
         with patch("core.report_cli.run_timelog_report", return_value=report), patch(
             "core.report_cli._print_report", return_value=None
         ):
             result = self.runner.invoke(app, ["report", "--today"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertEqual(result.output.count("consider "), 0)
+        self.assertLessEqual(result.output.count("consider "), 3)
 
 
 if __name__ == "__main__":

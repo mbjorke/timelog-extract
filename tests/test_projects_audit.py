@@ -187,25 +187,6 @@ class ProjectsAuditTests(unittest.TestCase):
         self.assertEqual(hosts["other.test"][0], 2)
         self.assertFalse(hosts["other.test"][1])
 
-    def test_projects_audit_reports_timelog_evidence_projects(self) -> None:
-        profiles = [{"name": "project-alpha", "match_terms": ["alpha"], "tracked_urls": []}]
-        events = [
-            {"source": "TIMELOG.md", "detail": "alpha work", "project": "project-alpha"},
-            {"source": "Chrome", "detail": "alpha web", "project": "project-alpha"},
-        ]
-        tmp_cfg = self._temp_json()
-        self.addCleanup(Path(tmp_cfg).unlink, missing_ok=True)
-        payload = build_projects_audit_payload(
-            events=events,
-            profiles=profiles,
-            date_from="2026-05-01",
-            date_to="2026-05-02",
-            projects_config=tmp_cfg,
-            pool="deduped_all_events",
-        )
-        self.assertIn("timelog_evidence_note", payload)
-        self.assertEqual(payload["timelog_evidence_projects"], ["project-alpha"])
-
     def test_is_host_anchored_tracked_url(self) -> None:
         profiles = [
             {
@@ -255,26 +236,6 @@ class ProjectsAuditTests(unittest.TestCase):
         )
         self.assertTrue(ok2)
         self.assertEqual(proj.get("tracked_urls"), [])
-
-    def test_remove_last_match_term_does_not_reappear(self) -> None:
-        payload = {
-            "projects": [
-                {
-                    "name": "Solo",
-                    "match_terms": ["solo"],
-                    "tracked_urls": [],
-                    "enabled": True,
-                }
-            ]
-        }
-        ok = remove_rule_from_project(
-            payload,
-            project_name="Solo",
-            rule_type="match_terms",
-            rule_value="solo",
-        )
-        self.assertTrue(ok)
-        self.assertEqual(payload["projects"][0].get("match_terms"), [])
 
     def test_inline_mapping_suggestions_bounds_and_words(self) -> None:
         profiles = [

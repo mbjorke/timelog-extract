@@ -30,6 +30,7 @@ class ConfigCompatibilityTests(unittest.TestCase):
             }
         )
         self.assertIn("alpha", profile["match_terms"])
+        self.assertIn("demo", profile["match_terms"])
         self.assertNotIn("beta", profile["match_terms"])
 
     def test_normalize_profile_keeps_explicit_empty_match_terms(self):

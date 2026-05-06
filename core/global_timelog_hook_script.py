@@ -20,6 +20,14 @@ HOOK_BODY = dedent(
     if [[ -f "$FILENAME_FILE" ]]; then
       CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\\r')"
       if [[ -n "${CANDIDATE:-}" ]]; then
+        case "$CANDIDATE" in
+          *../*|*/..|../*|*/../*)
+            echo "gittan-hook: refusing unsafe .. segments in timelog_filename" >&2
+            CANDIDATE=""
+            ;;
+        esac
+      fi
+      if [[ -n "${CANDIDATE:-}" ]]; then
         CONFIGURED_CANDIDATE="$CANDIDATE"
         TIMELOG_NAME="$CANDIDATE"
       fi
@@ -43,6 +51,13 @@ HOOK_BODY = dedent(
       if [[ -z "${CONFIGURED_CANDIDATE:-}" || "$CONFIGURED_CANDIDATE" == "TIMELOG.md" ]]; then
         TIMELOG_FILE="$PROJECT_WORKLOG"
       fi
+    fi
+    canon="${TIMELOG_FILE:A}"
+    home_canon="${HOME:A}"
+    root_canon="${ROOT_DIR:A}"
+    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* ]]; then
+      echo "gittan-hook: refusing timelog path outside home directory or repo root" >&2
+      exit 1
     fi
     mkdir -p "$(dirname "$TIMELOG_FILE")"
     TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"

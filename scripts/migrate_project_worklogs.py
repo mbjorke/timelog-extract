@@ -70,7 +70,16 @@ def migrate_one(project: str, source: Path, destination: Path, dry_run: bool) ->
         return MigrationResult(project, source, destination, "missing_source", "source file is missing")
     if source.is_dir():
         return MigrationResult(project, source, destination, "invalid_source", "source path is a directory")
-    source_content = source.read_text(encoding="utf-8")
+    try:
+        source_content = source.read_text(encoding="utf-8")
+    except OSError as exc:
+        return MigrationResult(
+            project,
+            source,
+            destination,
+            "read_error",
+            f"cannot read source: {exc}",
+        )
     if not source_content.strip():
         return MigrationResult(project, source, destination, "empty_source", "source file is empty")
 
@@ -94,9 +103,19 @@ def migrate_one(project: str, source: Path, destination: Path, dry_run: bool) ->
         payload = f"\n{payload}"
 
     if not dry_run:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("a", encoding="utf-8") as fh:
-            fh.write(payload)
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("a", encoding="utf-8") as fh:
+                fh.write(payload)
+        except OSError as exc:
+            return MigrationResult(
+                project,
+                source,
+                destination,
+                "write_error",
+                f"cannot write destination: {exc}",
+                backup_path=backup,
+            )
 
     return MigrationResult(
         project,
@@ -124,8 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--default-source-root",
-        default=str(Path.home() / "Workspace" / "Project"),
-        help="Base directory used when a mapping omits explicit source path.",
+        default=str(Path.cwd()),
+        help="Base directory used when a mapping omits explicit source path (default: current working directory).",
     )
     parser.add_argument(
         "--dest-root",
@@ -170,7 +189,7 @@ def main() -> int:
         )
         print(f"  {item.message}")
 
-    failures = [r for r in results if r.status in {"missing_source", "invalid_source"}]
+    failures = [r for r in results if r.status in {"missing_source", "invalid_source", "read_error", "write_error"}]
     return 1 if failures else 0
 
 

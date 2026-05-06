@@ -89,11 +89,11 @@ UI clarifications are merged.
 
 Primary path (User CLI):
 
-- `gittan report --from 2026-03-01 --to 2026-03-31 --invoice-mode calibrated-a --invoice-ground-truth march_invoice_ground_truth.json`
+- `gittan report --from 2026-03-01 --to 2026-03-31 --invoice-mode calibrated-a --invoice-ground-truth tests/fixtures/experiments/march_invoice_ground_truth.example.json`
 
 Internal automation path (scripted batch/check artifact):
 
-- `python3 scripts/calibration/run_month_end_invoice_check.py --ground-truth march_invoice_ground_truth.json --date-from 2026-03-01 --date-to 2026-03-31`
+- `python3 scripts/calibration/run_month_end_invoice_check.py --ground-truth tests/fixtures/experiments/march_invoice_ground_truth.example.json --date-from 2026-03-01 --date-to 2026-03-31`
 
 The script writes:
 

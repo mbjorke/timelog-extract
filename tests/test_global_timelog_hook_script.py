@@ -31,6 +31,11 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         self.assertIn('} >> "$TIMELOG_FILE"', HOOK_BODY)
         self.assertNotIn("cat <<EOF > \"$TIMELOG_FILE\"", HOOK_BODY)
 
+    def test_refuses_unsafe_timelog_filename_and_paths(self):
+        self.assertIn("refusing unsafe .. segments", HOOK_BODY)
+        self.assertIn('canon="${TIMELOG_FILE:A}"', HOOK_BODY)
+        self.assertIn("refusing timelog path outside", HOOK_BODY)
+
 
 if __name__ == "__main__":
     unittest.main()

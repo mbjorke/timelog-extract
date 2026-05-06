@@ -86,7 +86,12 @@ def normalize_profile(raw):
     canonical_project = str(raw.get("canonical_project", "")).strip() or name
     aliases = as_list(raw.get("aliases"))
     merged_aliases = sorted({alias for alias in aliases + [name, canonical_project] if alias})
-    terms = sorted({t.lower() for t in match_terms_input if t})
+    terms_set = {t.lower() for t in match_terms_input if t}
+    # Legacy behavior: project name is always matchable when match_terms is absent or non-empty.
+    # Explicit `match_terms: []` stays empty (advanced / intentional opt-out).
+    if match_terms_input and name.lower() not in terms_set:
+        terms_set.add(name.lower())
+    terms = sorted(terms_set)
     merged_tracked_urls = sorted({url for url in tracked_urls if url})
     tags = sorted({str(t).strip().lower() for t in as_list(raw.get("tags")) if str(t).strip()})
     profile = {

@@ -63,12 +63,22 @@ class ReportAdditiveSummaryOptionTests(unittest.TestCase):
         with patch("core.report_cli.run_timelog_cli") as run_mock:
             result = self.runner.invoke(
                 app,
-                ["report", "--yesterday", "--invoice-mode", "calibrated-a", "--invoice-ground-truth", "march_invoice_ground_truth.json"],
+                [
+                    "report",
+                    "--yesterday",
+                    "--invoice-mode",
+                    "calibrated-a",
+                    "--invoice-ground-truth",
+                    "tests/fixtures/experiments/march_invoice_ground_truth.example.json",
+                ],
             )
         self.assertEqual(result.exit_code, 0, msg=result.output)
         options = run_mock.call_args[0][0]
         self.assertEqual(getattr(options, "invoice_mode", ""), "calibrated-a")
-        self.assertEqual(getattr(options, "invoice_ground_truth", ""), "march_invoice_ground_truth.json")
+        self.assertEqual(
+            getattr(options, "invoice_ground_truth", ""),
+            "tests/fixtures/experiments/march_invoice_ground_truth.example.json",
+        )
 
 
 if __name__ == "__main__":

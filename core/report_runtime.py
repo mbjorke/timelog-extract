@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
 import tempfile
 from dataclasses import dataclass
@@ -166,10 +167,18 @@ def build_run_context(
                 suffix=".md",
                 delete=False,
             ) as tf:
-                # Ensure the file exists and is empty.
                 tf.write(b"")
                 tf.flush()
-            args.worklog = tf.name
+                empty_worklog_path = tf.name
+            args.worklog = empty_worklog_path
+
+            def _unlink_commit_first_worklog() -> None:
+                try:
+                    os.unlink(empty_worklog_path)
+                except OSError:
+                    pass
+
+            atexit.register(_unlink_commit_first_worklog)
     args.attribution_mode = attribution_mode or None
 
     has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)

@@ -1,9 +1,8 @@
 """Typer commands: report, status."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import datetime
-from typing import Annotated, Optional, cast
+from typing import Annotated, Optional
 
 import click
 import typer
@@ -11,82 +10,15 @@ import typer
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
+from core.cli_report_status_helpers import (
+    build_report_options as _build_report_options,
+    resolve_timeframe_args as _resolve_timeframe_args,
+)
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 from core.report_nudges import build_unexplained_gap_nudge
-def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
-    """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
-    return (
-        cast(Optional[str], picked.get("date_from")),
-        cast(Optional[str], picked.get("date_to")),
-        bool(picked.get("today", False)),
-        bool(picked.get("yesterday", False)),
-        bool(picked.get("last_3_days", False)),
-        bool(picked.get("last_week", False)),
-        bool(picked.get("last_14_days", False)),
-        bool(picked.get("last_month", False)),
-    )
 
-def _resolve_timeframe_args(
-    *,
-    date_from: Optional[datetime],
-    date_to: Optional[datetime],
-    today: bool,
-    yesterday: bool,
-    last_3_days: bool,
-    last_week: bool,
-    last_14_days: bool,
-    last_month: bool,
-) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
-    """Normalize timeframe flags for `report`/`search`; prompt when omitted."""
-    if not (
-        today
-        or yesterday
-        or last_3_days
-        or last_week
-        or last_14_days
-        or last_month
-        or date_from
-        or date_to
-    ):
-        picked = prompt_for_timeframe()
-        return _timeframe_from_prompt(picked)
-    return (
-        date_from.strftime("%Y-%m-%d") if date_from else None,
-        date_to.strftime("%Y-%m-%d") if date_to else None,
-        today,
-        yesterday,
-        last_3_days,
-        last_week,
-        last_14_days,
-        last_month,
-    )
 
-def _build_report_options(
-    *,
-    timeframe: tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool],
-    option_fields: dict[str, object],
-    overrides: Optional[dict[str, object]] = None,
-) -> TimelogRunOptions:
-    """Build `TimelogRunOptions` from normalized timeframe fields + command-specific fields.
-    `overrides` is applied last so callers can enforce command-specific invariants (for example `search` forcing `all_events=True`).
-    """
-    df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = timeframe
-    payload: dict[str, object] = {
-        "date_from": df_s,
-        "date_to": dt_s,
-        "today": today,
-        "yesterday": yesterday,
-        "last_3_days": last_3_days,
-        "last_week": last_week,
-        "last_14_days": last_14_days,
-        "last_month": last_month,
-    }
-    payload.update(option_fields)
-    if overrides:
-        payload.update(overrides)
-    return TimelogRunOptions(**payload)
 @app.command()
 def report(
     ctx: typer.Context,

@@ -17,16 +17,16 @@
 ## Observed facts
 
 - Empty file observed:
-  - `/Users/mbjorke/Workspace/Project/ass-membra/TIMELOG.md` (`0` bytes)
+  - `$HOME/Workspace/Project/ass-membra/TIMELOG.md` (`0` bytes)
 - Recoverable source found:
-  - `/Users/mbjorke/Workspace/Project/ass-membra/worklog.txt` (`4606` bytes)
+  - `$HOME/Workspace/Project/ass-membra/worklog.txt` (`4606` bytes)
 - No committed `TIMELOG.md` history in that repo was available for direct git restore.
 
 ## Recovery actions
 
 - Backed up current targets:
-  - `/Users/mbjorke/Workspace/Project/ass-membra/TIMELOG.md.backup.20260505-165015`
-  - `/Users/mbjorke/.gittan/worklogs/ass-membra.md.backup.20260505-165015`
+  - `$HOME/Workspace/Project/ass-membra/TIMELOG.md.backup.20260505-165015`
+  - `$HOME/.gittan/worklogs/ass-membra.md.backup.20260505-165015`
 - Restored:
   - copied `worklog.txt` -> `ass-membra/TIMELOG.md`
 - Synced central store:

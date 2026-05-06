@@ -106,7 +106,7 @@ These setup scenarios:
 - If a file approaches the line limit, **split by responsibility** rather than raising the limit (see `README.md` “File Size Policy”).
 - Do **not** commit local timelog files (`TIMELOG.md` is gitignored by policy).
 - Do **not** commit local backup/config artifacts (for example `timelog_projects*.json` generated during local experimentation).
-- Intentional tracked artifacts: keep `gittan.html` (landing page) and `march_invoice_ground_truth.json` (encrypted owner data) unless a maintainer explicitly decides otherwise.
+- Intentional tracked artifacts: keep `gittan.html` (landing page). For invoice calibration examples, use the committed fixture at `tests/fixtures/experiments/march_invoice_ground_truth.example.json` in docs and tests. Maintainers may keep a private, untracked `march_invoice_ground_truth.json` for local calibration; do not commit owner-specific ground-truth data.
 
 ## Cursor extension
 

@@ -50,6 +50,41 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
         self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
 
+    def test_build_clusters_excludes_extension_lifecycle_lines_and_tokens(self):
+        events = [
+            {
+                "source": "Cursor",
+                "detail": "Started downloading extension: ms-azuretools.vscode-containers",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Extracted extension to file:///Users/example/.cursor/extensions/ms-azuretools.vscode-containers-2.4.4-universal",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Renamed to /Users/example/.cursor/extensions/ms-azuretools.vscode-containers-2.4.4-universal",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "ms-azuretools.vscode-containers-2.4.4-universal",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Implemented acme-feature review flow",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "ms-azuretools.vscode-containers"), cluster_keys)
+        self.assertNotIn(("match_terms", "ms-azuretools.vscode-containers-2.4.4-universal"), cluster_keys)
+        self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
+
     def test_build_clusters_excludes_date_only_match_term_keys(self):
         events = [
             {"source": "Cursor", "detail": "2026-05-05", "project": "Uncategorized"},
@@ -60,6 +95,63 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
         self.assertNotIn(("match_terms", "2026-05-05"), cluster_keys)
         self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
+    def test_build_clusters_excludes_iso_like_datetime_match_term_keys(self):
+        events = [
+            {"source": "Cursor", "detail": "2026-05-05t12", "project": "Uncategorized"},
+            {"source": "Cursor", "detail": "2026-05-05T12:30", "project": "Uncategorized"},
+            {"source": "Cursor", "detail": "Worked on acme-feature implementation", "project": "Uncategorized"},
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "2026-05-05t12"), cluster_keys)
+        self.assertNotIn(("match_terms", "2026-05-05t12:30"), cluster_keys)
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
+    def test_build_clusters_excludes_config_path_metadata_lines(self):
+        events = [
+            {
+                "source": "Cursor",
+                "detail": "Claude user config path: /Users/example/.claude/settings.json",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "User config path: /Users/example/.cursor/hooks.json",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Implemented acme-feature review flow",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "settings.json"), cluster_keys)
+        self.assertNotIn(("match_terms", "hooks.json"), cluster_keys)
+        self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
+
+    def test_build_clusters_excludes_lovable_storage_signal_only_host(self):
+        events = [
+            {
+                "source": "Lovable Desktop",
+                "detail": "Browser signal tracked_urls='lovable.dev'",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Chrome",
+                "detail": "Visited https://github.com/acme/repo issues",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("tracked_urls", "lovable.dev"), cluster_keys)
+        self.assertIn(("tracked_urls", "github.com"), cluster_keys)
 
 
 class UncategorizedReviewConfigTests(unittest.TestCase):

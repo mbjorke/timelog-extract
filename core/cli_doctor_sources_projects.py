@@ -36,6 +36,8 @@ from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
+
+
 @app.command()
 def doctor(
     worklog: Annotated[
@@ -264,6 +266,10 @@ def doctor(
             config_path=projects_cfg,
             worklog_path=worklog_path,
         ),
+    )
+    console.print(
+        f"[{STYLE_MUTED}]Hint: For large Screen Time deltas, run "
+        f"`gittan evidence-check --from YYYY-MM-DD --to YYYY-MM-DD` for the exact day range.[/{STYLE_MUTED}]"
     )
 
 

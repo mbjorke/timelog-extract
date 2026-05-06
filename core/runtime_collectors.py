@@ -85,6 +85,8 @@ class RuntimeCollectors:
         )
 
     def collect_chrome(self, profiles, dt_from, dt_to, collapse_minutes=0):
+        include_all = bool(getattr(self.cli_args, "chrome_raw", False)) if self.cli_args is not None else False
+        contains_url = str(getattr(self.cli_args, "chrome_contains_url", "") or "").strip() if self.cli_args is not None else ""
         return self.chrome.collect_chrome(
             profiles,
             dt_from,
@@ -94,6 +96,8 @@ class RuntimeCollectors:
             self.chrome_epoch_delta_us,
             self.classify_project,
             self.make_event,
+            include_all=include_all,
+            contains_url=contains_url or None,
         )
 
     def collect_lovable_desktop(self, profiles, dt_from, dt_to):

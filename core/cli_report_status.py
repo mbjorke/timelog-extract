@@ -15,7 +15,6 @@ from core.cli_prompts import prompt_for_timeframe
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 from core.report_nudges import build_unexplained_gap_nudge
-
 def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
     """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
     return (
@@ -71,7 +70,6 @@ def _build_report_options(
     overrides: Optional[dict[str, object]] = None,
 ) -> TimelogRunOptions:
     """Build `TimelogRunOptions` from normalized timeframe fields + command-specific fields.
-
     `overrides` is applied last so callers can enforce command-specific invariants (for example `search` forcing `all_events=True`).
     """
     df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = timeframe
@@ -89,7 +87,6 @@ def _build_report_options(
     if overrides:
         payload.update(overrides)
     return TimelogRunOptions(**payload)
-
 @app.command()
 def report(
     ctx: typer.Context,
@@ -171,7 +168,6 @@ def report(
     ] = None,
 ):
     """Build detailed local evidence reports for a selected timeframe.
-
     Common use cases:
     - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
     - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
@@ -248,6 +244,8 @@ def search(
     project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
+    chrome_raw: Annotated[bool, typer.Option("--chrome-raw", help="Include all Chrome visits (raw triage mode)")] = False,
+    chrome_contains_url: Annotated[Optional[str], typer.Option("--contains-url", help="Filter Chrome visits by URL substring (use with --chrome-raw)")] = None,
     attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
     noise_profile: Annotated[
@@ -285,6 +283,8 @@ def search(
             "only_project": project,
             "customer": customer,
             "source_summary": source_summary,
+            "chrome_raw": chrome_raw,
+            "chrome_contains_url": chrome_contains_url,
             "output_format": output_format,
             "noise_profile": noise_profile,
             "lovable_noise_profile": lovable_noise_profile,

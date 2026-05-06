@@ -321,7 +321,7 @@ def collect_runtime_events(
         context.args,
         context.worklog_paths,
         home=home,
-        chrome_history_path_fn=chrome_collector.chrome_history_path,
+        chrome_history_path_fn=chrome_collector.chrome_history_paths,
         detect_mail_root_fn=mail_collector.detect_mail_root,
         build_collector_specs_fn=build_collector_specs,
         collect_claude_code=runtime_collectors.collect_claude_code,

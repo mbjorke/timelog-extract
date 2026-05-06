@@ -34,6 +34,8 @@ class TimelogRunOptions:
     min_session_passive: int = 5
     gap_minutes: int = 15
     chrome_collapse_minutes: int = 12
+    chrome_raw: bool = False
+    chrome_contains_url: Optional[str] = None
     exclude: str = ""
     worklog: Optional[str] = None
     worklog_format: str = "auto"

@@ -126,7 +126,7 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
     if max_unexplained >= float(threshold_hours):
         return (
             f"Nudge: {max_unexplained:.1f}h unexplained screen-time on {worst_day}. "
-            "Run `gittan triage-guided` to review evidence."
+            "Run `gittan evidence-check` first, then `gittan triage-guided` to review evidence."
         )
     if uncategorized:
         day = str(uncategorized["day"])

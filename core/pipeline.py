@@ -37,7 +37,7 @@ def collect_all_events(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     all_events: List[Dict[str, Any]] = []
     collector_status: Dict[str, Dict[str, Any]] = {}
-    chrome_history_exists = chrome_history_path_fn(home).exists()
+    chrome_history_exists = bool(chrome_history_path_fn(home))
     lovable_desktop_history_exists = bool(lovable_desktop_history_candidates(home))
     lovable_desktop_usable = lovable_desktop_history_exists or lovable_desktop_has_storage_signals(home)
     mail_root, mail_msg = detect_mail_root_fn(home)

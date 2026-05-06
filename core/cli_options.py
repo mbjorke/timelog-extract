@@ -37,6 +37,9 @@ class TimelogRunOptions:
     exclude: str = ""
     worklog: Optional[str] = None
     worklog_format: str = "auto"
+    # Optional attribution preset used to approximate "commit-first" comparisons.
+    # When enabled we keep multi-project worklog behavior disabled unless explicitly requested.
+    attribution_mode: Optional[str] = None
     source_strategy: str = "auto"
     screen_time: str = "auto"
     include_uncategorized: bool = False

@@ -1,5 +1,4 @@
 """Typer commands: report, status."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -29,7 +28,6 @@ def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str],
         bool(picked.get("last_14_days", False)),
         bool(picked.get("last_month", False)),
     )
-
 
 def _resolve_timeframe_args(
     *,
@@ -66,7 +64,6 @@ def _resolve_timeframe_args(
         last_month,
     )
 
-
 def _build_report_options(
     *,
     timeframe: tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool],
@@ -92,7 +89,6 @@ def _build_report_options(
     if overrides:
         payload.update(overrides)
     return TimelogRunOptions(**payload)
-
 
 @app.command()
 def report(
@@ -120,6 +116,7 @@ def report(
         Optional[str],
         typer.Option(help="GitHub login(s) for public events; comma-separated for multiple accounts"),
     ] = None,
+    attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     exclude: Annotated[str, typer.Option(help="Exclude keywords")] = "",
     worklog: Annotated[Optional[str], typer.Option(help="Path to a worklog file (legacy fallback may be TIMELOG.md)")] = None,
     worklog_format: Annotated[str, typer.Option(help="auto/md/gtimelog")] = "auto",
@@ -208,6 +205,7 @@ def report(
             "exclude": exclude,
             "worklog": worklog,
             "worklog_format": worklog_format,
+            "attribution_mode": attribution_mode,
             "source_strategy": source_strategy,
             "screen_time": screen_time,
             "include_uncategorized": include_uncategorized,
@@ -236,7 +234,6 @@ def report(
     )
     run_timelog_cli(options)
 
-
 @app.command()
 def search(
     date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
@@ -251,6 +248,7 @@ def search(
     project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
+    attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
     noise_profile: Annotated[
         str,
@@ -290,12 +288,12 @@ def search(
             "output_format": output_format,
             "noise_profile": noise_profile,
             "lovable_noise_profile": lovable_noise_profile,
+            "attribution_mode": attribution_mode,
             "quiet": quiet,
         },
         overrides={"all_events": True},
     )
     run_timelog_cli(options)
-
 
 @app.command()
 def status(
@@ -497,7 +495,6 @@ def status(
                 f"[{STYLE_MUTED}]TIMELOG evidence projects in window: {', '.join(timelog_projects)}[/{STYLE_MUTED}]"
             )
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
-
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")
         raise typer.Exit(code=1) from e

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -147,6 +148,29 @@ def build_run_context(
         config_path=loaded_config_path,
         script_dir=repo_root,
     )
+    attribution_mode = str(getattr(args, "attribution_mode", "") or "").strip().lower()
+    if attribution_mode == "commit-first":
+        # Approximate "commit-first / my-activity-only" comparisons with the least invasive
+        # set of existing CLI knobs:
+        # - enable GitHub public-event collection
+        # - disable passive sources (mail/chrome/screen-time)
+        # - inject an explicit empty worklog so worklog-based/project worklogs are not used
+        args.github_source = "on"
+        args.source_strategy = "balanced"
+        args.mail_source = "off"
+        args.chrome_source = "off"
+        args.screen_time = "off"
+        if args.worklog is None:
+            with tempfile.NamedTemporaryFile(
+                prefix="gittan-commit-first-",
+                suffix=".md",
+                delete=False,
+            ) as tf:
+                # Ensure the file exists and is empty.
+                tf.write(b"")
+                tf.flush()
+            args.worklog = tf.name
+
     has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)
 
     # In per-project mode (profile worklogs configured without an explicit base),

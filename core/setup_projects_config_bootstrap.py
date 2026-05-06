@@ -57,6 +57,44 @@ def _default_seed_match_terms(project_name: str) -> list[str]:
     return [project_name.strip()] if project_name.strip() else []
 
 
+def _slug_for_worklog(name: str) -> str:
+    raw = "".join(ch.lower() if ch.isalnum() else "-" for ch in (name or "").strip())
+    cleaned = "-".join(part for part in raw.split("-") if part)
+    return cleaned or "project"
+
+
+def _default_project_worklog_path(*, config_path: Path, project_name: str) -> str:
+    return str((config_path.parent / "worklogs" / f"{_slug_for_worklog(project_name)}.md").resolve())
+
+
+def _provision_missing_project_worklog_paths(*, payload: dict, config_path: Path) -> list[Path]:
+    """Fill missing per-project worklog paths and create files only if missing."""
+    projects = payload.get("projects", [])
+    if not isinstance(projects, list):
+        return []
+
+    touched: list[Path] = []
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+        name = str(project.get("name", "")).strip()
+        if not name:
+            continue
+        worklog_raw = str(project.get("worklog", "")).strip()
+        if not worklog_raw:
+            worklog_raw = _default_project_worklog_path(config_path=config_path, project_name=name)
+            project["worklog"] = worklog_raw
+        worklog_path = Path(worklog_raw).expanduser()
+        if not worklog_path.is_absolute():
+            worklog_path = (config_path.parent / worklog_path).resolve()
+        if worklog_path.exists():
+            continue
+        worklog_path.parent.mkdir(parents=True, exist_ok=True)
+        worklog_path.touch()
+        touched.append(worklog_path)
+    return touched
+
+
 def _choose_bootstrap_root_interactive(default_root: Path) -> Path:
     """Ask user for discovery root using smart presets + custom path."""
     candidates: list[tuple[str, Path]] = []
@@ -99,7 +137,12 @@ def _collect_customer_project_seeds(*, yes: bool) -> list[tuple[str, str]]:
     return []
 
 
-def _merge_customer_project_seeds(payload: dict, seeds: list[tuple[str, str]]) -> tuple[int, int]:
+def _merge_customer_project_seeds(
+    payload: dict,
+    seeds: list[tuple[str, str]],
+    *,
+    config_path: Path | None = None,
+) -> tuple[int, int]:
     """Merge seeds into existing projects safely (no destructive overwrite)."""
     if not seeds:
         return 0, 0
@@ -129,6 +172,10 @@ def _merge_customer_project_seeds(payload: dict, seeds: list[tuple[str, str]]) -
                 {
                     "name": name_clean,
                     "customer": customer_clean,
+                    "worklog": _default_project_worklog_path(
+                        config_path=config_path or Path.home() / ".gittan" / "timelog_projects.json",
+                        project_name=name_clean,
+                    ),
                     "match_terms": _default_seed_match_terms(name_clean),
                     "tracked_urls": [],
                     "email": "",
@@ -243,6 +290,7 @@ def ensure_projects_config(
             {
                 "name": project_name,
                 "customer": customer,
+                "worklog": _default_project_worklog_path(config_path=config_path, project_name=project_name),
                 "match_terms": [k.strip() for k in keywords.split(",") if k.strip()],
                 "tracked_urls": [],
                 "email": "",
@@ -264,6 +312,7 @@ def ensure_projects_config(
             next_steps,
         )
 
+    _provision_missing_project_worklog_paths(payload=merged_payload, config_path=config_path)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(merged_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Saved merged project config:[/green] {config_path}")

@@ -68,6 +68,41 @@ class SetupProjectsConfigTests(unittest.TestCase):
             finally:
                 os.chdir(prev)
 
+    def test_existing_project_worklog_content_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            worklog_dir = Path(tmp) / "worklogs"
+            worklog_dir.mkdir(parents=True, exist_ok=True)
+            existing_worklog = worklog_dir / "keep-me.md"
+            original = "## 2026-05-06 16:00\n- Existing entry\n"
+            existing_worklog.write_text(original, encoding="utf-8")
+            cfg.write_text(
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "name": "keep-me",
+                                "customer": "customer-a.test",
+                                "worklog": str(existing_worklog),
+                                "match_terms": ["keep-me"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=False,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            self.assertEqual(result.status, "PASS")
+            self.assertEqual(existing_worklog.read_text(encoding="utf-8"), original)
+
     def test_invalid_config_is_backed_up_and_recreated(self):
         with tempfile.TemporaryDirectory() as tmp:
             prev = Path.cwd()
@@ -116,6 +151,8 @@ class SetupProjectsConfigTests(unittest.TestCase):
                 project = payload["projects"][0]
                 self.assertEqual(project["name"], "acme-tools")
                 self.assertEqual(project["customer"], "example")
+                self.assertIn("worklog", project)
+                self.assertTrue(Path(project["worklog"]).exists())
                 self.assertIn("acme-tools", project["match_terms"])
                 self.assertIn("example/acme-tools", project["match_terms"])
             finally:

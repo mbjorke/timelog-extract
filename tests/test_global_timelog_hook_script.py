@@ -22,6 +22,14 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
     def test_prefers_project_scoped_worklog_when_present(self):
         self.assertIn('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_ID}.md"', HOOK_BODY)
         self.assertIn('"$CONFIGURED_CANDIDATE" == "TIMELOG.md"', HOOK_BODY)
+        self.assertIn('TIMELOG_FILE="$PROJECT_WORKLOG"', HOOK_BODY)
+
+    def test_create_if_missing_and_append_only(self):
+        # Safety contract: never clobber existing worklogs, only append commit entries.
+        self.assertIn('if [[ ! -f "$TIMELOG_FILE" ]]; then', HOOK_BODY)
+        self.assertIn('} > "$TIMELOG_FILE"', HOOK_BODY)
+        self.assertIn('} >> "$TIMELOG_FILE"', HOOK_BODY)
+        self.assertNotIn("cat <<EOF > \"$TIMELOG_FILE\"", HOOK_BODY)
 
 
 if __name__ == "__main__":

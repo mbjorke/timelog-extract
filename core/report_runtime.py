@@ -170,6 +170,7 @@ def build_run_context(
                 tf.write(b"")
                 tf.flush()
             args.worklog = tf.name
+    args.attribution_mode = attribution_mode or None
 
     has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)
 
@@ -245,6 +246,9 @@ def build_run_context(
         else:
             print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
         print(f"Noise profile: {noise_profile}")
+        if attribution_mode == "commit-first":
+            print("Attribution mode: commit-first (GitHub-focused comparison preset)")
+            print("Preset sources: github=on, chrome=off, mail=off, screen_time=off, source_strategy=balanced")
         profile_hints = {
             "lenient": "keep almost all collector diagnostics/events",
             "strict": "filter common heartbeat/diagnostic noise",

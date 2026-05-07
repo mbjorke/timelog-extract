@@ -47,8 +47,8 @@ Preview first:
 python3 scripts/migrate_project_worklogs.py \
   --dry-run \
   --default-source-root "$HOME/Workspace/Project" \
-  --mapping ass-membra \
-  --mapping financing-portal \
+  --mapping project-alpha \
+  --mapping project-beta \
   --mapping timelog-extract
 ```
 
@@ -57,8 +57,8 @@ Apply:
 ```bash
 python3 scripts/migrate_project_worklogs.py \
   --default-source-root "$HOME/Workspace/Project" \
-  --mapping ass-membra \
-  --mapping financing-portal \
+  --mapping project-alpha \
+  --mapping project-beta \
   --mapping timelog-extract
 ```
 

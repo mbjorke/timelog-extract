@@ -72,7 +72,7 @@ def migrate_one(project: str, source: Path, destination: Path, dry_run: bool) ->
         return MigrationResult(project, source, destination, "invalid_source", "source path is a directory")
     try:
         source_content = source.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError, PermissionError) as exc:
         return MigrationResult(
             project,
             source,
@@ -87,7 +87,16 @@ def migrate_one(project: str, source: Path, destination: Path, dry_run: bool) ->
     digest = _sha256_text(normalized_source)
     marker = _source_marker(project, source.resolve(), digest)
 
-    destination_text = destination.read_text(encoding="utf-8") if destination.exists() else ""
+    try:
+        destination_text = destination.read_text(encoding="utf-8") if destination.exists() else ""
+    except (OSError, UnicodeDecodeError, PermissionError) as exc:
+        return MigrationResult(
+            project,
+            source,
+            destination,
+            "read_error",
+            f"cannot read destination: {exc}",
+        )
     if marker in destination_text:
         return MigrationResult(project, source, destination, "unchanged", "matching content already migrated")
 
@@ -175,7 +184,15 @@ def main() -> int:
         except ValueError as exc:
             print(f"[error] {exc}")
             return 2
+        if any(sep in project for sep in ("/", "\\")) or project in {".", ".."}:
+            print(f"[error] invalid project name {project!r}: path separators are not allowed")
+            return 2
         destination = dest_root / f"{project}.md"
+        try:
+            destination.resolve().relative_to(dest_root.resolve())
+        except ValueError:
+            print(f"[error] invalid project name {project!r}: resolves outside destination root")
+            return 2
         result = migrate_one(project, source, destination, dry_run=args.dry_run)
         results.append(result)
 

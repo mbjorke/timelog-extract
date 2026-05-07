@@ -194,10 +194,13 @@ class RuntimeCollectors:
     def collect_worklog(self, worklog_path, dt_from, dt_to, profiles):
         worklog_format = getattr(self.cli_args, "worklog_format", "auto") if self.cli_args is not None else "auto"
         paths: list[str]
-        if isinstance(worklog_path, (list, tuple, set)):
-            paths = [str(p) for p in worklog_path if str(p).strip()]
+        if worklog_path is None:
+            paths = []
+        elif isinstance(worklog_path, (list, tuple, set)):
+            paths = [str(p).strip() for p in worklog_path if p is not None and str(p).strip()]
         else:
-            paths = [str(worklog_path)]
+            one = str(worklog_path).strip()
+            paths = [one] if one else []
 
         merged: list[dict[str, Any]] = []
         seen: set[tuple[Any, ...]] = set()

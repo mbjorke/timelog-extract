@@ -210,23 +210,24 @@ class SourceStrategyTests(unittest.TestCase):
                 want_log_fn=lambda _a: False,
             )
 
-            self.assertEqual(ctx.args.github_source, "on")
-            self.assertEqual(ctx.args.mail_source, "off")
-            self.assertEqual(ctx.args.chrome_source, "off")
-            self.assertEqual(ctx.args.screen_time, "off")
-            self.assertEqual(ctx.args.source_strategy, "balanced")
+            injected = None
+            try:
+                self.assertEqual(ctx.args.github_source, "on")
+                self.assertEqual(ctx.args.mail_source, "off")
+                self.assertEqual(ctx.args.chrome_source, "off")
+                self.assertEqual(ctx.args.screen_time, "off")
+                self.assertEqual(ctx.args.source_strategy, "balanced")
 
-            # Commit-first mode injects an explicit empty worklog and disables per-project worklogs.
-            self.assertEqual(len(ctx.worklog_paths), 1)
-            injected = Path(ctx.worklog_paths[0])
-            self.assertTrue(injected.exists())
-            self.assertTrue(injected.is_file())
-            self.assertEqual(injected.stat().st_size, 0)
-            self.assertNotEqual(injected.resolve(), project_log.resolve())
-
-            # Cleanup: avoid leaving temp artifacts from the test run.
-            if injected.exists():
-                injected.unlink(missing_ok=True)
+                # Commit-first mode injects an explicit empty worklog and disables per-project worklogs.
+                self.assertEqual(len(ctx.worklog_paths), 1)
+                injected = Path(ctx.worklog_paths[0])
+                self.assertTrue(injected.exists())
+                self.assertTrue(injected.is_file())
+                self.assertEqual(injected.stat().st_size, 0)
+                self.assertNotEqual(injected.resolve(), project_log.resolve())
+            finally:
+                if injected is not None and injected.exists():
+                    injected.unlink(missing_ok=True)
 
     def test_commit_first_preserves_multi_user_github_logins(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -235,7 +236,7 @@ class SourceStrategyTests(unittest.TestCase):
                 config_path="timelog_projects.json",
                 date_from="2026-04-01",
                 date_to="2026-04-01",
-                options=self._options("auto", None, attribution_mode="commit-first", github_user="mbjorke,other-user"),
+                options=self._options("auto", None, attribution_mode="commit-first", github_user="user-a,user-b"),
                 local_tz=timezone.utc,
                 repo_root=repo,
                 as_run_options_fn=lambda o: o,
@@ -248,7 +249,7 @@ class SourceStrategyTests(unittest.TestCase):
                 want_log_fn=lambda _a: False,
             )
             self.assertEqual(ctx.args.github_source, "on")
-            self.assertEqual(ctx.args.github_user, "mbjorke,other-user")
+            self.assertEqual(ctx.args.github_user, "user-a,user-b")
 
 if __name__ == "__main__":
     unittest.main()

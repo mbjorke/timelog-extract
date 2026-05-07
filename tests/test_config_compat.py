@@ -314,8 +314,8 @@ class ProjectsConfigPathTests(unittest.TestCase):
             ]
             paths = resolve_profile_worklog_paths(profiles, config_path=cfg, script_dir=base)
             self.assertEqual(len(paths), 2)
-            self.assertTrue(str(paths[0]).endswith("worklogs/a.md"))
-            self.assertTrue(str(paths[1]).endswith("abs/c.md"))
+            self.assertEqual(paths[0], (base / "worklogs" / "a.md").resolve())
+            self.assertEqual(paths[1], (base / "abs" / "c.md").resolve())
 
 
 

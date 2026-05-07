@@ -251,10 +251,10 @@ def collect_chrome(
         where_clause = f"({kw_clauses}) AND u.url NOT LIKE ? AND u.url NOT LIKE ?"
         clause_params = (*kw_params, "%claude.ai%", "%gemini.google.com%")
     rows = query_chrome_across_profiles(home, where_clause, dt_from_cu, dt_to_cu, clause_params)
-    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
-    if contains_url:
+    if include_all and contains_url:
         needle = contains_url.lower()
         rows = [row for row in rows if needle in (row[1] or "").lower()]
+    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
     results = []
     for visit_time_cu, url, title in rows:
         ts = chrome_ts(visit_time_cu, epoch_delta_us)

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any, Dict, List, Tuple
 
 from core.cli import package_version
 
 TRUTH_PAYLOAD_VERSION = "1"
+
+_URL_SCHEME_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 def _iso_utc(dt: datetime) -> str:
@@ -22,7 +25,10 @@ def _redact_chrome_detail_for_json(detail: str) -> str:
     if " — " in text:
         head = text.split(" — ", 1)[0].strip()
         return (head or "Chrome visit")[:240]
-    return text[:240]
+    if _URL_SCHEME_RE.fullmatch(text):
+        return "Chrome visit"
+    redacted = _URL_SCHEME_RE.sub("[url]", text).strip()
+    return (redacted or "Chrome visit")[:240]
 
 
 def _serialize_event(

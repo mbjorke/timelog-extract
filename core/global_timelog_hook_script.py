@@ -21,7 +21,7 @@ HOOK_BODY = dedent(
       CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\\r')"
       if [[ -n "${CANDIDATE:-}" ]]; then
         case "$CANDIDATE" in
-          *../*|*/..|../*|*/../*)
+          ..|*../*|*/..|../*|*/../*)
             echo "gittan-hook: refusing unsafe .. segments in timelog_filename" >&2
             CANDIDATE=""
             ;;

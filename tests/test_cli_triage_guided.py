@@ -292,7 +292,7 @@ class TriageGuidedTests(unittest.TestCase):
         choices = checkbox_mock.call_args.kwargs["choices"]
         self.assertIn("org/project-alpha", choices[0].title)
 
-    def test_guided_generic_subdomain_without_signal_is_disabled(self):
+    def test_guided_generic_subdomain_with_signal_is_disabled(self):
         plan = {
             "days": [
                 {

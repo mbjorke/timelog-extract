@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     source_counts = Counter(str(event.get("source") or "") for event in report.included_events)
     source_counts.pop("", None)
-    observed_hours = float(sum(float(day.get("hours", 0.0) or 0.0) for day in report.overall_days.values()))
+    observed_hours = float(sum(float(day.get("hours", 0.0) or 0.0) for day in (report.overall_days or {}).values()))
     screen_values = [float(v or 0.0) for v in (report.screen_time_days or {}).values()]
     # Screen Time may be stored as seconds/day (large integers) or hours/day (small floats).
     # Daily wall-clock Screen Time in hours rarely exceeds ~24h; values >> that are seconds.

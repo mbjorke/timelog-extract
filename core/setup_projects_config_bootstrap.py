@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import time
@@ -58,9 +59,11 @@ def _default_seed_match_terms(project_name: str) -> list[str]:
 
 
 def _slug_for_worklog(name: str) -> str:
-    raw = "".join(ch.lower() if ch.isalnum() else "-" for ch in (name or "").strip())
-    cleaned = "-".join(part for part in raw.split("-") if part)
-    return cleaned or "project"
+    cleaned_src = (name or "").strip()
+    raw = "".join(ch.lower() if ch.isalnum() else "-" for ch in cleaned_src)
+    cleaned = "-".join(part for part in raw.split("-") if part) or "project"
+    digest = hashlib.sha1(cleaned_src.encode("utf-8")).hexdigest()[:8]
+    return f"{cleaned}-{digest}"
 
 
 def _default_project_worklog_path(*, config_path: Path, project_name: str) -> str:

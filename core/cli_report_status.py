@@ -190,6 +190,7 @@ def search(
     chrome_contains_url: Annotated[
         Optional[str],
         typer.Option(
+            "--chrome-contains-url",
             "--contains-url",
             help="With --chrome-raw: keep visits whose URL contains this substring (case-insensitive).",
         ),

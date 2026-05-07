@@ -35,7 +35,7 @@ STYLE_POSITIVE = CLR_GREEN
 def _display_source_label(source: str) -> str:
     """Render neutral source labels without changing underlying source keys."""
     if source == "TIMELOG.md":
-        return "Worklog"
+        return "Worklog (TIMELOG.md)"
     return source
 
 

@@ -14,10 +14,8 @@ def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     # Screen Time may be stored as seconds/day (large integers) or hours/day (small floats).
     # Daily wall-clock Screen Time in hours rarely exceeds ~24h; values >> that are seconds.
     if screen_values:
-        mx = max(screen_values)
-        screen_time_hours = (
-            float(sum(v / 3600.0 for v in screen_values)) if mx > 48.0 else float(sum(screen_values))
-        )
+        # Normalize each day independently to avoid one anomalous value skewing all days.
+        screen_time_hours = float(sum((v / 3600.0) if v > 48.0 else v for v in screen_values))
     else:
         screen_time_hours = 0.0
     delta_hours = screen_time_hours - observed_hours

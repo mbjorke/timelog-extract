@@ -31,6 +31,9 @@ _STOPWORDS = {
 }
 
 
+_NOISE_TRACKED_URL_VALUES = {"lovable.dev", "www.lovable.dev"}
+
+
 def _is_extension_lifecycle_detail(text: str) -> bool:
     lower = (text or "").lower()
     if lower.startswith("started downloading extension: "):
@@ -82,7 +85,7 @@ def _is_noise_rule_value(rule_type: str, rule_value: str) -> bool:
             return True
         if _DATE_TIME_LIKE_RE.match(rule_value):
             return True
-    if rule_type == "tracked_urls" and rule_value == "lovable.dev":
+    if rule_type == "tracked_urls" and rule_value.lower() in _NOISE_TRACKED_URL_VALUES:
         return True
     return False
 

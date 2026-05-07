@@ -5,7 +5,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import collect_chrome
+from collectors.chrome import chrome_history_paths, collect_chrome
 from chrome_test_support import EPOCH_DELTA_US, insert_visit, make_chrome_db, make_event
 
 
@@ -54,6 +54,19 @@ class CollectChromeProfilesAndRawTests(unittest.TestCase):
         )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["detail"], "Profile 1 hit")
+
+
+    def test_chrome_history_paths_includes_default_guest_and_sorted_profiles(self):
+        chrome_root = self.home / "Library" / "Application Support" / "Google" / "Chrome"
+        for dirname in ["Profile 2", "Profile 1", "Guest Profile"]:
+            p = chrome_root / dirname
+            p.mkdir(parents=True, exist_ok=True)
+            make_chrome_db(p / "History")
+        paths = chrome_history_paths(self.home)
+        names = [path.parent.name for path in paths]
+        self.assertEqual(names[0], "Default")
+        self.assertIn("Guest Profile", names)
+        self.assertEqual(names[1:], sorted(names[1:]))
 
     def test_include_all_excludes_urls_covered_by_other_collectors(self):
         ts = datetime(2026, 4, 10, 17, 0, tzinfo=timezone.utc)

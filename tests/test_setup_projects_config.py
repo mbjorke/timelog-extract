@@ -14,7 +14,10 @@ from rich.console import Console
 
 from core.config import ENV_GITTAN_HOME, ENV_PROJECTS_CONFIG, resolve_projects_config_path
 from core.global_timelog_setup_lib import _ensure_minimal_projects_config
-from core.setup_projects_config_bootstrap import ensure_projects_config
+from core.setup_projects_config_bootstrap import (
+    _provision_missing_project_worklog_paths,
+    ensure_projects_config,
+)
 
 
 class SetupProjectsConfigTests(unittest.TestCase):
@@ -231,6 +234,27 @@ class SetupProjectsConfigTests(unittest.TestCase):
             payload = json.loads(cfg.read_text(encoding="utf-8"))
             self.assertEqual(len(payload["projects"]), 1)
             self.assertEqual(payload["projects"][0]["name"], "existing")
+
+
+class SetupProjectsConfigProvisionTests(unittest.TestCase):
+    def test_provision_missing_project_worklog_paths_creates_missing_and_preserves_existing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text('{"projects": []}', encoding="utf-8")
+            existing = Path(tmp) / "worklogs" / "existing.md"
+            existing.parent.mkdir(parents=True, exist_ok=True)
+            existing.write_text("# existing\n", encoding="utf-8")
+            payload = {
+                "projects": [
+                    {"name": "missing-a"},
+                    {"name": "existing", "worklog": str(existing)},
+                ]
+            }
+            touched = _provision_missing_project_worklog_paths(payload=payload, config_path=cfg)
+            self.assertEqual(len(touched), 1)
+            self.assertTrue(touched[0].exists())
+            self.assertEqual(existing.read_text(encoding="utf-8"), "# existing\n")
+
 
 
 if __name__ == "__main__":

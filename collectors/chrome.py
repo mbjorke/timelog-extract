@@ -24,6 +24,7 @@ def chrome_history_path(home):
 
 
 def chrome_history_paths(home: Path):
+    """Return ordered Chrome History DB paths across supported local profiles."""
     root = home / "Library" / "Application Support" / "Google" / "Chrome"
     if not root.exists():
         return []
@@ -44,6 +45,12 @@ def chrome_history_paths(home: Path):
 
 
 def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params=()):
+    """Run a constrained Chrome history query against a copied SQLite DB.
+
+    Keep `where_clause` sourced from internal fixed templates only. This helper
+    intentionally allows SQL snippets for composability; callers must not pass
+    user-controlled raw SQL into `where_clause`.
+    """
     if not history_path.exists():
         return []
 

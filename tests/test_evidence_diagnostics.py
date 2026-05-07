@@ -43,6 +43,16 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
         snap = build_evidence_snapshot(report)
         self.assertAlmostEqual(snap["screen_time_hours"], 15.6, places=3)
 
+
+    def test_snapshot_mixed_units_normalizes_each_day_independently(self):
+        report = SimpleNamespace(
+            included_events=[],
+            overall_days={"2026-05-04": {"hours": 1.0}},
+            screen_time_days={"2026-05-04": 7.0, "2026-05-05": 7200.0},
+        )
+        snap = build_evidence_snapshot(report)
+        self.assertAlmostEqual(snap["screen_time_hours"], 9.0, places=3)
+
     def test_warnings_trigger_on_gap_low_diversity_and_low_chrome(self):
         snapshot = {
             "delta_hours": 5.0,

@@ -62,7 +62,7 @@ def _slug_for_worklog(name: str) -> str:
     cleaned_src = (name or "").strip()
     raw = "".join(ch.lower() if ch.isalnum() else "-" for ch in cleaned_src)
     cleaned = "-".join(part for part in raw.split("-") if part) or "project"
-    digest = hashlib.sha1(cleaned_src.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(cleaned_src.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     return f"{cleaned}-{digest}"
 
 

@@ -45,7 +45,9 @@ HOOK_BODY = dedent(
     else
       TIMELOG_FILE="$ROOT_DIR/$TIMELOG_NAME"
     fi
-    REPO_ID="${ROOT_DIR##*/}"
+    REPO_BASENAME="${ROOT_DIR##*/}"
+    REPO_HASH="$(printf "%s" "$root_canon" | shasum | awk "{print substr($1,1,8)}")"
+    REPO_ID="${REPO_BASENAME}-${REPO_HASH}"
     PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_ID}.md"
     if [[ -f "$PROJECT_WORKLOG" ]]; then
       if [[ -z "${CONFIGURED_CANDIDATE:-}" || "$CONFIGURED_CANDIDATE" == "TIMELOG.md" ]]; then

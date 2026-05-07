@@ -129,6 +129,7 @@ class TruthPayloadTests(unittest.TestCase):
             chrome_raw=True,
         )
         ev_out = payload["days"][day]["sessions"][0]["events"][0]
+        self.assertTrue(payload["settings"].get("chrome_raw_json_detail_redacted"))
         self.assertEqual(ev_out["detail"], "Chrome visit")
 
 

@@ -210,7 +210,7 @@ class SourceStrategyTests(unittest.TestCase):
                 want_log_fn=lambda _a: False,
             )
 
-            injected = None
+            injected = Path(ctx.worklog_paths[0]) if ctx.worklog_paths else None
             try:
                 self.assertEqual(ctx.args.github_source, "on")
                 self.assertEqual(ctx.args.mail_source, "off")
@@ -220,7 +220,6 @@ class SourceStrategyTests(unittest.TestCase):
 
                 # Commit-first mode injects an explicit empty worklog and disables per-project worklogs.
                 self.assertEqual(len(ctx.worklog_paths), 1)
-                injected = Path(ctx.worklog_paths[0])
                 self.assertTrue(injected.exists())
                 self.assertTrue(injected.is_file())
                 self.assertEqual(injected.stat().st_size, 0)
@@ -248,8 +247,13 @@ class SourceStrategyTests(unittest.TestCase):
                 resolve_worklog_path_fn=lambda cli, _cfg, _ws, _root: Path(cli),
                 want_log_fn=lambda _a: False,
             )
-            self.assertEqual(ctx.args.github_source, "on")
-            self.assertEqual(ctx.args.github_user, "user-a,user-b")
+            injected_path = Path(ctx.worklog_paths[0]) if ctx.worklog_paths else None
+            try:
+                self.assertEqual(ctx.args.github_source, "on")
+                self.assertEqual(ctx.args.github_user, "user-a,user-b")
+            finally:
+                if injected_path is not None and injected_path.exists():
+                    injected_path.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     unittest.main()

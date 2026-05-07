@@ -21,6 +21,7 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
 
     def test_prefers_project_scoped_worklog_when_present(self):
         self.assertIn('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_ID}.md"', HOOK_BODY)
+        self.assertIn('REPO_HASH="$(printf \"%s\" \"$root_canon\" | shasum', HOOK_BODY)
         self.assertIn('"$CONFIGURED_CANDIDATE" == "TIMELOG.md"', HOOK_BODY)
         self.assertIn('TIMELOG_FILE="$PROJECT_WORKLOG"', HOOK_BODY)
 

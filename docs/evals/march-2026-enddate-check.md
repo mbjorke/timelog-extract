@@ -1,13 +1,13 @@
 # March 2026 End-Date Check
 
 Date: 2026-04-23  
-Mode: `--invoice-mode calibrated-a` with `march_invoice_ground_truth.json`
+Mode: `--invoice-mode calibrated-a` with `tests/fixtures/experiments/march_invoice_ground_truth.example.json`
 
 ## Commands
 
 ```bash
-python3 timelog_extract.py report --from 2026-03-01 --to 2026-03-30 --format json --invoice-mode calibrated-a --invoice-ground-truth march_invoice_ground_truth.json > /tmp/march_to_30.json
-python3 timelog_extract.py report --from 2026-03-01 --to 2026-03-31 --format json --invoice-mode calibrated-a --invoice-ground-truth march_invoice_ground_truth.json > /tmp/march_to_31.json
+python3 timelog_extract.py report --from 2026-03-01 --to 2026-03-30 --format json --invoice-mode calibrated-a --invoice-ground-truth tests/fixtures/experiments/march_invoice_ground_truth.example.json > /tmp/march_to_30.json
+python3 timelog_extract.py report --from 2026-03-01 --to 2026-03-31 --format json --invoice-mode calibrated-a --invoice-ground-truth tests/fixtures/experiments/march_invoice_ground_truth.example.json > /tmp/march_to_31.json
 ```
 
 ## Result

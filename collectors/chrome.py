@@ -6,6 +6,7 @@ import sqlite3
 import tempfile
 from datetime import datetime, timezone
 from typing import Callable, Dict
+from pathlib import Path
 from urllib.parse import urlparse
 
 
@@ -22,7 +23,34 @@ def chrome_history_path(home):
     return home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
 
 
+def chrome_history_paths(home: Path):
+    """Return ordered Chrome History DB paths across supported local profiles."""
+    root = home / "Library" / "Application Support" / "Google" / "Chrome"
+    if not root.exists():
+        return []
+    candidates = []
+    default_history = root / "Default" / "History"
+    if default_history.exists():
+        candidates.append(default_history)
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not (name.startswith("Profile ") or name == "Guest Profile"):
+            continue
+        history = child / "History"
+        if history.exists():
+            candidates.append(history)
+    return candidates
+
+
 def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params=()):
+    """Run a constrained Chrome history query against a copied SQLite DB.
+
+    Keep `where_clause` sourced from internal fixed templates only. This helper
+    intentionally allows SQL snippets for composability; callers must not pass
+    user-controlled raw SQL into `where_clause`.
+    """
     if not history_path.exists():
         return []
 
@@ -53,6 +81,14 @@ def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params=()):
             os.unlink(tmp.name)
         except OSError:
             pass
+    return rows
+
+
+def query_chrome_across_profiles(home, where_clause, dt_from_cu, dt_to_cu, params=()):
+    rows = []
+    for history_path in chrome_history_paths(home):
+        rows.extend(query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params))
+    rows.sort(key=lambda row: row[0])
     return rows
 
 
@@ -123,8 +159,7 @@ def collect_claude_ai_urls(
     clauses = " OR ".join(["u.url LIKE ? ESCAPE '\\'" for _ in url_map])
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
-    history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
+    rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -160,8 +195,7 @@ def collect_gemini_web_urls(
     clauses = " OR ".join(["u.url LIKE ? ESCAPE '\\'" for _ in url_map])
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
-    history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, clauses, dt_from_cu, dt_to_cu, clause_params)
+    rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -188,32 +222,43 @@ def collect_chrome(
     epoch_delta_us,
     classify_project: Callable,
     make_event: Callable,
+    include_all: bool = False,
+    contains_url: str | None = None,
 ):
-    all_keywords = sorted(
-        {
-            kw.lower()
-            for profile in profiles
-            for kw in (profile["match_terms"] + [profile["name"]])
-            if kw
-        }
-    )
-    if not all_keywords:
-        return []
-
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
-    kw_clauses = " OR ".join(
-        ["(LOWER(u.url) LIKE ? ESCAPE '\\' OR LOWER(u.title) LIKE ? ESCAPE '\\')" for _ in all_keywords]
-    )
-    kw_params = tuple(p for kw in all_keywords for p in (f"%{_like_escape(kw)}%", f"%{_like_escape(kw)}%"))
-    where_clause = f"({kw_clauses}) AND u.url NOT LIKE ? AND u.url NOT LIKE ?"
-    clause_params = (*kw_params, "%claude.ai%", "%gemini.google.com%")
-    history_path = chrome_history_path(home)
-    rows = query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, clause_params)
+    if include_all:
+        # Avoid double-counting with dedicated Claude.ai / Gemini (web) collectors.
+        where_clause = (
+            "NOT (LOWER(u.url) LIKE '%claude.ai%') "
+            "AND NOT (LOWER(u.url) LIKE '%gemini.google.com%')"
+        )
+        clause_params = ()
+    else:
+        all_keywords = sorted(
+            {
+                kw.lower()
+                for profile in profiles
+                for kw in (profile["match_terms"] + [profile["name"]])
+                if kw
+            }
+        )
+        if not all_keywords:
+            return []
+        kw_clauses = " OR ".join(
+            ["(LOWER(u.url) LIKE ? ESCAPE '\\' OR LOWER(u.title) LIKE ? ESCAPE '\\')" for _ in all_keywords]
+        )
+        kw_params = tuple(p for kw in all_keywords for p in (f"%{_like_escape(kw)}%", f"%{_like_escape(kw)}%"))
+        where_clause = f"({kw_clauses}) AND u.url NOT LIKE ? AND u.url NOT LIKE ?"
+        clause_params = (*kw_params, "%claude.ai%", "%gemini.google.com%")
+    rows = query_chrome_across_profiles(home, where_clause, dt_from_cu, dt_to_cu, clause_params)
+    if include_all and contains_url:
+        needle = contains_url.lower()
+        rows = [row for row in rows if needle in (row[1] or "").lower()]
     rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
     results = []
     for visit_time_cu, url, title in rows:
         ts = chrome_ts(visit_time_cu, epoch_delta_us)
-        detail = (title or url)[:70]
+        detail = (f"{(title or '').strip()} — {url}".strip(" —") if include_all else (title or url))[:240]
         project = classify_project(f"{url} {title}", profiles)
         results.append(make_event("Chrome", ts, detail, project))
     return results

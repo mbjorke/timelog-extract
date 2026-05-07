@@ -21,7 +21,7 @@ class CollectorSpec:
 
 def build_collector_specs(
     args: Any,
-    worklog_path: Path,
+    worklog_paths: Path | list[Path],
     *,
     chrome_history_exists: bool,
     lovable_desktop_history_exists: bool,
@@ -96,7 +96,7 @@ def build_collector_specs(
         ),
         CollectorSpec(
             "TIMELOG.md",
-            lambda profiles, start, end: collect_worklog(str(worklog_path), start, end, profiles),
+            lambda profiles, start, end: collect_worklog(worklog_paths, start, end, profiles),
             "timestamps",
         ),
         CollectorSpec(

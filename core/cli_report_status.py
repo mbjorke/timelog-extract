@@ -1,10 +1,8 @@
 """Typer commands: report, status."""
-
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import datetime
-from typing import Annotated, Optional, cast
+from typing import Annotated, Optional
 
 import click
 import typer
@@ -12,88 +10,13 @@ import typer
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
+from core.cli_report_status_helpers import (
+    build_report_options as _build_report_options,
+    resolve_timeframe_args as _resolve_timeframe_args,
+)
 from core.config import default_projects_config_option
-from core.inline_mapping_apply import run_inline_mapping_apply_loop
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
-from core.projects_audit import build_inline_mapping_suggestions
 from core.report_nudges import build_unexplained_gap_nudge
-
-def _timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
-    """Map `prompt_for_timeframe()` output into the normalized timeframe tuple."""
-    return (
-        cast(Optional[str], picked.get("date_from")),
-        cast(Optional[str], picked.get("date_to")),
-        bool(picked.get("today", False)),
-        bool(picked.get("yesterday", False)),
-        bool(picked.get("last_3_days", False)),
-        bool(picked.get("last_week", False)),
-        bool(picked.get("last_14_days", False)),
-        bool(picked.get("last_month", False)),
-    )
-
-
-def _resolve_timeframe_args(
-    *,
-    date_from: Optional[datetime],
-    date_to: Optional[datetime],
-    today: bool,
-    yesterday: bool,
-    last_3_days: bool,
-    last_week: bool,
-    last_14_days: bool,
-    last_month: bool,
-) -> tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool]:
-    """Normalize timeframe flags for `report`/`search`; prompt when omitted."""
-    if not (
-        today
-        or yesterday
-        or last_3_days
-        or last_week
-        or last_14_days
-        or last_month
-        or date_from
-        or date_to
-    ):
-        picked = prompt_for_timeframe()
-        return _timeframe_from_prompt(picked)
-    return (
-        date_from.strftime("%Y-%m-%d") if date_from else None,
-        date_to.strftime("%Y-%m-%d") if date_to else None,
-        today,
-        yesterday,
-        last_3_days,
-        last_week,
-        last_14_days,
-        last_month,
-    )
-
-
-def _build_report_options(
-    *,
-    timeframe: tuple[Optional[str], Optional[str], bool, bool, bool, bool, bool, bool],
-    option_fields: dict[str, object],
-    overrides: Optional[dict[str, object]] = None,
-) -> TimelogRunOptions:
-    """Build `TimelogRunOptions` from normalized timeframe fields + command-specific fields.
-
-    `overrides` is applied last so callers can enforce command-specific invariants (for example `search` forcing `all_events=True`).
-    """
-    df_s, dt_s, today, yesterday, last_3_days, last_week, last_14_days, last_month = timeframe
-    payload: dict[str, object] = {
-        "date_from": df_s,
-        "date_to": dt_s,
-        "today": today,
-        "yesterday": yesterday,
-        "last_3_days": last_3_days,
-        "last_week": last_week,
-        "last_14_days": last_14_days,
-        "last_month": last_month,
-    }
-    payload.update(option_fields)
-    if overrides:
-        payload.update(overrides)
-    return TimelogRunOptions(**payload)
 
 
 @app.command()
@@ -122,8 +45,9 @@ def report(
         Optional[str],
         typer.Option(help="GitHub login(s) for public events; comma-separated for multiple accounts"),
     ] = None,
+    attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     exclude: Annotated[str, typer.Option(help="Exclude keywords")] = "",
-    worklog: Annotated[Optional[str], typer.Option(help="Path to TIMELOG.md")] = None,
+    worklog: Annotated[Optional[str], typer.Option(help="Path to a worklog file (legacy fallback may be TIMELOG.md)")] = None,
     worklog_format: Annotated[str, typer.Option(help="auto/md/gtimelog")] = "auto",
     source_strategy: Annotated[str, typer.Option(help="auto/worklog-first/balanced")] = "auto",
     screen_time: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
@@ -176,7 +100,6 @@ def report(
     ] = None,
 ):
     """Build detailed local evidence reports for a selected timeframe.
-
     Common use cases:
     - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
     - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
@@ -210,6 +133,7 @@ def report(
             "exclude": exclude,
             "worklog": worklog,
             "worklog_format": worklog_format,
+            "attribution_mode": attribution_mode,
             "source_strategy": source_strategy,
             "screen_time": screen_time,
             "include_uncategorized": include_uncategorized,
@@ -238,7 +162,6 @@ def report(
     )
     run_timelog_cli(options)
 
-
 @app.command()
 def search(
     date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
@@ -253,6 +176,26 @@ def search(
     project: Annotated[Optional[str], typer.Option("--project", help="Filter to one project name")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
+    chrome_raw: Annotated[
+        bool,
+        typer.Option(
+            "--chrome-raw",
+            help=(
+                "Near-complete Chrome history for triage (still excludes claude.ai and gemini.google.com "
+                "URLs covered by other collectors). Sensitive URLs may appear in terminal output; "
+                "--format json redacts Chrome detail text to titles only while this flag is on."
+            ),
+        ),
+    ] = False,
+    chrome_contains_url: Annotated[
+        Optional[str],
+        typer.Option(
+            "--chrome-contains-url",
+            "--contains-url",
+            help="With --chrome-raw: keep visits whose URL contains this substring (case-insensitive).",
+        ),
+    ] = None,
+    attribution_mode: Annotated[Optional[str], typer.Option("--attribution-mode", help="Preset for comparisons: commit-first (GitHub-focused; disables worklog unless --worklog is set)")] = None,
     output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
     noise_profile: Annotated[
         str,
@@ -269,6 +212,7 @@ def search(
     Common use cases:
     - Why did project X get time? `gittan search --today --project "X" --noise-profile lenient --lovable-noise-profile balanced`
     - Conservative audit view: `gittan search --today --project "X" --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Raw Chrome triage: `gittan search --chrome-raw` (see `--chrome-raw` help for privacy / JSON behavior).
     """
     from core.report_cli import run_timelog_cli
 
@@ -289,15 +233,17 @@ def search(
             "only_project": project,
             "customer": customer,
             "source_summary": source_summary,
+            "chrome_raw": chrome_raw,
+            "chrome_contains_url": chrome_contains_url,
             "output_format": output_format,
             "noise_profile": noise_profile,
             "lovable_noise_profile": lovable_noise_profile,
+            "attribution_mode": attribution_mode,
             "quiet": quiet,
         },
         overrides={"all_events": True},
     )
     run_timelog_cli(options)
-
 
 @app.command()
 def status(
@@ -486,15 +432,19 @@ def status(
         nudge = build_unexplained_gap_nudge(report)
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
-        suggestions = build_inline_mapping_suggestions(events=report.all_events, profiles=report.profiles, max_candidates=3)
-        if suggestions:
-            console.print(f"[bold {STYLE_LABEL}]Mapping suggestions[/bold {STYLE_LABEL}]")
-            console.print("\n".join(f"[{STYLE_MUTED}]- {line}[/{STYLE_MUTED}]" for line in suggestions))
-            run_inline_mapping_apply_loop(
-                events=report.all_events, profiles=report.profiles, projects_config=options.projects_config, max_candidates=3
+        timelog_projects = sorted(
+            {
+                str(event.get("project", "")).strip()
+                for event in report.included_events
+                if "timelog" in str(event.get("source", "")).lower() and str(event.get("project", "")).strip()
+            },
+            key=lambda name: name.lower(),
+        )
+        if timelog_projects:
+            console.print(
+                f"[{STYLE_MUTED}]TIMELOG evidence projects in window: {', '.join(timelog_projects)}[/{STYLE_MUTED}]"
             )
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
-
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")
         raise typer.Exit(code=1) from e

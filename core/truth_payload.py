@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any, Dict, List, Tuple
 
 from core.cli import package_version
 
 TRUTH_PAYLOAD_VERSION = "1"
+
+_URL_SCHEME_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 def _iso_utc(dt: datetime) -> str:
@@ -16,14 +19,36 @@ def _iso_utc(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat()
 
 
-def _serialize_event(event: Dict[str, Any], local_ts: datetime | None = None) -> Dict[str, Any]:
+def _redact_chrome_detail_for_json(detail: str) -> str:
+    """Strip raw URLs from Chrome event detail for machine-readable exports."""
+    text = str(detail or "").strip()
+    if " — " in text:
+        head = text.split(" — ", 1)[0].strip()
+        return (head or "Chrome visit")[:240]
+    if _URL_SCHEME_RE.fullmatch(text):
+        return "Chrome visit"
+    redacted = _URL_SCHEME_RE.sub("[url]", text).strip()
+    return (redacted or "Chrome visit")[:240]
+
+
+def _serialize_event(
+    event: Dict[str, Any],
+    local_ts: datetime | None = None,
+    *,
+    redact_chrome_raw_json: bool = False,
+) -> Dict[str, Any]:
     ts = event.get("timestamp")
     if not isinstance(ts, datetime):
         raise TypeError("event['timestamp'] must be datetime")
+    detail_raw = str(event.get("detail", "") or "")
+    if redact_chrome_raw_json and str(event.get("source", "")) == "Chrome":
+        detail_out = _redact_chrome_detail_for_json(detail_raw)
+    else:
+        detail_out = detail_raw
     out: Dict[str, Any] = {
         "source": event.get("source", ""),
         "timestamp": _iso_utc(ts),
-        "detail": event.get("detail", ""),
+        "detail": detail_out,
         "project": event.get("project", ""),
     }
     if local_ts is not None:
@@ -41,6 +66,7 @@ def _serialize_session(
     min_session_passive_minutes: int,
     session_index: int,
     day: str,
+    redact_chrome_raw_json: bool = False,
 ) -> Dict[str, Any]:
     raw_hours = session_duration_hours_fn(
         session_events,
@@ -55,9 +81,9 @@ def _serialize_session(
     for ev in session_events:
         lt = ev.get("local_ts")
         if isinstance(lt, datetime):
-            events_out.append(_serialize_event(ev, local_ts=lt))
+            events_out.append(_serialize_event(ev, local_ts=lt, redact_chrome_raw_json=redact_chrome_raw_json))
         else:
-            events_out.append(_serialize_event(ev))
+            events_out.append(_serialize_event(ev, redact_chrome_raw_json=redact_chrome_raw_json))
     return {
         "id": f"{day}-{session_index}",
         "day": day,
@@ -91,6 +117,7 @@ def build_truth_payload(
     source_strategy_effective: str = "balanced",
     primary_source: str = "balanced",
     session_duration_hours_fn,
+    chrome_raw: bool = False,
 ) -> Dict[str, Any]:
     """Build a JSON-serializable dict aligned with existing session rules."""
     days_out: Dict[str, Any] = {}
@@ -98,6 +125,7 @@ def build_truth_payload(
         payload = overall_days[day]
         sessions_raw: List[Tuple[datetime, datetime, List[Dict[str, Any]]]] = payload["sessions"]
         sessions_out = []
+        redact = bool(chrome_raw)
         for idx, (start_ts, end_ts, session_events) in enumerate(sessions_raw, start=1):
             sessions_out.append(
                 _serialize_session(
@@ -109,6 +137,7 @@ def build_truth_payload(
                     min_session_passive_minutes=min_session_passive_minutes,
                     session_index=idx,
                     day=day,
+                    redact_chrome_raw_json=redact,
                 )
             )
         entries = payload.get("entries") or []
@@ -116,9 +145,9 @@ def build_truth_payload(
         for ev in entries:
             lt = ev.get("local_ts")
             if isinstance(lt, datetime):
-                events_flat.append(_serialize_event(ev, local_ts=lt))
+                events_flat.append(_serialize_event(ev, local_ts=lt, redact_chrome_raw_json=redact))
             else:
-                events_flat.append(_serialize_event(ev))
+                events_flat.append(_serialize_event(ev, redact_chrome_raw_json=redact))
         days_out[day] = {
             "hours_estimated": round(float(payload["hours"]), 6),
             "session_count": len(sessions_out),
@@ -150,6 +179,7 @@ def build_truth_payload(
             "min_session_passive_minutes": min_session_passive_minutes,
             "source_strategy_requested": source_strategy_requested,
             "source_strategy_effective": source_strategy_effective,
+            **({"chrome_raw_json_detail_redacted": True} if chrome_raw else {}),
         },
         "source_roles": {
             "primary_source": primary_source,

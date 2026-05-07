@@ -22,6 +22,7 @@ class ReportNudgesTests(unittest.TestCase):
         text = build_unexplained_gap_nudge(report, threshold_hours=1.5)
         self.assertIsNotNone(text)
         assert text is not None
+        self.assertIn("evidence-check", text)
         self.assertIn("triage-guided", text)
 
     def test_nudge_hidden_when_gap_below_threshold(self):

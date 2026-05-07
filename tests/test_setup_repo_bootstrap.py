@@ -113,10 +113,10 @@ class SetupRepoBootstrapTests(unittest.TestCase):
 
     def test_merge_repo_project_seeds_updates_terms_without_overwrite(self):
         payload = {
-            "worklog": "TIMELOG.md",
             "projects": [
                 {
                     "name": "acme-tools",
+                    "worklog": "~/.gittan/worklogs/acme-tools.md",
                     "customer": "Existing Customer",
                     "match_terms": ["legacy-term"],
                     "tracked_urls": ["https://example.com"],
@@ -150,10 +150,10 @@ class SetupRepoBootstrapTests(unittest.TestCase):
 
     def test_merge_repo_project_seeds_does_not_add_noisy_variants_from_repo_name(self):
         payload = {
-            "worklog": "TIMELOG.md",
             "projects": [
                 {
                     "name": "acme-tools",
+                    "worklog": "~/.gittan/worklogs/acme-tools.md",
                     "customer": "example",
                     "match_terms": ["acme-tools"],
                 }

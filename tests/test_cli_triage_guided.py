@@ -292,17 +292,20 @@ class TriageGuidedTests(unittest.TestCase):
         choices = checkbox_mock.call_args.kwargs["choices"]
         self.assertIn("org/project-alpha", choices[0].title)
 
-    def test_guided_generic_domain_without_signal_is_disabled(self):
+    def test_guided_generic_subdomain_with_signal_is_disabled(self):
         plan = {
             "days": [
                 {
                     "day": "2026-04-30",
                     "skip_reason": None,
                     "resolved_project_for_top_suggestion": "Demo",
+                    "gap": {"unexplained_screen_time_hours": 4.0},
                     "top_sites": [
                         {
-                            "domain": "google.com",
-                            "sample_title": "Google Search",
+                            "domain": "docs.google.com",
+                            "sample_title": "Google Docs",
+                            "visits": 12,
+                            "share": 0.5,
                         }
                     ],
                 }
@@ -320,6 +323,8 @@ class TriageGuidedTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         choices = checkbox_mock.call_args.kwargs["choices"]
         self.assertIsNotNone(getattr(choices[0], "disabled", None))
+        self.assertIn("events: 12", choices[0].title)
+        self.assertIn("impact: 2.0h", choices[0].title)
 
 
 if __name__ == "__main__":

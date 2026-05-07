@@ -194,12 +194,29 @@ def _canonicalize_lovable_storage_url(url: str) -> str:
     return clean
 
 
+def _is_generic_lovable_root_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url or "")
+    except ValueError:
+        return False
+    if (parsed.scheme or "").lower() != "https":
+        return False
+    host = (parsed.netloc or "").lower().strip().rstrip(".")
+    if host not in {"lovable.dev", "www.lovable.dev"}:
+        return False
+    return (parsed.path or "") in {"", "/"}
+
+
 def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "normal") -> List[str]:
     profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
     if profile == "normal":
         return urls
     if profile == "strict":
-        return [url for url in urls if _is_plausible_lovable_storage_url(url)]
+        return [
+            url
+            for url in urls
+            if _is_plausible_lovable_storage_url(url) and not _is_generic_lovable_root_url(url)
+        ]
     # balanced: salvage likely valid URLs from noisy blobs, then keep plausible ones.
     if profile == "balanced":
         cleaned = [_canonicalize_lovable_storage_url(url) for url in urls]
@@ -216,7 +233,7 @@ def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "
             lowered = url.lower()
             if "lovable.dev" in lowered or "lovable.app" in lowered or "lovableproject" in lowered:
                 deduped.append(url)
-        return deduped
+        return [url for url in deduped if not _is_generic_lovable_root_url(url)]
     return urls
 
 

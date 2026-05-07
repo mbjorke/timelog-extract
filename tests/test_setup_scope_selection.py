@@ -81,12 +81,57 @@ class SetupScopeSelectionTests(unittest.TestCase):
             ):
                 machine_setup._configure_timelog_scope_and_name(console, yes=False, dry_run=False)
 
+            self.assertTrue(cfg_dir.exists())
+            self.assertTrue(cfg_dir.is_dir())
             self.assertTrue(filename_file.exists())
             self.assertEqual(filename_file.read_text(encoding="utf-8").strip(), "TIMELOG.md")
             self.assertFalse(scope_file.exists())
             output = console.export_text()
             self.assertIn("No repositories found during scan", output)
             self.assertIn("Continuing safely with all repositories", output)
+
+    def test_config_dir_and_filename_file_created_for_all_repositories_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg_dir = root / ".gittan"
+            scope_file = cfg_dir / "timelog_repos.txt"
+            filename_file = cfg_dir / "timelog_filename"
+            console = Console(record=True, width=160)
+
+            answers = iter(
+                [
+                    "TIMELOG.md",
+                    "All repositories under your home and current folder (recommended)",
+                ]
+            )
+
+            def _fake_text(*_args, **_kwargs):
+                class _Prompt:
+                    def ask(self_inner):
+                        return next(answers)
+
+                return _Prompt()
+
+            def _fake_select(*_args, **_kwargs):
+                class _Prompt:
+                    def ask(self_inner):
+                        return next(answers)
+
+                return _Prompt()
+
+            with patch.object(machine_setup, "GITTAN_CONFIG_DIR", cfg_dir), patch.object(
+                machine_setup, "GITTAN_SCOPE_FILE", scope_file
+            ), patch.object(machine_setup, "GITTAN_FILENAME_FILE", filename_file), patch.object(
+                machine_setup.questionary, "text", side_effect=_fake_text
+            ), patch.object(
+                machine_setup.questionary, "select", side_effect=_fake_select
+            ):
+                machine_setup._configure_timelog_scope_and_name(console, yes=False, dry_run=False)
+
+            self.assertTrue(cfg_dir.exists())
+            self.assertTrue(cfg_dir.is_dir())
+            self.assertTrue(filename_file.exists())
+            self.assertEqual(filename_file.read_text(encoding="utf-8").strip(), "TIMELOG.md")
 
 
 if __name__ == "__main__":

@@ -185,7 +185,10 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     current_excludes_file = _read_global_git_config("core.excludesFile")
 
     print_command_hero(console, "setup-global-timelog")
-    console.print("This will configure global git hooks so each commit appends an entry to repo-local `TIMELOG.md`.")
+    console.print(
+        "This will configure global git hooks for commit-to-worklog automation. "
+        "Recommended model: per-project files in `~/.gittan/worklogs/<project-id>.md` via project profile `worklog` paths."
+    )
     table = Table(title="Current global git status", box=box.ROUNDED)
     table.border_style = STYLE_BORDER
     table.header_style = f"bold {STYLE_LABEL}"
@@ -210,7 +213,13 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         _run_git_config(["core.hooksPath", str(hooks_dir)], dry_run=dry_run)
         if hook_path.exists():
             if _is_managed_hook(hook_path):
-                console.print("[green]Managed hook already present; keeping existing file.[/green]")
+                current = hook_path.read_text(encoding="utf-8")
+                if current != HOOK_BODY:
+                    console.print("[green]Managed hook already present; updating to latest script.[/green]")
+                    if not dry_run:
+                        hook_path.write_text(HOOK_BODY, encoding="utf-8")
+                else:
+                    console.print("[green]Managed hook already present and up to date.[/green]")
             else:
                 console.print("[yellow]Existing hook is not managed by Gittan, so overwrite confirmation is required.[/yellow]")
                 overwrite = yes or questionary.confirm(
@@ -245,7 +254,11 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         if not dry_run
         else "\n[green]Global timelog dry run completed.[/green]"
     )
-    console.print("Added `TIMELOG.md` to global gitignore." if added_ignore else "`TIMELOG.md` already present in global gitignore.")
+    console.print(
+        "Updated global gitignore with configured timelog filename and legacy `TIMELOG.md` fallback."
+        if added_ignore
+        else "Configured timelog filename and legacy `TIMELOG.md` fallback already present in global gitignore."
+    )
     verify_hooks = _read_global_git_config("core.hooksPath") if not dry_run else str(hooks_dir)
     verify_excludes = _read_global_git_config("core.excludesFile") if not dry_run else str(ignore_path)
     console.print("\n[bold]Verify:[/bold]")

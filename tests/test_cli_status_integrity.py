@@ -152,7 +152,8 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertEqual(getattr(options, "noise_profile", ""), "ultra-strict")
         self.assertEqual(getattr(options, "lovable_noise_profile", ""), "strict")
 
-    def test_status_shows_bounded_mapping_suggestions(self):
+    def test_status_does_not_emit_inline_mapping_suggestions(self):
+        """`status` stays a compact snapshot; mapping hygiene uses dedicated commands."""
         start = datetime(2026, 4, 22, 8, 0, tzinfo=timezone.utc)
         end = datetime(2026, 4, 22, 8, 30, tzinfo=timezone.utc)
         report = _FakeReport(
@@ -173,9 +174,8 @@ class StatusIntegrityTests(unittest.TestCase):
         with patch("core.report_service.run_timelog_report", return_value=report):
             r = self.runner.invoke(app, ["status", "--yesterday"])
         self.assertEqual(r.exit_code, 0, msg=r.output)
-        self.assertIn("Mapping suggestions", r.output)
-        self.assertIn("consider adding tracked_urls", r.output)
-        self.assertLessEqual(r.output.count("consider "), 3)
+        self.assertNotIn("Mapping suggestions", r.output)
+        self.assertNotIn("consider adding tracked_urls", r.output)
 
 
 if __name__ == "__main__":

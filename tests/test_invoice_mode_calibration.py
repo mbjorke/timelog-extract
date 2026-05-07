@@ -66,7 +66,10 @@ class InvoiceModeCalibrationTests(unittest.TestCase):
             self.assertAlmostEqual(out.project_reports[project_beta][report_day]["hours"], 4.92, places=6)
 
     def test_baseline_mode_keeps_original_aggregation(self):
-        args = argparse.Namespace(invoice_mode="baseline", invoice_ground_truth="march_invoice_ground_truth.json")
+        args = argparse.Namespace(
+            invoice_mode="baseline",
+            invoice_ground_truth="tests/fixtures/experiments/march_invoice_ground_truth.example.json",
+        )
         agg = self._agg()
         out = _apply_invoice_calibration_if_requested(
             agg=agg,

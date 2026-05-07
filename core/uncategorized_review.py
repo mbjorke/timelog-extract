@@ -9,6 +9,12 @@ from urllib.parse import urlparse
 
 _URL_RE = re.compile(r"https?://[^\s)>\"]+")
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9._/-]{2,}", re.IGNORECASE)
+_DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_DATE_TIME_LIKE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[tT].+$")
+_EXTENSION_VERSION_TOKEN_RE = re.compile(
+    r"^[a-z0-9-]+\.[a-z0-9-]+(?:\.[a-z0-9-]+)*-\d+(?:\.\d+)+(?:-[a-z0-9-]+)?$",
+    re.IGNORECASE,
+)
 _STOPWORDS = {
     "error",
     "info",
@@ -23,6 +29,65 @@ _STOPWORDS = {
     "project",
     "session",
 }
+
+
+_NOISE_TRACKED_URL_VALUES = {"lovable.dev", "www.lovable.dev"}
+
+
+def _is_extension_lifecycle_detail(text: str) -> bool:
+    lower = (text or "").lower()
+    if lower.startswith("started downloading extension: "):
+        return True
+    if lower.startswith("extracted extension to ") and ".cursor/extensions/" in lower:
+        return True
+    if lower.startswith("renamed to ") and ".cursor/extensions/" in lower:
+        return True
+    return False
+
+
+def _is_extension_lifecycle_token(token: str) -> bool:
+    if ".cursor/extensions/" in token:
+        return True
+    if _EXTENSION_VERSION_TOKEN_RE.match(token):
+        return True
+    return False
+
+
+def _is_noise_detail(text: str) -> bool:
+    lower = (text or "").lower()
+    if _is_extension_lifecycle_detail(text):
+        return True
+    # Cursor marketplace internals are not actionable project signals.
+    if "loadfrommarketplacesource" in lower:
+        return True
+    # Extension metadata churn tends to create misleading uncategorized clusters.
+    if "extensions.json" in lower and ("install" in lower or "update" in lower):
+        return True
+    if "config path:" in lower and "/" in text:
+        if any(
+            marker in lower
+            for marker in (
+                ".claude/settings.json",
+                ".cursor/hooks.json",
+                "settings.json",
+                "hooks.json",
+            )
+        ):
+            return True
+    return False
+
+
+def _is_noise_rule_value(rule_type: str, rule_value: str) -> bool:
+    if not rule_value:
+        return True
+    if rule_type == "match_terms":
+        if _DATE_ONLY_RE.match(rule_value):
+            return True
+        if _DATE_TIME_LIKE_RE.match(rule_value):
+            return True
+    if rule_type == "tracked_urls" and rule_value.lower() in _NOISE_TRACKED_URL_VALUES:
+        return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -51,7 +116,7 @@ def _extract_term(text: str) -> str:
     tokens = [
         token
         for token in _TOKEN_RE.findall((text or "").lower())
-        if token not in _STOPWORDS
+        if token not in _STOPWORDS and not _is_extension_lifecycle_token(token)
     ]
     # Prefer tokens that contain a hyphen or slash: these are more likely to be
     # project-specific identifiers (e.g. "acme-feature", "org/repo") and
@@ -71,6 +136,8 @@ def build_uncategorized_clusters(
     grouped: dict[tuple[str, str, str], list[dict]] = {}
     for event in events:
         detail = str(event.get("detail") or "")
+        if _is_noise_detail(detail):
+            continue
         source = str(event.get("source") or "Unknown")
         domain = _extract_domain(detail)
         if domain:
@@ -80,6 +147,8 @@ def build_uncategorized_clusters(
             if not term:
                 continue
             key = ("match_terms", term, source)
+        if _is_noise_rule_value(key[0], key[1]):
+            continue
         grouped.setdefault(key, []).append(event)
 
     clusters: list[UncategorizedCluster] = []

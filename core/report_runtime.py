@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -14,6 +16,7 @@ from core.noise_profiles import (
     LOVABLE_NOISE_PROFILES,
     NOISE_PROFILES,
 )
+from core.config import resolve_profile_worklog_paths
 
 from collectors import ai_logs as ai_logs_collector
 from collectors import chrome as chrome_collector
@@ -73,6 +76,7 @@ class RunContext:
     profiles: List[Dict[str, Any]]
     loaded_config_path: Optional[Path]
     worklog_path: Path
+    worklog_paths: List[Path]
     source_strategy_effective: str
 
 
@@ -139,9 +143,64 @@ def build_run_context(
         )
         if not is_machine_readable:
             args.source_summary = True
-    worklog_path = resolve_worklog_path_fn(
-        args.worklog, loaded_config_path, workspace.get("worklog"), repo_root
+    workspace_worklog = workspace.get("worklog")
+    profile_worklog_paths = resolve_profile_worklog_paths(
+        profiles,
+        config_path=loaded_config_path,
+        script_dir=repo_root,
     )
+    attribution_mode = str(getattr(args, "attribution_mode", "") or "").strip().lower()
+    if attribution_mode == "commit-first":
+        # Approximate "commit-first / my-activity-only" comparisons with the least invasive
+        # set of existing CLI knobs:
+        # - enable GitHub public-event collection
+        # - disable passive sources (mail/chrome/screen-time)
+        # - inject an explicit empty worklog so worklog-based/project worklogs are not used
+        args.github_source = "on"
+        args.source_strategy = "balanced"
+        args.mail_source = "off"
+        args.chrome_source = "off"
+        args.screen_time = "off"
+        if args.worklog is None:
+            with tempfile.NamedTemporaryFile(
+                prefix="gittan-commit-first-",
+                suffix=".md",
+                delete=False,
+            ) as tf:
+                tf.write(b"")
+                tf.flush()
+                empty_worklog_path = tf.name
+            args.worklog = empty_worklog_path
+
+            def _unlink_commit_first_worklog() -> None:
+                try:
+                    os.unlink(empty_worklog_path)
+                except OSError:
+                    pass
+
+            atexit.register(_unlink_commit_first_worklog)
+    args.attribution_mode = attribution_mode or None
+
+    has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)
+
+    # In per-project mode (profile worklogs configured without an explicit base),
+    # do not implicitly inject legacy repo TIMELOG.md into the active worklog set.
+    if profile_worklog_paths and not has_explicit_base_worklog:
+        worklog_paths = list(profile_worklog_paths)
+        worklog_path = worklog_paths[0]
+        has_implicit_base_worklog = False
+    else:
+        worklog_path = resolve_worklog_path_fn(
+            args.worklog, loaded_config_path, workspace_worklog, repo_root
+        )
+        worklog_paths = [worklog_path]
+        has_implicit_base_worklog = True
+        # Preserve explicit --worklog override behavior as a single authoritative path.
+        if args.worklog is None:
+            for candidate in profile_worklog_paths:
+                if candidate not in worklog_paths:
+                    worklog_paths.append(candidate)
+    args.worklog_paths = [str(path) for path in worklog_paths]
     _resolve_only_project_filter(args, profiles)
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
     if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
@@ -182,7 +241,12 @@ def build_run_context(
             print(f"Only customer: {args.customer!r}")
         print(f"Local timezone: {local_tz}")
         print(f"Project profiles: {len(profiles)}")
-        print(f"Worklog: {worklog_path}")
+        if has_implicit_base_worklog:
+            print(f"Worklog: {worklog_path}")
+        else:
+            print(f"Worklogs: {len(worklog_paths)} per-project paths")
+        if has_implicit_base_worklog and len(worklog_paths) > 1:
+            print(f"Per-project worklogs: {len(worklog_paths) - 1} additional paths")
         if chosen_strategy == "worklog-first" and not worklog_exists:
             if worklog_path.exists() and worklog_path.is_file():
                 print("Source strategy: worklog-first requested, but worklog not readable; using balanced fallback.")
@@ -191,6 +255,9 @@ def build_run_context(
         else:
             print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
         print(f"Noise profile: {noise_profile}")
+        if attribution_mode == "commit-first":
+            print("Attribution mode: commit-first (GitHub-focused comparison preset)")
+            print("Preset sources: github=on, chrome=off, mail=off, screen_time=off, source_strategy=balanced")
         profile_hints = {
             "lenient": "keep almost all collector diagnostics/events",
             "strict": "filter common heartbeat/diagnostic noise",
@@ -216,6 +283,7 @@ def build_run_context(
         profiles=profiles,
         loaded_config_path=loaded_config_path,
         worklog_path=worklog_path,
+        worklog_paths=worklog_paths,
         source_strategy_effective=source_strategy_effective,
     )
 
@@ -260,9 +328,9 @@ def collect_runtime_events(
         context.dt_from,
         context.dt_to,
         context.args,
-        context.worklog_path,
+        context.worklog_paths,
         home=home,
-        chrome_history_path_fn=chrome_collector.chrome_history_path,
+        chrome_history_path_fn=chrome_collector.chrome_history_paths,
         detect_mail_root_fn=mail_collector.detect_mail_root,
         build_collector_specs_fn=build_collector_specs,
         collect_claude_code=runtime_collectors.collect_claude_code,

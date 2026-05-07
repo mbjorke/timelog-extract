@@ -19,7 +19,12 @@ from typing import Annotated, Optional
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
-from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
+from core.config import (
+    load_profiles,
+    resolve_profile_worklog_paths,
+    resolve_projects_config_path,
+    resolve_worklog_path,
+)
 from core.git_project_bootstrap import assess_match_terms_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
@@ -31,13 +36,15 @@ from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
+
+
 @app.command()
 def doctor(
     worklog: Annotated[
         Optional[str],
         typer.Option(
             "--worklog",
-            help="Path to TIMELOG.md (overrides config; default matches report: config worklog, else project default).",
+            help="Path to a worklog file (overrides config; recommended: per-project paths in timelog_projects.json).",
         ),
     ] = None,
     github_source: Annotated[
@@ -66,7 +73,7 @@ def doctor(
     Check source access and local integration health, then print a diagnostic table.
     
     Parameters:
-        worklog (Optional[str]): Path to TIMELOG.md that overrides the configured/workspace worklog.
+        worklog (Optional[str]): Path to a worklog file that overrides the configured/workspace worklog.
         github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
         github_user (Optional[str]): GitHub username(s), comma-separated for multiple, used when evaluating public event checks (visibility only).
         toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).
@@ -88,11 +95,17 @@ def doctor(
         str(projects_cfg),
         argparse.Namespace(project="default-project", keywords="", email=""),
     )
+    workspace_worklog = workspace.get("worklog")
     worklog_path = resolve_worklog_path(
         worklog,
         loaded_config_path,
-        workspace.get("worklog"),
+        workspace_worklog,
         workspace_root,
+    )
+    profile_worklogs = resolve_profile_worklog_paths(
+        _profiles,
+        config_path=loaded_config_path,
+        script_dir=workspace_root,
     )
 
     table = Table(title="Gittan Health Check", box=box.ROUNDED)
@@ -144,7 +157,36 @@ def doctor(
     with console.status(f"[bold {STYLE_LABEL}]Running diagnostics..."):
         cli_on_path = add_cli_path_rows(table, home=home)
         project_config_ok = check_file(projects_cfg, "Project Config")
-        worklog_ok = check_file(worklog_path, "Worklog (Local)")
+        using_single_worklog = bool(worklog) or bool(workspace_worklog)
+        if using_single_worklog:
+            worklog_ok = check_file(worklog_path, "Worklog (Local)")
+        elif profile_worklogs:
+            accessible = [path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)]
+            total = len(profile_worklogs)
+            readable = len(accessible)
+            if readable == total:
+                table.add_row(
+                    "Worklogs (Per-project)",
+                    OK_ICON,
+                    f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
+                )
+                worklog_ok = True
+            elif readable > 0:
+                table.add_row(
+                    "Worklogs (Per-project)",
+                    WARN_ICON,
+                    f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
+                )
+                worklog_ok = True
+            else:
+                table.add_row(
+                    "Worklogs (Per-project)",
+                    WARN_ICON,
+                    f"[{STYLE_MUTED}]Per-project worklogs configured (0/{total} accessible)[/{STYLE_MUTED}]",
+                )
+                worklog_ok = False
+        else:
+            worklog_ok = check_file(worklog_path, "Worklog (Local)")
         coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
         coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
         coverage_detail = coverage.detail
@@ -224,6 +266,10 @@ def doctor(
             config_path=projects_cfg,
             worklog_path=worklog_path,
         ),
+    )
+    console.print(
+        f"[{STYLE_MUTED}]Hint: For large Screen Time deltas, run "
+        f"`gittan evidence-check --from YYYY-MM-DD --to YYYY-MM-DD` for the exact day range.[/{STYLE_MUTED}]"
     )
 
 

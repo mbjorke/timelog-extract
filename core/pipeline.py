@@ -13,7 +13,7 @@ def collect_all_events(
     dt_from,
     dt_to,
     args: Any,
-    worklog_path: Path,
+    worklog_paths: Path | list[Path],
     *,
     home: Path,
     chrome_history_path_fn: Callable,
@@ -37,13 +37,13 @@ def collect_all_events(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     all_events: List[Dict[str, Any]] = []
     collector_status: Dict[str, Dict[str, Any]] = {}
-    chrome_history_exists = chrome_history_path_fn(home).exists()
+    chrome_history_exists = bool(chrome_history_path_fn(home))
     lovable_desktop_history_exists = bool(lovable_desktop_history_candidates(home))
     lovable_desktop_usable = lovable_desktop_history_exists or lovable_desktop_has_storage_signals(home)
     mail_root, mail_msg = detect_mail_root_fn(home)
     collectors = build_collector_specs_fn(
         args,
-        worklog_path,
+        worklog_paths,
         chrome_history_exists=chrome_history_exists,
         lovable_desktop_history_exists=lovable_desktop_usable,
         mail_root=mail_root,

@@ -91,6 +91,28 @@ class TriageApplyTests(unittest.TestCase):
         urls = config["projects"][0]["tracked_urls"]
         self.assertIn("app.demo.io", urls)
 
+    def test_apply_skips_generic_tracked_url_root(self):
+        r = self._run_apply([{"day": "2026-04-15", "project_name": "Demo", "rule_type": "tracked_urls", "rule_value": "github.com"}])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["applied"], 0)
+        self.assertEqual(out["skipped"], 1)
+        config = json.loads(self.cfg.read_text())
+        urls = config["projects"][0]["tracked_urls"]
+        self.assertNotIn("github.com", urls)
+
+    def test_apply_keeps_project_specific_host(self):
+        r = self._run_apply(
+            [{"day": "2026-04-15", "project_name": "Demo", "rule_type": "tracked_urls", "rule_value": "project.pages.dev"}]
+        )
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["applied"], 1)
+        self.assertEqual(out["skipped"], 0)
+        config = json.loads(self.cfg.read_text())
+        urls = config["projects"][0]["tracked_urls"]
+        self.assertIn("project.pages.dev", urls)
+
     def test_apply_rejects_unknown_project(self):
         r = self._run_apply([{"day": "2026-04-15", "project_name": "Ghost", "rule_type": "match_terms", "rule_value": "foo"}])
         self.assertNotEqual(r.returncode, 0)

@@ -32,11 +32,18 @@ STYLE_ACCENT = CLR_BERRY_BRIGHT
 STYLE_POSITIVE = CLR_GREEN
 
 
+def _display_source_label(source: str) -> str:
+    """Render neutral source labels without changing underlying source keys."""
+    if source == "TIMELOG.md":
+        return "Worklog (TIMELOG.md)"
+    return source
+
+
 def _build_dynamic_legend(source_order: Sequence[str]) -> Text:
     legend = Text()
     legend.append("Evidence legend: ", style=f"bold {STYLE_LABEL}")
     for idx, source in enumerate(source_order):
-        legend.append(source, style=f"italic {get_source_color(source)}")
+        legend.append(_display_source_label(source), style=f"italic {get_source_color(source)}")
         if idx < len(source_order) - 1:
             legend.append("  ", style=STYLE_META)
     return legend
@@ -105,7 +112,7 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
     table.add_column("Events", justify="right", style=CLR_VALUE_ORANGE)
 
     for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
-        table.add_row(src, str(counts[src]))
+        table.add_row(_display_source_label(src), str(counts[src]))
     table.add_section()
     table.add_row(
         f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]",
@@ -143,7 +150,7 @@ def print_project_source_mix(
     mix_table.add_column(style=STYLE_BODY)
     mix_table.add_column(justify="right", style=STYLE_BODY)
     for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
-        mix_table.add_row(src, str(counts[src]))
+        mix_table.add_row(_display_source_label(src), str(counts[src]))
     console.print(mix_table)
     console.print(
         f"[{STYLE_META}]Event span: "
@@ -226,7 +233,7 @@ def print_report(
                 src_color = get_source_color(event["source"])
                 event_line = Text.assemble(
                     (f"{event['local_ts'].strftime('%H:%M')} ", STYLE_POSITIVE),
-                    (f"{event['source']} ", f"italic {src_color}"),
+                    (f"{_display_source_label(event['source'])} ", f"italic {src_color}"),
                     (f"{event['project']} ", STYLE_LABEL),
                     (event["detail"], STYLE_META),
                 )

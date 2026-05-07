@@ -11,6 +11,7 @@ from core.config import (
     ENV_PROJECTS_CONFIG,
     PROJECTS_CONFIG_FILENAME,
     apply_rule_to_project,
+    remove_rule_from_project,
     default_projects_config_option,
     load_projects_config_payload,
     resolve_projects_config_path,
@@ -30,7 +31,17 @@ class ConfigCompatibilityTests(unittest.TestCase):
             }
         )
         self.assertIn("alpha", profile["match_terms"])
+        self.assertIn("demo", profile["match_terms"])
         self.assertNotIn("beta", profile["match_terms"])
+
+    def test_normalize_profile_keeps_explicit_empty_match_terms(self):
+        profile = normalize_profile(
+            {
+                "name": "Demo",
+                "match_terms": [],
+            }
+        )
+        self.assertEqual(profile["match_terms"], [])
 
     def test_normalize_profile_uses_tracked_urls(self):
         """Uses tracked_urls as canonical URL field."""
@@ -41,6 +52,15 @@ class ConfigCompatibilityTests(unittest.TestCase):
             }
         )
         self.assertEqual(profile["tracked_urls"], ["https://example.com/a"])
+
+    def test_normalize_profile_preserves_optional_project_worklog(self):
+        profile = normalize_profile(
+            {
+                "name": "Demo",
+                "worklog": "clients/demo/TIMELOG.md",
+            }
+        )
+        self.assertEqual(profile.get("worklog"), "clients/demo/TIMELOG.md")
 
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(
@@ -105,6 +125,30 @@ class ConfigCompatibilityTests(unittest.TestCase):
         ]
         result = classify_project("https://app.clientx.io/checkout Other noise", profiles)
         self.assertEqual(result, "ClientX")
+
+    def test_remove_rule_from_project_preserves_existing_shape_without_normalization(self):
+        payload = {
+            "projects": [
+                {
+                    "name": "Demo",
+                    "match_terms": ["alpha", "demo"],
+                    "tracked_urls": ["https://example.test"],
+                    "aliases": ["Demo", "Demo Legacy"],
+                    "enabled": True,
+                }
+            ]
+        }
+        ok = remove_rule_from_project(
+            payload,
+            project_name="Demo",
+            rule_type="match_terms",
+            rule_value="demo",
+        )
+        self.assertTrue(ok)
+        project = payload["projects"][0]
+        self.assertEqual(project["match_terms"], ["alpha"])
+        self.assertEqual(project["aliases"], ["Demo", "Demo Legacy"])
+
 
 
 class TagsFieldTests(unittest.TestCase):
@@ -255,6 +299,24 @@ class ProjectsConfigPathTests(unittest.TestCase):
         self.assertEqual(path, Path(tmp) / PROJECTS_CONFIG_FILENAME)
         self.assertEqual(cli_default, PROJECTS_CONFIG_FILENAME)
         self.assertEqual(source, "cwd")
+
+    def test_resolve_profile_worklog_paths_resolves_relative_deduped_and_absolute(self):
+        from core.config import resolve_profile_worklog_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            cfg = base / "timelog_projects.json"
+            cfg.write_text('{"projects": []}', encoding="utf-8")
+            profiles = [
+                {"name": "A", "worklog": "worklogs/a.md"},
+                {"name": "B", "worklog": "worklogs/a.md"},
+                {"name": "C", "worklog": str((base / "abs" / "c.md").resolve())},
+            ]
+            paths = resolve_profile_worklog_paths(profiles, config_path=cfg, script_dir=base)
+            self.assertEqual(len(paths), 2)
+            self.assertEqual(paths[0], (base / "worklogs" / "a.md").resolve())
+            self.assertEqual(paths[1], (base / "abs" / "c.md").resolve())
+
 
 
 if __name__ == "__main__":

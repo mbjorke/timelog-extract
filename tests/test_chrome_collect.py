@@ -386,7 +386,6 @@ class CollectChromeTests(unittest.TestCase):
         results = self._call(profiles)
         self.assertEqual(len(results), 1)
 
-
 class LikeEscapeIntegrationTests(unittest.TestCase):
     """Verify that _like_escape + wildcard wrapping produces correct LIKE params."""
 

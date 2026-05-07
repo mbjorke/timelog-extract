@@ -16,16 +16,20 @@ HOOK_BODY = dedent(
     SCOPE_FILE="$GITTAN_CFG_DIR/timelog_repos.txt"
     FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"
     TIMELOG_NAME="TIMELOG.md"
+    CONFIGURED_CANDIDATE=""
     if [[ -f "$FILENAME_FILE" ]]; then
       CANDIDATE="$(head -n 1 "$FILENAME_FILE" 2>/dev/null | tr -d '\\r')"
       if [[ -n "${CANDIDATE:-}" ]]; then
         case "$CANDIDATE" in
-          */* | *..*)
-            ;;
-          *)
-            TIMELOG_NAME="$CANDIDATE"
+          ..|*../*|*/..|../*|*/../*)
+            echo "gittan-hook: refusing unsafe .. segments in timelog_filename" >&2
+            CANDIDATE=""
             ;;
         esac
+      fi
+      if [[ -n "${CANDIDATE:-}" ]]; then
+        CONFIGURED_CANDIDATE="$CANDIDATE"
+        TIMELOG_NAME="$CANDIDATE"
       fi
     fi
     if [[ -f "$SCOPE_FILE" ]]; then
@@ -34,7 +38,29 @@ HOOK_BODY = dedent(
       fi
     fi
 
-    TIMELOG_FILE="$ROOT_DIR/$TIMELOG_NAME"
+    if [[ "$TIMELOG_NAME" == /* ]]; then
+      TIMELOG_FILE="$TIMELOG_NAME"
+    elif [[ "$TIMELOG_NAME" == ~/* ]]; then
+      TIMELOG_FILE="$HOME/${TIMELOG_NAME#~/}"
+    else
+      TIMELOG_FILE="$ROOT_DIR/$TIMELOG_NAME"
+    fi
+    REPO_BASENAME="${ROOT_DIR##*/}"
+    REPO_HASH="$(printf "%s" "$root_canon" | shasum | awk "{print substr($1,1,8)}")"
+    REPO_ID="${REPO_BASENAME}-${REPO_HASH}"
+    PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_ID}.md"
+    if [[ -f "$PROJECT_WORKLOG" ]]; then
+      if [[ -z "${CONFIGURED_CANDIDATE:-}" || "$CONFIGURED_CANDIDATE" == "TIMELOG.md" ]]; then
+        TIMELOG_FILE="$PROJECT_WORKLOG"
+      fi
+    fi
+    canon="${TIMELOG_FILE:A}"
+    home_canon="${HOME:A}"
+    root_canon="${ROOT_DIR:A}"
+    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* ]]; then
+      echo "gittan-hook: refusing timelog path outside home directory or repo root" >&2
+      exit 1
+    fi
     mkdir -p "$(dirname "$TIMELOG_FILE")"
     TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"
     SUBJECT="$(git log -1 --pretty=%s)"

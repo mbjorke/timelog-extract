@@ -50,7 +50,7 @@ class ReportSearchRefactorTests(unittest.TestCase):
             "date_from": "2026-04-17",
             "date_to": "2026-04-23",
         }
-        with patch("core.cli_report_status.prompt_for_timeframe", return_value=picked) as prompt_mock:
+        with patch("core.cli_report_status_helpers.prompt_for_timeframe", return_value=picked) as prompt_mock:
             with patch("core.report_cli.run_timelog_cli") as run_mock:
                 result = self.runner.invoke(app, ["search"])
 

@@ -6,6 +6,7 @@ arbitrary directories, or when edits broke core/cli.py syntax.
 
 import ast
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -115,6 +116,80 @@ class CliRegressionSmokeTests(unittest.TestCase):
         )
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("Expected one of: auto, on, off", completed.stderr)
+
+    def test_doctor_reports_per_project_worklogs_without_legacy_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            gittan_home = tmp_path / "gittan-home"
+            worklogs_dir = gittan_home / "worklogs"
+            worklogs_dir.mkdir(parents=True)
+            (worklogs_dir / "alpha.md").write_text("alpha\n", encoding="utf-8")
+            (worklogs_dir / "beta.md").write_text("beta\n", encoding="utf-8")
+            projects_config = gittan_home / "timelog_projects.json"
+            projects_config.write_text(
+                json.dumps(
+                    {
+                        "projects": [
+                            {"name": "alpha", "match_terms": ["alpha"], "worklog": "worklogs/alpha.md"},
+                            {"name": "beta", "match_terms": ["beta"], "worklog": "worklogs/beta.md"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            env = dict(os.environ)
+            env["GITTAN_HOME"] = str(gittan_home)
+            completed = subprocess.run(
+                [sys.executable, str(ENTRY), "doctor"],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+            self.assertIn("Worklogs (Per-project)", completed.stdout)
+            normalized = " ".join(completed.stdout.split())
+            self.assertIn("Per-project worklogs configured", normalized)
+            self.assertIn("2/2", normalized)
+            self.assertIn("accessible", normalized)
+            self.assertNotIn("Worklog (Local)", completed.stdout)
+
+    def test_doctor_keeps_legacy_single_worklog_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            gittan_home = tmp_path / "gittan-home"
+            gittan_home.mkdir(parents=True)
+            missing_worklog = "legacy-single.md"
+            projects_config = gittan_home / "timelog_projects.json"
+            projects_config.write_text(
+                json.dumps(
+                    {
+                        "worklog": missing_worklog,
+                        "projects": [
+                            {"name": "alpha", "match_terms": ["alpha"]},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            env = dict(os.environ)
+            env["GITTAN_HOME"] = str(gittan_home)
+            completed = subprocess.run(
+                [sys.executable, str(ENTRY), "doctor"],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+            self.assertIn("Worklog (Local)", completed.stdout)
+            self.assertIn("Not found:", completed.stdout)
 
     def test_core_cli_py_compiles(self):
         """Regression: bad search/replace left invalid syntax (e.g. truncated for-loop)."""

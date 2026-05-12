@@ -75,6 +75,7 @@ class CliTriageHelpersTests(unittest.TestCase):
         self.assertIn("sample_window_local", gh)
         self.assertIn("start", gh["sample_window_local"])
         self.assertIn("end", gh["sample_window_local"])
+        self.assertEqual(gh["domain_events"], 2)
 
     def test_select_triage_days_sorts_by_unexplained_desc(self):
         payload = {

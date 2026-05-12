@@ -80,11 +80,13 @@ def _build_site_time_hints(chrome_rows: list[tuple[int, str, str]]) -> dict[str,
                 "start": first_dt.isoformat(timespec="seconds"),
                 "end": sample_end.isoformat(timespec="seconds"),
             },
+            "domain_events": int(len(times)),
         }
         repo_counts = by_domain_repo_counts.get(domain, {})
         if repo_counts:
-            top_repo = sorted(repo_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+            top_repo, top_repo_events = sorted(repo_counts.items(), key=lambda item: (-item[1], item[0]))[0]
             out[domain]["repo_hint"] = top_repo
+            out[domain]["repo_hint_events"] = int(top_repo_events)
     return out
 def _domain_project_counts_from_report(report) -> dict[str, list[dict[str, Any]]]:
     return domain_project_counts_from_events(list(getattr(report, "included_events", []) or []))

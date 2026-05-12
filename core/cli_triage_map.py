@@ -25,31 +25,9 @@ from core.cli_triage_map_candidates import (
 from core.config import resolve_projects_config_path
 
 
-def _render_candidates_table(console: Console, rows: list[UrlCandidate]) -> None:
-    table = Table(title="URL candidates (Uncategorized)")
-    table.add_column("Title", overflow="fold")
-    table.add_column("URL key", overflow="fold")
-    table.add_column("Suggested")
-    table.add_column("Confidence")
-    table.add_column("Impact (h)", justify="right")
-    table.add_column("Events", justify="right")
-    table.add_column("Days", justify="right")
-    table.add_column("Last seen")
-    for row in rows:
-        table.add_row(
-            row.title,
-            row.url_key,
-            row.suggested_project,
-            f"{row.confidence_label} ({row.confidence_score:.0%})",
-            f"{row.impact_hours:.1f}",
-            str(row.events),
-            str(row.days),
-            row.last_seen,
-        )
-    console.print(table)
-
-
-def _render_candidates_table_with_title(console: Console, rows: list[UrlCandidate], title: str) -> None:
+def _render_candidates_table(
+    console: Console, rows: list[UrlCandidate], *, title: str = "URL candidates (Uncategorized)"
+) -> None:
     table = Table(title=title)
     table.add_column("Title", overflow="fold")
     table.add_column("URL key", overflow="fold")
@@ -187,10 +165,10 @@ def triage_map(
             for key, project_name in auto_assigned.items():
                 assignment_by_key[key] = project_name
             chosen_rows = [row for row in rows if row.url_key in auto_assigned]
-            _render_candidates_table_with_title(
+            _render_candidates_table(
                 console,
                 chosen_rows,
-                f"Bulk-selected rows ({len(chosen_rows)})",
+                title=f"Bulk-selected rows ({len(chosen_rows)})",
             )
 
     review_more = questionary.confirm("Review/edit remaining rows manually before apply?", default=False).ask()
@@ -203,10 +181,10 @@ def triage_map(
             console.print("[green]No remaining rows to review manually.[/green]")
             review_rows = []
         else:
-            _render_candidates_table_with_title(
+            _render_candidates_table(
                 console,
                 review_rows,
-                f"Round 2: Remaining rows for manual review ({len(review_rows)})",
+                title=f"Round 2: Remaining rows for manual review ({len(review_rows)})",
             )
         while True:
             edit_choice = questionary.select(

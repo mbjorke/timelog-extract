@@ -90,6 +90,56 @@ def _confidence_label(score: float, events: int) -> str:
     return "low"
 
 
+def _finalize_url_candidates_from_grouped(
+    grouped: dict[str, dict[str, Any]],
+    *,
+    min_events: int,
+    include_low_signal: bool,
+    include_sample_urls: bool,
+) -> list[UrlCandidate]:
+    candidates: list[UrlCandidate] = []
+    for key, bucket in grouped.items():
+        events = int(bucket["events"])
+        if not include_low_signal and events < max(1, int(min_events)):
+            continue
+        top_title = bucket["titles"].most_common(1)[0][0] if bucket["titles"] else "Untitled"
+        votes = bucket["project_votes"]
+        if votes:
+            suggested, top_votes = votes.most_common(1)[0]
+            confidence_score = float(top_votes) / float(events)
+            suggested_project = str(suggested)
+        else:
+            confidence_score = 0.0
+            suggested_project = UNCATEGORIZED
+        urls_counter = bucket.get("urls")
+        if include_sample_urls and urls_counter:
+            sample_urls = [u for u, _n in urls_counter.most_common(3)]
+        else:
+            sample_urls = []
+        candidates.append(
+            UrlCandidate(
+                title=top_title,
+                url_key=key,
+                suggested_project=suggested_project,
+                confidence_label=_confidence_label(confidence_score, events),
+                confidence_score=confidence_score,
+                impact_hours=float(bucket.get("impact_hours", 0.0) or 0.0),
+                events=events,
+                days=len(bucket["days"]),
+                last_seen=(
+                    bucket["last_seen"].astimezone().strftime("%Y-%m-%d")
+                    if isinstance(bucket["last_seen"], datetime)
+                    else "-"
+                ),
+                sample_urls=sample_urls,
+            )
+        )
+    candidates.sort(
+        key=lambda row: (_confidence_rank(row.confidence_label), -row.confidence_score, -row.events, row.url_key)
+    )
+    return candidates
+
+
 def build_url_candidates(
     *,
     report,
@@ -134,40 +184,13 @@ def build_url_candidates(
         if predicted and predicted != UNCATEGORIZED:
             bucket["project_votes"][predicted] += 1
 
-    candidates: list[UrlCandidate] = []
-    for key, bucket in grouped.items():
-        events = int(bucket["events"])
-        if not include_low_signal and events < max(1, int(min_events)):
-            continue
-        top_title = bucket["titles"].most_common(1)[0][0] if bucket["titles"] else "Untitled"
-        votes = bucket["project_votes"]
-        if votes:
-            suggested, top_votes = votes.most_common(1)[0]
-            confidence_score = float(top_votes) / float(events)
-            suggested_project = str(suggested)
-        else:
-            confidence_score = 0.0
-            suggested_project = UNCATEGORIZED
-        candidates.append(
-            UrlCandidate(
-                title=top_title,
-                url_key=key,
-                suggested_project=suggested_project,
-                confidence_label=_confidence_label(confidence_score, events),
-                confidence_score=confidence_score,
-                impact_hours=0.0,
-                events=events,
-                days=len(bucket["days"]),
-                last_seen=(
-                    bucket["last_seen"].astimezone().strftime("%Y-%m-%d")
-                    if isinstance(bucket["last_seen"], datetime)
-                    else "-"
-                ),
-                sample_urls=[u for u, _n in bucket["urls"].most_common(3)],
-            )
-        )
-    candidates.sort(key=lambda row: (_confidence_rank(row.confidence_label), -row.confidence_score, -row.events, row.url_key))
-    return candidates[: max(1, int(max_rows))]
+    finalized = _finalize_url_candidates_from_grouped(
+        grouped,
+        min_events=min_events,
+        include_low_signal=include_low_signal,
+        include_sample_urls=True,
+    )
+    return finalized[: max(1, int(max_rows))]
 
 
 def build_url_candidates_from_gap_days(
@@ -224,40 +247,13 @@ def build_url_candidates_from_gap_days(
         for key, impact in per_key_impact_hours.items():
             grouped[key]["impact_hours"] += impact
 
-    candidates: list[UrlCandidate] = []
-    for key, bucket in grouped.items():
-        events = int(bucket["events"])
-        if not include_low_signal and events < max(1, int(min_events)):
-            continue
-        top_title = bucket["titles"].most_common(1)[0][0] if bucket["titles"] else "Untitled"
-        votes = bucket["project_votes"]
-        if votes:
-            suggested, top_votes = votes.most_common(1)[0]
-            confidence_score = float(top_votes) / float(events)
-            suggested_project = str(suggested)
-        else:
-            confidence_score = 0.0
-            suggested_project = UNCATEGORIZED
-        candidates.append(
-            UrlCandidate(
-                title=top_title,
-                url_key=key,
-                suggested_project=suggested_project,
-                confidence_label=_confidence_label(confidence_score, events),
-                confidence_score=confidence_score,
-                impact_hours=float(bucket.get("impact_hours", 0.0) or 0.0),
-                events=events,
-                days=len(bucket["days"]),
-                last_seen=(
-                    bucket["last_seen"].astimezone().strftime("%Y-%m-%d")
-                    if isinstance(bucket["last_seen"], datetime)
-                    else "-"
-                ),
-                sample_urls=[],
-            )
-        )
-    candidates.sort(key=lambda row: (_confidence_rank(row.confidence_label), -row.confidence_score, -row.events, row.url_key))
-    return candidates[: max(1, int(max_rows))]
+    finalized = _finalize_url_candidates_from_grouped(
+        grouped,
+        min_events=min_events,
+        include_low_signal=include_low_signal,
+        include_sample_urls=False,
+    )
+    return finalized[: max(1, int(max_rows))]
 
 
 def _auto_assign_high(rows: list[UrlCandidate], project_names: list[str]) -> dict[str, str]:

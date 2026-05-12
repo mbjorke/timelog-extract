@@ -82,6 +82,13 @@ def _is_valid_url_key(key: str) -> bool:
     return True
 
 
+def _apply_max_rows_limit(candidates: list[UrlCandidate], max_rows: int) -> list[UrlCandidate]:
+    limit = int(max_rows)
+    if limit < 1:
+        return []
+    return candidates[:limit]
+
+
 def _confidence_label(score: float, events: int) -> str:
     if score >= 0.8 and events >= 3:
         return "high"
@@ -190,7 +197,7 @@ def build_url_candidates(
         include_low_signal=include_low_signal,
         include_sample_urls=True,
     )
-    return finalized[: max(1, int(max_rows))]
+    return _apply_max_rows_limit(finalized, max_rows)
 
 
 def build_url_candidates_from_gap_days(
@@ -253,7 +260,7 @@ def build_url_candidates_from_gap_days(
         include_low_signal=include_low_signal,
         include_sample_urls=False,
     )
-    return finalized[: max(1, int(max_rows))]
+    return _apply_max_rows_limit(finalized, max_rows)
 
 
 def _auto_assign_high(rows: list[UrlCandidate], project_names: list[str]) -> dict[str, str]:

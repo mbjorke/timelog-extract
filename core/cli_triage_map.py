@@ -51,8 +51,16 @@ def _render_candidates_table(
     console.print(table)
 
 
-def _row_edit_label(row: UrlCandidate, selected_project: str | None) -> str:
-    assigned = selected_project or "Skip"
+def _row_edit_label(row: UrlCandidate, selected_project: str | None, *, project_names: set[str]) -> str:
+    if selected_project and selected_project in project_names:
+        assigned = selected_project
+    else:
+        sug = (
+            row.suggested_project
+            if row.suggested_project in project_names and str(row.suggested_project).strip() != UNCATEGORIZED
+            else None
+        )
+        assigned = f"Skip (suggested: {sug})" if sug else "Skip"
     return (
         f"{row.title} | {row.url_key} | conf={row.confidence_label} {row.confidence_score:.0%} "
         f"| impact={row.impact_hours:.1f}h | events={row.events} | assign={assigned}"
@@ -70,7 +78,7 @@ def triage_map(
     last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     projects_config: Annotated[Optional[str], typer.Option(help="JSON config file")] = None,
-    max_rows: Annotated[int, typer.Option(help="Maximum URL candidate rows")] = 50,
+    max_rows: Annotated[int, typer.Option(help="Maximum URL candidate rows", min=1)] = 50,
     min_events: Annotated[int, typer.Option(help="Minimum events per URL key")] = 2,
     include_low_signal: Annotated[bool, typer.Option(help="Include low-signal/noise URL keys for debugging")] = False,
     max_days: Annotated[int, typer.Option(help="Top unexplained days to source Chrome evidence from")] = 7,
@@ -118,13 +126,9 @@ def triage_map(
         raise typer.Exit(code=0)
 
     _render_candidates_table(console, rows)
-    assignment_by_key: dict[str, str | None] = {}
-    for row in rows:
-        default_project = row.suggested_project if row.suggested_project in project_names else None
-        assignment_by_key[row.url_key] = default_project
-
-    auto_assigned: dict[str, str] = {}
+    assignment_by_key: dict[str, str | None] = {row.url_key: None for row in rows}
     allowed_project_names = set(project_names)
+    auto_assigned: dict[str, str] = {}
     if auto_high:
         choice = questionary.select(
             "Bulk apply suggestion",
@@ -192,7 +196,7 @@ def triage_map(
                 choices=[
                     *[
                         Choice(
-                            title=_row_edit_label(row, assignment_by_key.get(row.url_key)),
+                            title=_row_edit_label(row, assignment_by_key.get(row.url_key), project_names=allowed_project_names),
                             value=row.url_key,
                         )
                         for row in review_rows
@@ -209,10 +213,15 @@ def triage_map(
             if row is None:
                 continue
             current = assignment_by_key.get(row.url_key)
+            suggested_default = (
+                row.suggested_project
+                if row.suggested_project in allowed_project_names and row.suggested_project != UNCATEGORIZED
+                else None
+            )
             selected_project = questionary.select(
                 f"Project for URL key '{row.url_key}'",
                 choices=[*project_names, "Skip this URL key"],
-                default=current if current in project_names else None,
+                default=current if current in project_names else suggested_default,
             ).ask()
             if selected_project is None:
                 console.print("[yellow]Cancelled before writing config.[/yellow]")

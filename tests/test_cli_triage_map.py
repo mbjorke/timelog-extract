@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -34,7 +35,7 @@ class TriageMapTests(unittest.TestCase):
                 },
             ]
         )
-        profiles = [{"name": "timelog-extract", "match_terms": ["org/repo"], "tracked_urls": [], "enabled": True}]
+        profiles = [{"name": "project-alpha", "match_terms": ["org/repo"], "tracked_urls": [], "enabled": True}]
         rows = build_url_candidates(report=report, profiles=profiles, max_rows=10, min_events=1)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].url_key, "github.com/org/repo")
@@ -118,7 +119,7 @@ class TriageMapTests(unittest.TestCase):
         self.assertEqual(assigned, {"k1": "P1"})
 
     def test_gap_day_impact_is_counted_once_per_key_and_day(self):
-        profiles = [{"name": "timelog-extract", "match_terms": ["org/repo"], "tracked_urls": [], "enabled": True}]
+        profiles = [{"name": "project-alpha", "match_terms": ["org/repo"], "tracked_urls": [], "enabled": True}]
         with patch("core.cli_triage_map_candidates.fetch_chrome_rows_for_day") as fetch_mock, patch(
             "core.cli_triage_map_candidates._filter_triage_noise_rows"
         ) as filter_mock:
@@ -135,6 +136,73 @@ class TriageMapTests(unittest.TestCase):
             )
         self.assertEqual(len(rows), 1)
         self.assertAlmostEqual(rows[0].impact_hours, 4.0, places=6)
+
+    def test_max_rows_below_one_returns_empty(self):
+        report = SimpleNamespace(
+            included_events=[
+                {
+                    "source": "Chrome",
+                    "timestamp": datetime(2026, 4, 11, 10, 0, tzinfo=timezone.utc),
+                    "detail": "x — https://github.com/org/repo/pull/1",
+                    "project": "Uncategorized",
+                },
+            ]
+        )
+        profiles = [{"name": "project-alpha", "match_terms": ["org/repo"], "tracked_urls": [], "enabled": True}]
+        rows = build_url_candidates(report=report, profiles=profiles, max_rows=0, min_events=1)
+        self.assertEqual(rows, [])
+
+    def test_triage_map_bulk_high_without_manual_review_applies_only_high(self):
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        tmp.write(
+            json.dumps(
+                {
+                    "projects": [
+                        {"name": "project-alpha", "match_terms": [], "tracked_urls": [], "enabled": True},
+                        {"name": "project-beta", "match_terms": [], "tracked_urls": [], "enabled": True},
+                    ]
+                }
+            )
+        )
+        tmp.close()
+        self.addCleanup(lambda: os.unlink(tmp.name))
+        plan = {"days": [{"day": "2026-04-11", "gap": {"unexplained_screen_time_hours": 1.0}}]}
+        rows = [
+            UrlCandidate("t1", "key-high", "project-alpha", "high", 1.0, 0.1, 3, 1, "2026-04-11", []),
+            UrlCandidate("t2", "key-med", "project-beta", "medium", 0.7, 0.2, 3, 1, "2026-04-11", []),
+        ]
+        profiles = [
+            {"name": "project-alpha", "match_terms": [], "tracked_urls": [], "enabled": True},
+            {"name": "project-beta", "match_terms": [], "tracked_urls": [], "enabled": True},
+        ]
+        captured: list[tuple[bool, list]] = []
+
+        def apply_side(*, decisions, projects_config, dry_run, **kwargs):
+            captured.append((dry_run, list(decisions)))
+            if dry_run:
+                return {"preview": "ok", "errors": []}
+            return {"applied": 1, "errors": []}
+
+        select_mock = MagicMock()
+        select_mock.ask.return_value = "high"
+        confirm_mock = MagicMock()
+        confirm_mock.ask.side_effect = [False, True]
+
+        with patch("core.cli_triage_map.resolve_date_window", return_value=("2026-04-11", "2026-04-11")), patch(
+            "core.cli_triage_map.build_triage_plan_dict", return_value=plan
+        ), patch("core.cli_triage_map.build_url_candidates_from_gap_days", return_value=rows), patch(
+            "core.cli_triage_map.load_triage_profiles", return_value=profiles
+        ), patch("core.cli_triage_map.questionary.select", return_value=select_mock), patch(
+            "core.cli_triage_map.questionary.confirm", return_value=confirm_mock
+        ), patch("core.cli_triage_map.apply_triage_decisions_payload", side_effect=apply_side):
+            result = self.runner.invoke(app, ["triage-map", "--from", "2026-04-11", "--to", "2026-04-11", "--projects-config", tmp.name])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertTrue(captured, msg="apply_triage_decisions_payload should run")
+        dry_decisions = [d for dry, d in captured if dry]
+        self.assertEqual(len(dry_decisions), 1, msg=captured)
+        self.assertEqual(len(dry_decisions[0]), 1)
+        self.assertEqual(dry_decisions[0][0]["rule_value"], "key-high")
+        self.assertEqual(dry_decisions[0][0]["project_name"], "project-alpha")
 
 
 if __name__ == "__main__":

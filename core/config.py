@@ -34,6 +34,9 @@ def resolve_projects_config_path_and_source(cwd: Optional[Path] = None) -> tuple
     legacy_repo_path = base_dir / PROJECTS_CONFIG_FILENAME
     if legacy_repo_path.is_file():
         return legacy_repo_path, "cwd"
+    legacy_home_path = Path.home() / ".gittan" / PROJECTS_CONFIG_FILENAME
+    if legacy_home_path.is_file():
+        return legacy_home_path, "legacy_home"
     return _default_profile_home() / PROJECTS_CONFIG_FILENAME, "auto_profile_home"
 
 

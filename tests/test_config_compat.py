@@ -300,6 +300,30 @@ class ProjectsConfigPathTests(unittest.TestCase):
         self.assertEqual(cli_default, PROJECTS_CONFIG_FILENAME)
         self.assertEqual(source, "cwd")
 
+    def test_prefers_legacy_home_config_when_present(self):
+        with mock.patch.dict(
+            "os.environ",
+            {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
+            clear=False,
+        ):
+            with mock.patch("core.config.Path.cwd", return_value=Path("/repo/no-config")):
+                with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
+                    with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
+                        with mock.patch("pathlib.Path.is_file", autospec=True) as is_file:
+                            def _is_file(path_obj):
+                                p = Path(path_obj)
+                                if p == Path("/repo/no-config") / PROJECTS_CONFIG_FILENAME:
+                                    return False
+                                if p == Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME:
+                                    return True
+                                return False
+
+                            is_file.side_effect = _is_file
+                            path = resolve_projects_config_path()
+                            _path2, source = resolve_projects_config_path_and_source()
+        self.assertEqual(path, Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(source, "legacy_home")
+
     def test_resolve_profile_worklog_paths_resolves_relative_deduped_and_absolute(self):
         from core.config import resolve_profile_worklog_paths
 

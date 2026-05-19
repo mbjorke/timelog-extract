@@ -306,7 +306,7 @@ def run_setup_wizard(
         (
             "Step 5: Triage Review (optional)",
             "SKIPPED",
-            "Not run inside setup in this version; available as optional follow-up via `gittan triage`.",
+            "Not run inside setup in this version; available as optional follow-up via `gittan review`.",
         )
     )
     summary_table = Table(title="Setup summary", box=box.ROUNDED)

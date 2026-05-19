@@ -159,7 +159,7 @@ def render_report(
         [
             "",
             "Next action (record mapping):",
-            f"- gittan suggest-rules --project \"{target}\" --from {day} --to {day} --projects-config {projects_config}",
+            f"- gittan review --from {day} --to {day} --projects-config {projects_config}",
             f"- Project policy: ticket_mode={ticket_policy}, default_client={default_client}",
             "- If no ticket exists and ticket_mode is optional/none, map directly to project.",
             "- If needed, update project terms/URLs with: gittan projects --config timelog_projects.json",

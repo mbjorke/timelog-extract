@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CLI: **`gittan review`** is the canonical URL → project mapping flow (`--json` for read-only candidates). **`gittan triage-map`** is a deprecated alias. Legacy log-cluster cleanup: **`gittan review --uncategorized`** (filters Cursor/IDE tooling noise). Report runs no longer show inline **Mapping suggestions** prompts. Deprecated: **`triage*`**, **`suggest-rules`**, **`apply-suggestions`**.
 - Setup / bootstrap: `discover_local_git_repos` has no default repo cap (`limit=None`). Project bootstrap uses **`max_depth=6`** (was 3) under the chosen root so deeper clone paths are discovered; scan status line shows depth and confirms no repo cap.
 - Contributor tooling: `scripts/contributor_setup_scenarios.sh projects-audit-trim-sandbox` runs a non-interactive projects-audit → `--write-trim-plan` → `projects-trim --dry-run` chain against a temp config copy; optional `GITTAN_AUDIT_FROM` / `GITTAN_AUDIT_TO` for a richer audit window. `scripts/cli_impact_smoke.sh` also smoke-tests `projects-trim --dry-run` after generating a trim plan.
 - CLI: `gittan projects-audit --write-trim-plan PATH` writes a `projects-trim` JSON plan (schema v1) with **candidate** removals pre-filled from rules that had zero hits in the audit window (review before `projects-trim -i`; never auto-applies).

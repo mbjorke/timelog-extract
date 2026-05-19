@@ -14,6 +14,7 @@ import typer
 from collectors.chrome import chrome_ts
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
+from core.cli_deprecation import warn_deprecated_triage_command
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
 from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
@@ -35,10 +36,9 @@ AGENT_TRIAGE_SCHEMA_VERSION = 1
 NOTES_FOR_AGENTS = [
     "JSON mode omits Chrome page titles to reduce accidental PII in logs; domains and counts remain.",
     "Primary mapping signal is tracked_urls / site-first scoring; match_terms is secondary.",
-    "Use --json for read-only plans only. Apply explicit decisions with `gittan triage-apply`; never pipe raw --json output into config.",
-    "To apply decisions from mobile/offline UIs, use `gittan triage-apply` with a decisions JSON (see docs/runbooks/gittan-triage-agents.md) — not the triage --json plan.",
-    "Top-site timestamp hints are local-time anchors only (first/last/sample window), not page-title evidence.",
-    "Triage uses a noise pre-pass that removes known Cursor SDK/skills/tooling chatter before project suggestions.",
+    "Deprecated: prefer `gittan review` / `review --json`; see docs/runbooks/gittan-triage-agents.md.",
+    "Top-site timestamp hints are local-time anchors only, not page-title evidence.",
+    "Triage uses a noise pre-pass before project suggestions.",
 ]
 def load_triage_profiles(projects_config: str) -> list[dict]:
     payload = load_projects_config_payload(Path(projects_config))
@@ -350,10 +350,9 @@ def _render_day_summary(row: dict, top_sites: list[DayTopSite]) -> str:
 def _render_triage_next_steps(projects_config: str) -> str:
     return (
         "[bold]Next steps:[/bold]\n"
-        "  1. Run [cyan]gittan triage --json[/cyan] to collect read-only evidence candidates.\n"
-        "  2. Build a [cyan]decisions[/cyan] JSON with confirmed mappings only.\n"
-        f"  3. Preview writes with [cyan]gittan triage-apply --dry-run --projects-config {projects_config} --input decisions.json[/cyan].\n"
-        f"  4. Apply after review with [cyan]gittan triage-apply --interactive-review --projects-config {projects_config} --input decisions.json[/cyan]."
+        "  1. Run [cyan]gittan review --json[/cyan] for read-only URL candidates (or interactive [cyan]gittan review[/cyan]).\n"
+        f"  2. Map hosts interactively with [cyan]gittan review --last-week --projects-config {projects_config}[/cyan].\n"
+        "  3. For rule hygiene (zero-hit terms), use [cyan]gittan projects-audit[/cyan] and [cyan]gittan projects-trim[/cyan]."
     )
 
 
@@ -379,9 +378,9 @@ def triage(
 ):
     """Guided loop: confirm/correct project mapping on top unexplained days."""
     from rich.console import Console
-
     from core.report_service import run_timelog_report
 
+    warn_deprecated_triage_command("gittan triage", extra="Use `gittan review --json` for URL candidates.")
     console = Console()
     if json_out and yes:
         console.print("[red]Cannot combine --json with --yes.[/red] Use --json alone for a read-only plan.")
@@ -395,7 +394,7 @@ def triage(
     if yes:
         console.print(
             "[yellow]`gittan triage --yes` no longer applies heuristic mappings.[/yellow] "
-            "Use `gittan triage --json` to review evidence, then `gittan triage-apply` with explicit decisions."
+            "Use `gittan review` to map and apply URL hosts."
         )
         console.print(_render_triage_next_steps(projects_config))
         raise typer.Exit(code=1)

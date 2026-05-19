@@ -20,6 +20,30 @@ TRIAGE_NOISE_TITLE_MARKERS = (
     "cursor diagnostics",
 )
 
+# Shared with uncategorized `gittan review` clustering (Cursor/IDE log lines, not customer work).
+UNCATEGORIZED_NOISE_DETAIL_MARKERS = TRIAGE_NOISE_TITLE_MARKERS + (
+    "failed to persist sync manifest",
+    "persist sync manifest",
+    '"skilldir"',
+    "loadfrommarketplacesource",
+    "[file watcher]",
+    "fsevents",
+    "events were dropped",
+    "opened repository",
+    "bootstrapping repository index",
+    "cursor_agent_exec.startup",
+)
+
+NOISE_MATCH_TERM_VALUES = frozenset(
+    {
+        "skills-cursor",
+        "skills_cursor",
+    }
+)
+
+# Cursor parallel worktree folder names (wt-*) are IDE scaffolding, not billable project tokens.
+_WORKTREE_TERM_PREFIX = "wt-"
+
 
 def extract_domain(url: str) -> str:
     if not url:
@@ -39,6 +63,24 @@ def is_triage_noise_row(url: str, title: str) -> bool:
     if not text:
         return False
     return any(marker in text for marker in TRIAGE_NOISE_TITLE_MARKERS)
+
+
+def is_uncategorized_noise_detail(detail: str) -> bool:
+    lower = (detail or "").lower()
+    if not lower.strip():
+        return True
+    return any(marker in lower for marker in UNCATEGORIZED_NOISE_DETAIL_MARKERS)
+
+
+def is_uncategorized_noise_term(term: str) -> bool:
+    lower = (term or "").strip().lower().rstrip(")")
+    if not lower:
+        return True
+    if lower in NOISE_MATCH_TERM_VALUES:
+        return True
+    if lower.startswith(_WORKTREE_TERM_PREFIX) and len(lower) > len(_WORKTREE_TERM_PREFIX):
+        return True
+    return any(marker in lower for marker in TRIAGE_NOISE_TITLE_MARKERS)
 
 
 def filter_triage_noise_rows(

@@ -11,7 +11,6 @@ from typer.testing import CliRunner
 from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
-    build_inline_mapping_suggestions,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
@@ -236,45 +235,6 @@ class ProjectsAuditTests(unittest.TestCase):
         )
         self.assertTrue(ok2)
         self.assertEqual(proj.get("tracked_urls"), [])
-
-    def test_inline_mapping_suggestions_bounds_and_words(self) -> None:
-        profiles = [
-            {
-                "name": "project-alpha",
-                "match_terms": ["alpha-token", "stale-term"],
-                "tracked_urls": [],
-            }
-        ]
-        events = []
-        for idx in range(5):
-            events.append(
-                {
-                    "source": "Chrome",
-                    "detail": f"https://unmapped.example.dev/page-{idx} alpha-token",
-                    "project": "project-alpha",
-                }
-            )
-        suggestions = build_inline_mapping_suggestions(
-            events=events,
-            profiles=profiles,
-            max_candidates=2,
-        )
-        self.assertGreaterEqual(len(suggestions), 1)
-        self.assertLessEqual(len(suggestions), 2)
-        self.assertTrue(any("consider adding tracked_urls" in row for row in suggestions))
-
-    def test_inline_mapping_suggestions_quiet_when_low_signal(self) -> None:
-        profiles = [{"name": "project-alpha", "match_terms": ["alpha"], "tracked_urls": []}]
-        events = [
-            {"source": "Chrome", "detail": "alpha only", "project": "project-alpha"},
-            {"source": "Chrome", "detail": "alpha only", "project": "project-alpha"},
-        ]
-        suggestions = build_inline_mapping_suggestions(
-            events=events,
-            profiles=profiles,
-            max_candidates=3,
-        )
-        self.assertEqual(suggestions, [])
 
     def test_trim_roundtrip_tmp_file(self) -> None:
         tmp = Path(self._temp_json())

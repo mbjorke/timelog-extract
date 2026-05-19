@@ -23,7 +23,7 @@ class ReportNudgesTests(unittest.TestCase):
         self.assertIsNotNone(text)
         assert text is not None
         self.assertIn("evidence-check", text)
-        self.assertIn("triage-guided", text)
+        self.assertIn("gittan review", text)
 
     def test_nudge_hidden_when_gap_below_threshold(self):
         report = self._report(estimated=2.0, screen_hours=3.0)
@@ -36,7 +36,7 @@ class ReportNudgesTests(unittest.TestCase):
         self.assertIsNotNone(text)
         assert text is not None
         self.assertIn("Uncategorized", text)
-        self.assertIn("triage-guided", text)
+        self.assertIn("gittan review", text)
 
     def test_uncategorized_nudge_suppressed_when_residual_noise_dominates(self):
         report = self._report(estimated=4.0, screen_hours=4.0, uncategorized_hours=3.9)

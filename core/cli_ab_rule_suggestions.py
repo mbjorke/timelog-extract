@@ -11,6 +11,7 @@ import questionary
 import typer
 
 from core.cli_app import app
+from core.cli_deprecation import warn_deprecated_command
 from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import (
@@ -264,6 +265,10 @@ def suggest_rules(
     from rich.console import Console
     from core.report_service import run_timelog_report
 
+    warn_deprecated_command(
+        "gittan suggest-rules",
+        extra="Prefer `gittan review` for URL mapping or `gittan review --uncategorized` for cluster cleanup.",
+    )
     console = Console()
     date_from, date_to, today, yesterday, last_3_days, last_week, last_14_days, last_month = _apply_timeframe_prompt(
         date_from,
@@ -320,7 +325,7 @@ def suggest_rules(
     )
     console.print(
         f"\n[dim]Saved suggestion state to {state_path}. "
-        f"Apply with: gittan apply-suggestions --option A --confirm[/dim]"
+        f"(Deprecated) Apply with: gittan apply-suggestions --option A --confirm — prefer gittan review.[/dim]"
     )
 
 
@@ -340,11 +345,18 @@ def apply_suggestions(
     """Apply a saved A/B suggestion bundle after explicit confirmation."""
     from rich.console import Console
 
+    warn_deprecated_command(
+        "gittan apply-suggestions",
+        extra="Prefer `gittan review` for interactive mapping with preview/confirm.",
+    )
     console = Console()
     config_path = Path(projects_config)
     path = state_file or ab_suggestions_state_path(config_path)
     if not path.is_file():
-        console.print(f"[red]No state file at {path}. Run `gittan suggest-rules` first.[/red]")
+        console.print(
+            f"[red]No state file at {path}.[/red] "
+            "(Deprecated path — run `gittan review` instead of suggest-rules/apply-suggestions.)"
+        )
         raise typer.Exit(code=1)
 
     try:

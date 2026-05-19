@@ -57,5 +57,5 @@ Reference implementation: `core/live_terminal/contract.py`.
   - `gittan review --json` when you need read-only candidates (agents/scripts)
   - `gittan projects-audit` for zero-hit rule hygiene before `projects-trim`
   - Workflow contract reference: `docs/runbooks/gittan-triage-agents.md`
-- Position `gittan review` as advanced/manual cleanup, not the default first-run path.
+- `gittan review` is the canonical URL → project mapping flow; `gittan review --uncategorized` is the legacy log-cluster path (advanced/manual cleanup).
 - If we add future aliases, document them as additive language, not replacements, until migration is complete.

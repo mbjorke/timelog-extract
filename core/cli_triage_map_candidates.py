@@ -1,4 +1,4 @@
-"""Aggregate URL-key candidates for `gittan triage-map` (keeps CLI module under CI line limits)."""
+"""Aggregate URL-key candidates for `gittan review` (keeps CLI module under CI line limits)."""
 
 from __future__ import annotations
 

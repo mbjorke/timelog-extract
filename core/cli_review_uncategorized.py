@@ -102,7 +102,7 @@ def run_uncategorized_cluster_review(
         return
 
     config_path = Path(projects_config)
-    _load_projects_payload(console, config_path)
+    payload = _load_projects_payload(console, config_path)
 
     if ab_suggestions:
         warn_deprecated_command(
@@ -134,7 +134,6 @@ def run_uncategorized_cluster_review(
     )
     console.print("[dim]Each cluster suggests match_terms or tracked_urls from log text (not URL review).[/dim]")
 
-    payload = _load_projects_payload(console, config_path)
     project_names = sorted(
         {
             str(project.get("name", "")).strip()

@@ -367,6 +367,10 @@ def triage_domains(
     """Aggregate domain->project candidates and apply only explicit selections."""
     from rich.console import Console
 
+    from core.cli_deprecation import warn_deprecated_triage_command
+
+    warn_deprecated_triage_command("gittan triage-domains")
+
     console = Console()
     date_from, date_to = resolve_date_window(
         date_from=date_from,

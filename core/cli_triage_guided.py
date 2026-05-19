@@ -306,8 +306,11 @@ def triage_guided(
 ) -> None:
     """Guide triage flow: evidence -> dry-run preview -> explicit apply confirm."""
     from rich.console import Console
+
+    from core.cli_deprecation import warn_deprecated_triage_command
     from core.report_service import run_timelog_report
 
+    warn_deprecated_triage_command("gittan triage-guided")
     console = Console()
     date_from, date_to = resolve_date_window(
         date_from=date_from,

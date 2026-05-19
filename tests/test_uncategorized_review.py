@@ -134,6 +134,58 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         self.assertNotIn(("match_terms", "hooks.json"), cluster_keys)
         self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
 
+    def test_build_clusters_excludes_worktree_and_file_watcher_noise(self):
+        events = [
+            {
+                "source": "Cursor",
+                "detail": (
+                    "wt-design-lint-subset — 2026-05-18 11:26:51.385  [Model] Opened repository: "
+                    "/Users/example/Workspace/project"
+                ),
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": (
+                    "wt-design-lint-subset) — 2026-05-18 11:29:30.868  [File Watcher] Events were "
+                    "dropped by the FSEvents client."
+                ),
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Implemented acme-feature review flow",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "wt-design-lint-subset"), cluster_keys)
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
+    def test_build_clusters_excludes_skills_cursor_sync_manifest_noise(self):
+        events = [
+            {
+                "source": "Cursor",
+                "detail": (
+                    "skills-cursor — 2026-05-06 05:58:54.188  Failed to persist sync manifest "
+                    '{"skillDir":"/Users/example/.cursor/skills-cursor"}'
+                ),
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Worked on acme-feature implementation",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "skills-cursor"), cluster_keys)
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
     def test_build_clusters_excludes_lovable_storage_signal_only_host(self):
         events = [
             {

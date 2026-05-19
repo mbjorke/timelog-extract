@@ -96,7 +96,7 @@ class GapDayTriageTests(unittest.TestCase):
         self.assertIn("aliases: project-core, project-ui", report)
         self.assertIn("why: domain anchors=1", report)
         self.assertIn("ticket_mode=optional", report)
-        self.assertIn("gittan suggest-rules --project \"ProductSuite\" --from 2026-04-02 --to 2026-04-02", report)
+        self.assertIn("gittan review --from 2026-04-02 --to 2026-04-02", report)
 
     def test_parse_map_assignments_accepts_domain_project_pairs(self):
         parsed = parse_map_assignments(["github.com=Gittan", "notion.so=ClientA"])

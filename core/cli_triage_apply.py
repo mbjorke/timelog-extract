@@ -204,6 +204,12 @@ def triage_apply(
     ] = False,
 ):
     """Apply categorization decisions from mobile to timelog_projects.json."""
+    from core.cli_deprecation import warn_deprecated_triage_command
+
+    warn_deprecated_triage_command(
+        "gittan triage-apply",
+        extra="Prefer interactive `gittan review`; keep this only for external decisions JSON.",
+    )
     try:
         decisions = _load_decisions(input_path)
     except (ValueError, OSError) as e:

@@ -89,10 +89,9 @@ class TriageMapTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
 
     def test_cli_triage_map_no_candidates_exits_cleanly(self):
-        plan = {"days": [{"day": "2026-04-11"}]}
-        with patch("core.cli_triage_map.build_triage_plan_dict", return_value=plan), patch(
-            "core.cli_triage_map.build_url_candidates_from_gap_days", return_value=[]
-        ), patch("core.cli_triage_map.load_triage_profiles", return_value=[]):
+        with patch("core.cli_url_mapping.load_triage_map_candidates", return_value=[]), patch(
+            "core.cli_url_mapping.load_triage_profiles", return_value=[]
+        ):
             result = self.runner.invoke(
                 app,
                 ["triage-map", "--today", "--projects-config", os.path.join(tempfile.gettempdir(), "gittan-triage-map-missing.json")],
@@ -188,13 +187,12 @@ class TriageMapTests(unittest.TestCase):
         confirm_mock = MagicMock()
         confirm_mock.ask.side_effect = [False, True]
 
-        with patch("core.cli_triage_map.resolve_date_window", return_value=("2026-04-11", "2026-04-11")), patch(
-            "core.cli_triage_map.build_triage_plan_dict", return_value=plan
-        ), patch("core.cli_triage_map.build_url_candidates_from_gap_days", return_value=rows), patch(
-            "core.cli_triage_map.load_triage_profiles", return_value=profiles
-        ), patch("core.cli_triage_map.questionary.select", return_value=select_mock), patch(
-            "core.cli_triage_map.questionary.confirm", return_value=confirm_mock
-        ), patch("core.cli_triage_map.apply_triage_decisions_payload", side_effect=apply_side):
+        with patch("core.cli_url_mapping.resolve_date_window", return_value=("2026-04-11", "2026-04-11")), patch(
+            "core.cli_url_mapping.load_triage_map_candidates", return_value=rows
+        ), patch("core.cli_url_mapping.load_triage_profiles", return_value=profiles
+        ), patch("core.cli_url_mapping.questionary.select", return_value=select_mock), patch(
+            "core.cli_url_mapping.questionary.confirm", return_value=confirm_mock
+        ), patch("core.cli_url_mapping.apply_triage_decisions_payload", side_effect=apply_side):
             result = self.runner.invoke(app, ["triage-map", "--from", "2026-04-11", "--to", "2026-04-11", "--projects-config", tmp.name])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertTrue(captured, msg="apply_triage_decisions_payload should run")
@@ -203,6 +201,21 @@ class TriageMapTests(unittest.TestCase):
         self.assertEqual(len(dry_decisions[0]), 1)
         self.assertEqual(dry_decisions[0][0]["rule_value"], "key-high")
         self.assertEqual(dry_decisions[0][0]["project_name"], "project-alpha")
+
+    def test_triage_map_json_is_read_only(self) -> None:
+        rows = [
+            UrlCandidate("t1", "github.com/org/repo", "project-alpha", "high", 1.0, 1.5, 3, 2, "2026-04-11", []),
+        ]
+        with patch("core.cli_url_mapping.resolve_date_window", return_value=("2026-04-11", "2026-04-11")), patch(
+            "core.cli_url_mapping.load_triage_map_candidates", return_value=rows
+        ), patch("core.cli_url_mapping.resolve_projects_config_path", return_value="/tmp/timelog_projects.json"):
+            result = self.runner.invoke(app, ["review", "--today", "--json"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], "1")
+        self.assertEqual(payload["command"], "gittan review")
+        self.assertEqual(payload["candidate_count"], 1)
+        self.assertEqual(payload["candidates"][0]["url_key"], "github.com/org/repo")
 
 
 if __name__ == "__main__":

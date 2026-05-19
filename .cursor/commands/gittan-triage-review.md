@@ -11,7 +11,7 @@ Use this when reviewing **triage**, **gap mapping**, or **agent-facing CLI** cha
 ## Before you judge the diff
 
 1. Read **`docs/runbooks/gittan-triage-agents.md`** (JSON contract, `--json` vs `--yes`, privacy).
-2. Confirm **`gittan triage --json`** stays **read-only** (no config writes).
+2. Confirm **`gittan triage-map --json`** stays **read-only** (no config writes); legacy `gittan triage --json` remains read-only until removed.
 3. Prefer **site-first / `tracked_urls`** as the primary signal; treat **`match_terms`** as secondary unless the change explicitly documents otherwise.
 
 ## Review checklist

@@ -1,21 +1,37 @@
 # Gittan triage: agent and automation contract
 
-Purpose: let **non-interactive agents** (Cursor, Claude, CI) reason about unexplained Screen Time days **without** `questionary` prompts or mutating `timelog_projects.json` by surprise.
+Purpose: let **non-interactive agents** (Cursor, Claude, CI) map URL hosts to projects **without** surprise writes to `timelog_projects.json`.
 
-## Safe commands
-
-
-| Goal                                                     | Command                                                                             |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **Read-only plan** (structured, stdout)                  | `gittan triage --json` (plus date range and limits as needed)                       |
-| **Apply heuristics** (same rules as interactive `--yes`) | `gittan triage --yes`                                                               |
-| **Human-driven**                                         | `gittan triage` (no flags)                                                          |
-| **Apply structured decisions** (e.g. mobile inbox)       | `gittan triage-apply --input decisions.json` (writes config; use `--dry-run` first) |
+## Canonical commands (2026-05)
 
 
-`--json` **never** writes the config. It only prints one JSON object to **stdout** (stderr may contain warnings from collectors; for automation prefer a quiet machine if we add `--quiet-json` later).
+| Goal | Command |
+| --- | --- |
+| **Interactive URL → project mapping** | `gittan triage-map` (date flags as needed) |
+| **Read-only URL candidates** (stdout JSON) | `gittan triage-map --json` |
+| **Rule hit audit** (zero-hit terms, `top_hosts`) | `gittan projects-audit --json` |
 
-`triage-apply` is the supported path for **batch / mobile** categorization: it validates a small `decisions` JSON and applies `tracked_urls` / `match_terms` rules. It creates a timestamped backup before writing when not `--dry-run` (see `core/cli_triage_apply.py`).
+`gittan triage-map --json` **never** writes config. Schema: `schema_version` `1`, `command` `"gittan triage-map"`, `candidates[]` with `url_key`, `suggested_project`, confidence, impact (see `core/cli_triage_map_context.py`).
+
+## Deprecated (removal planned)
+
+`gittan triage`, `gittan triage-domains`, `gittan triage-guided`, and `gittan triage-apply` still run but print a stderr deprecation notice. Prefer **`triage-map`** for mapping; use **`projects-audit` / `projects-trim`** for stale-rule hygiene.
+
+Legacy sections below document the old `gittan triage --json` day-plan contract until those commands are removed.
+
+## Legacy safe commands (`gittan triage` — deprecated)
+
+
+| Goal | Command |
+| --- | --- |
+| **Read-only day plan** (structured, stdout) | `gittan triage --json` |
+| **Human-driven day loop** | `gittan triage` (deprecated) |
+| **Apply structured decisions** (mobile inbox) | `gittan triage-apply --input decisions.json` (deprecated; use `triage-map` interactively when possible) |
+
+
+`--json` **never** writes the config. It only prints one JSON object to **stdout** (stderr may contain warnings from collectors).
+
+`triage-apply` validates a small `decisions` JSON and applies `tracked_urls` / `match_terms` rules. It creates a timestamped backup before writing when not `--dry-run` (see `core/cli_triage_apply.py`).
 
 ## Beta onboarding use
 

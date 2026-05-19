@@ -48,7 +48,7 @@ This prints totals delta and day-row delta in one command.
 python3 scripts/gap_day_triage.py --day 2026-04-02
 ```
 
-This reads the selected day from `screen_time_gap.json`, shows top Chrome sites for that day, suggests likely project matches from your profile rules, and prints a ready-to-run `gittan suggest-rules` command.
+This reads the selected day from `screen_time_gap.json`, shows top Chrome sites for that day, suggests likely project matches from your profile rules, and prints a ready-to-run `gittan triage-map` command for the day.
 
 By default, `gap_day_triage.py` uses `site-first` scoring to prioritize domain anchors over broad term matching.
 

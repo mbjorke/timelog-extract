@@ -391,9 +391,9 @@ class CliTriageHelpersTests(unittest.TestCase):
 
     def test_render_triage_next_steps_mentions_interactive_review(self):
         text = _render_triage_next_steps("timelog_projects.json")
-        self.assertIn("triage --json", text)
-        self.assertIn("triage-apply --dry-run", text)
-        self.assertIn("triage-apply --interactive-review", text)
+        self.assertIn("review --json", text)
+        self.assertIn("review --last-week", text)
+        self.assertIn("projects-audit", text)
 
 
 def _make_suggestion(canonical: str, score: int = 10) -> ProjectSuggestion:

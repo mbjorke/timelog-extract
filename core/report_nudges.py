@@ -126,7 +126,7 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
     if max_unexplained >= float(threshold_hours):
         return (
             f"Nudge: {max_unexplained:.1f}h unexplained screen-time on {worst_day}. "
-            "Run `gittan evidence-check` first, then `gittan triage-guided` to review evidence."
+            "Run `gittan evidence-check` first, then `gittan review` to map URL hosts to projects."
         )
     if uncategorized:
         day = str(uncategorized["day"])
@@ -134,6 +134,6 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
         ratio = float(uncategorized["ratio"])
         return (
             f"Nudge: {unc_h:.1f}h Uncategorized ({ratio:.0%}) on {day}. "
-            "Run `gittan triage-guided` to review evidence."
+            "Run `gittan review --last-week` to map URL hosts to projects."
         )
     return None

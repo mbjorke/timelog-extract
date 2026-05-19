@@ -21,10 +21,11 @@ class CliHelpTextTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("prompts for project if omitted", result.output)
 
-    def test_review_help_marks_command_as_advanced_manual_cleanup(self):
+    def test_review_help_describes_url_mapping_default(self):
         result = self.runner.invoke(app, ["review", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Advanced manual cleanup", result.output)
+        self.assertIn("Map URL hosts to projects", result.output)
+        self.assertIn("--uncategorized", result.output)
 
     def test_top_level_command_descriptions_are_first_run_oriented(self):
         result = self.runner.invoke(app, ["--help"])

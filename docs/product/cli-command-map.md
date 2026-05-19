@@ -20,9 +20,9 @@ Do not make breaking renames now. If we later want `capture/review` wording, add
 | Observed evidence | Build an evidence report for a date range | `gittan report --today --source-summary` | Default reporting shape for demos and onboarding. |
 | Observed evidence | Inspect all event-level details for a project/date | `gittan search --today --project "<name>"` | Search is the audit/debug lens (`all_events=True` path). |
 | Classified candidates | Manually curate uncategorized clusters (advanced) | `gittan review --today` | Advanced interactive loop; powerful but usually not the first onboarding step. |
-| Classified candidates | Map URL hosts to projects (interactive) | `gittan triage-map` | Canonical mapping flow; bulk + row review, writes `tracked_urls`. |
-| Classified candidates | Read-only URL mapping candidates | `gittan triage-map --json` | Machine-readable candidates; no config writes. |
-| Classified candidates | Rule hit audit / trim stale terms | `gittan projects-audit` / `projects-trim` | Complements `triage-map`; not a replacement. |
+| Classified candidates | Map URL hosts to projects (interactive) | `gittan review` | Canonical mapping flow; bulk + row review, writes `tracked_urls`. |
+| Classified candidates | Read-only URL mapping candidates | `gittan review --json` | Machine-readable candidates; no config writes. |
+| Classified candidates | Rule hit audit / trim stale terms | `gittan projects-audit` / `projects-trim` | Complements `gittan review`; not a replacement. |
 | Approved summary | Quick total/status check | `gittan status --today --additive` | High-level summary across projects/sessions. |
 | Onboarding | Run setup wizard | `gittan setup` | One-click default; `--interactive` and `--dry-run` available. |
 
@@ -51,10 +51,10 @@ Reference implementation: `core/live_terminal/contract.py`.
   - Step 2: Project Bootstrap
   - Step 3: Project Mapping
   - Step 4: Doctor Check
-  - Step 5: URL mapping (optional) — `gittan triage-map`
+  - Step 5: URL mapping (optional) — `gittan review`
 - After setup, prefer interactive flow over flag-heavy instructions:
-  - `gittan triage-map` (interactive URL → project mapping)
-  - `gittan triage-map --json` when you need read-only candidates (agents/scripts)
+  - `gittan review` (interactive URL → project mapping)
+  - `gittan review --json` when you need read-only candidates (agents/scripts)
   - `gittan projects-audit` for zero-hit rule hygiene before `projects-trim`
   - Workflow contract reference: `docs/runbooks/gittan-triage-agents.md`
 - Position `gittan review` as advanced/manual cleanup, not the default first-run path.

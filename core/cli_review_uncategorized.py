@@ -196,9 +196,9 @@ def run_uncategorized_cluster_review(
         )
         try:
             save_projects_config_payload(config_path, payload)
-        except PermissionError:
+        except PermissionError as exc:
             console.print(f"[red]Error:[/red] Cannot write to config file '{config_path}' - permission denied.")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from exc
         except OSError as exc:
             console.print(f"[red]Error:[/red] Cannot save config file '{config_path}': {exc}")
             raise typer.Exit(code=1) from exc

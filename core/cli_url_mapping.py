@@ -178,7 +178,6 @@ def run_url_mapping_review(
         review_rows = [row for row in rows if row.url_key not in auto_assigned]
         if not review_rows:
             console.print("[green]No remaining rows to review manually.[/green]")
-            review_rows = []
         else:
             _render_candidates_table(
                 console,

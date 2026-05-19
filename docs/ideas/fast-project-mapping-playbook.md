@@ -23,7 +23,7 @@ Get from “rough config” to “good enough to trust for a retrospective windo
 
 - **Generic shared hosts** (e.g. `*.atlassian.net`) still need **explicit** per-project anchors; the product intentionally treats them as ambiguous without `tracked_urls`.
 - **`default_client` / `customer`** do not score Chrome domains today — customer domains belong in `tracked_urls` or domain-shaped `match_terms` when you need host-level routing.
-- **URL mapping** — `gittan triage-map` (interactive) or `gittan triage-map --json` (read-only candidates) for unexplained Chrome/Lovable URL keys; complements audit but does not replace “count what fired” for rule hygiene.
+- **URL mapping** — `gittan review` (interactive) or `gittan review --json` (read-only candidates) for unexplained Chrome/Lovable URL keys; `gittan triage-map` is a deprecated alias. Complements audit but does not replace “count what fired” for rule hygiene.
 - **Mail:** only **Sent** mail is ingested; **inbox / flagged threads / body text** are not part of the current collector—only what appears in **To/Subject** can drive classification.
 
 ## CLI quick reference

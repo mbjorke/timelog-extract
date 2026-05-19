@@ -7,15 +7,15 @@ Purpose: let **non-interactive agents** (Cursor, Claude, CI) map URL hosts to pr
 
 | Goal | Command |
 | --- | --- |
-| **Interactive URL → project mapping** | `gittan triage-map` (date flags as needed) |
-| **Read-only URL candidates** (stdout JSON) | `gittan triage-map --json` |
+| **Interactive URL → project mapping** | `gittan review` (date flags as needed) |
+| **Read-only URL candidates** (stdout JSON) | `gittan review --json` |
 | **Rule hit audit** (zero-hit terms, `top_hosts`) | `gittan projects-audit --json` |
 
-`gittan triage-map --json` **never** writes config. Schema: `schema_version` `1`, `command` `"gittan triage-map"`, `candidates[]` with `url_key`, `suggested_project`, confidence, impact (see `core/cli_triage_map_context.py`).
+`gittan review --json` **never** writes config. Schema: `schema_version` `1`, `command` `"gittan review"`, `candidates[]` with `url_key`, `suggested_project`, confidence, impact (see `core/cli_triage_map_context.py`). `gittan triage-map` is a deprecated alias with the same behavior.
 
 ## Deprecated (removal planned)
 
-`gittan triage`, `gittan triage-domains`, `gittan triage-guided`, and `gittan triage-apply` still run but print a stderr deprecation notice. Prefer **`triage-map`** for mapping; use **`projects-audit` / `projects-trim`** for stale-rule hygiene.
+`gittan triage`, `gittan triage-domains`, `gittan triage-guided`, `gittan triage-apply`, and `gittan triage-map` still run but print a stderr deprecation notice. Prefer **`gittan review`** for URL mapping; use **`projects-audit` / `projects-trim`** for stale-rule hygiene.
 
 Legacy sections below document the old `gittan triage --json` day-plan contract until those commands are removed.
 
@@ -26,7 +26,7 @@ Legacy sections below document the old `gittan triage --json` day-plan contract 
 | --- | --- |
 | **Read-only day plan** (structured, stdout) | `gittan triage --json` |
 | **Human-driven day loop** | `gittan triage` (deprecated) |
-| **Apply structured decisions** (mobile inbox) | `gittan triage-apply --input decisions.json` (deprecated; use `triage-map` interactively when possible) |
+| **Apply structured decisions** (mobile inbox) | `gittan triage-apply --input decisions.json` (deprecated; use `gittan review` interactively when possible) |
 
 
 `--json` **never** writes the config. It only prints one JSON object to **stdout** (stderr may contain warnings from collectors).

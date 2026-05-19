@@ -19,7 +19,7 @@ Do not make breaking renames now. If we later want `capture/review` wording, add
 | Observed evidence | Verify local setup and source health | `gittan doctor` | Fast setup visibility and next steps when sources are missing. |
 | Observed evidence | Build an evidence report for a date range | `gittan report --today --source-summary` | Default reporting shape for demos and onboarding. |
 | Observed evidence | Inspect all event-level details for a project/date | `gittan search --today --project "<name>"` | Search is the audit/debug lens (`all_events=True` path). |
-| Classified candidates | Manually curate uncategorized clusters (advanced) | `gittan review --today` | Advanced interactive loop; powerful but usually not the first onboarding step. |
+| Classified candidates | Manually curate uncategorized clusters (advanced) | `gittan review --uncategorized` | Legacy log-cluster loop; use default `gittan review` for URL mapping instead. |
 | Classified candidates | Map URL hosts to projects (interactive) | `gittan review` | Canonical mapping flow; bulk + row review, writes `tracked_urls`. |
 | Classified candidates | Read-only URL mapping candidates | `gittan review --json` | Machine-readable candidates; no config writes. |
 | Classified candidates | Rule hit audit / trim stale terms | `gittan projects-audit` / `projects-trim` | Complements `gittan review`; not a replacement. |

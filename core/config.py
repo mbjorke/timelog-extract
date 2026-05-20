@@ -14,30 +14,124 @@ from typing import Optional
 PROJECTS_CONFIG_FILENAME = "timelog_projects.json"
 ENV_PROJECTS_CONFIG = "GITTAN_PROJECTS_CONFIG"
 ENV_GITTAN_HOME = "GITTAN_HOME"
+SOURCE_GITTAN_HOME = "gittan_home"
+SOURCE_PROFILE_HOME = "profile_home"
+# Back-compat alias for callers/tests that still mention the old name.
+SOURCE_LEGACY_HOME = SOURCE_GITTAN_HOME
+
+
+def canonical_gittan_home() -> Path:
+    """Machine-wide Gittan state directory (config + worklogs)."""
+    return Path.home() / ".gittan"
+
+
+def canonical_projects_config_path() -> Path:
+    """Default projects config file under :func:`canonical_gittan_home`."""
+    return canonical_gittan_home() / PROJECTS_CONFIG_FILENAME
 
 
 def _default_profile_home() -> Path:
+    """Per-user profile directory used when the canonical Gittan home file is absent."""
     user = (os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser() or "user").strip().lower()
     safe = "".join(ch if (ch.isalnum() or ch in {"-", "_"}) else "-" for ch in user).strip("-_") or "user"
     return Path.home() / f".gittan-{safe}"
 
 
 def resolve_projects_config_path_and_source(cwd: Optional[Path] = None) -> tuple[Path, str]:
-    """Resolve default projects config path with source metadata."""
+    """Resolve the active projects config path with source metadata.
+
+    Resolution is intentionally independent of the current working directory.
+    Use ``--projects-config`` (or ``GITTAN_PROJECTS_CONFIG``) for deliberate
+    per-run overrides such as demos or sandboxes.
+    """
+    _ = cwd  # reserved for shadow-detection helpers; not used for resolution.
     configured = str(os.environ.get(ENV_PROJECTS_CONFIG, "")).strip()
     if configured:
         return Path(configured).expanduser(), ENV_PROJECTS_CONFIG
     gittan_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
     if gittan_home:
         return Path(gittan_home).expanduser() / PROJECTS_CONFIG_FILENAME, ENV_GITTAN_HOME
-    base_dir = cwd if cwd is not None else Path.cwd()
-    legacy_repo_path = base_dir / PROJECTS_CONFIG_FILENAME
-    if legacy_repo_path.is_file():
-        return legacy_repo_path, "cwd"
-    legacy_home_path = Path.home() / ".gittan" / PROJECTS_CONFIG_FILENAME
-    if legacy_home_path.is_file():
-        return legacy_home_path, "legacy_home"
-    return _default_profile_home() / PROJECTS_CONFIG_FILENAME, "auto_profile_home"
+    canonical = canonical_projects_config_path()
+    if canonical.is_file():
+        return canonical, SOURCE_GITTAN_HOME
+    profile_home = _default_profile_home() / PROJECTS_CONFIG_FILENAME
+    if profile_home.is_file():
+        return profile_home, SOURCE_PROFILE_HOME
+    return canonical, SOURCE_GITTAN_HOME
+
+
+def find_ignored_projects_config_paths(
+    resolved_path: Path,
+    *,
+    cwd: Optional[Path] = None,
+) -> list[tuple[Path, str]]:
+    """Return other timelog_projects.json files that exist but are not active."""
+    resolved = resolved_path.expanduser().resolve()
+    seen: set[Path] = set()
+    ignored: list[tuple[Path, str]] = []
+    cwd_path = (cwd if cwd is not None else Path.cwd()).resolve()
+    candidates = [
+        (Path.home() / PROJECTS_CONFIG_FILENAME, "home directory"),
+        (cwd_path / PROJECTS_CONFIG_FILENAME, "current working directory"),
+        (_default_profile_home() / PROJECTS_CONFIG_FILENAME, "profile home"),
+    ]
+    for path, label in candidates:
+        candidate = path.expanduser().resolve()
+        if candidate in seen or candidate == resolved or not candidate.is_file():
+            continue
+        seen.add(candidate)
+        ignored.append((candidate, label))
+    return ignored
+
+
+def find_legacy_home_worklog_profiles(profiles, config_path: Optional[Path]) -> list[str]:
+    """Profile names whose worklog still points at ~/worklogs while config is under ~/.gittan."""
+    if config_path is None:
+        return []
+    cfg = Path(config_path).expanduser().resolve()
+    if cfg.parent != canonical_gittan_home().resolve():
+        return []
+    legacy_root = (Path.home() / "worklogs").resolve()
+    names: list[str] = []
+    for profile in profiles or []:
+        raw = str((profile or {}).get("worklog", "")).strip()
+        name = str((profile or {}).get("name", "")).strip()
+        if not raw or not name:
+            continue
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = (cfg.parent / path).resolve()
+        else:
+            path = path.resolve()
+        if path.parent == legacy_root:
+            names.append(name)
+    return sorted(names)
+
+
+def projects_config_resolution_warnings(
+    resolved_path: Path,
+    *,
+    cwd: Optional[Path] = None,
+    profiles: Optional[list] = None,
+) -> list[str]:
+    """Human-readable warnings when shadow configs or worklog dirs are in use."""
+    resolved = resolved_path.expanduser().resolve()
+    warnings: list[str] = []
+    for path, label in find_ignored_projects_config_paths(resolved, cwd=cwd):
+        warnings.append(
+            f"Ignoring {path} ({label}). Active config: {resolved}. "
+            "Archive or remove the unused copy, or pass --projects-config for a deliberate override."
+        )
+    legacy_worklogs = find_legacy_home_worklog_profiles(profiles or [], resolved)
+    if legacy_worklogs:
+        sample = ", ".join(legacy_worklogs[:4])
+        if len(legacy_worklogs) > 4:
+            sample = f"{sample}, …"
+        warnings.append(
+            f"{len(legacy_worklogs)} project(s) still point at ~/worklogs/ ({sample}). "
+            f"Canonical worklogs live under {canonical_gittan_home() / 'worklogs'}/."
+        )
+    return warnings
 
 
 def resolve_projects_config_path(cwd: Optional[Path] = None) -> Path:
@@ -50,13 +144,10 @@ def default_projects_config_option() -> str:
     """Default CLI value for --projects-config style options.
 
     Typer evaluates function signature defaults when command modules are
-    imported, so commands using this helper capture the environment and cwd from
-    import time unless they call it explicitly at runtime.
+    imported, so commands using this helper capture the environment from import
+    time unless they call it explicitly at runtime.
     """
-    resolved = resolve_projects_config_path()
-    if resolved.name == PROJECTS_CONFIG_FILENAME and resolved.parent == Path.cwd():
-        return PROJECTS_CONFIG_FILENAME
-    return str(resolved)
+    return str(resolve_projects_config_path())
 
 
 def as_list(value):

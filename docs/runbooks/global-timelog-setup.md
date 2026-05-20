@@ -16,7 +16,7 @@ gittan setup-global-timelog --yes       # apply
 
 - Do not commit local worklog files (including legacy `TIMELOG.md`) — they stay local (global gitignore / excludes as configured).
 - Treat `timelog_projects.json` as critical local data; the CLI warns if you move it carelessly.
-- Default behavior is automatic: if no env vars are set and no repo-local config exists, the CLI uses `~/.gittan-<user>/timelog_projects.json`.
+- Default behavior is automatic: the CLI resolves the canonical projects config from the Gittan home directory (or profile fallback when present). Cwd-local `timelog_projects.json` is not auto-selected (see `gittan config path`).
 - `GITTAN_PROJECTS_CONFIG` (exact file) and `GITTAN_HOME` (directory containing `timelog_projects.json`) are optional overrides when you need custom paths.
 
 ## Recommended per-project worklog standard

@@ -23,6 +23,7 @@ from core.config import (
     load_profiles,
     resolve_profile_worklog_paths,
     resolve_projects_config_path,
+    projects_config_resolution_warnings,
     resolve_worklog_path,
 )
 from core.git_project_bootstrap import assess_match_terms_coverage
@@ -157,6 +158,12 @@ def doctor(
     with console.status(f"[bold {STYLE_LABEL}]Running diagnostics..."):
         cli_on_path = add_cli_path_rows(table, home=home)
         project_config_ok = check_file(projects_cfg, "Project Config")
+        for warning in projects_config_resolution_warnings(projects_cfg, profiles=_profiles):
+            table.add_row(
+                "Projects config",
+                WARN_ICON,
+                f"[{STYLE_MUTED}]{warning}[/{STYLE_MUTED}]",
+            )
         using_single_worklog = bool(worklog) or bool(workspace_worklog)
         if using_single_worklog:
             worklog_ok = check_file(worklog_path, "Worklog (Local)")

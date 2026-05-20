@@ -7,7 +7,12 @@ import json
 import typer
 
 from core.cli_app import app
-from core.config import resolve_projects_config_path_and_source
+from core.config import (
+    SOURCE_GITTAN_HOME,
+    SOURCE_PROFILE_HOME,
+    projects_config_resolution_warnings,
+    resolve_projects_config_path_and_source,
+)
 
 config_app = typer.Typer(help="Inspect active config paths.", no_args_is_help=True)
 app.add_typer(config_app, name="config")
@@ -20,12 +25,13 @@ def config_path(
     """Print active projects-config path and source."""
     resolved_path, source = resolve_projects_config_path_and_source()
     source_label = {
-        "cwd": "repository-local file (current working directory)",
-        "auto_profile_home": "fallback (automatic profile home ~/.gittan-<user>)",
+        SOURCE_GITTAN_HOME: "canonical (~/.gittan/timelog_projects.json)",
+        SOURCE_PROFILE_HOME: "profile home (~/.gittan-<user>/timelog_projects.json)",
         "GITTAN_HOME": "environment (GITTAN_HOME)",
         "GITTAN_PROJECTS_CONFIG": "environment (GITTAN_PROJECTS_CONFIG)",
     }.get(source, source)
     exists = resolved_path.is_file()
+    warnings = projects_config_resolution_warnings(resolved_path)
 
     if json_output:
         typer.echo(
@@ -35,6 +41,7 @@ def config_path(
                     "source": source,
                     "source_label": source_label,
                     "exists": exists,
+                    "warnings": warnings,
                 }
             )
         )
@@ -43,3 +50,5 @@ def config_path(
     typer.echo(f"projects_config_path={resolved_path}")
     typer.echo(f"source={source_label}")
     typer.echo(f"exists={'yes' if exists else 'no'}")
+    for warning in warnings:
+        typer.echo(f"warning={warning}")

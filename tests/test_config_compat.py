@@ -10,10 +10,15 @@ from core.config import (
     ENV_GITTAN_HOME,
     ENV_PROJECTS_CONFIG,
     PROJECTS_CONFIG_FILENAME,
+    SOURCE_GITTAN_HOME,
+    SOURCE_PROFILE_HOME,
     apply_rule_to_project,
     remove_rule_from_project,
+    canonical_projects_config_path,
     default_projects_config_option,
+    find_ignored_projects_config_paths,
     load_projects_config_payload,
+    projects_config_resolution_warnings,
     resolve_projects_config_path,
     resolve_projects_config_path_and_source,
 )
@@ -268,39 +273,43 @@ class ProjectsConfigPathTests(unittest.TestCase):
         self.assertEqual(path, Path("/tmp/gittan-home") / PROJECTS_CONFIG_FILENAME)
         self.assertEqual(source, ENV_GITTAN_HOME)
 
-    def test_falls_back_to_workspace_default(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.dict(
-                "os.environ",
-                {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
-                clear=False,
-            ):
-                with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
-                    with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
-                        with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
+    def test_defaults_to_canonical_gittan_home_when_missing(self):
+        with mock.patch.dict(
+            "os.environ",
+            {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
+            clear=False,
+        ):
+            with mock.patch("core.config.Path.cwd", return_value=Path("/repo/no-config")):
+                with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
+                    with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
+                        with mock.patch("pathlib.Path.is_file", autospec=True) as is_file:
+                            is_file.return_value = False
                             path = resolve_projects_config_path()
                             cli_default = default_projects_config_option()
                             _path2, source = resolve_projects_config_path_and_source()
-        self.assertEqual(path, Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME)
-        self.assertEqual(cli_default, str(Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME))
-        self.assertEqual(source, "auto_profile_home")
+        self.assertEqual(path, Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(cli_default, str(Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME))
+        self.assertEqual(source, SOURCE_GITTAN_HOME)
 
-    def test_prefers_existing_repo_local_file_when_present(self):
+    def test_ignores_cwd_config_when_canonical_exists(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo_config = Path(tmp) / PROJECTS_CONFIG_FILENAME
-            repo_config.write_text('{"projects": []}', encoding="utf-8")
+            cwd_config = Path(tmp) / PROJECTS_CONFIG_FILENAME
+            cwd_config.write_text('{"projects": []}', encoding="utf-8")
             with mock.patch.dict("os.environ", {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: ""}, clear=False):
                 with mock.patch("core.config.Path.cwd", return_value=Path(tmp)):
                     with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
                         with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
-                            path = resolve_projects_config_path()
-                            cli_default = default_projects_config_option()
-                            _path2, source = resolve_projects_config_path_and_source()
-        self.assertEqual(path, Path(tmp) / PROJECTS_CONFIG_FILENAME)
-        self.assertEqual(cli_default, PROJECTS_CONFIG_FILENAME)
-        self.assertEqual(source, "cwd")
+                            with mock.patch("pathlib.Path.is_file", autospec=True) as is_file:
+                                def _is_file(path_obj):
+                                    return Path(path_obj) == Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME
 
-    def test_prefers_legacy_home_config_when_present(self):
+                                is_file.side_effect = _is_file
+                                path = resolve_projects_config_path()
+                                _path2, source = resolve_projects_config_path_and_source()
+        self.assertEqual(path, Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(source, SOURCE_GITTAN_HOME)
+
+    def test_prefers_gittan_home_over_profile_home(self):
         with mock.patch.dict(
             "os.environ",
             {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
@@ -312,17 +321,58 @@ class ProjectsConfigPathTests(unittest.TestCase):
                         with mock.patch("pathlib.Path.is_file", autospec=True) as is_file:
                             def _is_file(path_obj):
                                 p = Path(path_obj)
-                                if p == Path("/repo/no-config") / PROJECTS_CONFIG_FILENAME:
-                                    return False
-                                if p == Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME:
-                                    return True
-                                return False
+                                return p in {
+                                    Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME,
+                                    Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME,
+                                }
 
                             is_file.side_effect = _is_file
                             path = resolve_projects_config_path()
                             _path2, source = resolve_projects_config_path_and_source()
         self.assertEqual(path, Path("/Users/demo/.gittan") / PROJECTS_CONFIG_FILENAME)
-        self.assertEqual(source, "legacy_home")
+        self.assertEqual(source, SOURCE_GITTAN_HOME)
+
+    def test_falls_back_to_profile_home_when_canonical_missing(self):
+        with mock.patch.dict(
+            "os.environ",
+            {ENV_PROJECTS_CONFIG: "", ENV_GITTAN_HOME: "", "USER": "", "LOGNAME": ""},
+            clear=False,
+        ):
+            with mock.patch("core.config.Path.cwd", return_value=Path("/repo/no-config")):
+                with mock.patch("core.config.Path.home", return_value=Path("/Users/demo")):
+                    with mock.patch("core.config.getpass.getuser", return_value="sampleuser"):
+                        with mock.patch("pathlib.Path.is_file", autospec=True) as is_file:
+                            def _is_file(path_obj):
+                                return Path(path_obj) == Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME
+
+                            is_file.side_effect = _is_file
+                            path = resolve_projects_config_path()
+                            _path2, source = resolve_projects_config_path_and_source()
+        self.assertEqual(path, Path("/Users/demo/.gittan-sampleuser") / PROJECTS_CONFIG_FILENAME)
+        self.assertEqual(source, SOURCE_PROFILE_HOME)
+
+    def test_shadow_config_detection_flags_home_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            canonical = home / ".gittan" / PROJECTS_CONFIG_FILENAME
+            shadow = home / PROJECTS_CONFIG_FILENAME
+            canonical.parent.mkdir(parents=True)
+            canonical.write_text('{"projects": []}', encoding="utf-8")
+            shadow.write_text('{"projects": []}', encoding="utf-8")
+            with mock.patch("core.config.Path.home", return_value=home):
+                ignored = find_ignored_projects_config_paths(canonical, cwd=home / "workspace")
+            self.assertEqual(ignored, [(shadow.resolve(), "home directory")])
+
+    def test_resolution_warnings_mention_legacy_worklog_dir(self):
+        cfg = canonical_projects_config_path()
+        profiles = [
+            {
+                "name": "demo",
+                "worklog": str(Path.home() / "worklogs" / "demo.md"),
+            }
+        ]
+        warnings = projects_config_resolution_warnings(cfg, profiles=profiles)
+        self.assertTrue(any("~/worklogs/" in line for line in warnings))
 
     def test_resolve_profile_worklog_paths_resolves_relative_deduped_and_absolute(self):
         from core.config import resolve_profile_worklog_paths

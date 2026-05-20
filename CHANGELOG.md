@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.17 - 2026-05-20
+
+- Config: resolve `timelog_projects.json` from canonical `~/.gittan/timelog_projects.json` (or env overrides) instead of the current working directory. `gittan config path`, `gittan doctor`, and reports warn when shadow copies exist (for example `~/timelog_projects.json` or a repo-local file). README and global-timelog runbook updated.
+
 ## 0.2.16 - 2026-05-19
 
 - CLI: **`gittan review`** is the canonical URL → project mapping flow (`--json` for read-only candidates). **`gittan triage-map`** is a deprecated alias. Legacy log-cluster cleanup: **`gittan review --uncategorized`** (filters Cursor/IDE tooling noise). Report runs no longer show inline **Mapping suggestions** prompts. Deprecated: **`triage*`**, **`suggest-rules`**, **`apply-suggestions`**.

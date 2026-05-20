@@ -31,6 +31,7 @@ def canonical_projects_config_path() -> Path:
 
 
 def _default_profile_home() -> Path:
+    """Per-user profile directory used when the canonical Gittan home file is absent."""
     user = (os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser() or "user").strip().lower()
     safe = "".join(ch if (ch.isalnum() or ch in {"-", "_"}) else "-" for ch in user).strip("-_") or "user"
     return Path.home() / f".gittan-{safe}"

@@ -241,15 +241,15 @@ def build_run_context(
             print(f"Only customer: {args.customer!r}")
         print(f"Local timezone: {local_tz}")
         print(f"Project profiles: {len(profiles)}")
-        if loaded_config_path is not None:
-            from core.config import projects_config_resolution_warnings
+        from core.config import projects_config_resolution_warnings
 
-            for warning in projects_config_resolution_warnings(
-                loaded_config_path,
-                cwd=Path.cwd(),
-                profiles=profiles,
-            ):
-                print(f"[Warning] {warning}")
+        active_config_path = Path(args.projects_config).expanduser().resolve()
+        for warning in projects_config_resolution_warnings(
+            active_config_path,
+            cwd=Path.cwd(),
+            profiles=profiles,
+        ):
+            print(f"[Warning] {warning}")
         if has_implicit_base_worklog:
             print(f"Worklog: {worklog_path}")
         else:

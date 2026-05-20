@@ -77,10 +77,10 @@ Use a git checkout (usually the **repo root**) and lock your worklogs to per-pro
 
 1. **`GITTAN_PROJECTS_CONFIG`** if set (full path to config file).  
 2. Else **`$GITTAN_HOME/timelog_projects.json`** if `GITTAN_HOME` is set.  
-3. Else **`~/.gittan/timelog_projects.json`** (canonical; same path used when the file does not exist yet).  
-4. Else **`~/.gittan-<user>/timelog_projects.json`** if that older profile file exists.
+3. Else the canonical file under the Gittan home directory (`gittan config path` shows the exact path; same target when the file does not exist yet).  
+4. Else the per-user profile home fallback if that older file exists.
 
-Resolution does **not** depend on the current working directory. A stray `~/timelog_projects.json` or repo-local copy is ignored (with a warning on `gittan report` / `gittan doctor`). Use `--projects-config` only for demos or deliberate overrides.
+Resolution does **not** depend on the current working directory. A stray home-directory or repo-local copy is ignored (with a warning on `gittan report` / `gittan doctor`). Use `--projects-config` only for demos or deliberate overrides.
 
 You usually do not need to set any env vars; check the active path with `gittan config path`.
 

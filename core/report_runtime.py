@@ -19,6 +19,7 @@ from core.noise_profiles import (
 from core.config import resolve_profile_worklog_paths
 
 from collectors import ai_logs as ai_logs_collector
+from collectors import antigravity as antigravity_collector
 from collectors import chrome as chrome_collector
 from collectors import cursor as cursor_collector
 from collectors import github as github_collector
@@ -326,6 +327,7 @@ def collect_runtime_events(
         ai_logs_collector=ai_logs_collector,
         chrome_collector=chrome_collector,
         cursor_collector=cursor_collector,
+        antigravity_collector=antigravity_collector,
         mail_collector=mail_collector,
         timelog_collector=timelog_collector,
         github_collector=github_collector,
@@ -351,6 +353,7 @@ def collect_runtime_events(
         collect_gemini_cli=runtime_collectors.collect_gemini_cli,
         collect_copilot_cli=runtime_collectors.collect_copilot_cli,
         collect_cursor=runtime_collectors.collect_cursor,
+        collect_antigravity=runtime_collectors.collect_antigravity,
         collect_cursor_checkpoints=runtime_collectors.collect_cursor_checkpoints,
         collect_codex_ide=runtime_collectors.collect_codex_ide,
         collect_apple_mail=runtime_collectors.collect_apple_mail,

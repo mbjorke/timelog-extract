@@ -236,6 +236,17 @@ def doctor(
         else:
             table.add_row("Cursor Checkpoints", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
 
+        antigravity_logs = (
+            home / "Library" / "Application Support" / "Antigravity IDE" / "logs"
+        )
+        if not antigravity_logs.exists():
+            # Optional source: not-installed is informational, not a failure.
+            table.add_row("Antigravity", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
+        elif not os.access(antigravity_logs, os.R_OK):
+            table.add_row("Antigravity", WARN_ICON, f"[{STYLE_MUTED}]No read permission[/{STYLE_MUTED}]")
+        else:
+            table.add_row("Antigravity", OK_ICON, f"[{STYLE_MUTED}]Logs accessible[/{STYLE_MUTED}]")
+
         st_path = home / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db"
         if not st_path.exists():
             st_path = home / "Library" / "Application Support" / "KnowledgeC" / "knowledgeC.db"

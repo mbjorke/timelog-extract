@@ -17,6 +17,7 @@
 - Tracked AI chat URLs (`tracked_urls`)
 - AI terminal/chat CLI session logs
 - Cursor logs + Cursor checkpoints
+- Antigravity (Google Antigravity IDE) logs
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
 

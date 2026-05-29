@@ -36,6 +36,7 @@ def build_collector_specs(
     collect_gemini_cli: Callable,
     collect_copilot_cli: Callable,
     collect_cursor: Callable,
+    collect_antigravity: Callable,
     collect_cursor_checkpoints: Callable,
     collect_codex_ide: Callable,
     collect_apple_mail: Callable,
@@ -81,6 +82,7 @@ def build_collector_specs(
         CollectorSpec("Gemini CLI", collect_gemini_cli, "events"),
         CollectorSpec("GitHub Copilot CLI", collect_copilot_cli, "events"),
         CollectorSpec("Cursor", collect_cursor, "events"),
+        CollectorSpec("Antigravity", collect_antigravity, "events"),
         CollectorSpec("Cursor checkpoints", collect_cursor_checkpoints, "events"),
         CollectorSpec("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessions"),
         CollectorSpec(

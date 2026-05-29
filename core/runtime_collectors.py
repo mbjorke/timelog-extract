@@ -27,6 +27,7 @@ class RuntimeCollectors:
         chrome_collector,
         cursor_collector,
         antigravity_collector,
+        windsurf_collector,
         mail_collector,
         timelog_collector,
         github_collector,
@@ -47,6 +48,7 @@ class RuntimeCollectors:
         self.chrome = chrome_collector
         self.cursor = cursor_collector
         self.antigravity = antigravity_collector
+        self.windsurf = windsurf_collector
         self.mail = mail_collector
         self.timelog = timelog_collector
         self.github = github_collector
@@ -184,6 +186,24 @@ class RuntimeCollectors:
             self.classify_project,
             self.make_event,
             noise_profile=self._noise_profile(),
+        )
+
+    def collect_windsurf(self, profiles, dt_from, dt_to):
+        noise_profile = DEFAULT_NOISE_PROFILE
+        if self.cli_args is not None:
+            noise_profile = str(
+                getattr(self.cli_args, "noise_profile", DEFAULT_NOISE_PROFILE)
+                or DEFAULT_NOISE_PROFILE
+            ).lower()
+        return self.windsurf.collect_windsurf(
+            profiles,
+            dt_from,
+            dt_to,
+            self.home,
+            self.local_tz,
+            self.classify_project,
+            self.make_event,
+            noise_profile=noise_profile,
         )
 
     def collect_cursor_checkpoints(self, profiles, dt_from, dt_to):

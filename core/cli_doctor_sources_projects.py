@@ -236,9 +236,11 @@ def doctor(
         else:
             table.add_row("Cursor Checkpoints", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
 
-        antigravity_logs = (
-            home / "Library" / "Application Support" / "Antigravity IDE" / "logs"
-        )
+        # Derive paths from the collectors so a new base dir/channel stays in sync.
+        from collectors.antigravity import antigravity_base_dir
+        from collectors.windsurf import windsurf_base_dirs
+
+        antigravity_logs = antigravity_base_dir(home) / "logs"
         if not antigravity_logs.exists():
             # Optional source: not-installed is informational, not a failure.
             table.add_row("Antigravity", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
@@ -248,10 +250,7 @@ def doctor(
             table.add_row("Antigravity", OK_ICON, f"[{STYLE_MUTED}]Logs accessible[/{STYLE_MUTED}]")
 
         # Windsurf ships a stable channel and a "Next" beta; either may exist.
-        windsurf_logs = [
-            home / "Library" / "Application Support" / "Windsurf" / "logs",
-            home / "Library" / "Application Support" / "Windsurf - Next" / "logs",
-        ]
+        windsurf_logs = [base / "logs" for base in windsurf_base_dirs(home)]
         present = [p for p in windsurf_logs if p.exists()]
         if not present:
             table.add_row("Windsurf", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")

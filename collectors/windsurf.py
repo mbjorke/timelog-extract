@@ -24,8 +24,6 @@ _WINDSURF_NOISE = make_noise_filter(
         "acp feature flags",
         "connecting to remote acp",
         "[devin-connect]",
-        "websocket connected",
-        "websocket closed",
         "scheduling reconnection",
         "authenticated bundled agent",
         "getting sessions for",
@@ -41,7 +39,6 @@ _WINDSURF_NOISE = make_noise_filter(
         "does not exist. likely",
         "[codeium.windsurf]",
         "cannot register",
-        "initialization complete",
         "[diffzone]",
         # Git/repository plumbing churn (attributes to the right project but the
         # leaf path — a ref or lock — is not meaningful work evidence).
@@ -57,6 +54,11 @@ _WINDSURF_NOISE = make_noise_filter(
         "err_internet_disconnected",
     ),
     ultra_strict=(
+        # Broad markers kept out of strict so they can't suppress legitimate
+        # editor activity that merely mentions these generic words.
+        "websocket connected",
+        "websocket closed",
+        "initialization complete",
         "telemetry",
         "extensionservice#",
         ".codeium",
@@ -72,16 +74,6 @@ def windsurf_base_dirs(home: Path) -> list[Path]:
     return [support / name for name in WINDSURF_APP_DIRS]
 
 
-def _windsurf_internal_paths(home: Path) -> list[str]:
-    """IDE-owned data dirs whose paths must not be attributed as project work.
-
-    Only the app-support base dirs are listed here. Windsurf's home-level
-    stores (~/.codeium, ~/.windsurf, ~/.cache/devin, ~/.config/devin) are
-    already excluded by the shared collector's home-dotpath rule.
-    """
-    return [str(base) for base in windsurf_base_dirs(home)]
-
-
 def collect_windsurf(
     profiles,
     dt_from,
@@ -92,7 +84,13 @@ def collect_windsurf(
     make_event,
     noise_profile: str = "strict",
 ):
-    """Scrape Windsurf (stable + Next) logs into project-attributed events."""
+    """Scrape Windsurf (stable + Next) logs into project-attributed events.
+
+    Only the app-support base dirs are passed as ``internal_paths``; Windsurf's
+    home-level stores (~/.codeium, ~/.cache/devin, …) are already excluded by
+    the shared collector's home-dotpath rule.
+    """
+    base_dirs = windsurf_base_dirs(home)
     return collect_fork_logs(
         profiles,
         dt_from,
@@ -102,8 +100,8 @@ def collect_windsurf(
         classify_project,
         make_event,
         source_name="Windsurf",
-        base_dirs=windsurf_base_dirs(home),
+        base_dirs=base_dirs,
         noise_fn=_WINDSURF_NOISE,
-        internal_paths=_windsurf_internal_paths(home),
+        internal_paths=[str(base) for base in base_dirs],
         noise_profile=noise_profile,
     )

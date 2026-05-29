@@ -128,6 +128,35 @@ class WindsurfCollectorTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_skips_app_support_internal_paths(self):
+        # Paths under Windsurf's own app-support dir are IDE internals, not work.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            internal = self._base(home) / "User" / "settings.json"
+            self._write_log(
+                home,
+                "main.log",
+                [f"2026-05-28 09:13:30.000 [info] wrote settings {internal}"],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_naive_iso_bracket_timestamp_defaults_to_local_tz(self):
+        # Bracket ISO timestamps without an offset parse naive; the shared core
+        # must default them to local_tz instead of raising on the window check.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "[2026-05-28T09:15:00] WindsurfWindowsMainManager: Window will load "
+                    "/Users/me/Workspace/Project/timelog-extract"
+                ],
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["timestamp"].tzinfo, timezone.utc)
+
     def test_scans_windsurf_next_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

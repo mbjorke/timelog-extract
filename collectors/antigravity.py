@@ -53,15 +53,6 @@ def antigravity_base_dir(home: Path) -> Path:
     return home / "Library" / "Application Support" / ANTIGRAVITY_APP_DIR
 
 
-def _antigravity_internal_paths(home: Path) -> list[str]:
-    """IDE-owned data dirs whose paths must not be attributed as project work."""
-    return [
-        str(antigravity_base_dir(home)),
-        str(home / ".antigravity-ide"),
-        str(home / ".gemini" / "antigravity-ide"),
-    ]
-
-
 def collect_antigravity(
     profiles,
     dt_from,
@@ -72,7 +63,13 @@ def collect_antigravity(
     make_event,
     noise_profile: str = "strict",
 ):
-    """Scrape Antigravity IDE logs into project-attributed activity events."""
+    """Scrape Antigravity IDE logs into project-attributed activity events.
+
+    Only the app-support base dir is passed as ``internal_paths``; Antigravity's
+    home-level stores (~/.antigravity-ide, ~/.gemini/antigravity-ide) are
+    already excluded by the shared collector's home-dotpath rule.
+    """
+    base_dir = antigravity_base_dir(home)
     return collect_fork_logs(
         profiles,
         dt_from,
@@ -82,8 +79,8 @@ def collect_antigravity(
         classify_project,
         make_event,
         source_name="Antigravity",
-        base_dirs=[antigravity_base_dir(home)],
+        base_dirs=[base_dir],
         noise_fn=_ANTIGRAVITY_NOISE,
-        internal_paths=_antigravity_internal_paths(home),
+        internal_paths=[str(base_dir)],
         noise_profile=noise_profile,
     )

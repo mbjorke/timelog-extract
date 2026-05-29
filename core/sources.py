@@ -14,6 +14,7 @@ SOURCE_ORDER = [
     "Cursor",
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
+    "Windsurf",
     "Codex IDE",
     "GitHub Copilot CLI",
     "Gemini CLI",

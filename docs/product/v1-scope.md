@@ -18,6 +18,7 @@
 - AI terminal/chat CLI session logs
 - Cursor logs + Cursor checkpoints
 - Antigravity (Google Antigravity IDE) logs
+- Windsurf (Codeium/Cognition IDE) logs
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
 

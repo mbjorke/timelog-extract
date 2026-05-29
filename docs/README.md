@@ -37,6 +37,13 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Defines a current rule** → `decisions/`
 - **Approved work to build** → `specs/`
 - **Which specs are implemented right now** → [`specs/implementation-status.md`](specs/implementation-status.md)
+- **Behavior-contract format for new specs** → [`specs/behavior-contract-standard.md`](specs/behavior-contract-standard.md)
+- **Source evidence roles and weighting** → [`specs/source-evidence-policy.md`](specs/source-evidence-policy.md)
+- **Collector/source implementation contract** → [`specs/source-collector-contract.md`](specs/source-collector-contract.md)
+- **Timelog capture health and future menu bar counter** → [`specs/timelog-health-monitor.md`](specs/timelog-health-monitor.md)
+- **Local retained evidence / shadow log** → [`specs/local-evidence-shadow-log.md`](specs/local-evidence-shadow-log.md)
+- **Candidate repo agent skills** → [`specs/repo-agent-skills.md`](specs/repo-agent-skills.md)
+- **Deprecation and test weakness inventory before refactors** → [`decisions/deprecation-and-test-weakness-inventory.md`](decisions/deprecation-and-test-weakness-inventory.md)
 - **Triage onboarding timestamp spike spec (S1)** → [`specs/triage-onboarding-timestamp-spike-spec.md`](specs/triage-onboarding-timestamp-spike-spec.md)
 - **Classification integrity TDD spec** → [`specs/classification-integrity-tdd-spec.md`](specs/classification-integrity-tdd-spec.md)
 - **Implementation checklist / agent prompt** → `task-prompts/`

@@ -1,7 +1,7 @@
 # Specs implementation status
 
 Status: active tracker  
-Last updated: 2026-04-28
+Last updated: 2026-05-29
 
 ## Purpose
 
@@ -25,6 +25,12 @@ Keep one fast, shared view of which specs are built, partially built, or still p
 | `docs/specs/ab-rule-suggestions.md`                    | `partial`      | `suggest-rules` / `apply-suggestions` and integrated `review --ab-suggestions` exist; spec remains draft-v2 experiment contract. |
 | `docs/specs/classification-integrity-tdd-spec.md`      | `not started`  | Still draft; parts may exist in code, but full TDD scope and exit criteria are not yet closed.                                   |
 | `docs/specs/timelog-truth-standard-rfc.md`             | `partial`      | RFC is active; replay tooling baseline exists, but full slice-level DoD remains open (see Timelog Truth DoD Snapshot below).     |
+| `docs/specs/behavior-contract-standard.md`             | `built`        | Documentation standard only; defines how specs should express Gherkin behavior contracts.                                       |
+| `docs/specs/source-evidence-policy.md`                 | `not started`  | Draft policy for source roles/weights; implementation has not yet emitted a full evidence-role model.                           |
+| `docs/specs/source-collector-contract.md`              | `not started`  | Draft contract for future/new collectors; existing collectors are not yet audited against it.                                    |
+| `docs/specs/timelog-health-monitor.md`                 | `not started`  | Draft spec for central worklog health and a future macOS menu bar counter.                                                      |
+| `docs/specs/local-evidence-shadow-log.md`              | `not started`  | Draft spec for opt-in local retained evidence when upstream logs rotate or disappear.                                           |
+| `docs/specs/repo-agent-skills.md`                      | `not started`  | Draft spec for small reusable repo skills; no actual repo skill files have been created yet.                                    |
 
 
 ## Update routine

@@ -82,8 +82,8 @@ def build_collector_specs(
         CollectorSpec("Gemini CLI", collect_gemini_cli, "events"),
         CollectorSpec("GitHub Copilot CLI", collect_copilot_cli, "events"),
         CollectorSpec("Cursor", collect_cursor, "events"),
-        CollectorSpec("Antigravity", collect_antigravity, "events"),
         CollectorSpec("Cursor checkpoints", collect_cursor_checkpoints, "events"),
+        CollectorSpec("Antigravity", collect_antigravity, "events"),
         CollectorSpec("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessions"),
         CollectorSpec(
             "Apple Mail",

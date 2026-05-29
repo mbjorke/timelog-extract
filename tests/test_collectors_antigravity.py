@@ -66,6 +66,26 @@ class AntigravityCollectorTests(unittest.TestCase):
             self.assertEqual(out[0]["source"], "Antigravity")
             self.assertEqual(out[0]["project"], "Gittan CLI")
 
+    def test_maps_workspace_key_to_folder(self):
+        # workspace.json may carry a "workspace" key instead of "folder".
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "b" * 32
+            ws = self._base(home) / "User" / "workspaceStorage" / wid
+            ws.mkdir(parents=True, exist_ok=True)
+            (ws / "workspace.json").write_text(
+                json.dumps({"workspace": "file:///Users/me/Workspace/Project/timelog-extract"}),
+                encoding="utf-8",
+            )
+            self._write_log(
+                home,
+                "main.log",
+                [f"2026-05-29 09:06:00.000 [info] opened workspaceStorage/{wid}"],
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["project"], "Gittan CLI")
+
     def test_maps_workspace_id_to_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

@@ -23,6 +23,8 @@ _TS_ISO_BRACKET_PATTERN = re.compile(
     r"^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)(Z|[+-]\d{2}:\d{2})?\]"
 )
 _WORKSPACE_ID_PATTERN = re.compile(r"workspaceStorage/([^/\s\"']+)")
+# macOS-specific: these forks store log data under ~/Library/Application Support,
+# so workspace paths in the logs are always absolute /Users/... paths.
 _WORKSPACE_PATH_PATTERN = re.compile(r"(/Users/[^\"'\s]+)")
 
 # Operational noise common to every fork, filtered at every noise profile.
@@ -70,13 +72,14 @@ def _is_gittan_sync_artifact(text: str) -> bool:
     return False
 
 
-def make_noise_filter(*, base=(), strict=(), ultra_strict=()):
+def make_noise_filter(*, base_extra=(), strict=(), ultra_strict=()):
     """Build a noise predicate from marker tiers keyed by noise profile.
 
-    ``lenient`` filters only ``base`` (plus shared base + Gittan artifacts);
-    ``strict`` adds ``strict``; ``ultra-strict`` adds ``ultra_strict`` too.
+    ``lenient`` filters only the shared base (plus ``base_extra`` and Gittan
+    artifacts); ``strict`` adds ``strict``; ``ultra-strict`` adds
+    ``ultra_strict`` too.
     """
-    base = SHARED_BASE_NOISE + tuple(base)
+    base = SHARED_BASE_NOISE + tuple(base_extra)
     strict = tuple(strict)
     ultra_strict = tuple(ultra_strict)
 

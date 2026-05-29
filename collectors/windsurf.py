@@ -73,15 +73,13 @@ def windsurf_base_dirs(home: Path) -> list[Path]:
 
 
 def _windsurf_internal_paths(home: Path) -> list[str]:
-    """IDE-owned data dirs whose paths must not be attributed as project work."""
-    paths = [str(base) for base in windsurf_base_dirs(home)]
-    paths += [
-        str(home / ".codeium"),
-        str(home / ".windsurf"),
-        str(home / ".cache" / "devin"),
-        str(home / ".config" / "devin"),
-    ]
-    return paths
+    """IDE-owned data dirs whose paths must not be attributed as project work.
+
+    Only the app-support base dirs are listed here. Windsurf's home-level
+    stores (~/.codeium, ~/.windsurf, ~/.cache/devin, ~/.config/devin) are
+    already excluded by the shared collector's home-dotpath rule.
+    """
+    return [str(base) for base in windsurf_base_dirs(home)]
 
 
 def collect_windsurf(

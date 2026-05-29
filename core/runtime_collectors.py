@@ -189,12 +189,6 @@ class RuntimeCollectors:
         )
 
     def collect_windsurf(self, profiles, dt_from, dt_to):
-        noise_profile = DEFAULT_NOISE_PROFILE
-        if self.cli_args is not None:
-            noise_profile = str(
-                getattr(self.cli_args, "noise_profile", DEFAULT_NOISE_PROFILE)
-                or DEFAULT_NOISE_PROFILE
-            ).lower()
         return self.windsurf.collect_windsurf(
             profiles,
             dt_from,
@@ -203,7 +197,7 @@ class RuntimeCollectors:
             self.local_tz,
             self.classify_project,
             self.make_event,
-            noise_profile=noise_profile,
+            noise_profile=self._noise_profile(),
         )
 
     def collect_cursor_checkpoints(self, profiles, dt_from, dt_to):

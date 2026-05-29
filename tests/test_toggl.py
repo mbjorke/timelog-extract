@@ -59,6 +59,7 @@ class TogglSourceTests(unittest.TestCase):
                 collect_gemini_cli=lambda *_: [],
                 collect_copilot_cli=lambda *_: [],
                 collect_cursor=lambda *_: [],
+                collect_antigravity=lambda *_: [],
                 collect_cursor_checkpoints=lambda *_: [],
                 collect_codex_ide=lambda *_: [],
                 collect_apple_mail=lambda *_: [],

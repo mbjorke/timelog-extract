@@ -13,6 +13,7 @@ SOURCE_ORDER = [
     "Gemini (web)",
     "Cursor",
     CURSOR_CHECKPOINTS_SOURCE,
+    "Antigravity",
     "Codex IDE",
     "GitHub Copilot CLI",
     "Gemini CLI",

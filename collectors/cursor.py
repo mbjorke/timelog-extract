@@ -91,9 +91,14 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
         if m:
             iso = (m.group(1) + (m.group(2) or "")).replace("Z", "+00:00")
             try:
-                return datetime.fromisoformat(iso)
+                parsed = datetime.fromisoformat(iso)
             except ValueError:
                 return None
+            # A bracket timestamp without Z/offset parses naive; default it to
+            # local_tz so the tz-aware dt_from/dt_to window check never raises.
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=local_tz)
+            return parsed
         return None
 
     for log_file in logs_dir.glob("**/*.log"):

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.18 - 2026-05-30
+
+- Sources: **Google Antigravity IDE** activity via shared VS Code-fork collector ([#127](https://github.com/mbjorke/timelog-extract/pull/127)).
+- Sources: **Windsurf** (Codeium/Cognition IDE) activity; Antigravity/shared-collector follow-up from review ([#129](https://github.com/mbjorke/timelog-extract/pull/129)).
+- Dependencies: declare **`click>=8.0`** explicitly so CLI imports stay reliable when Typer no longer pulls `click` ([#128](https://github.com/mbjorke/timelog-extract/pull/128)).
+- Docs: agent behavior foundation — behavior-contract standard, source evidence policy, collector contract, local evidence shadow log, timelog health monitor, repo agent skills, deprecation/test-weakness inventory ([#130](https://github.com/mbjorke/timelog-extract/pull/130)).
+- Docs: informal **kanin** (CodeRabbit) poem archive in `docs/ideas/kanin-poems.md`.
+
 ## 0.2.17 - 2026-05-20
 
 - Config: resolve `timelog_projects.json` from canonical `~/.gittan/timelog_projects.json` (or env overrides) instead of the current working directory. `gittan config path`, `gittan doctor`, and reports warn when shadow copies exist (for example `~/timelog_projects.json` or a repo-local file). README and global-timelog runbook updated.

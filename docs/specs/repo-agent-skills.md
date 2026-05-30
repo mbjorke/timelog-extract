@@ -200,8 +200,6 @@ Reason:
 
 `gittan-source-collector` minimum body:
 
-Minimum body:
-
 1. Confirm branch/status.
 2. Read source collector contract and source evidence policy.
 3. Identify source role and retention posture.

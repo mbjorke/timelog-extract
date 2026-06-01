@@ -14,6 +14,7 @@ gittan setup-global-timelog --yes       # apply
 
 ## Policy
 
+- If commit logging suddenly stops after a Gittan upgrade, re-run `gittan setup-global-timelog --yes` and see [incident: hook silent failure (2026-05-07)](../incidents/2026-05-07-global-timelog-hook-silent-failure.md).
 - Do not commit local worklog files (including legacy `TIMELOG.md`) — they stay local (global gitignore / excludes as configured).
 - Treat `timelog_projects.json` as critical local data; the CLI warns if you move it carelessly.
 - Default behavior is automatic: the CLI resolves the canonical projects config from the Gittan home directory (or profile fallback when present). Cwd-local `timelog_projects.json` is not auto-selected (see `gittan config path`).

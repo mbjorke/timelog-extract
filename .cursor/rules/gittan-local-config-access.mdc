@@ -1,0 +1,34 @@
+---
+description: Agent access to canonical ~/.gittan config (read by default; never commit)
+alwaysApply: true
+---
+
+# Local Gittan config (`~/.gittan`)
+
+Canonical project config and per-project worklogs live **outside the repo**:
+
+| Path | Role |
+|------|------|
+| `~/.gittan/timelog_projects.json` | Project profiles, `match_terms`, `tracked_urls` |
+| `~/.gittan/worklogs/*.md` | Per-project worklogs |
+| `~/.gittan/backups/` | Local backups |
+
+Resolution matches `core/config.py` (`resolve_projects_config_path`).
+
+## Agent access (this machine)
+
+- **Read** `~/.gittan/` via absolute paths or shell (`cat`, `gittan config path`, `gittan doctor`).
+- Optional workspace shortcut (gitignored): `private/gittan/` → symlink to `~/.gittan` — use `@private/gittan/timelog_projects.json` in chat.
+- **CLI:** pass explicit config when needed: `gittan report --projects-config ~/.gittan/timelog_projects.json …`
+
+## Safety
+
+- **Never commit** anything under `~/.gittan/` or `private/`.
+- **Do not** move, delete, or overwrite `timelog_projects.json` without explicit user confirmation and a backup note.
+- Prefer **`cp` to a timestamped backup** over destructive edits when experimenting.
+- Do not paste secrets (tokens, full `GITHUB_TOKEN`, private customer data) into committed docs or PRs.
+
+## When editing match_terms for timelog issues
+
+- Read the live file under `~/.gittan/` (or `private/gittan/`) before proposing project mapping fixes.
+- After config changes, suggest: `gittan doctor` and a targeted `gittan report --from … --to … --source-summary`.

@@ -1,0 +1,21 @@
+---
+description: When adding or editing a source collector, follow the Gittan source-collector skill (role, status, doctor, tests, retention)
+globs: 'collectors/**/*.py'
+alwaysApply: false
+---
+
+# Gittan source-collector changes
+
+If you are adding or editing a collector under **`collectors/`**, before treating
+the work as done:
+
+1. In **Cursor**, run **`/gittan-source-collector`** with the diff or `@` files
+   attached, **or** open and follow **`docs/skills/gittan-source-collector.md`**
+   (same workflow).
+2. Pick the **source role** from `docs/specs/source-evidence-policy.md` first — a
+   collector is evidence, not truth by itself.
+3. Make `collector_status` distinguish disabled / missing-prereq / zero-event /
+   events / error; add a doctor row; keep tests on fixtures (no live user data).
+
+Canonical contract: **`docs/specs/source-collector-contract.md`**. Policy:
+**`AGENTS.md`**.

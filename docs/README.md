@@ -14,6 +14,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 | ---- | ------- |
 | `decisions/` | Stable policy and architecture decisions (how we work, gates, routines). |
 | `specs/` | Active implementation specs: goals, non-goals, acceptance criteria, test plan. |
+| `skills/` | Portable agent skill playbooks (vendor-neutral; thin tool wrappers point back, not a policy fork). See [`skills/README.md`](skills/README.md). |
 | `task-prompts/` | Execution prompts and checklists for implementation and validation tasks. |
 | `runbooks/` | Operational how-tos: CI, versioning, release checklists, manual QA matrices. Optional dev-only tooling (e.g. [optional-caveman-agent-setup.md](runbooks/optional-caveman-agent-setup.md)) lives here too. |
 | `product/` | Vision, scope, strategy, north-star metrics, accuracy plans. |
@@ -43,6 +44,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Timelog capture health and future menu bar counter** → [`specs/timelog-health-monitor.md`](specs/timelog-health-monitor.md)
 - **Local retained evidence / shadow log** → [`specs/local-evidence-shadow-log.md`](specs/local-evidence-shadow-log.md)
 - **Candidate repo agent skills** → [`specs/repo-agent-skills.md`](specs/repo-agent-skills.md)
+- **Portable agent skill playbooks (product-owner, source-collector)** → [`skills/`](skills/README.md)
 - **Deprecation and test weakness inventory before refactors** → [`decisions/deprecation-and-test-weakness-inventory.md`](decisions/deprecation-and-test-weakness-inventory.md)
 - **Triage onboarding timestamp spike spec (S1)** → [`specs/triage-onboarding-timestamp-spike-spec.md`](specs/triage-onboarding-timestamp-spike-spec.md)
 - **Classification integrity TDD spec** → [`specs/classification-integrity-tdd-spec.md`](specs/classification-integrity-tdd-spec.md)

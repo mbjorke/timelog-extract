@@ -1,7 +1,7 @@
 # Repo Agent Skills
 
-Status: draft spec  
-Last updated: 2026-05-29
+Status: draft spec (first skills materialized)  
+Last updated: 2026-06-01
 
 ## Purpose
 
@@ -189,6 +189,12 @@ They should be thin:
 
 ## Proposed First Skill
 
+**Status (2026-06-01):** both are now materialized as canonical playbooks in
+[`../skills/`](../skills/README.md) — [`gittan-product-owner`](../skills/gittan-product-owner.md)
+and [`gittan-source-collector`](../skills/gittan-source-collector.md) — each with
+thin Cursor (`.cursor/commands/`, plus a scoped `.cursor/rules/` for collectors)
+and Claude (`.claude/skills/`) wrappers.
+
 Start with the portable `gittan-product-owner` workflow, then
 `gittan-source-collector`.
 
@@ -208,11 +214,21 @@ Reason:
 
 ## Open Questions
 
-- Where should canonical portable skills live: `docs/skills/`,
-  `docs/runbooks/agent-skills/`, or `docs/specs/` while still draft?
+Resolved (2026-06-01):
+
+- **Where canonical skills live:** `docs/skills/` — its own top-level category in
+  `docs/README.md`. Not `docs/specs/` (keeps "what we want" separate from "how to
+  do it"), not under `runbooks/`.
+- **Tool wrappers now:** hand-written and thin — Cursor slash commands in
+  `.cursor/commands/`, a scoped `.cursor/rules/*.mdc` where a file glob fits, and
+  Claude project skills in `.claude/skills/<name>/SKILL.md` (tracked via a
+  `.gitignore` carve-out). Each only points back to the `docs/skills/*` doc.
+- **Root `SKILL.md`:** not added; canonical content lives in `docs/skills/`, and
+  any committed `SKILL.md` stays a thin pointer.
+
+Still open:
+
 - Should `.cursor/commands/`, Claude skills, Codex skills, and Antigravity
-  snippets be generated from the same source later?
-- Should a root `SKILL.md` remain a one-line pointer to `AGENTS.md`, or be
-  avoided entirely until a tool explicitly benefits from it?
+  snippets later be **generated** from the same source instead of hand-written?
 - How much tool-specific wrapper content is acceptable before it becomes a
   forked policy surface?

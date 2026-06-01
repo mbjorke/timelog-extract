@@ -24,7 +24,9 @@ TIMELOG.md
 
 # Local business / pitch notes (never commit)
 private/
-.claude/
+# Keep .claude/ local, but track shared repo agent skills (thin wrappers → docs/skills/)
+.claude/*
+!.claude/skills/
 .tmp/
 .wrangler/
 

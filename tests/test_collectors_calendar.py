@@ -217,6 +217,41 @@ class CalendarHelperTests(unittest.TestCase):
             self.assertIsNone(path)
             self.assertEqual(status, "Calendar database not found")
 
+    def test_detect_valid_db_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, [{
+                "calendar": "Work", "summary": "x",
+                "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc),
+            }])
+            path, status = detect_calendar_db(home)
+            self.assertIsNotNone(path)
+            self.assertEqual(status, "ok")
+
+    def test_detect_non_sqlite_file_is_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            db = calendar_db_path(home)
+            db.parent.mkdir(parents=True, exist_ok=True)
+            db.write_text("this is not a sqlite database", encoding="utf-8")
+            path, status = detect_calendar_db(home)
+            self.assertIsNone(path)
+            self.assertIn("invalid", status)
+
+    def test_detect_missing_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            db = calendar_db_path(home)
+            db.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(db)
+            conn.execute("CREATE TABLE Unrelated (x INTEGER)")
+            conn.commit()
+            conn.close()
+            path, status = detect_calendar_db(home)
+            self.assertIsNone(path)
+            self.assertIn("missing expected tables", status)
+
     def test_parse_roles_with_explicit_roles(self):
         roles = parse_calendar_roles("TimeReport:primary_claim,Work:scheduled_context")
         self.assertEqual(roles["timereport"], ROLE_PRIMARY_CLAIM)

@@ -43,7 +43,12 @@ def calendar_db_path(home: Path) -> Path:
 
 
 def detect_calendar_db(home: Path) -> Tuple[Optional[Path], str]:
-    """Return (path, status). ``status`` is ``"ok"`` or a human reason."""
+    """Return (path, status). ``status`` is ``"ok"`` or a human reason.
+
+    Validates that the path is a readable SQLite database with the tables this
+    collector reads, so the doctor health row does not report a false "accessible"
+    for a corrupt file or an unexpected schema.
+    """
     path = calendar_db_path(home)
     if not path.is_file():
         return None, "Calendar database not found"
@@ -54,6 +59,22 @@ def detect_calendar_db(home: Path) -> Tuple[Optional[Path], str]:
         return None, "Full Disk Access required"
     except OSError as exc:
         return None, f"Calendar database unreadable: {exc}"
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        try:
+            present = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name IN ('Calendar', 'CalendarItem')"
+                )
+            }
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return None, f"Calendar database invalid: {exc}"
+    if {"Calendar", "CalendarItem"} - present:
+        return None, "Calendar database missing expected tables"
     return path, "ok"
 
 

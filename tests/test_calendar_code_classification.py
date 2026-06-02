@@ -46,6 +46,8 @@ class CalendarCodeClassificationTests(unittest.TestCase):
         self.assertEqual(_classify("HÅ-EuCo planning"), "EuCo")
 
     def test_word_code_classifies(self):
+        # "proteomicsdata" is a deliberately sloppy real-world title (no space);
+        # classification must still find the "KidneySign" code.
         self.assertEqual(_classify("KidneySign proteomicsdata"), "KidneySign")
 
     def test_classification_is_case_insensitive(self):

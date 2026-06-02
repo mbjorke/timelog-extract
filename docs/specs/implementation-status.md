@@ -1,7 +1,7 @@
 # Specs implementation status
 
 Status: active tracker  
-Last updated: 2026-05-29
+Last updated: 2026-06-01
 
 ## Purpose
 
@@ -30,7 +30,7 @@ Keep one fast, shared view of which specs are built, partially built, or still p
 | `docs/specs/source-collector-contract.md`              | `not started`  | Draft contract for future/new collectors; existing collectors are not yet audited against it.                                    |
 | `docs/specs/timelog-health-monitor.md`                 | `not started`  | Draft spec for central worklog health and a future macOS menu bar counter.                                                      |
 | `docs/specs/local-evidence-shadow-log.md`              | `not started`  | Draft spec for opt-in local retained evidence when upstream logs rotate or disappear.                                           |
-| `docs/specs/repo-agent-skills.md`                      | `not started`  | Draft spec for small reusable repo skills; no actual repo skill files have been created yet.                                    |
+| `docs/specs/repo-agent-skills.md`                      | `partial`      | First skills materialized in `docs/skills/` (`gittan-product-owner`, `gittan-source-collector`) with thin Cursor + Claude wrappers; remaining candidates (health, shadow-log, calendar, docs-foundation) not started. |
 
 
 ## Update routine

@@ -31,10 +31,12 @@ Adding a new vendor-specific file (e.g. `GEMINI.md`) is OK **only** if it is a s
 ## Skills vs rules vs long docs
 
 - **Cursor Rules** (`.cursor/rules/*.mdc`): good for **always-on** repo constraints (e.g. pre-push gate). Checked into git; all contributors get them in Cursor.
-- **Cursor / Claude Skills** (`SKILL.md`, user-level dirs): good for **personal** workflow (tone, formatting). Prefer **not** to commit heavy skills until the ecosystem stabilizes; document optional patterns in [`../runbooks/optional-caveman-agent-setup.md`](../runbooks/optional-caveman-agent-setup.md) instead of mandating one skill.
+- **Canonical repo skills** (`docs/skills/`): small, **vendor-neutral** procedural playbooks for repeated repo work (e.g. `gittan-product-owner`, `gittan-source-collector`). They **point back** to `AGENTS.md` and the specs — never a second policy layer. Committed precisely because they stay thin. Index: [`../skills/README.md`](../skills/README.md); rationale in [`../specs/repo-agent-skills.md`](../specs/repo-agent-skills.md).
+- **Thin tool wrappers** for those skills are committed too, and may only point back to the canonical `docs/skills/*` doc: Cursor slash commands (`.cursor/commands/`) and Claude project skills (`.claude/skills/<name>/SKILL.md`, tracked via a `.gitignore` carve-out). No wrapper restates policy.
+- **Personal / heavy skills** (tone, formatting, your own invoicing or `~/.gittan` workflow — anything user-specific): keep **local / user-level**, do **not** commit. Document optional patterns in [`../runbooks/optional-caveman-agent-setup.md`](../runbooks/optional-caveman-agent-setup.md) instead of mandating one.
 - **`AGENTS.md`**: long but **one place** — better than five half-copies.
 
-If we later add a **repo-level** `SKILL.md`, it should be a **thin** pointer to `AGENTS.md` + test command, not a second policy document.
+A committed `SKILL.md` (repo or `.claude/skills/`) must stay a **thin** pointer to a `docs/skills/*` playbook + `AGENTS.md`, not a second policy document.
 
 ## Faster onboarding checklist (any tool)
 

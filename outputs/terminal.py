@@ -125,6 +125,55 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
     )
 
 
+def _fmt_hours(value: float) -> str:
+    """Compact hours: drop trailing zeros, blank for zero."""
+    if not value:
+        return ""
+    text = f"{value:.2f}".rstrip("0").rstrip(".")
+    return text
+
+
+def print_weekly_pivot(pivot) -> None:
+    """Render an ISO week × project hours pivot (Pierre-parity view)."""
+    if pivot.is_empty:
+        console.print(
+            f"[{STYLE_META}]No hours to summarize by week for this range.[/{STYLE_META}]"
+        )
+        return
+
+    table = Table(
+        title="Weekly project time summary",
+        caption="Hours by ISO week and project (observed/classified, not approved invoice time).",
+        box=box.ROUNDED,
+    )
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Week", style=STYLE_BODY)
+    for project in pivot.projects:
+        table.add_column(project, justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Total", justify="right", style=f"bold {CLR_VALUE_ORANGE}")
+
+    for week in pivot.weeks:
+        row = [week]
+        for project in pivot.projects:
+            row.append(_fmt_hours(pivot.cells.get(week, {}).get(project, 0.0)))
+        row.append(f"[bold]{_fmt_hours(pivot.week_totals.get(week, 0.0))}[/bold]")
+        table.add_row(*row)
+
+    table.add_section()
+    totals_row = [f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]"]
+    for project in pivot.projects:
+        totals_row.append(
+            f"[bold {CLR_VALUE_ORANGE}]{_fmt_hours(pivot.project_totals.get(project, 0.0))}[/bold {CLR_VALUE_ORANGE}]"
+        )
+    totals_row.append(
+        f"[bold {CLR_VALUE_ORANGE}]{_fmt_hours(pivot.grand_total)}[/bold {CLR_VALUE_ORANGE}]"
+    )
+    table.add_row(*totals_row)
+
+    console.print(table)
+
+
 def print_project_source_mix(
     events: List[Dict[str, Any]],
     project_name: str,

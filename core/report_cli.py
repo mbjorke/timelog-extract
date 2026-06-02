@@ -13,6 +13,7 @@ from core.report_service import (
     _print_narrative,
     _print_report,
     _print_source_summary,
+    _print_weekly,
     _session_duration_hours,
     _want_log,
     default_invoice_pdf_path,
@@ -157,6 +158,8 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     nudge = build_unexplained_gap_nudge(report)
     if nudge:
         print(nudge)
+    if getattr(report.args, "weekly", False):
+        _print_weekly(report.project_reports)
     if report.args.narrative:
         _print_narrative(
             report.overall_days,

@@ -191,6 +191,12 @@ def _print_source_summary(events: List[Dict[str, Any]]) -> None:
     terminal_output.print_source_summary(events, SOURCE_ORDER)
 
 
+def _print_weekly(project_reports: Dict[str, Any]) -> None:
+    from core.analytics_weekly import pivot_hours_by_week_project
+
+    terminal_output.print_weekly_pivot(pivot_hours_by_week_project(project_reports))
+
+
 def _print_report(
     overall_days: Dict[str, Any],
     project_reports: Dict[str, Any],

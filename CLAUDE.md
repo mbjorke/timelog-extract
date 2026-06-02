@@ -92,7 +92,7 @@ CLI command (Typer)
 
 Each collector returns a list of event dicts with keys `source`, `timestamp` (datetime), `detail`, `project`. Collectors are registered in `core/collector_registry.py` as `CollectorSpec` dataclasses with `name`, `collector` callable, `enabled`, and `reason`. The pipeline in `core/pipeline.py` runs them with a Rich progress bar (or silently in `--quiet` mode).
 
-Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Antigravity (Google Antigravity IDE), Windsurf (Codeium/Cognition IDE), Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, Lovable (desktop), GitHub.
+Current sources (in `core/sources.py`): Claude Code CLI, Claude Desktop, Claude.ai (web), Gemini (web), Cursor, Cursor checkpoints, Antigravity (Google Antigravity IDE), Windsurf (Codeium/Cognition IDE), Codex IDE, Gemini CLI, TIMELOG.md, Apple Mail, Chrome, Lovable (desktop), GitHub, Calendar (local macOS, opt-in via `--calendar-source on`).
 
 `AI_SOURCES` (in `core/sources.py`) is the set of sources that qualify for the shorter `min_session` floor vs `min_session_passive` for passive sources.
 

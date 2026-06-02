@@ -67,6 +67,7 @@ class TogglSourceTests(unittest.TestCase):
                 collect_worklog=lambda *_: [],
                 collect_github=lambda *_: [],
                 collect_toggl=lambda *_: [],
+                collect_calendar=lambda *_: [],
             )
         toggl = next((spec for spec in specs if spec.name == "Toggl"), None)
         self.assertIsNotNone(toggl)

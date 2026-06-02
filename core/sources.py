@@ -5,6 +5,7 @@ WORKLOG_SOURCE = "TIMELOG.md"
 GITHUB_SOURCE = "GitHub"
 TOGGL_SOURCE = "Toggl"
 JIRA_SOURCE = "Jira"
+CALENDAR_SOURCE = "Calendar"
 
 SOURCE_ORDER = [
     "Claude Code CLI",
@@ -24,6 +25,7 @@ SOURCE_ORDER = [
     "Lovable (desktop)",
     GITHUB_SOURCE,
     TOGGL_SOURCE,
+    CALENDAR_SOURCE,
 ]
 
 AI_SOURCES = {

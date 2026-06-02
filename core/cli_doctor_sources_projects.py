@@ -223,6 +223,17 @@ def doctor(
         else:
             table.add_row("Apple Mail", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
 
+        # Calendar: optional, opt-in source reading the local macOS Calendar DB.
+        from collectors.calendar import detect_calendar_db
+
+        _cal_db, cal_status = detect_calendar_db(home)
+        if _cal_db is not None:
+            table.add_row("Calendar", OK_ICON, f"[{STYLE_MUTED}]DB accessible (opt-in: --calendar-source on)[/{STYLE_MUTED}]")
+        elif cal_status == "Full Disk Access required":
+            table.add_row("Calendar", FAIL_ICON, f"[{STYLE_MUTED}]Full Disk Access required[/{STYLE_MUTED}]")
+        else:
+            table.add_row("Calendar", NA_ICON, f"[{STYLE_MUTED}]{cal_status}[/{STYLE_MUTED}]")
+
         cursor_log_path = (
             home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
         )

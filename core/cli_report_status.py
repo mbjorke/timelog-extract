@@ -41,6 +41,8 @@ def report(
     chrome_source: Annotated[str, typer.Option(help="on/off")] = "on",
     mail_source: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
     github_source: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
+    calendar_source: Annotated[str, typer.Option(help="on/off (opt-in; reads local macOS Calendar)")] = "off",
+    calendar_names: Annotated[Optional[str], typer.Option(help="Calendars to read with roles, e.g. 'TimeReport:primary_claim,Work:scheduled_context'")] = None,
     github_user: Annotated[
         Optional[str],
         typer.Option(help="GitHub login(s) for public events; comma-separated for multiple accounts"),
@@ -148,6 +150,8 @@ def report(
             "chrome_source": chrome_source,
             "mail_source": mail_source,
             "github_source": github_source,
+            "calendar_source": calendar_source,
+            "calendar_names": calendar_names,
             "github_user": github_user,
             "output_format": output_format,
             "quiet": quiet,

@@ -49,6 +49,7 @@ class TimelogRunOptions:
     customer: Optional[str] = None
     all_events: bool = False
     source_summary: bool = False
+    weekly: bool = False
     narrative: bool = False
     invoice_pdf: bool = False
     invoice_pdf_file: Optional[str] = None

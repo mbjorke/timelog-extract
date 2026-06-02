@@ -63,6 +63,18 @@ class CalendarCodeClassificationTests(unittest.TestCase):
         """Scenario: An unrecognized title is not force-fit to a project."""
         self.assertEqual(_classify("Dentist appointment"), UNCATEGORIZED)
 
+    def test_competing_codes_pick_strongest_match(self):
+        """Scenario: A title with codes for two projects resolves deterministically.
+
+        When a title carries codes for more than one project, the project with
+        more matched terms wins (per classify_project's ranking), rather than
+        being left Uncategorized or chosen at random.
+        """
+        # DAA matches two of its terms here (EASE-DAA + HÅ-DAA) vs EuCo's one.
+        self.assertEqual(
+            _classify("EASE-DAA and HÅ-EuCo and HÅ-DAA joint sync"), "DAA"
+        )
+
     def test_user_configured_uppercase_code_is_normalized(self):
         """The config path stores codes lowercased, so capitalized config works."""
         profile = normalize_profile({"name": "DAA", "match_terms": ["HÅ-DAA"]})

@@ -111,6 +111,72 @@ def _cocoa_to_utc(ts: float) -> datetime:
     return datetime.fromtimestamp(_COCOA_EPOCH_UNIX + ts, tz=timezone.utc)
 
 
+def _iter_calendar_rows(db_path: Path, dt_from: datetime, dt_to: datetime):
+    """Yield ``(cal_title, summary, start_dt, end_dt)`` for in-window events.
+
+    Shared read path for the collector and the title reader: opens the DB
+    read-only, filters to the requested window, skips all-day events and rows
+    with missing start/end (bad data). Iterates the cursor rather than loading
+    all rows so a wide window does not blow up memory.
+    """
+    start_cocoa = dt_from.astimezone(timezone.utc).timestamp() - _COCOA_EPOCH_UNIX
+    end_cocoa = dt_to.astimezone(timezone.utc).timestamp() - _COCOA_EPOCH_UNIX
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        cursor = conn.execute(
+            """
+            SELECT c.title, ci.summary, ci.start_date, ci.end_date, ci.all_day
+            FROM CalendarItem ci
+            JOIN Calendar c ON c.ROWID = ci.calendar_id
+            WHERE ci.start_date >= ? AND ci.start_date <= ?
+            ORDER BY ci.start_date
+            """,
+            (start_cocoa, end_cocoa),
+        )
+        for cal_title, summary, start_raw, end_raw, all_day in cursor:
+            cal_title = cal_title or ""
+            if all_day:
+                continue  # D2: all-day events excluded in v1
+            if start_raw is None or end_raw is None:
+                continue  # bad data: skip rather than emit a 0-hour event
+            start_dt = _cocoa_to_utc(float(start_raw))
+            end_dt = _cocoa_to_utc(float(end_raw))
+            if not (dt_from <= start_dt <= dt_to):
+                continue
+            yield cal_title, (summary or "").strip(), start_dt, end_dt
+    finally:
+        conn.close()
+
+
+def read_calendar_titles(
+    home: Path,
+    dt_from: datetime,
+    dt_to: datetime,
+    calendar_names: Optional[List[str]] = None,
+) -> List[Tuple[str, str]]:
+    """Return ``(calendar_name, summary)`` for events in the window.
+
+    Unlike :func:`collect_calendar`, this does not classify events or require a
+    role map — it returns raw titles for onboarding / project-code suggestion.
+    When ``calendar_names`` is given, only those calendars are included (matched
+    case-insensitively); otherwise all calendars are returned.
+
+    Raises:
+        RuntimeError: if the Calendar database cannot be opened.
+    """
+    db_path, status = detect_calendar_db(home)
+    if db_path is None:
+        raise RuntimeError(status)
+    wanted = {n.strip().lower() for n in (calendar_names or []) if n and n.strip()}
+    out: List[Tuple[str, str]] = []
+    for cal_title, summary, _start, _end in _iter_calendar_rows(db_path, dt_from, dt_to):
+        if wanted and cal_title.lower() not in wanted:
+            continue
+        if summary:
+            out.append((cal_title, summary))
+    return out
+
+
 def collect_calendar(
     profiles: List[Dict[str, Any]],
     dt_from: datetime,
@@ -143,57 +209,27 @@ def collect_calendar(
         # Surface as a collector error so status is diagnosable, not silent.
         raise RuntimeError(status)
 
-    start_cocoa = dt_from.astimezone(timezone.utc).timestamp() - _COCOA_EPOCH_UNIX
-    end_cocoa = dt_to.astimezone(timezone.utc).timestamp() - _COCOA_EPOCH_UNIX
-
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     seen: set[Tuple[str, str, str, str]] = set()
-    try:
-        # Iterate the cursor rather than fetchall() so a wide (e.g. multi-month)
-        # window does not load every row into memory at once.
-        cursor = conn.execute(
-            """
-            SELECT c.title, ci.summary, ci.start_date, ci.end_date, ci.all_day
-            FROM CalendarItem ci
-            JOIN Calendar c ON c.ROWID = ci.calendar_id
-            WHERE ci.start_date >= ? AND ci.start_date <= ?
-            ORDER BY ci.start_date
-            """,
-            (start_cocoa, end_cocoa),
-        )
-        for cal_title, summary, start_raw, end_raw, all_day in cursor:
-            cal_title = cal_title or ""
-            role = roles.get(cal_title.lower())
-            if role is None:
-                continue  # calendar not selected
-            if all_day:
-                continue  # D2: all-day events excluded in v1
-            if start_raw is None or end_raw is None:
-                continue  # bad data: skip rather than emit a 0-hour event
+    for cal_title, summary, start_dt, end_dt in _iter_calendar_rows(db_path, dt_from, dt_to):
+        role = roles.get(cal_title.lower())
+        if role is None:
+            continue  # calendar not selected
 
-            start_dt = _cocoa_to_utc(float(start_raw))
-            end_dt = _cocoa_to_utc(float(end_raw))
-            if not (dt_from <= start_dt <= dt_to):
-                continue
+        # Include end in the key so two same-titled meetings at the same start
+        # but different durations are not wrongly collapsed.
+        key = (cal_title, summary, start_dt.isoformat(), end_dt.isoformat())
+        if key in seen:
+            continue
+        seen.add(key)
 
-            summary = (summary or "").strip()
-            # Include end in the key so two same-titled meetings at the same start
-            # but different durations are not wrongly collapsed.
-            key = (cal_title, summary, start_dt.isoformat(), end_dt.isoformat())
-            if key in seen:
-                continue
-            seen.add(key)
-
-            project = classify_project(f"{cal_title} {summary}", profiles)
-            hours = max((end_dt - start_dt).total_seconds() / 3600.0, 0.0)
-            detail = f"{summary or '(no title)'} [{cal_title}] {hours:.2f}h"
-            event = make_event(CALENDAR_SOURCE, start_dt, detail, project)
-            # Private metadata for the reported-time bridge (not invoice truth here).
-            event["calendar_role"] = role
-            event["calendar_name"] = cal_title
-            event["calendar_end"] = end_dt
-            results.append(event)
-    finally:
-        conn.close()
+        project = classify_project(f"{cal_title} {summary}", profiles)
+        hours = max((end_dt - start_dt).total_seconds() / 3600.0, 0.0)
+        detail = f"{summary or '(no title)'} [{cal_title}] {hours:.2f}h"
+        event = make_event(CALENDAR_SOURCE, start_dt, detail, project)
+        # Private metadata for the reported-time bridge (not invoice truth here).
+        event["calendar_role"] = role
+        event["calendar_name"] = cal_title
+        event["calendar_end"] = end_dt
+        results.append(event)
 
     return results

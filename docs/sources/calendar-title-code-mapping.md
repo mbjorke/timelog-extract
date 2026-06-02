@@ -71,9 +71,24 @@ Then review by week with `gittan report --weekly` (ISO week × project pivot).
   titles; prefer the distinctive code you already use.
 - If two projects share a code, classification picks the strongest match — give
   each project its own distinct code to avoid ambiguity.
-- Future: Gittan can scan your calendar history and **propose** these mappings
-  automatically (backlog item P7 in
-  [`../product/calendar-beat-the-parser-backlog.md`](../product/calendar-beat-the-parser-backlog.md)).
+## Get the codes proposed for you
+
+Instead of writing the codes by hand, let Gittan scan your calendar history and
+**propose** the project stubs:
+
+```
+gittan calendar-suggest --calendar-names "TimeReport"
+```
+
+It reads the named calendar(s) read-only, finds distinctive codes
+(hyphenated like `HÅ-DAA`, CamelCase like `KidneySign`, ALL-CAPS like `AXOR`,
+dotted like `immuniverse.bio`), skips codes already in your config, ranks them by
+how often they appear, and prints ready-to-paste profile stubs. It **never writes
+config** — review and paste the ones you want. Use `--format json` for scripting,
+`--days N` to widen the lookback, and `--min-count N` to filter rare codes.
+
+A bare single-word project name (e.g. `Strike`) is indistinguishable from an
+ordinary word, so it is not proposed — add those by hand.
 
 ## Behavior Contract
 

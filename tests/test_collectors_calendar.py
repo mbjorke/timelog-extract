@@ -210,6 +210,51 @@ class CalendarCollectorTests(unittest.TestCase):
                 self._collect(Path(tmp), {"work": ROLE_SCHEDULED_CONTEXT})
 
 
+class ReadCalendarTitlesTests(unittest.TestCase):
+    def _rows(self):
+        return [
+            {"calendar": "TimeReport", "summary": "HÅ-DAA standup",
+             "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+             "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc)},
+            {"calendar": "Work", "summary": "Lunch",
+             "start": datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc),
+             "end": datetime(2026, 4, 1, 13, 0, tzinfo=timezone.utc)},
+            {"calendar": "Work", "summary": "All day thing",
+             "start": datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+             "end": datetime(2026, 4, 1, 23, 59, tzinfo=timezone.utc), "all_day": 1},
+        ]
+
+    def _window(self):
+        return (datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, 23, 59, tzinfo=timezone.utc))
+
+    def test_returns_all_calendars_when_unfiltered(self):
+        from collectors.calendar import read_calendar_titles
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, self._rows())
+            f, t = self._window()
+            out = read_calendar_titles(home, f, t)
+            # All-day excluded → 2 timed events remain.
+            self.assertEqual(sorted(s for _c, s in out), ["HÅ-DAA standup", "Lunch"])
+
+    def test_filters_by_calendar_name(self):
+        from collectors.calendar import read_calendar_titles
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, self._rows())
+            f, t = self._window()
+            out = read_calendar_titles(home, f, t, ["TimeReport"])
+            self.assertEqual([s for _c, s in out], ["HÅ-DAA standup"])
+
+    def test_missing_db_raises(self):
+        from collectors.calendar import read_calendar_titles
+        with tempfile.TemporaryDirectory() as tmp:
+            f, t = self._window()
+            with self.assertRaises(RuntimeError):
+                read_calendar_titles(Path(tmp), f, t, ["TimeReport"])
+
+
 class CalendarHelperTests(unittest.TestCase):
     def test_detect_missing_db(self):
         with tempfile.TemporaryDirectory() as tmp:

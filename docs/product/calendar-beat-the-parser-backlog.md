@@ -120,6 +120,12 @@ Scenario: Primary-claim hours are annotated, never overridden
 - dependencies: P1, P5, bridge reconcile phase.
 
 ### P7 — Onboarding: propose projects from calendar history — leapfrog
+- status: **built** — `gittan calendar-suggest` (`core/cli_calendar_suggest.py`)
+  reads titles via `collectors.calendar.read_calendar_titles` and ranks
+  distinctive codes with `core/calendar_suggest.py`, skipping codes already in
+  config; suggestion-only (never writes config). How-to in
+  [`../sources/calendar-title-code-mapping.md`](../sources/calendar-title-code-mapping.md).
+  Limitation: bare single-word project names aren't detected (by design).
 - priority: later
 - problem: setting up projects is friction; his history already encodes them.
 - acceptance: scan TimeReport history, extract distinct title prefixes, propose

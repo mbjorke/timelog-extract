@@ -76,7 +76,7 @@ Then review by week with `gittan report --weekly` (ISO week × project pivot).
 Instead of writing the codes by hand, let Gittan scan your calendar history and
 **propose** the project stubs:
 
-```
+```bash
 gittan calendar-suggest --calendar-names "TimeReport"
 ```
 

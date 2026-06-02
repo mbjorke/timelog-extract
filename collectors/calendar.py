@@ -18,7 +18,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 CALENDAR_SOURCE = "Calendar"
 
@@ -91,7 +91,7 @@ def _cocoa_to_utc(ts: float) -> datetime:
 
 
 def collect_calendar(
-    profiles,
+    profiles: List[Dict[str, Any]],
     dt_from: datetime,
     dt_to: datetime,
     home: Path,
@@ -103,7 +103,14 @@ def collect_calendar(
     """Collect calendar events within [dt_from, dt_to] from the configured calendars.
 
     Only calendars present in ``calendar_roles`` are read. All-day events are
-    skipped. Recurring events are not expanded (only stored instances appear).
+    skipped, recurring events are not expanded (only stored instances appear),
+    and events without an end time are skipped (treated as bad data rather than
+    emitted as misleading zero-duration records).
+
+    Raises:
+        RuntimeError: if the Calendar database cannot be opened (not found,
+            permission denied / Full Disk Access, or other OS error), so the
+            empty result is diagnosable via ``collector_status`` instead of silent.
     """
     results: List[dict] = []
     roles = calendar_roles or {}
@@ -119,8 +126,11 @@ def collect_calendar(
     end_cocoa = dt_to.astimezone(timezone.utc).timestamp() - _COCOA_EPOCH_UNIX
 
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    seen: set[Tuple[str, str, str, str]] = set()
     try:
-        rows = conn.execute(
+        # Iterate the cursor rather than fetchall() so a wide (e.g. multi-month)
+        # window does not load every row into memory at once.
+        cursor = conn.execute(
             """
             SELECT c.title, ci.summary, ci.start_date, ci.end_date, ci.all_day
             FROM CalendarItem ci
@@ -129,42 +139,40 @@ def collect_calendar(
             ORDER BY ci.start_date
             """,
             (start_cocoa, end_cocoa),
-        ).fetchall()
+        )
+        for cal_title, summary, start_raw, end_raw, all_day in cursor:
+            cal_title = cal_title or ""
+            role = roles.get(cal_title.lower())
+            if role is None:
+                continue  # calendar not selected
+            if all_day:
+                continue  # D2: all-day events excluded in v1
+            if start_raw is None or end_raw is None:
+                continue  # bad data: skip rather than emit a 0-hour event
+
+            start_dt = _cocoa_to_utc(float(start_raw))
+            end_dt = _cocoa_to_utc(float(end_raw))
+            if not (dt_from <= start_dt <= dt_to):
+                continue
+
+            summary = (summary or "").strip()
+            # Include end in the key so two same-titled meetings at the same start
+            # but different durations are not wrongly collapsed.
+            key = (cal_title, summary, start_dt.isoformat(), end_dt.isoformat())
+            if key in seen:
+                continue
+            seen.add(key)
+
+            project = classify_project(f"{cal_title} {summary}", profiles)
+            hours = max((end_dt - start_dt).total_seconds() / 3600.0, 0.0)
+            detail = f"{summary or '(no title)'} [{cal_title}] {hours:.2f}h"
+            event = make_event(CALENDAR_SOURCE, start_dt, detail, project)
+            # Private metadata for the reported-time bridge (not invoice truth here).
+            event["calendar_role"] = role
+            event["calendar_name"] = cal_title
+            event["calendar_end"] = end_dt
+            results.append(event)
     finally:
         conn.close()
-
-    seen: set[Tuple[str, str, str, str]] = set()
-    for cal_title, summary, start_raw, end_raw, all_day in rows:
-        cal_title = cal_title or ""
-        role = roles.get(cal_title.lower())
-        if role is None:
-            continue  # calendar not selected
-        if all_day:
-            continue  # D2: all-day events excluded in v1
-        if start_raw is None:
-            continue
-
-        start_dt = _cocoa_to_utc(float(start_raw))
-        end_dt = _cocoa_to_utc(float(end_raw)) if end_raw is not None else start_dt
-        if not (dt_from <= start_dt <= dt_to):
-            continue
-
-        summary = (summary or "").strip()
-        # Include end in the key so two same-titled meetings at the same start
-        # but different durations are not wrongly collapsed.
-        key = (cal_title, summary, start_dt.isoformat(), end_dt.isoformat())
-        if key in seen:
-            continue
-        seen.add(key)
-
-        project = classify_project(f"{cal_title} {summary}", profiles)
-        hours = max((end_dt - start_dt).total_seconds() / 3600.0, 0.0)
-        detail = f"{summary or '(no title)'} [{cal_title}] {hours:.2f}h"
-        event = make_event(CALENDAR_SOURCE, start_dt, detail, project)
-        # Private metadata for the reported-time bridge (not invoice truth here).
-        event["calendar_role"] = role
-        event["calendar_name"] = cal_title
-        event["calendar_end"] = end_dt
-        results.append(event)
 
     return results

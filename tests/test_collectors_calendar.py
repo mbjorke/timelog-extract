@@ -188,6 +188,22 @@ class CalendarCollectorTests(unittest.TestCase):
             out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
             self.assertEqual(len(out), 2)
 
+    def test_event_with_null_end_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, [{
+                "calendar": "Work", "summary": "No end",
+                "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "end": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+            }])
+            # Null out end_date directly (bad-data row).
+            db = calendar_db_path(home)
+            conn = sqlite3.connect(db)
+            conn.execute("UPDATE CalendarItem SET end_date = NULL")
+            conn.commit()
+            conn.close()
+            self.assertEqual(self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT}), [])
+
     def test_missing_db_raises_for_diagnosable_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(RuntimeError):

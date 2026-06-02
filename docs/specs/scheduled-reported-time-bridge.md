@@ -223,7 +223,7 @@ This spec is phase 0 (design). Downstream work, each its own task:
 
 ## Open questions
 
-- **Storage:** a new structured store (e.g. `~/.gittan/reported/…`) vs extending
+- **Storage:** a new structured store (e.g. `$GITTAN_HOME/reported/…`) vs extending
   per-project worklogs vs a field in the truth payload? The maintainer's
   direction is a **new structured field/schema**; confirm the on-disk shape and
   whether it is per-project or global before phase 3.
@@ -236,4 +236,3 @@ This spec is phase 0 (design). Downstream work, each its own task:
   provenance?
 - Should Toggl import auto-confirm, or also pass through reconcile when it
   overlaps derived sessions?
-```

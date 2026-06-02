@@ -7,7 +7,7 @@ Last updated: 2026-06-01
 
 People who already encode the project in the calendar **event title** as a
 prefix or code — for example `HÅ-DAA standup`, `EASE-DAA review`, or
-`KidneySign proteomicsdata` (see the
+`KidneySign proteomics data` (see the
 [Pierre persona](../product/persona-pierre-calendar-timereport.md)). Gittan can
 turn those titles into project hours automatically, with no change to how you
 keep your calendar.
@@ -60,7 +60,7 @@ With this config:
 | `HÅ-DAA standup` | DAA |
 | `EASE-DAA review` | DAA |
 | `HÅ-EuCo planning` | EuCo |
-| `KidneySign proteomicsdata` | KidneySign |
+| `KidneySign proteomics data` | KidneySign |
 | `Dentist appointment` | Uncategorized |
 
 Then review by week with `gittan report --weekly` (ISO week × project pivot).

@@ -20,17 +20,16 @@ from core.domain import classify_project
 UNCATEGORIZED = "Uncategorized"
 
 
-def _profiles():
-    """Profiles built the same way real config loading builds them."""
-    return [
-        normalize_profile({"name": "DAA", "match_terms": ["HÅ-DAA", "EASE-DAA"]}),
-        normalize_profile({"name": "EuCo", "match_terms": ["HÅ-EuCo"]}),
-        normalize_profile({"name": "KidneySign", "match_terms": ["KidneySign"]}),
-    ]
+# Profiles built the same way real config loading builds them.
+_PROFILES = [
+    normalize_profile({"name": "DAA", "match_terms": ["HÅ-DAA", "EASE-DAA"]}),
+    normalize_profile({"name": "EuCo", "match_terms": ["HÅ-EuCo"]}),
+    normalize_profile({"name": "KidneySign", "match_terms": ["KidneySign"]}),
+]
 
 
 def _classify(title: str) -> str:
-    return classify_project(title, _profiles(), UNCATEGORIZED)
+    return classify_project(title, _PROFILES, UNCATEGORIZED)
 
 
 class CalendarCodeClassificationTests(unittest.TestCase):
@@ -58,6 +57,16 @@ class CalendarCodeClassificationTests(unittest.TestCase):
     def test_code_anywhere_in_title(self):
         """Sloppy titles: the code need not be a prefix."""
         self.assertEqual(_classify("Quick sync about HÅ-DAA before lunch"), "DAA")
+
+    def test_code_embedded_mid_word_is_still_found(self):
+        """The 'anywhere' guarantee is true substring match, not word-boundary."""
+        self.assertEqual(_classify("meetingHÅ-DAAreview"), "DAA")
+
+    def test_empty_title_falls_back(self):
+        self.assertEqual(_classify(""), UNCATEGORIZED)
+
+    def test_whitespace_only_title_falls_back(self):
+        self.assertEqual(_classify("   "), UNCATEGORIZED)
 
     def test_unknown_title_falls_back(self):
         """Scenario: An unrecognized title is not force-fit to a project."""

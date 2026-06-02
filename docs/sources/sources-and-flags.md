@@ -21,6 +21,8 @@ Toggl follows the same pattern with **auto-detection**: when `TOGGL_API_TOKEN` e
 
 Jira worklog posting is available via `gittan jira-sync` (separate from source collection). It uses `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`, and supports dry-run plus per-worklog confirmation before posting.
 
+Calendar is **opt-in and off by default** (`--calendar-source on`). It reads the local macOS Calendar database read-only (subscribed Google/iCloud calendars sync there too, so no per-provider API auth is needed) and requires **Full Disk Access**. You choose which calendars to read and assign an evidence **role per calendar** with `--calendar-names`, e.g. `--calendar-names "TimeReport:primary_claim,Work:scheduled_context"`; bare names default to `scheduled_context`. When `--calendar-source on` but no calendars are selected, the source is disabled with a clear reason. All-day events are excluded and recurring events are not expanded (only stored instances) in this first version. How calendar time is counted (meetings as supporting context vs a primary time claim) is defined by [`../specs/scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md); this collector only gathers events and tags each with its calendar role.
+
 ## Per-collector status in JSON output
 
 When you use `--format json`, the truth payload includes `collector_status`: for each named source, whether it was **enabled**, a **reason** string when disabled or failed, and **how many raw events** that collector returned (`core/truth_payload.py`).

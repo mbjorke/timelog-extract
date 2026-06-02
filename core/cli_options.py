@@ -58,6 +58,8 @@ class TimelogRunOptions:
     chrome_source: str = "on"
     mail_source: str = "auto"
     github_source: str = "auto"
+    calendar_source: str = "off"
+    calendar_names: Optional[str] = None
     github_user: Optional[str] = None
     output_format: str = "terminal"
     quiet: bool = False

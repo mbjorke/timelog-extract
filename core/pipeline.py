@@ -36,6 +36,8 @@ def collect_all_events(
     collect_worklog: Callable,
     collect_github: Callable,
     collect_toggl: Callable,
+    collect_calendar: Callable,
+    calendar_has_selection: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     all_events: List[Dict[str, Any]] = []
     collector_status: Dict[str, Dict[str, Any]] = {}
@@ -67,6 +69,8 @@ def collect_all_events(
         collect_worklog=collect_worklog,
         collect_github=collect_github,
         collect_toggl=collect_toggl,
+        collect_calendar=collect_calendar,
+        calendar_has_selection=calendar_has_selection,
     )
     total_collectors = len(collectors)
     quiet = getattr(args, "quiet", False)

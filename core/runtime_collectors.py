@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from collectors import calendar as calendar_collector
 from collectors import lovable_desktop as lovable_desktop_collector
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 
@@ -303,4 +304,19 @@ class RuntimeCollectors:
             dt_to,
             classify_project=self.classify_project,
             make_event=self.make_event,
+        )
+
+    def calendar_roles(self) -> dict:
+        raw = getattr(self.cli_args, "calendar_names", None) if self.cli_args is not None else None
+        return calendar_collector.parse_calendar_roles(raw)
+
+    def collect_calendar(self, profiles, dt_from, dt_to):
+        return calendar_collector.collect_calendar(
+            profiles,
+            dt_from,
+            dt_to,
+            self.home,
+            self.classify_project,
+            self.make_event,
+            calendar_roles=self.calendar_roles(),
         )

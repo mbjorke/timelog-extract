@@ -363,6 +363,8 @@ def collect_runtime_events(
         collect_worklog=runtime_collectors.collect_worklog,
         collect_github=runtime_collectors.collect_github,
         collect_toggl=runtime_collectors.collect_toggl,
+        collect_calendar=runtime_collectors.collect_calendar,
+        calendar_has_selection=bool(runtime_collectors.calendar_roles()),
     )
 
 

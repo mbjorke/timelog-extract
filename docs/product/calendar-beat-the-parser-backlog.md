@@ -25,6 +25,7 @@ P5–P8 are the leapfrog wins that secure the DoD.
 ---
 
 ### P1 — Multi-calendar collector with role per calendar
+- status: **built** — `collectors/calendar.py`, opt-in `--calendar-source on` + `--calendar-names "Name:role,…"`, fixtures in `tests/test_collectors_calendar.py`. How its hours are counted is still deferred to the bridge phase (P3+).
 - priority: now (after bridge spec merges)
 - problem: the prototype hardcodes one calendar ("Work"); Pierre's time lives in a
   dedicated `TimeReport` calendar plus others across Google/iCloud/org accounts.

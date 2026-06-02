@@ -44,12 +44,21 @@ def build_collector_specs(
     collect_worklog: Callable,
     collect_github: Callable,
     collect_toggl: Callable,
+    collect_calendar: Callable,
+    calendar_has_selection: bool = False,
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
     mail_mode = getattr(args, "mail_source", "auto")
     mail_enabled = mail_mode in {"on", "auto"}
     gh_enabled, gh_reason = github_source_enabled(args)
     toggl_enabled, toggl_reason = toggl_source_enabled(args)
+    calendar_enabled = getattr(args, "calendar_source", "off") == "on"
+    if not calendar_enabled:
+        calendar_reason: Optional[str] = "Consent/source setting disabled"
+    elif not calendar_has_selection:
+        calendar_reason = "No calendars selected (set --calendar-names)"
+    else:
+        calendar_reason = None
 
     return [
         CollectorSpec("Claude Code CLI", collect_claude_code, "events"),
@@ -116,5 +125,12 @@ def build_collector_specs(
             "events",
             enabled=toggl_enabled,
             reason=toggl_reason,
+        ),
+        CollectorSpec(
+            "Calendar",
+            collect_calendar,
+            "events",
+            enabled=calendar_enabled and calendar_has_selection,
+            reason=calendar_reason,
         ),
     ]

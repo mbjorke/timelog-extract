@@ -70,6 +70,11 @@ Scenario: Report shows hours by week and project
 - dependencies: P1 (for calendar-sourced rows), but usable on existing sources too.
 
 ### P3 — Classify his title codes to projects
+- status: **built** — the engine already does this: the collector runs each event
+  title through `classify_project`, and `normalize_profile` lowercases
+  `match_terms` so capitalized codes match case-insensitively. Locked with
+  regression tests (`tests/test_calendar_code_classification.py`) and a how-to
+  ([`../sources/calendar-title-code-mapping.md`](../sources/calendar-title-code-mapping.md)).
 - priority: next
 - problem: titles encode projects as prefixes/codes (`HÅ-DAA`, `EASE-DAA`,
   `KidneySign`, …); must map even when sloppy.

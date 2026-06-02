@@ -162,6 +162,32 @@ class CalendarCollectorTests(unittest.TestCase):
             self.assertEqual(out[0]["project"], "financing-portal")
             self.assertIn("AXOR sync", seen["hay"])
 
+    def test_exact_duplicate_events_collapse(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            ev = {
+                "calendar": "Work", "summary": "Standup",
+                "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "end": datetime(2026, 4, 1, 9, 30, tzinfo=timezone.utc),
+            }
+            _write_calendar_db(home, [ev, dict(ev)])
+            out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
+            self.assertEqual(len(out), 1)
+
+    def test_same_title_same_start_different_end_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, [
+                {"calendar": "Work", "summary": "Standup",
+                 "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                 "end": datetime(2026, 4, 1, 9, 30, tzinfo=timezone.utc)},
+                {"calendar": "Work", "summary": "Standup",
+                 "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                 "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc)},
+            ])
+            out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
+            self.assertEqual(len(out), 2)
+
     def test_missing_db_raises_for_diagnosable_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(RuntimeError):

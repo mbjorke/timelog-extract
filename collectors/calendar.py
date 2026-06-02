@@ -133,7 +133,7 @@ def collect_calendar(
     finally:
         conn.close()
 
-    seen: set[Tuple[str, str, str]] = set()
+    seen: set[Tuple[str, str, str, str]] = set()
     for cal_title, summary, start_raw, end_raw, all_day in rows:
         cal_title = cal_title or ""
         role = roles.get(cal_title.lower())
@@ -150,7 +150,9 @@ def collect_calendar(
             continue
 
         summary = (summary or "").strip()
-        key = (cal_title, summary, start_dt.isoformat())
+        # Include end in the key so two same-titled meetings at the same start
+        # but different durations are not wrongly collapsed.
+        key = (cal_title, summary, start_dt.isoformat(), end_dt.isoformat())
         if key in seen:
             continue
         seen.add(key)

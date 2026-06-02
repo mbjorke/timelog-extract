@@ -63,6 +63,8 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Fast project mapping (~10 min retrospective window)** → [`ideas/fast-project-mapping-playbook.md`](ideas/fast-project-mapping-playbook.md)
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy
+- **Calendar time-reporter persona + "beat the parser" DoD (Pierre)** → [`product/persona-pierre-calendar-timereport.md`](product/persona-pierre-calendar-timereport.md)
+- **Calendar "beat the parser" ordered backlog (P1–P8)** → [`product/calendar-beat-the-parser-backlog.md`](product/calendar-beat-the-parser-backlog.md)
 - **Canonical CLI language vs demo subset** → [`product/cli-command-map.md`](product/cli-command-map.md)
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)
 - **TIL the maintainer taught the agent (by month, short bullets)** → [`ideas/til/`](ideas/til/) (see `AGENTS.md` → *Maintainer TIL*)

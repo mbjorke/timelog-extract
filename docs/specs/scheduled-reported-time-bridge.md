@@ -1,7 +1,7 @@
 # Scheduled → Reported time bridge
 
 Status: draft spec  
-Last updated: 2026-06-01
+Last updated: 2026-06-01 (role-per-calendar + Pierre persona)
 
 ## Purpose
 
@@ -11,11 +11,17 @@ separate paths with no common destination.
 
 Today:
 
-- Calendar is (planned) `scheduled_context`: it explains time but should not
-  silently become worked time.
+- Calendar's role **depends on the calendar** (see *Calendar role per
+  calendar*): a dedicated time-report calendar is a `primary_claim`, while a
+  meetings calendar is `scheduled_context` that should not silently become worked
+  time.
 - Toggl is `primary_claim`: externally tracked time entries.
 - `jira-sync` already turns derived session time into Jira worklogs with a
   confirm/dry-run loop.
+
+Motivating user: [`../product/persona-pierre-calendar-timereport.md`](../product/persona-pierre-calendar-timereport.md)
+keeps a dedicated `TimeReport` calendar where every event is a deliberate time
+entry — proof that a calendar source cannot assume a single role.
 
 Each writes (or would write) to its own place. This spec introduces a single
 structured `reported_time` record that all three map into, so a confirmed
@@ -79,16 +85,40 @@ Rules:
 - A record stays `proposed` until the user confirms; `proposed` records are shown
   but never sent to Toggl/Jira or counted as reported totals.
 
+## Calendar role per calendar
+
+A calendar source must not assume one role for all calendars. The user selects
+which calendars to read and assigns a **role per calendar** (across Google,
+iCloud, and multiple org accounts — all readable from the local
+`Calendar.sqlitedb` when subscribed):
+
+| Calendar kind | Role | Behavior |
+| --- | --- | --- |
+| Dedicated time-report (e.g. `TimeReport`) | `primary_claim` | Each event is a user-authored claim → maps to reported time as `confirmed`, provenance preserved. |
+| Meetings / `Work` | `scheduled_context` | Proposes reported time → `proposed`, requires confirmation, never silent. |
+| Personal / family / holidays | (not collected) | Excluded; not read. |
+
+Config shape (provisional): a list of `{ calendar, account, role }` rather than a
+single hardcoded name. Default with no config is conservative: read nothing until
+the user opts a calendar in.
+
+For a `primary_claim` calendar, the user's entered hours are **authoritative**.
+Corroboration from work evidence (see persona Tier 3) is a confidence annotation,
+**never** an override — consistent with
+[`source-evidence-policy.md`](source-evidence-policy.md) ("no source silently
+overrides").
+
 ## How each source maps in
 
 | Source | Role | Maps to reported time when… | Default state |
 | --- | --- | --- | --- |
-| Calendar | `scheduled_context` | the user confirms a meeting (optionally editing hours) in reconcile. | `proposed` |
+| Calendar — time-report calendar | `primary_claim` | events are read from a calendar the user marked as a time-report. | `confirmed` (preserve provenance) |
+| Calendar — meetings calendar | `scheduled_context` | the user confirms a meeting (optionally editing hours) in reconcile. | `proposed` |
 | Toggl | `primary_claim` | an entry is imported with explicit project mapping. | `confirmed` (preserve provenance) |
 | Derived work sessions | `direct_work_evidence` | promoted via the existing `jira-sync`-style confirm loop. | `proposed` |
 
 No source bypasses confirmation to reach `confirmed` except an external
-`primary_claim` that the user already authored (Toggl).
+`primary_claim` the user already authored (a time-report calendar, Toggl).
 
 ## Reconcile contract (overlap handling)
 
@@ -112,12 +142,35 @@ Feature: Scheduled to reported time bridge
   Background:
     Given the reported-time bridge is available
 
+  Scenario: A dedicated time-report calendar maps in as a primary claim
+    Given a calendar the user marked as a time-report calendar
+    And it has an event "KidneySign" from 09:00 to 12:00
+    When the events are read
+    Then a reported_time record should be created with state "confirmed"
+    And hours should be 3.0
+    And its origin_ref should preserve the calendar event id
+
+  Scenario: A meeting calendar only proposes until confirmed
+    Given a calendar the user marked as a meetings calendar
+    And a meeting overlaps direct work evidence in the same window
+    When a report is produced without confirmation
+    Then the meeting should be state "proposed"
+    And it should not be counted as reported time until the user confirms it
+
   Scenario: A confirmed meeting becomes a reported-time record
     Given a calendar meeting overlaps direct work evidence in the same window
     When the user confirms or edits the time in reconcile
     Then a reported_time record should be written
     And its origin_ref should point back to the calendar event
     And Toggl/Jira sync should read the same record without source-specific logic
+
+  Scenario: Corroboration annotates a primary claim without overriding it
+    Given a time-report entry of 3.0 hours for "KidneySign"
+    And work evidence shows 2.4 hours of activity in the same window
+    When the report is produced
+    Then the reported hours should stay 3.0
+    And the entry may show a corroboration annotation
+    But the entered hours should not be overridden
 
   Scenario: An edited duration keeps an audit trail
     Given a proposed reported-time record of 2.0 hours

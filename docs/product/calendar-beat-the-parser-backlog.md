@@ -85,6 +85,9 @@ Scenario: Report shows hours by week and project
 - dependencies: P1.
 
 ### P4 — Zero-export parity (live read)
+- status: **built** — satisfied by P1 (Gittan reads the calendar live; no export
+  step) + P2 (`--weekly` pivot). End-to-end onboarding runbook:
+  [`../runbooks/calendar-time-report-onboarding.md`](../runbooks/calendar-time-report-onboarding.md).
 - priority: next
 - problem: his loop needs an export + manual upload; Gittan must remove it.
 - acceptance: a single command produces the pivot live from the calendar(s) with

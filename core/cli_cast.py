@@ -173,7 +173,10 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     """Run all doctor checks and return structured rows — no Rich output."""
     from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
     from core.git_project_bootstrap import assess_config_git_coverage
-    from collectors.lovable_desktop import lovable_desktop_history_candidates
+    from collectors.lovable_desktop import (
+        lovable_desktop_has_storage_signals,
+        lovable_desktop_history_candidates,
+    )
 
     home = Path.home()
     rows: list[dict[str, str]] = []
@@ -259,6 +262,8 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     lh = lovable_desktop_history_candidates(home)
     if lh:
         _check_db(lh[0], "Lovable Desktop History", "urls")
+    elif lovable_desktop_has_storage_signals(home):
+        ok("Lovable Desktop", "No History DB; collecting via storage signals")
     else:
         warn("Lovable Desktop History", "No History DB yet (browse in Lovable to create one)")
 

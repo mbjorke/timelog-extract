@@ -26,6 +26,39 @@ On the validation day, cache files containing the project UUID reconstructed
 work sessions 09:32–09:53, 10:11, 10:38–10:40, 11:41, 12:12, 13:03–13:14 —
 matching the git-bot commit window.
 
+## Non-goals (decided 2026-06-11)
+
+- **No keystroke capture.** A per-app keylogger (macOS Accessibility / CGEventTap)
+  could in theory be scoped to a single app, but it would be a new source class
+  with per-app complexity and — more importantly — it breaks Gittan's
+  local-first, trustworthy-evidence promise. Not pursued.
+- **No network MITM.** Reading the outgoing POST body to `api.lovable.dev` to
+  recover the user's typed sentences is equally out of scope.
+- **Chat text is server-only.** A raw byte scan of the entire `lovable-desktop`
+  data dir (LevelDB, IndexedDB, Session Storage, Cache) found **none** of the
+  user's typed sentences. The only chat-looking local string was a
+  *predefined suggestion button* label baked into the app's `Code Cache` JS, not
+  user input. Conclusion: the user's posted messages never touch local disk;
+  there is no local "outbox" to read. Gittan does not need chat text for its job
+  (hours + project attribution) — git commits from `gpt-engineer-app[bot]` are
+  the content layer when content is wanted.
+
+## Bonus local source: `projects/search` (UUID → human title)
+
+The cached response of
+`GET https://api.lovable.dev/workspaces/<ws>/projects/search` decompresses
+(brotli) to the user's full project list with names and activity counters, e.g.:
+
+```json
+{"id": "8e18db4d-…", "display_name": "Ålandsbanken FAQ Helper",
+ "last_edited_at": "2026-06-11T06:47:28Z", "edit_count": 19, "edits_24h": 4}
+```
+
+This lets the collector map `unmapped Lovable (8e18db4d…)` → the real project
+title **with zero manual `gittan map` rounds for UUIDs**, and `edit_count` /
+`edits_24h` give per-project session intensity. Prefer this over the `tiba=`
+beacon when present.
+
 ## Task
 
 1. Add a cache-evidence path to `collectors/lovable_desktop.py`:
@@ -40,9 +73,9 @@ matching the git-bot commit window.
    keep the `unmapped Lovable (…) — map UUID via gittan map` detail format.
 3. Performance guard: skip files larger than a few MB; cap total scanned bytes
    per run; never crash on unreadable/binary content.
-4. The `tiba=<title>` beacon can resolve UUID → human project title; if cheap,
-   surface it in the event detail (title is stronger mapping evidence than the
-   bare UUID).
+4. Resolve UUID → human project title from the cached `projects/search`
+   response (brotli body; `id` → `display_name`); fall back to the
+   `tiba=<title>` beacon. Title is stronger mapping evidence than the bare UUID.
 5. Fixture tests: synthetic cache dir with (a) known-uuid file in window,
    (b) rudder-context uuid file (must be skipped), (c) out-of-window file.
 
@@ -67,3 +100,6 @@ matching the git-bot commit window.
 - validation.decision: NO-GO
 - changelog:
   - 2026-06-11: Initial draft created from live validation-day investigation.
+  - 2026-06-11: Added Non-goals (no keystroke/MITM capture; chat text is
+    server-only, confirmed by raw byte scan) and `projects/search` UUID→title
+    bonus source. doctor now reports Lovable as collecting via storage signals.

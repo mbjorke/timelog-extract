@@ -8,17 +8,7 @@ from pathlib import Path
 
 from collectors.antigravity import collect_antigravity
 
-def _make_event(source, ts, detail, project, anchors=None):
-    event = {
-        "source": source,
-        "timestamp": ts,
-        "detail": detail,
-        "project": project,
-    }
-    clean = {k: v for k, v in (anchors or {}).items() if v}
-    if clean:
-        event["anchors"] = clean
-    return event
+from tests.event_helpers import make_test_event
 
 
 class AntigravityCollectorTests(unittest.TestCase):
@@ -46,7 +36,7 @@ class AntigravityCollectorTests(unittest.TestCase):
             home=home,
             local_tz=timezone.utc,
             classify_project=kwargs.get("classify", lambda _hay, _profiles: "X"),
-            make_event=_make_event,
+            make_event=make_test_event,
             noise_profile=kwargs.get("noise_profile", "strict"),
         )
 

@@ -13,7 +13,7 @@ clean session links to IDE events.
 
 What Gittan actually sees for the hardest triage cases:
 
-```
+```text
 source: claude.ai   detail: https://claude.ai/chat/<opaque-id>   ~41m   adjacent: none
 source: chrome      detail: app.example-builder.test             ?      adjacent: none
 source: cursor      detail: src/api.ts                           22m

@@ -19,13 +19,7 @@ from collectors.ai_logs import (
     collect_claude_code,
 )
 
-
-def _make_event(source, ts, detail, project, anchors=None):
-    event = {"source": source, "timestamp": ts, "detail": detail, "project": project}
-    clean = {k: v for k, v in (anchors or {}).items() if v}
-    if clean:
-        event["anchors"] = clean
-    return event
+from tests.event_helpers import make_test_event
 
 
 def _classify(_text, _profiles):
@@ -53,7 +47,7 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
             dt_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
             home=home,
             classify_project=_classify,
-            make_event=_make_event,
+            make_event=make_test_event,
         )
 
     def test_context_dir_is_cwd_leaf(self) -> None:

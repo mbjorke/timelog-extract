@@ -2,8 +2,15 @@
 
 ## Unreleased
 
-- `projects-audit`: unified `top_hosts` and `top_anchors` into one **`top_signals`** model — each row is `{kind, value, hits, anchored, rule_type}` where `kind=host` suggests `tracked_urls` and `kind=dir/branch/label` suggests `match_terms`. `--write-anchor-plan` now emits the matching `rule_type` per row (hosts → `tracked_urls`), and `projects-anchor` applies both rule types. One audit-driven suggestion/plan path covers browser hosts and terminal/IDE anchors alike.
-- Classification: generalized the working-directory anchor into a multi-kind **activity anchor** model. Events carry an `anchors` map — `dir` (working-directory leaf, from Claude Code/Cursor/Windsurf/Antigravity/Gemini CLI), `branch` (git branch leaf, from the Claude Code `gitBranch` record; namespace prefix dropped, generic branches like `main` rejected), and `label` (session title, from Codex `thread_name`; placeholders rejected). Claude Code now also feeds the branch into the classification haystack. `status`/`report` nudges and interactive anchor mapping cover **activity anchors only** (`dir`/`branch`/`label`); web hosts stay on `gittan review` for interactive mapping while audit plans can still propose `tracked_urls` via `top_signals`.
+- `projects-audit`: unified `top_hosts` and `top_anchors` into one **`top_signals`** model.
+  - Schema v2 row shape: `{kind, value, hits, anchored, rule_type}`.
+  - `kind=host` → `tracked_urls`; `kind=dir/branch/label` → `match_terms`.
+  - `--write-anchor-plan` emits `rule_type` per row; `projects-anchor` applies both rule types.
+- Classification: multi-kind **activity anchor** model on collector events.
+  - `anchors` map: `dir` (IDE cwd leaf), `branch` (Claude Code `gitBranch` leaf), `label` (Codex `thread_name`).
+  - Generic branches and placeholder titles rejected; Claude Code feeds branch into the classification haystack.
+  - `status`/`report` nudges: activity anchors only (`dir`/`branch`/`label`); web hosts stay on `gittan review`.
+  - Audit batch plans may still propose `tracked_urls` via `top_signals`.
 
 ## 0.2.18 - 2026-05-30
 

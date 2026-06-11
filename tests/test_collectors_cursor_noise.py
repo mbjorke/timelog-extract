@@ -8,6 +8,8 @@ from pathlib import Path
 
 from collectors.cursor import collect_cursor
 
+from tests.event_helpers import make_test_event
+
 
 class CursorNoiseFilterTests(unittest.TestCase):
     def _write_workspace(self, home: Path, wid: str, folder_path: str) -> None:
@@ -53,12 +55,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "X",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 
@@ -84,12 +81,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Gittan CLI",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Cursor")
@@ -117,13 +109,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "X",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                    "anchors": anchors,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(len(out), 1)
             # Privacy-safe leaf only — no /Users/<name>/ prefix.
@@ -151,12 +137,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 
@@ -182,12 +163,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="lenient",
             )
             self.assertEqual(len(out), 1)
@@ -214,12 +190,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="ultra-strict",
             )
             self.assertEqual(out, [])
@@ -246,12 +217,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="strict",
             )
             self.assertEqual(len(out), 1)
@@ -279,12 +245,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "timelog-extract",
-                make_event=lambda source, ts, detail, project, anchors=None: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 

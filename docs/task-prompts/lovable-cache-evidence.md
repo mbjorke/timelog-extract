@@ -50,14 +50,14 @@ The cached response of
 (brotli) to the user's full project list with names and activity counters, e.g.:
 
 ```json
-{"id": "8e18db4d-…", "display_name": "Ålandsbanken FAQ Helper",
- "last_edited_at": "2026-06-11T06:47:28Z", "edit_count": 19, "edits_24h": 4}
+{"id": "<project-uuid>", "display_name": "Project Alpha",
+ "last_edited_at": "<iso-ts>", "edit_count": 19, "edits_24h": 4}
 ```
 
-This lets the collector map `unmapped Lovable (8e18db4d…)` → the real project
-title **with zero manual `gittan map` rounds for UUIDs**, and `edit_count` /
-`edits_24h` give per-project session intensity. Prefer this over the `tiba=`
-beacon when present.
+This lets the collector map `unmapped Lovable (<uuid-prefix>…)` → the real
+project title **with zero manual `gittan map` rounds for UUIDs**, and
+`edit_count` / `edits_24h` give per-project session intensity. Prefer this over
+the `tiba=` beacon when present.
 
 ## Task
 

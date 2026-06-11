@@ -15,17 +15,17 @@ All three modes leave local traces under
 
 1. **Chat** — IndexedDB (`IndexedDB/https_claude.ai_0.indexeddb.blob/...`)
    contains chat records with conversation UUID, human title, model, and
-   ISO timestamp. Validated: chat `6b8110ba-213c-…` titled
-   "Gittan-utveckling och Discord-roll", `2026-06-11T14:17:20Z`, matching the
-   Claude.ai (web) Chrome-history event at 17:17 local — Chat events can be
+   ISO timestamp. Validated: a chat record (`<conversation-uuid>`, a project
+   title, `<iso-ts>`) matched the corresponding Claude.ai (web) Chrome-history
+   event at the same wall-clock minute — Chat events can be
    **cross-checked against Claude.ai (web)/Chrome** rows (dedupe required:
    same conversation should not double-count).
 2. **Code** — two stores:
    - `Local Storage/leveldb/*.ldb` key `session-diff-stats-store` (origin
      `https://claude.ai`): per-session diff stats keyed by
      `<session>:<owner>/<repo>:<branch>` with additions/deletions/fileCount
-     and `updatedAt` epoch-ms. Validated entry for branch
-     `claude/freelance-bridge-dashboard-CeFO5` (3667 additions, 56 files).
+     and `updatedAt` epoch-ms. Validated: a `claude/<branch>` entry with
+     non-zero additions across several files.
    - IndexedDB session records: title, environment id (`env_…`), repo URL
      (`https://github.com/<owner>/<repo>`), `refs/heads/<branch>`, and
      created/updated timestamps.
@@ -72,7 +72,7 @@ All three modes leave local traces under
 - implementation.pr: pending
 - implementation.branch: pending
 - implementation.commits: []
-- validation.evidence: investigation in PR #140 thread (2026-06-11); IndexedDB chat record matched Claude.ai (web) event 17:17; session-diff-stats-store matched claude/ branch work
+- validation.evidence: investigation in PR #140 thread (2026-06-11); IndexedDB chat record matched a Claude.ai (web) event at the same minute; session-diff-stats-store matched claude/ branch work
 - validation.decision: NO-GO
 - changelog:
   - 2026-06-11: Initial draft created from live validation-day investigation.

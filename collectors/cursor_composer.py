@@ -239,6 +239,13 @@ def collect_cursor_composer_sessions(
         haystack = _composer_classification_haystack(composer, title=name)
         project = classify_project(haystack, profiles)
         detail = name[:70] if name else label[:70]
+        context_bits: list[str] = []
+        if dir_leaf and dir_leaf.lower() not in detail.lower():
+            context_bits.append(dir_leaf)
+        if branch and branch.lower() not in detail.lower():
+            context_bits.append(f"@{branch}")
+        if context_bits:
+            detail = f"{detail} · {' · '.join(context_bits)}"[:100]
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
         for ms in _composer_heartbeat_timestamps_ms(start_ms, end_ms):
             try:

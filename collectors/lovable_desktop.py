@@ -155,7 +155,11 @@ def _trim_lovable_url_blob_suffix(url: str) -> str:
 
 
 def _lovable_project_uuid_key(url: str) -> str:
-    host = (urlparse(url).netloc or "").lower()
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except ValueError:
+        # Binary blob fragments can contain brackets etc. that break urlparse.
+        return ""
     match = _LOVABLE_PROJECT_UUID_RE.search(host)
     return match.group(1).lower() if match else ""
 
@@ -175,6 +179,31 @@ def _storage_tail_min_offset(raw: bytes, *, tail_bytes: int = 768) -> int:
 
 def _synthetic_lovable_project_url(uuid: str) -> str:
     return f"https://{uuid}.lovableproject.com/"
+
+
+# RudderStack (Lovable's telemetry SDK) stores queue keys like
+# "rudder_<writeKey>.<uuid>.ack/.reclaimStart/.reclaimEnd" in localStorage.
+# Those UUIDs are message/queue ids, not Lovable projects.
+_ANALYTICS_UUID_CONTEXT_MARKERS = ("rudder", ".ack", ".reclaim", "inprogress", "queue")
+
+
+def _is_analytics_uuid_context(text: str, start: int, end: int) -> bool:
+    # Queue markers usually precede the UUID (key before value), sometimes by a
+    # couple hundred bytes of serialized JSON — look further back than ahead.
+    window = text[max(0, start - 256):min(len(text), end + 40)].lower()
+    return any(marker in window for marker in _ANALYTICS_UUID_CONTEXT_MARKERS)
+
+
+def _format_lovable_storage_detail(project: str, canonical: str) -> str:
+    uuid = _lovable_project_uuid_key(canonical)
+    short = f"{uuid[:8]}…" if uuid else ""
+    project_name = str(project or "").strip()
+    if project_name and project_name != "Uncategorized":
+        lead = f"{project_name} ({short})" if short else project_name
+        return f"{lead} — {canonical}"
+    if short:
+        return f"unmapped Lovable ({short}) — map UUID via gittan map — {canonical}"
+    return f"storage signal — {canonical}"
 
 
 def _register_storage_uuid_candidate(
@@ -225,8 +254,11 @@ def _pick_storage_urls_from_blob(
             continue
         _register_storage_uuid_candidate(best_by_uuid, uuid=uuid, offset=offset, url=trimmed)
     # LevelDB often stores bare project UUIDs without an https:// prefix.
-    for match in _LOVABLE_PROJECT_UUID_RE.finditer(raw.decode("utf-8", "ignore")):
+    decoded = raw.decode("utf-8", "ignore")
+    for match in _LOVABLE_PROJECT_UUID_RE.finditer(decoded):
         uuid = match.group(1).lower()
+        if _is_analytics_uuid_context(decoded, match.start(), match.end()):
+            continue
         offset = raw.rfind(uuid.encode("ascii", "ignore"))
         if offset < min_offset:
             continue
@@ -410,7 +442,7 @@ def _collect_lovable_desktop_from_storage(
             uuid = _lovable_project_uuid_key(url)
             canonical = _synthetic_lovable_project_url(uuid) if uuid else url
             project = classify_project(canonical, profiles)
-            detail = f"storage signal — {canonical}"
+            detail = _format_lovable_storage_detail(project, canonical)
             results.append(make_event(SOURCE_NAME, ts, detail, project))
     merge_seconds = max(60, int(collapse_minutes or 15) * 60)
     return _merge_storage_events(results, merge_seconds=merge_seconds)

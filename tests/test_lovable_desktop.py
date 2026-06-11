@@ -149,11 +149,39 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertIn("62146e85", merged[0]["detail"])
 
     def test_pick_storage_urls_reads_bare_leveldb_uuid_tokens(self):
-        blob = b"prefix " * 7000 + b"62146e85-26f9-4cf9-b3f2-601c44411dda.ack\x00tail"
+        blob = b"prefix " * 7000 + b"editor-store-62146e85-26f9-4cf9-b3f2-601c44411dda\x00tail"
         urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
         picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
         self.assertEqual(len(picked), 1)
         self.assertIn("62146e85", picked[0])
+
+    def test_pick_storage_urls_skips_rudderstack_analytics_uuids(self):
+        # RudderStack queue keys (rudder_<writeKey>.<uuid>.ack/.reclaimStart) are
+        # telemetry message ids, not Lovable projects — they must not fabricate
+        # "unmapped Lovable" rows.
+        blob = (
+            b"prefix " * 7000
+            + b"rudder_30uiF44drV1UnRmUEUVhfQ2L500."
+            + b"62146e85-26f9-4cf9-b3f2-601c44411dda.ack\x00tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(picked, [])
+
+    def test_pick_storage_urls_prefers_real_project_over_analytics_uuid_in_tail(self):
+        # A genuine project URL in the tail must win even when a rudder queue id
+        # was written later in the same blob.
+        blob = (
+            b"prefix " * 7000
+            + b"https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/ "
+            + b"rudder_30uiF44drV1UnRmUEUVhfQ2L500."
+            + b"62146e85-26f9-4cf9-b3f2-601c44411dda.reclaimEnd\x00tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("80f778b5", picked[0])
+        self.assertNotIn("62146e85", picked[0])
 
     def test_pick_storage_urls_prefers_tracked_profile_uuid_over_newer_tail(self):
         prefix = b"x" * 54_000
@@ -190,6 +218,19 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertIn("62146e85", picked[0])
         self.assertNotIn("80f778b5", picked[0])
         self.assertNotIn("121726c8", picked[0])
+
+    def test_pick_storage_urls_survives_bracket_junk_urls(self):
+        # urlparse raises ValueError on bracket fragments from binary blobs;
+        # the UUID key helper must swallow that instead of crashing the collector.
+        blob = (
+            b"prefix " * 7000
+            + b"https://[aa.lovableproject.com/x "
+            + b"https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/ tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("80f778b5", picked[0])
 
     def test_filter_lovable_storage_urls_balanced_skips_malformed_urls_without_crashing(self):
         urls = [

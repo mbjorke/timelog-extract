@@ -15,6 +15,7 @@ from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
 from core.config import (
+    apply_rule_to_project,
     backup_projects_config_if_exists,
     default_projects_config_option,
     load_projects_config_payload,
@@ -22,7 +23,9 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
+    ANCHOR_PLAN_SCHEMA_VERSION,
     TRIM_PLAN_SCHEMA_VERSION,
+    build_dir_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
 )
@@ -65,6 +68,18 @@ def projects_audit(
                 "Write trim-plan JSON (schema v1) to PATH: removals pre-filled with rules that had "
                 "zero hits in this audit window only — not proof they are unused elsewhere. "
                 "Does not edit the config; review then: projects-trim -i PATH --dry-run."
+            ),
+        ),
+    ] = None,
+    write_anchor_plan: Annotated[
+        Optional[str],
+        typer.Option(
+            "--write-anchor-plan",
+            help=(
+                "Write anchor-plan JSON (schema v1) to PATH: match_term additions for unanchored "
+                "working directories (top_dirs) seen in this window. project_name defaults to the "
+                "directory leaf — edit to map to an existing project. Review then: "
+                "projects-anchor -i PATH --dry-run."
             ),
         ),
     ] = None,
@@ -121,6 +136,18 @@ def projects_audit(
                 f"Review; then `gittan projects-trim -i {out_path}` --dry-run.[/dim]"
             )
 
+    if write_anchor_plan:
+        plan = build_dir_anchor_plan_from_audit(payload)
+        out_path = Path(write_anchor_plan).expanduser()
+        out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        if not json_out:
+            console.print(
+                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate dirs) "
+                f"to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}). "
+                f"Edit project_name to map to existing projects; then "
+                f"`gittan projects-anchor -i {out_path}` --dry-run.[/dim]"
+            )
+
     if json_out:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
@@ -162,6 +189,20 @@ def projects_audit(
                 "yes" if row.get("anchored") else "no",
             )
         console.print(ht)
+    if payload.get("top_dirs"):
+        console.print()
+        console.print(f"[dim]{payload.get('top_dirs_note', '')}[/dim]")
+        dt_table = Table(show_header=True, header_style="bold")
+        dt_table.add_column("Directory")
+        dt_table.add_column("Hits", justify="right")
+        dt_table.add_column("Anchored", justify="center")
+        for row in payload["top_dirs"]:
+            dt_table.add_row(
+                str(row.get("dir", "")),
+                str(row.get("hits", 0)),
+                "yes" if row.get("anchored") else "no",
+            )
+        console.print(dt_table)
     console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
 
 
@@ -242,3 +283,82 @@ def projects_trim(
         console.print(f"[dim]Backup:[/dim] {backup}")
     save_projects_config_payload(cfg_path, work)
     console.print("[green]projects-trim: config updated.[/green]")
+
+
+def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
+    if path and path != "-":
+        raw = Path(path).expanduser().read_text(encoding="utf-8")
+    else:
+        raw = sys.stdin.read()
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("anchor input must be a JSON object")
+    if int(data.get("schema_version", 0)) != ANCHOR_PLAN_SCHEMA_VERSION:
+        raise ValueError(f"schema_version must be {ANCHOR_PLAN_SCHEMA_VERSION}")
+    additions = data.get("additions")
+    if not isinstance(additions, list):
+        raise ValueError("'additions' must be an array")
+    out: list[dict[str, Any]] = []
+    for idx, item in enumerate(additions):
+        if not isinstance(item, dict):
+            raise ValueError(f"additions[{idx}] must be an object")
+        pn = str(item.get("project_name", "")).strip()
+        rt = str(item.get("rule_type", "match_terms")).strip() or "match_terms"
+        rv = str(item.get("rule_value", "")).strip()
+        if not pn or not rv:
+            raise ValueError(f"additions[{idx}]: project_name and rule_value required")
+        if rt != "match_terms":
+            raise ValueError(f"additions[{idx}]: only match_terms additions are supported")
+        out.append({"project_name": pn, "rule_type": rt, "rule_value": rv})
+    return out
+
+
+@app.command("projects-anchor")
+def projects_anchor(
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
+    input_path: Annotated[
+        Optional[str],
+        typer.Option("-i", "--input", help="JSON file with additions (use - for stdin)"),
+    ] = None,
+    dry_run: Annotated[bool, typer.Option(help="Print planned additions only; no write")] = False,
+) -> None:
+    """Add match_terms to projects from an anchor plan (e.g. unanchored directories)."""
+    from rich.console import Console
+
+    console = Console()
+    try:
+        additions = _load_anchor_decisions(input_path)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        console.print(f"[red]Invalid anchor input:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not additions:
+        console.print("[yellow]No additions in input; nothing to do.[/yellow]")
+        raise typer.Exit(code=0)
+
+    cfg_path = Path(projects_config).expanduser()
+    base = load_projects_config_payload(cfg_path)
+    work = copy.deepcopy(base) if dry_run else base
+    preview: list[str] = []
+    for item in additions:
+        _rt, _rv, created = apply_rule_to_project(
+            work,
+            project_name=item["project_name"],
+            rule_type=item["rule_type"],
+            rule_value=item["rule_value"],
+        )
+        verb = "add (new project)" if created else "add"
+        preview.append(
+            f"{verb}: {item['project_name']} match_terms={item['rule_value']!r}"
+        )
+
+    console.print("\n".join(preview))
+    if dry_run:
+        console.print("[yellow]Dry run — config not written.[/yellow]")
+        raise typer.Exit(code=0)
+
+    backup = backup_projects_config_if_exists(cfg_path)
+    if backup:
+        console.print(f"[dim]Backup:[/dim] {backup}")
+    save_projects_config_payload(cfg_path, work)
+    console.print("[green]projects-anchor: config updated.[/green]")

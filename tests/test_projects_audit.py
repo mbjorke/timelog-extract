@@ -12,6 +12,7 @@ from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
     aggregate_top_dirs,
+    build_dir_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
@@ -238,6 +239,83 @@ class ProjectsAuditTests(unittest.TestCase):
         profiles = [{"name": "p", "match_terms": ["timelog-extract"], "tracked_urls": []}]
         self.assertTrue(is_dir_anchored_by_profiles("timelog-extract", profiles))
         self.assertFalse(is_dir_anchored_by_profiles("unrelated-repo", profiles))
+
+    def test_anchor_plan_from_audit_only_unanchored(self) -> None:
+        audit = {
+            "schema_version": 1,
+            "command": "gittan projects-audit",
+            "options": {},
+            "top_dirs": [
+                {"dir": "project-gamma", "hits": 12, "anchored": False},
+                {"dir": "project-alpha", "hits": 30, "anchored": True},
+                {"dir": "noise", "hits": 1, "anchored": False},
+            ],
+        }
+        plan = build_dir_anchor_plan_from_audit(audit, min_hits=2)
+        self.assertEqual(plan["schema_version"], 1)
+        self.assertEqual(plan["meta"]["anchor_candidates"], 1)
+        adds = {(a["project_name"], a["rule_type"], a["rule_value"]) for a in plan["additions"]}
+        self.assertIn(("project-gamma", "match_terms", "project-gamma"), adds)
+        # anchored dir excluded; below-min-hits dir excluded
+        self.assertNotIn(("project-alpha", "match_terms", "project-alpha"), adds)
+        self.assertNotIn(("noise", "match_terms", "noise"), adds)
+
+    def test_anchor_plan_rejects_wrong_audit_schema(self) -> None:
+        with self.assertRaises(ValueError):
+            build_dir_anchor_plan_from_audit({"schema_version": 99, "top_dirs": []})
+
+    def test_projects_anchor_applies_match_term(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        plan = {
+            "schema_version": 1,
+            "additions": [
+                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "timelog-extract"},
+            ],
+        }
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        result = self.runner.invoke(
+            app,
+            ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+        )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        data = load_projects_config_payload(cfg_path)
+        proj = next(p for p in data["projects"] if p["name"] == "existing")
+        terms = [str(t).lower() for t in proj["match_terms"]]
+        self.assertIn("timelog-extract", terms)
+        self.assertIn("keep", terms)
+
+    def test_projects_anchor_dry_run_does_not_write(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        plan = {
+            "schema_version": 1,
+            "additions": [
+                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "newterm"},
+            ],
+        }
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        result = self.runner.invoke(
+            app,
+            ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path), "--dry-run"],
+        )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        data = load_projects_config_payload(cfg_path)
+        proj = next(p for p in data["projects"] if p["name"] == "existing")
+        terms = [str(t).lower() for t in proj["match_terms"]]
+        self.assertNotIn("newterm", terms)
 
     def test_is_host_anchored_tracked_url(self) -> None:
         profiles = [

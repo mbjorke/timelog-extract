@@ -15,6 +15,8 @@ AUDIT_SCHEMA_VERSION = 1
 
 TRIM_PLAN_SCHEMA_VERSION = 1
 
+ANCHOR_PLAN_SCHEMA_VERSION = 1
+
 HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
     "substring of the event detail (same text field used by project classification). "
@@ -268,6 +270,60 @@ def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[s
             "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
             "audit_options": audit_payload.get("options", {}),
             "zero_hit_candidates": len(removals),
+        },
+    }
+
+
+def build_dir_anchor_plan_from_audit(
+    audit_payload: dict[str, Any], *, min_hits: int = 1
+) -> dict[str, Any]:
+    """Build a `projects-anchor` plan (schema v1): match_term additions for dirs.
+
+    Each addition is an **unanchored** working directory (`top_dirs` row with
+    `anchored=false`) seen at least `min_hits` times in the audit window. The
+    directory leaf is proposed as the match_term value, and `project_name`
+    defaults to that same leaf — review and edit it to target an existing
+    project before applying. Applying via `gittan projects-anchor` will create a
+    new project if the name does not exist.
+    """
+    sv = int(audit_payload.get("schema_version", 0))
+    if sv != AUDIT_SCHEMA_VERSION:
+        raise ValueError(f"audit schema_version must be {AUDIT_SCHEMA_VERSION}, got {sv}")
+
+    floor = max(1, int(min_hits))
+    additions: list[dict[str, Any]] = []
+    for row in audit_payload.get("top_dirs") or []:
+        if row.get("anchored"):
+            continue
+        leaf = str(row.get("dir", "")).strip()
+        hits = int(row.get("hits", 0))
+        if not leaf or hits < floor:
+            continue
+        additions.append(
+            {
+                "project_name": leaf,
+                "rule_type": "match_terms",
+                "rule_value": leaf,
+                "hits": hits,
+            }
+        )
+
+    note = (
+        "Candidate match_terms from unanchored working directories in the audit window only. "
+        "project_name defaults to the directory leaf — edit it to map to an existing project "
+        "(applying an unknown name creates a new project). Apply: gittan projects-anchor -i <file> "
+        "--dry-run then rerun without --dry-run."
+    )
+
+    return {
+        "schema_version": ANCHOR_PLAN_SCHEMA_VERSION,
+        "note": note,
+        "additions": additions,
+        "meta": {
+            "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
+            "audit_options": audit_payload.get("options", {}),
+            "min_hits": floor,
+            "anchor_candidates": len(additions),
         },
     }
 

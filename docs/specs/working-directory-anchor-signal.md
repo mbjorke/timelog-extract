@@ -29,8 +29,13 @@ terminal-tool analogue of the existing `top_hosts` suggestion for browser tools.
 3. Add `top_dirs` aggregation to `projects-audit`, analogous to `top_hosts`,
    with an `anchored` flag (true if any profile already matches the leaf).
 
-Out of scope here: the suggestion/apply command itself (downstream consumer of
-`top_dirs`), and extending `context_dir` to Cursor/Gemini collectors (follow-up).
+4. Suggestion/apply loop: `projects-audit --write-anchor-plan PATH` writes a
+   reviewable plan of match_term additions for unanchored dirs; `projects-anchor
+   -i PATH [--dry-run]` applies it (with backup), mirroring the trim flow.
+
+Out of scope here: extending `context_dir` to Cursor/Gemini collectors
+(follow-up), and auto-mapping a directory to an existing project (the plan
+defaults `project_name` to the leaf for human review).
 
 ## Evidence role
 
@@ -64,6 +69,18 @@ Feature: Working-directory anchor signal
     And events carry context_dir "timelog-extract"
     When projects-audit runs
     Then the "timelog-extract" top_dirs row is marked anchored=true
+
+  Scenario: Anchor plan proposes match_terms for unanchored directories
+    Given projects-audit reports an unanchored directory "timelog-extract"
+    When projects-audit runs with --write-anchor-plan
+    Then the plan contains a match_terms addition with value "timelog-extract"
+    And project_name defaults to "timelog-extract" for human review
+
+  Scenario: Applying an anchor plan adds the match_term
+    Given an anchor plan adds match_term "timelog-extract" to project "gittan"
+    When projects-anchor applies the plan without --dry-run
+    Then the project "gittan" gains the match_term "timelog-extract"
+    And a config backup is written first
 ```
 
 ## Privacy

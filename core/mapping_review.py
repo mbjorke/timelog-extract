@@ -103,6 +103,63 @@ def _github_create_times(events: list[dict]) -> dict[str, str]:
     return times
 
 
+def _github_slugs_on_named_profile(profile_name: str, profiles: list[dict]) -> set[str]:
+    for profile in profiles:
+        if str(profile.get("name") or "").strip() == profile_name:
+            return profile_match_term_github_slugs(profile)
+    return set()
+
+
+def _sibling_profiles_hold_family_github_slug(
+    customer: str,
+    merge_target: str,
+    family_slugs: set[str],
+    profiles: list[dict],
+) -> bool:
+    """True when a sibling profile still owns a github slug in the same repo family."""
+    from core.github_slug_match import same_repo_family
+
+    customer_key = _normalize_customer(customer)
+    for profile in profiles:
+        name = str(profile.get("name") or "").strip()
+        if not name or name == merge_target:
+            continue
+        if _normalize_customer(profile.get("customer")) != customer_key:
+            continue
+        for term in profile.get("match_terms") or []:
+            norm = _normalize_github_slug_hint(str(term or "").strip())
+            if not norm or not is_plausible_github_slug(norm):
+                continue
+            if any(same_repo_family(norm, slug) for slug in family_slugs):
+                return True
+    return False
+
+
+def _duplicate_group_needs_review(
+    merge_target: str,
+    review_slugs: set[str],
+    configured_all: set[str],
+    bindings: dict[str, SlugGitBinding],
+    activity: dict[str, int],
+    customer: str,
+    profiles: list[dict],
+) -> bool:
+    """Review only while family slugs are missing from the billing project or live on siblings."""
+    relevant = {
+        slug
+        for slug in review_slugs
+        if slug in configured_all
+        or slug_has_git_evidence(slug, bindings)
+        or int(activity.get(slug, 0)) >= 1
+    }
+    if len(relevant) < 2:
+        return False
+    merge_target_slugs = _github_slugs_on_named_profile(merge_target, profiles)
+    if not relevant.issubset(merge_target_slugs):
+        return True
+    return _sibling_profiles_hold_family_github_slug(customer, merge_target, relevant, profiles)
+
+
 def _pick_canonical_slug(project: str, slugs: set[str], bindings: dict[str, SlugGitBinding]) -> str:
     project_lower = project.lower()
     exact = [s for s in slugs if s.split("/", 1)[-1] == project_lower]
@@ -298,13 +355,15 @@ def build_mapping_review(
 
             canonical = _pick_canonical_slug(merge_target, review_slugs, bindings)
             active = pick_active_slug_by_git(review_slugs, bindings, canonical=canonical)
-            needs_review = active not in configured_all or active != canonical
-            needs_review = needs_review or any(
-                slug not in configured_all
-                and (slug_has_git_evidence(slug, bindings) or int(activity.get(slug, 0)) >= 1)
-                for slug in review_slugs
-            )
-            if not needs_review:
+            if not _duplicate_group_needs_review(
+                merge_target,
+                review_slugs,
+                configured_all,
+                bindings,
+                activity,
+                customer,
+                profiles,
+            ):
                 continue
 
             seen_families.add(family_key)

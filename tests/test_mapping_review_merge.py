@@ -264,6 +264,87 @@ class MappingReviewMergeTests(unittest.TestCase):
         review = build_mapping_review([], profiles, slug_bindings=bindings)
         self.assertEqual(review.change_count(), 0)
 
+    def test_merged_financing_portal_family_does_not_reappear(self):
+        """After merge, active dev fork must not re-open the duplicate prompt."""
+        profiles = [
+            {
+                "name": "financing-portal",
+                "customer": "ax-or.com",
+                "canonical_project": "financing-portal",
+                "match_terms": [
+                    "ax-finans/financing-portal",
+                    "ax-finans/financing-portal-dev",
+                    "ax-finans/financing-portal-dev-31e799cf",
+                    "financing-portal-dev",
+                ],
+            },
+            {
+                "name": "financing-portal-dev",
+                "customer": "ax-or.com",
+                "canonical_project": "financing-portal-dev",
+                "match_terms": [
+                    "financing-portal-dev",
+                    "portal-lovable.ax-finans.workers.dev",
+                ],
+            },
+        ]
+        bindings = {
+            "ax-finans/financing-portal": SlugGitBinding(
+                slug="ax-finans/financing-portal",
+                remote_url=slug_to_github_url("ax-finans/financing-portal"),
+                local_path="~/ax-finans",
+                last_commit_epoch=1_700_000_000,
+                git_cmd_hits=2,
+            ),
+        }
+        events = [
+            {
+                "source": "GitHub",
+                "detail": "PR merged in ax-finans/financing-portal-dev-31e799cf",
+                "project": "Uncategorized",
+            },
+        ]
+        review = build_mapping_review(events, profiles, slug_bindings=bindings)
+        self.assertEqual(review.change_count(), 0)
+
+    def test_unmerged_financing_portal_family_still_needs_review(self):
+        profiles = [
+            {
+                "name": "financing-portal",
+                "customer": "ax-or.com",
+                "canonical_project": "financing-portal",
+                "match_terms": ["ax-finans/financing-portal"],
+            },
+            {
+                "name": "financing-portal-dev",
+                "customer": "ax-or.com",
+                "canonical_project": "financing-portal-dev",
+                "match_terms": [
+                    "ax-finans/financing-portal-dev",
+                    "financing-portal-dev",
+                ],
+            },
+        ]
+        bindings = {
+            "ax-finans/financing-portal": SlugGitBinding(
+                slug="ax-finans/financing-portal",
+                remote_url=slug_to_github_url("ax-finans/financing-portal"),
+                local_path="~/ax-finans",
+                last_commit_epoch=1_700_000_000,
+                git_cmd_hits=2,
+            ),
+        }
+        events = [
+            {
+                "source": "GitHub",
+                "detail": "PR merged in ax-finans/financing-portal-dev-31e799cf",
+                "project": "Uncategorized",
+            },
+        ]
+        review = build_mapping_review(events, profiles, slug_bindings=bindings)
+        self.assertEqual(review.change_count(), 1)
+        self.assertEqual(review.changes[0].target_project, "financing-portal")
+
     def test_host_signals_are_ignored(self):
         profiles = [{"name": "financing-portal", "match_terms": ["ax-finans/financing-portal"]}]
         signals = [

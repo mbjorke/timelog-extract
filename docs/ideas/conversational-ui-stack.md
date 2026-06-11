@@ -59,7 +59,8 @@ the web view exists precisely for the moment an overlay is not enough.
 
 - The "Freelance Bridge" SaaS-middleware dashboard prototype as a product
   shape. Its visual language can be reused for the web view; its hosted
-  premise conflicts with private-first.
+  premise conflicts with private-first. Execution log and next slices for the
+  replacement work live in `freelance-bridge-planning-arc.md`.
 - Accounting-connector-first sequencing. Sync targets (Toggl first, Briox
   later) are downstream consumers of the review loop, and the review loop
   depends on intent capture (`specs/intent-capture.md`).

@@ -61,11 +61,14 @@ weaker auto-suggestion than a path leaf. See
    [--dry-run]` applies it (with backup, `match_terms` or `tracked_urls`),
    mirroring the trim flow.
 4. Automatic surfacing (modal wall): `status` shows a one-line warning when
-   unmapped anchors carry real activity and — on an interactive TTY — offers to
-   map them in place (questionary; `--no-anchor-nudge` opts out). `report`
-   prints a richer multi-line nudge listing the anchors. `status` alerts;
-   `report` explains. A React Ink overlay can replace the interactive surface
-   later without changing the data contract.
+   unmapped **activity anchors** (`dir` / `branch` / `label` only — not web
+   hosts) carry real activity and — on an interactive TTY — offers to map them
+   in place (questionary; `--no-anchor-nudge` opts out). `report` prints a
+   richer multi-line nudge listing those anchors. `status` alerts; `report`
+   explains. **`gittan review` owns interactive host → project mapping**; audit
+   batch plans may still propose `tracked_urls` via `top_signals`, but nudges
+   do not compete with review. A React Ink overlay can replace the interactive
+   surface later without changing the data contract.
 
 Out of scope here: the React Ink overlay; auto-mapping an anchor to an existing
 project (the plan/flow keep a human choice per anchor); per-source title
@@ -111,17 +114,17 @@ Feature: Activity anchor signal
     Then the event carries anchors.label "project beta home redesign"
     And a placeholder title "session" yields no label anchor
 
-  Scenario: Audit surfaces unanchored anchors of any kind
-    Given collected events carry an anchor value with no matching profile
+  Scenario: Audit surfaces unanchored signals of any kind
+    Given collected events carry a signal value with no matching profile
     When projects-audit runs
-    Then top_anchors includes that value with its kind and event count
+    Then top_signals includes that value with its kind, rule_type, and event count
     And that row is marked anchored=false
 
-  Scenario: Anchored value is flagged
-    Given a profile with a match_term that is a substring of an anchor value
-    And events carry that anchor value
+  Scenario: Anchored signal is flagged
+    Given a profile with a rule that already covers a signal value
+    And events carry that signal value
     When projects-audit runs
-    Then the top_anchors row for that value is marked anchored=true
+    Then the top_signals row for that value is marked anchored=true
 
   Scenario: Anchor plan proposes match_terms for unanchored anchors
     Given projects-audit reports an unanchored anchor "timelog-extract"
@@ -166,5 +169,7 @@ Feature: Activity anchor signal
 - `docs/specs/source-evidence-policy.md` — corroborating-context role.
 - `docs/ideas/triage-signal-examples.md` — why terminal events look weak in
   `detail` yet classify by directory, branch, or title.
-- `docs/ideas/fast-project-mapping-playbook.md` — the manual mapping flow a
-  `top_dirs`-driven suggestion would accelerate.
+- `docs/ideas/fast-project-mapping-playbook.md` — the manual mapping flow
+  `top_signals` accelerates.
+- `docs/ideas/freelance-bridge-planning-arc.md` — branch handoff, #1 unification
+  notes, and recommended next slices (#4 haystack, #2 plan executor, #3 nudge registry).

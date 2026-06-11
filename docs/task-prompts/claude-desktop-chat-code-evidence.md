@@ -55,6 +55,20 @@ The cache evicts oldest entries (same as Lovable `Cache_Data`): recent sessions
 reconstruct reliably; sessions from days/weeks ago may be gone. Git commits on
 `claude/<branch>` remain the durable long-range fallback.
 
+## Shared Electron-cache reader (build once, reuse)
+
+Claude Desktop and Lovable Desktop both use the Chromium "simple cache" with
+compressed HTTP bodies (Claude=zstd, Lovable=brotli). Factor the common parsing
+into one helper — e.g. `core/chromium_cache.py`:
+
+- `iter_cache_entries(cache_dir, key_substr)` → yields `(key, mtime, body_bytes)`
+  after parsing the simple-cache header and decoding brotli/zstd.
+- codecs imported lazily; missing codec → helper yields nothing (no crash).
+
+Each collector then only supplies its URL path (`/v1/sessions/.../events` here,
+Lovable's project paths there) and its field extraction. See
+`docs/task-prompts/lovable-cache-evidence.md`, which shares this reader.
+
 ## Task
 
 1. New `collectors/claude_desktop_events.py` (keep `ai_logs.py` under 500 lines):

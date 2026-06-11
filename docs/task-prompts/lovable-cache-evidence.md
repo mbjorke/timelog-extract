@@ -59,6 +59,16 @@ project title **with zero manual `gittan map` rounds for UUIDs**, and
 `edit_count` / `edits_24h` give per-project session intensity. Prefer this over
 the `tiba=` beacon when present.
 
+## Shared Electron-cache reader (build once, reuse)
+
+Lovable Desktop and Claude Desktop both use the Chromium "simple cache" with
+compressed HTTP bodies (Lovable=brotli, Claude=zstd). Use one shared helper —
+`core/chromium_cache.py` (`iter_cache_entries(cache_dir, key_substr)` →
+`(key, mtime, body_bytes)`, codecs imported lazily, missing codec = no-op). This
+collector supplies the Lovable URL paths and field extraction; the Claude Code
+spec (`docs/task-prompts/claude-desktop-chat-code-evidence.md`) reuses the same
+reader. Build the helper once, not per app.
+
 ## Task
 
 1. Add a cache-evidence path to `collectors/lovable_desktop.py`:

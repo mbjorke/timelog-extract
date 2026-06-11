@@ -70,6 +70,30 @@ def _anchors(**kinds) -> dict:
     return {kind: value for kind, value in kinds.items() if value}
 
 
+_CLAUDE_JSONL_SKIP_TYPES = frozenset(
+    {
+        "pr-link",
+        "queue-operation",
+        "file-history-snapshot",
+        "summary",
+        "progress",
+    }
+)
+
+
+def _claude_jsonl_is_noise(obj: dict, detail: str) -> bool:
+    """Drop system/jsonl rows that are not user-visible Claude work."""
+    typ = str(obj.get("type") or "").strip().lower()
+    if typ in _CLAUDE_JSONL_SKIP_TYPES:
+        return True
+    stripped = str(detail or "").strip().lower()
+    if stripped in {"", "log"}:
+        return True
+    if stripped == typ:
+        return True
+    return False
+
+
 def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
     results = []
     try:
@@ -126,6 +150,8 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
         dir_name = proj_dir.name.lower()
         for jsonl_file in proj_dir.glob("*.jsonl"):
             for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
+                if _claude_jsonl_is_noise(obj, detail):
+                    continue
                 branch = _branch_leaf(obj)
                 project = classify_project(f"{dir_name} {branch or ''} {detail}", profiles)
                 results.append(
@@ -194,7 +220,9 @@ def collect_claude_desktop(profiles, dt_from, dt_to, home, classify_project, mak
     sessions_dir = home / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
     if sessions_dir.exists():
         for jsonl_file in sessions_dir.glob("**/*.jsonl"):
-            for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
+            for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
+                if _claude_jsonl_is_noise(obj, detail):
+                    continue
                 project = classify_project(detail, profiles)
                 results.append(make_event("Claude Desktop", ts, detail, project))
     results.extend(

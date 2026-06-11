@@ -33,7 +33,7 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
         entry = {
             "timestamp": "2026-06-11T09:00:00Z",
             "cwd": cwd,
-            "message": {"content": "log"},
+            "message": {"content": "fix export regression"},
             "type": "user",
         }
         if branch is not None:
@@ -60,7 +60,7 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0]["anchors"]["dir"], "timelog-extract")
             # detail is untouched and carries no path/home/username segment
-            self.assertEqual(events[0]["detail"], "log")
+            self.assertEqual(events[0]["detail"], "fix export regression")
             self.assertNotIn("/", events[0]["anchors"]["dir"])
 
     def test_branch_anchor_drops_namespace_and_keeps_leaf(self) -> None:
@@ -116,6 +116,39 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
         self.assertIsNone(_meaningful_leaf("a1b2c3d4e5f60718293a4b5c6d7e8f90"))
         self.assertIsNone(_meaningful_leaf(""))
         self.assertIsNone(_meaningful_leaf(None))
+
+    def test_skips_pr_link_and_bare_log_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            proj_dir = home / ".claude" / "projects" / "-Users-mbjorke-timelog-extract"
+            proj_dir.mkdir(parents=True, exist_ok=True)
+            lines = [
+                {
+                    "timestamp": "2026-06-11T13:13:00Z",
+                    "cwd": "/Users/someone/timelog-extract",
+                    "type": "pr-link",
+                    "message": {"content": "log"},
+                },
+                {
+                    "timestamp": "2026-06-11T13:14:00Z",
+                    "cwd": "/Users/someone/timelog-extract",
+                    "type": "user",
+                    "message": {"content": "log"},
+                },
+                {
+                    "timestamp": "2026-06-11T13:15:00Z",
+                    "cwd": "/Users/someone/timelog-extract",
+                    "type": "user",
+                    "message": {"content": "review billing export"},
+                },
+            ]
+            (proj_dir / "session.jsonl").write_text(
+                "\n".join(json.dumps(row) for row in lines) + "\n",
+                encoding="utf-8",
+            )
+            events = self._collect(home)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["detail"], "review billing export")
 
 
 if __name__ == "__main__":

@@ -163,3 +163,22 @@ def build_project_reports_from_sessions(
             ).items():
                 reports[project][day]["hours"] += chunk
     return {project: dict(days) for project, days in reports.items()}
+
+
+def count_project_sessions_from_overall_days(
+    overall_days: Dict[str, Any],
+) -> Dict[str, int]:
+    """Count sessions per project from overall timeline (hours-only project_reports safe)."""
+    counts: dict[str, int] = defaultdict(int)
+    for day_data in overall_days.values():
+        for session in day_data.get("sessions", []):
+            if not isinstance(session, (list, tuple)) or len(session) < 3:
+                continue
+            _start_ts, _end_ts, session_events = session
+            projects = {
+                str(event.get("project") or "").strip() or "Uncategorized"
+                for event in session_events
+            }
+            for project in projects:
+                counts[project] += 1
+    return dict(counts)

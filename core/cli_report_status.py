@@ -297,13 +297,13 @@ def status(
     """Quick hours snapshot with project totals and session counts.
 
     Common use cases:
-    - Daily check (recommended default): `gittan status --today --additive --noise-profile strict --lovable-noise-profile balanced`
-    - Conservative reporting view: `gittan status --today --additive --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Daily check: `gittan status --today --additive` (default noise is lenient)
     - Strict totals per project: use `--additive` (project rows sum exactly to Total)
     """
     from collections import defaultdict
 
     from core.domain import session_duration_hours
+    from core.project_hours import count_project_sessions_from_overall_days
     from core.report_service import AI_SOURCES, run_timelog_report
     from outputs.cli_heroes import print_command_hero
     from rich import box
@@ -416,9 +416,12 @@ def status(
                 shown_project_sessions += proj_sessions
                 table.add_row(project_name, f"{proj_hours:.1f}h", str(proj_sessions))
         else:
+            session_counts = count_project_sessions_from_overall_days(report.overall_days)
             for project_name, days_data in report.project_reports.items():
-                proj_hours = sum(d["hours"] for d in days_data.values())
-                proj_sessions = sum(len(d["sessions"]) for d in days_data.values())
+                proj_hours = sum(d.get("hours", 0.0) for d in days_data.values())
+                proj_sessions = session_counts.get(project_name, 0)
+                if proj_sessions == 0:
+                    proj_sessions = sum(len(d.get("sessions", [])) for d in days_data.values())
                 if proj_hours > 0:
                     shown_project_hours += proj_hours
                     shown_project_sessions += proj_sessions
@@ -456,29 +459,17 @@ def status(
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         if anchor_nudge:
-            from core.anchor_nudge import (
-                run_interactive_anchor_flow,
-                should_prompt,
-                status_anchor_line,
-            )
+            from core.anchor_nudge import status_anchor_line
             from core.report_nudges import unanchored_anchors_for_report
 
             unmapped_anchors = unanchored_anchors_for_report(report)
             warn_line = status_anchor_line(unmapped_anchors)
             if warn_line:
+                # Interactive mapping lives in `gittan map`; status stays a read-only snapshot.
                 console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")
-                if should_prompt():
-                    import questionary
-
-                    if questionary.confirm("Map these anchors to projects now?", default=False).ask():
-                        run_interactive_anchor_flow(
-                            console, unmapped_anchors, report.profiles, options.projects_config
-                        )
-                else:
-                    console.print(
-                        f"[{STYLE_MUTED}]Run `gittan projects-audit --write-anchor-plan plan.json` "
-                        f"then `gittan projects-anchor -i plan.json`.[/{STYLE_MUTED}]"
-                    )
+                console.print(
+                    f"[{STYLE_MUTED}]Run `gittan map` to review and apply project mappings.[/{STYLE_MUTED}]"
+                )
         timelog_projects = sorted(
             {
                 str(event.get("project", "")).strip()

@@ -138,6 +138,27 @@ def aggregate_top_anchors(
     return counts.most_common(max(0, int(limit)))
 
 
+def is_junk_anchor_value(value: str) -> bool:
+    """True for anchor values that can never be a meaningful project mapping.
+
+    Dotfile leaves (``.claude``, ``.git``), values with trailing punctuation
+    from log parsing (``.gittan:``), and hash-like hex names (plugin cache or
+    tmp directories) are tool plumbing — suggesting them as match_terms is
+    noise, not signal.
+    """
+    text = str(value or "").strip().lower()
+    if not text:
+        return True
+    if text.startswith("."):
+        return True
+    if text.endswith((":", ";", ",")):
+        return True
+    compact = text.replace("-", "").replace("_", "")
+    if len(compact) >= 16 and all(c in "0123456789abcdef" for c in compact):
+        return True
+    return False
+
+
 def unanchored_top_anchors(
     events: list[dict[str, Any]],
     profiles: list[dict[str, Any]],
@@ -156,7 +177,7 @@ def unanchored_top_anchors(
     out: list[dict[str, Any]] = []
     for kind in kinds:
         for value, hits in aggregate_top_anchors(events, kind, limit=max(0, int(limit_per_kind))):
-            if hits < floor or is_value_anchored_by_profiles(value, profiles):
+            if hits < floor or is_junk_anchor_value(value) or is_value_anchored_by_profiles(value, profiles):
                 continue
             out.append({"kind": kind, "value": value, "hits": int(hits)})
     out.sort(key=lambda row: row["hits"], reverse=True)

@@ -163,6 +163,6 @@ def build_unanchored_anchors_nudge(report, *, min_hits: int = UNANCHORED_ANCHOR_
     return (
         f"Nudge: {len(anchors)} unmapped activity anchor"
         f"{'' if len(anchors) == 1 else 's'} with activity: {listed}. "
-        "Run `gittan projects-audit --write-anchor-plan plan.json`, edit project_name, "
-        "then `gittan projects-anchor -i plan.json`."
+        "Run `gittan map` to review and apply project mappings "
+        "(batch alternative: `gittan projects-audit --write-anchor-plan`)."
     )

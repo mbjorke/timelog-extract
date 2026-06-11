@@ -18,13 +18,37 @@ from core.projects_audit import (
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
     is_host_anchored_by_profiles,
+    is_junk_anchor_value,
     is_value_anchored_by_profiles,
+    unanchored_top_anchors,
 )
 
 
 class ProjectsAuditTests(unittest.TestCase):
     def setUp(self) -> None:
         self.runner = CliRunner()
+
+    def test_junk_anchor_values_rejected(self) -> None:
+        # Tool plumbing never qualifies as a project mapping suggestion.
+        self.assertTrue(is_junk_anchor_value(".claude"))
+        self.assertTrue(is_junk_anchor_value(".git"))
+        self.assertTrue(is_junk_anchor_value(".gittan:"))
+        self.assertTrue(is_junk_anchor_value("a5cda8b561bb6536e880481734199a568cb647f4"))
+        self.assertTrue(is_junk_anchor_value(""))
+        # Real project anchors pass.
+        self.assertFalse(is_junk_anchor_value("timelog-extract"))
+        self.assertFalse(is_junk_anchor_value("project-beta-dashboard"))
+
+    def test_unanchored_top_anchors_skips_junk_values(self) -> None:
+        events = [
+            {"source": "Cursor", "detail": "x", "anchors": {"dir": ".claude"}},
+            {"source": "Cursor", "detail": "x", "anchors": {"dir": ".claude"}},
+            {"source": "Cursor", "detail": "x", "anchors": {"dir": "project-gamma"}},
+        ]
+        out = unanchored_top_anchors(events, [], min_hits=1)
+        values = [row["value"] for row in out]
+        self.assertNotIn(".claude", values)
+        self.assertIn("project-gamma", values)
 
     def test_match_term_hits_substring(self) -> None:
         profiles = [

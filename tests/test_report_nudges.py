@@ -88,7 +88,7 @@ class UnanchoredAnchorsNudgeTests(unittest.TestCase):
         self.assertIsNotNone(text)
         assert text is not None
         self.assertIn("timelog-extract", text)
-        self.assertIn("projects-anchor", text)
+        self.assertIn("gittan map", text)
 
     def test_lists_unanchored_branch_and_label(self):
         events = (

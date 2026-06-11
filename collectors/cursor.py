@@ -122,8 +122,13 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                     if not workspace_path:
                         continue
                     project = classify_project(f"{workspace_path} {line}", profiles)
-                    detail = f"{Path(workspace_path).name} — {line.strip()[:90]}"
-                    results.append(make_event("Cursor", ts, detail, project))
+                    leaf = Path(workspace_path).name
+                    detail = f"{leaf} — {line.strip()[:90]}"
+                    results.append(
+                        make_event(
+                            "Cursor", ts, detail, project, context_dir=leaf.strip().lower() or None
+                        )
+                    )
         except OSError:
             continue
     return results
@@ -163,10 +168,13 @@ def collect_cursor_checkpoints(
             if p:
                 paths.append(str(p))
         wid = data.get("workspaceId")
+        workspace_leaf = None
         if wid:
             mapped = workspace_map.get(wid)
             if mapped:
                 paths.append(str(mapped))
+                # The workspace root is the project leaf; request-file paths are not.
+                workspace_leaf = Path(str(mapped)).name.strip().lower() or None
         hay = " ".join(paths)
         if not hay:
             continue
@@ -174,5 +182,5 @@ def collect_cursor_checkpoints(
         agent_id = str(data.get("agentRequestId", "")).split("-")[0][:8]
         label = Path(paths[0]).name if paths else "checkpoint"
         detail = f"checkpoint {agent_id}… — {label}"
-        results.append(make_event(source_name, ts, detail, project))
+        results.append(make_event(source_name, ts, detail, project, context_dir=workspace_leaf))
     return results

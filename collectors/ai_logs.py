@@ -19,6 +19,22 @@ def _cwd_leaf(obj) -> str | None:
     return leaf or None
 
 
+def _meaningful_leaf(name) -> str | None:
+    """Directory leaf that is useful as a match_term suggestion, else None.
+
+    Rejects hash-like names (some tools, e.g. Gemini CLI, name their per-project
+    tmp directory after a hash of the project path); such a value is noise as a
+    suggested match_term, not a human-meaningful project identifier.
+    """
+    leaf = str(name or "").strip().lower()
+    if not leaf:
+        return None
+    compact = leaf.replace("-", "").replace("_", "")
+    if len(compact) >= 16 and all(c in "0123456789abcdef" for c in compact):
+        return None
+    return leaf
+
+
 def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
     results = []
     try:
@@ -123,7 +139,15 @@ def collect_gemini_cli(profiles, dt_from, dt_to, home, classify_project, make_ev
             detail = str(content)[:70].replace("\n", " ")
             role = msg.get("type", "")
             project = classify_project(f"{proj_name} {detail}", profiles)
-            results.append(make_event("Gemini CLI", ts, f"[{role}] {detail}" if detail else "Gemini CLI", project))
+            results.append(
+                make_event(
+                    "Gemini CLI",
+                    ts,
+                    f"[{role}] {detail}" if detail else "Gemini CLI",
+                    project,
+                    context_dir=_meaningful_leaf(proj_name),
+                )
+            )
     return results
 
 

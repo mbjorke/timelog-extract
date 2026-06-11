@@ -53,7 +53,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "X",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -84,7 +84,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Gittan CLI",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -94,6 +94,40 @@ class CursorNoiseFilterTests(unittest.TestCase):
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Cursor")
             self.assertEqual(out[0]["project"], "Gittan CLI")
+
+    def test_cursor_event_carries_workspace_leaf_context_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "c" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 09:00:00 [info] editing src/api.ts "
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "X",
+                make_event=lambda source, ts, detail, project, context_dir=None: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                    "context_dir": context_dir,
+                },
+            )
+            self.assertEqual(len(out), 1)
+            # Privacy-safe leaf only — no /Users/<name>/ prefix.
+            self.assertEqual(out[0]["context_dir"], "timelog-extract")
 
     def test_skips_cursor_git_status_heartbeat_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -117,7 +151,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -148,7 +182,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -180,7 +214,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -212,7 +246,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,
@@ -245,7 +279,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "timelog-extract",
-                make_event=lambda source, ts, detail, project: {
+                make_event=lambda source, ts, detail, project, context_dir=None: {
                     "source": source,
                     "timestamp": ts,
                     "detail": detail,

@@ -11,7 +11,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.ai_logs import _cwd_leaf, collect_claude_code
+from collectors.ai_logs import _cwd_leaf, _meaningful_leaf, collect_claude_code
 
 
 def _make_event(source, ts, detail, project, context_dir=None):
@@ -63,6 +63,15 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
         self.assertIsNone(_cwd_leaf({"cwd": ""}))
         self.assertIsNone(_cwd_leaf({}))
         self.assertIsNone(_cwd_leaf("not-a-dict"))
+
+    def test_meaningful_leaf_rejects_hash_like_names(self) -> None:
+        # Real project leaf passes (even with a hyphen).
+        self.assertEqual(_meaningful_leaf("timelog-extract"), "timelog-extract")
+        self.assertEqual(_meaningful_leaf("akturo"), "akturo")
+        # Hash-like tmp dir names are rejected as noise.
+        self.assertIsNone(_meaningful_leaf("a1b2c3d4e5f60718293a4b5c6d7e8f90"))
+        self.assertIsNone(_meaningful_leaf(""))
+        self.assertIsNone(_meaningful_leaf(None))
 
 
 if __name__ == "__main__":

@@ -179,8 +179,14 @@ def collect_fork_logs(
                         if not workspace_path:
                             continue
                         project = classify_project(f"{workspace_path} {line}", profiles)
-                        detail = f"{Path(workspace_path).name} — {line.strip()[:90]}"
-                        results.append(make_event(source_name, ts, detail, project))
+                        leaf = Path(workspace_path).name
+                        detail = f"{leaf} — {line.strip()[:90]}"
+                        results.append(
+                            make_event(
+                                source_name, ts, detail, project,
+                                context_dir=leaf.strip().lower() or None,
+                            )
+                        )
             except OSError:
                 continue
     return results

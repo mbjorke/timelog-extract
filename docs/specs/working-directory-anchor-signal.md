@@ -39,9 +39,19 @@ terminal-tool analogue of the existing `top_hosts` suggestion for browser tools.
    `report` explains. A React Ink overlay can replace the interactive surface
    later without changing the data contract.
 
-Out of scope here: extending `context_dir` to Cursor/Gemini collectors
-(follow-up), the React Ink overlay, and auto-mapping a directory to an existing
-project (the plan/flow keep a human choice per directory).
+Collector coverage for `context_dir`:
+
+| Collector | Source of leaf | Notes |
+| --- | --- | --- |
+| Claude Code CLI | JSONL `cwd` basename | exact leaf |
+| Cursor | workspace folder basename | log + checkpoint paths |
+| Windsurf | workspace folder basename | shared `collect_fork_logs` |
+| Antigravity | workspace folder basename | shared `collect_fork_logs` |
+| Gemini CLI | per-project tmp dir name | guarded: hash-like names rejected |
+| Codex IDE | — | no working directory; signal is `thread_name` (title), excluded |
+
+Out of scope here: the React Ink overlay, and auto-mapping a directory to an
+existing project (the plan/flow keep a human choice per directory).
 
 ## Evidence role
 

@@ -8,13 +8,16 @@ from pathlib import Path
 
 from collectors.antigravity import collect_antigravity
 
-def _make_event(source, ts, detail, project):
-    return {
+def _make_event(source, ts, detail, project, context_dir=None):
+    event = {
         "source": source,
         "timestamp": ts,
         "detail": detail,
         "project": project,
     }
+    if context_dir:
+        event["context_dir"] = context_dir
+    return event
 
 
 class AntigravityCollectorTests(unittest.TestCase):

@@ -19,7 +19,10 @@ from collectors.vscode_fork import collect_fork_logs, make_noise_filter
 WINDSURF_APP_DIRS = ("Windsurf", "Windsurf - Next")
 
 _WINDSURF_NOISE = make_noise_filter(
-    strict=(
+    # Machine heartbeats, window/repo lifecycle, and connection churn fire on
+    # timers or window open whether or not the user is present — counting them
+    # fabricates hours, so they are filtered at ALL profiles (incl. lenient).
+    base_extra=(
         # Agent Client Protocol / Devin connection heartbeats (very high volume).
         "acp feature flags",
         "connecting to remote acp",
@@ -40,8 +43,9 @@ _WINDSURF_NOISE = make_noise_filter(
         "[codeium.windsurf]",
         "cannot register",
         "[diffzone]",
-        # Git/repository plumbing churn (attributes to the right project but the
-        # leaf path — a ref or lock — is not meaningful work evidence).
+        # Window/git/repository plumbing churn (attributes to the right project
+        # but a window open or ref/lock touch is not meaningful work evidence).
+        "window will load",
         "skipping acquiring lock for",
         "[model][openrepository]",
         "opened repository",

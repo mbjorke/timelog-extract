@@ -43,14 +43,14 @@ class WindsurfCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self._collect(Path(tmp)), [])
 
-    def test_keeps_window_load_activity(self):
+    def test_keeps_user_editing_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             self._write_log(
                 home,
                 "main.log",
                 [
-                    "2026-05-28 09:00:00.000 [info] WindsurfWindowsMainManager: Window will load "
+                    "2026-05-28 09:00:00.000 [info] editing src/api.ts "
                     "/Users/me/Workspace/Project/timelog-extract"
                 ],
             )
@@ -149,7 +149,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                 home,
                 "main.log",
                 [
-                    "[2026-05-28T09:15:00] WindsurfWindowsMainManager: Window will load "
+                    "[2026-05-28T09:15:00] editing src/api.ts "
                     "/Users/me/Workspace/Project/timelog-extract"
                 ],
             )
@@ -164,7 +164,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                 home,
                 "main.log",
                 [
-                    "2026-05-28 09:14:00.000 [info] WindsurfWindowsMainManager: Window will load "
+                    "2026-05-28 09:14:00.000 [info] editing src/api.ts "
                     "/Users/me/Workspace/Project/blueberry"
                 ],
                 app="Windsurf - Next",
@@ -173,7 +173,9 @@ class WindsurfCollectorTests(unittest.TestCase):
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["project"], "Blueberry")
 
-    def test_lenient_profile_keeps_acp_heartbeats(self):
+    def test_lenient_profile_also_skips_acp_heartbeats(self):
+        """Connection heartbeats fire on timers even when idle — they fabricate
+        hours and are dropped at every profile, including lenient."""
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             self._write_log(
@@ -184,7 +186,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                     "/Users/me/Workspace/Project/timelog-extract"
                 ],
             )
-            self.assertEqual(len(self._collect(home, noise_profile="lenient")), 1)
+            self.assertEqual(self._collect(home, noise_profile="lenient"), [])
 
 
 if __name__ == "__main__":

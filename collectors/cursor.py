@@ -12,26 +12,27 @@ from urllib.parse import unquote, urlparse
 def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> bool:
     text = (line or "").lower()
     # Frequent Cursor diagnostics that are operational noise, not user work intent.
+    # Machine heartbeats/pollers fire on timers for every open workspace whether or
+    # not the user is present — counting them fabricates hours, so they are filtered
+    # at ALL profiles (including lenient).
     base_markers = (
         "error getting submodules",
         "[error] enoent",
         "[error] enotempty",
         "file not found - git:/",
         "[git][revparse] unable to read file: enoent",
-    )
-    strict_markers = (
-        # Background heartbeats that can keep sessions alive without real work.
+        # Periodic git poller (every ~3 min per open workspace, even when idle).
         "git_status: true",
         "git_status: false",
+        "> git --git-dir ",
         "candidate index",
         "exthostsearch [cursorignore] internal filesearch start",
-        # IDE startup / repo churn — not user intent (default strict profile).
+        # IDE startup / repo churn — not user intent.
         "cursor_agent_exec.startup.workspace_paths",
         "[model][openrepository] opened repository",
         "bootstrapping repository index at",
         "skipping acquiring lock for",
         "[vscodediagnosticsexecutor] execute:",
-        "> git --git-dir ",
         "project config path",
         "claude project config path",
         "claude project local config path",
@@ -48,6 +49,28 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         "notgitrepository",
         "[worktreemanager]",
         "using worktrees root",
+        # Extension-host script runner (statusline/hook polling, fires many
+        # times per minute in ~/.claude and similar tool dirs).
+        "running script in directory:",
+        # Extension marketplace cache refresh — pure IDE plumbing.
+        "loadfrommarketplacesource",
+        # Config-path polling ("User config path:", "Claude user config path:").
+        "user config path:",
+        # Extension lifecycle (installs, updates, removal) and helper scripts.
+        "installing extension",
+        "extension is already requested to install",
+        "started downloading extension",
+        "extracted extension to",
+        "extension installed successfully",
+        "uninstalling extension",
+        "deleted marked for removal extension",
+        ".cursor/extensions",
+        "using tsserver from",
+        "using askpass script",
+        "canvas sdk mirror",
+    )
+    strict_markers = (
+        # Reserved: ambiguous signals to drop under strict but keep under lenient.
     )
     ultra_strict_markers = (
         # Reserved for future extra-aggressive filtering beyond strict.

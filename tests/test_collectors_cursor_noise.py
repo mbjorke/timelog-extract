@@ -141,7 +141,9 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
-    def test_lenient_profile_keeps_git_status_heartbeat_lines(self):
+    def test_lenient_profile_also_skips_git_status_heartbeat_lines(self):
+        """Machine pollers fire every ~3 min per open workspace even when idle —
+        they fabricate hours and are dropped at every profile, including lenient."""
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "d" * 32
@@ -166,7 +168,40 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 make_event=make_test_event,
                 noise_profile="lenient",
             )
-            self.assertEqual(len(out), 1)
+            self.assertEqual(out, [])
+
+    def test_skips_extension_host_script_runner_and_marketplace_lines(self):
+        """Statusline/hook script polling and marketplace cache refresh are IDE
+        plumbing that fires constantly — dropped at every profile."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "a1" * 16
+            self._write_workspace(home, wid, "/Users/me/.claude")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 19:56:52 [info] [2026-04-22T16:56:52.481Z] "
+                        "Running script in directory: /Users/me/.claude workspaceStorage/" + wid
+                    ),
+                    (
+                        "2026-04-22 20:31:31 [info] [2026-04-22T17:31:31.008Z] "
+                        "[info] loadFromMarketplaceSource workspaceStorage/" + wid
+                    ),
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "Uncategorized",
+                make_event=make_test_event,
+                noise_profile="lenient",
+            )
+            self.assertEqual(out, [])
 
     def test_ultra_strict_skips_vscode_diagnostics_executor_lines(self):
         with tempfile.TemporaryDirectory() as tmp:

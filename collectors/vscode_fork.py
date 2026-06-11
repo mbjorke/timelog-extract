@@ -35,6 +35,20 @@ SHARED_BASE_NOISE = (
     "file not found - git:/",
     "[git][revparse] unable to read file",
     "[git][gethead] failed",
+    # Extension lifecycle / IDE plumbing — fires on window open and background
+    # updates, never user work intent.
+    "installing extension",
+    "extension is already requested to install",
+    "started downloading extension",
+    "extracted extension to",
+    "extension installed successfully",
+    "uninstalling extension",
+    "deleted marked for removal extension",
+    "using tsserver from",
+    "using askpass script",
+    # Config-path polling ("User config path:", "Claude user config path:").
+    "user config path:",
+    "canvas sdk mirror",
 )
 
 

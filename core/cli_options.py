@@ -48,6 +48,7 @@ class TimelogRunOptions:
     only_project: Optional[str] = None
     customer: Optional[str] = None
     all_events: bool = False
+    compact: bool = False
     source_summary: bool = False
     weekly: bool = False
     narrative: bool = False
@@ -62,6 +63,7 @@ class TimelogRunOptions:
     calendar_names: Optional[str] = None
     github_user: Optional[str] = None
     output_format: str = "terminal"
+    map_prompt: bool = True
     quiet: bool = False
     json_file: Optional[str] = None
     report_html: Optional[str] = None

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-DEFAULT_NOISE_PROFILE = "strict"
+DEFAULT_NOISE_PROFILE = "lenient"
 DEFAULT_LOVABLE_NOISE_PROFILE = "balanced"
 
 NOISE_PROFILES = {"lenient", "strict", "ultra-strict"}

@@ -56,7 +56,11 @@ def report(
     include_uncategorized: Annotated[bool, typer.Option(help="Show uncategorized")] = False,
     only_project: Annotated[Optional[str], typer.Option(help="Filter by project")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
-    all_events: Annotated[bool, typer.Option(help="Verbose events")] = False,
+    all_events: Annotated[bool, typer.Option(help="Legacy alias (full session list is default).")] = False,
+    compact: Annotated[
+        bool,
+        typer.Option("--compact", help="Dense session tree: hide IDE log noise."),
+    ] = False,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
     weekly: Annotated[bool, typer.Option("--weekly", help="Add an ISO week × project hours pivot")] = False,
     narrative: Annotated[bool, typer.Option(help="Executive summary")] = False,
@@ -86,6 +90,13 @@ def report(
             help="Use one primary project per session in report breakdown so rows add up to total.",
         ),
     ] = False,
+    map_prompt: Annotated[
+        bool,
+        typer.Option(
+            "--map-prompt/--no-map-prompt",
+            help="After a terminal report, offer git-local project mapping suggestions (interactive TTY only).",
+        ),
+    ] = True,
     invoice_mode: Annotated[
         str,
         typer.Option(
@@ -103,12 +114,9 @@ def report(
     ] = None,
 ):
     """Build detailed local evidence reports for a selected timeframe.
-    Common use cases:
-    - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
-    - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
-    - Conservative reporting baseline: `gittan report --today --noise-profile ultra-strict --lovable-noise-profile strict`
-    - Additive breakdown in summary: add `--additive-summary`
-    - Invoice calibration against approved hours: add `--invoice-mode calibrated-a --invoice-ground-truth <path>`
+
+    Tips: `--compact` for a dense session tree; `--additive-summary` for one project per session;
+    `--invoice-mode calibrated-a --invoice-ground-truth <path>` for invoice reconciliation.
     """
     from core.report_cli import run_timelog_cli
 
@@ -143,6 +151,7 @@ def report(
             "only_project": only_project,
             "customer": customer,
             "all_events": all_events,
+            "compact": compact,
             "source_summary": source_summary,
             "weekly": weekly,
             "narrative": narrative,
@@ -164,6 +173,7 @@ def report(
             "additive_summary": additive_summary,
             "invoice_mode": invoice_mode,
             "invoice_ground_truth": invoice_ground_truth,
+            "map_prompt": map_prompt,
         },
     )
     run_timelog_cli(options)
@@ -276,17 +286,24 @@ def status(
         str,
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
+    anchor_nudge: Annotated[
+        bool,
+        typer.Option(
+            "--anchor-nudge/--no-anchor-nudge",
+            help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).",
+        ),
+    ] = True,
 ):
     """Quick hours snapshot with project totals and session counts.
 
     Common use cases:
-    - Daily check (recommended default): `gittan status --today --additive --noise-profile strict --lovable-noise-profile balanced`
-    - Conservative reporting view: `gittan status --today --additive --noise-profile ultra-strict --lovable-noise-profile strict`
+    - Daily check: `gittan status --today --additive` (default noise is lenient)
     - Strict totals per project: use `--additive` (project rows sum exactly to Total)
     """
     from collections import defaultdict
 
     from core.domain import session_duration_hours
+    from core.project_hours import count_project_sessions_from_overall_days
     from core.report_service import AI_SOURCES, run_timelog_report
     from outputs.cli_heroes import print_command_hero
     from rich import box
@@ -399,9 +416,12 @@ def status(
                 shown_project_sessions += proj_sessions
                 table.add_row(project_name, f"{proj_hours:.1f}h", str(proj_sessions))
         else:
+            session_counts = count_project_sessions_from_overall_days(report.overall_days)
             for project_name, days_data in report.project_reports.items():
-                proj_hours = sum(d["hours"] for d in days_data.values())
-                proj_sessions = sum(len(d["sessions"]) for d in days_data.values())
+                proj_hours = sum(d.get("hours", 0.0) for d in days_data.values())
+                proj_sessions = session_counts.get(project_name, 0)
+                if proj_sessions == 0:
+                    proj_sessions = sum(len(d.get("sessions", [])) for d in days_data.values())
                 if proj_hours > 0:
                     shown_project_hours += proj_hours
                     shown_project_sessions += proj_sessions
@@ -438,6 +458,18 @@ def status(
         nudge = build_unexplained_gap_nudge(report)
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
+        if anchor_nudge:
+            from core.anchor_nudge import status_anchor_line
+            from core.report_nudges import unanchored_anchors_for_report
+
+            unmapped_anchors = unanchored_anchors_for_report(report)
+            warn_line = status_anchor_line(unmapped_anchors)
+            if warn_line:
+                # Interactive mapping lives in `gittan map`; status stays a read-only snapshot.
+                console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")
+                console.print(
+                    f"[{STYLE_MUTED}]Run `gittan map` to review and apply project mappings.[/{STYLE_MUTED}]"
+                )
         timelog_projects = sorted(
             {
                 str(event.get("project", "")).strip()

@@ -6,9 +6,14 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
-from core.git_project_bootstrap import assess_match_terms_coverage, discover_git_project_hints
+from core.git_project_bootstrap import (
+    assess_config_git_coverage,
+    assess_match_terms_coverage,
+    discover_git_project_hints,
+)
 
 
 class GitProjectBootstrapTests(unittest.TestCase):
@@ -51,6 +56,36 @@ class GitProjectBootstrapTests(unittest.TestCase):
             )
             self.assertEqual(coverage.status, "ok")
             self.assertIn("acme-tools", coverage.detail)
+
+    def test_config_git_coverage_is_cwd_independent(self):
+        profiles = [
+            {
+                "name": "timelog-extract",
+                "match_terms": ["mbjorke/timelog-extract", "timelog-extract"],
+            },
+            {
+                "name": "remote-only",
+                "match_terms": ["mbjorke/landsbanken-faq-helper"],
+            },
+        ]
+        with mock.patch(
+            "core.git_project_bootstrap.collect_local_github_slugs_from_workspace",
+            return_value={"mbjorke/timelog-extract"},
+        ):
+            coverage = assess_config_git_coverage(profiles)
+        self.assertEqual(coverage.status, "warn")
+        self.assertIn("1/2", coverage.detail)
+        self.assertIn("mbjorke/landsbanken-faq-helper", coverage.suggested_terms)
+
+    def test_config_git_coverage_all_cloned_is_ok(self):
+        profiles = [{"name": "demo", "match_terms": ["mbjorke/demo"]}]
+        with mock.patch(
+            "core.git_project_bootstrap.collect_local_github_slugs_from_workspace",
+            return_value={"mbjorke/demo"},
+        ):
+            coverage = assess_config_git_coverage(profiles)
+        self.assertEqual(coverage.status, "ok")
+        self.assertIn("All 1 configured", coverage.detail)
 
 
 if __name__ == "__main__":

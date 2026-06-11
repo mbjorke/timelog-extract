@@ -292,7 +292,97 @@ def merge_repo_project_seeds(existing_payload: dict, seeds: list[RepoProjectSeed
     )
 
 
+def _workspace_scan_roots() -> list[Path]:
+    roots: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in (
+        Path.home() / "Workspace",
+        Path.home() / "Code",
+        Path.home() / "Projects",
+        Path.home() / "Developer",
+    ):
+        try:
+            resolved = candidate.expanduser().resolve()
+        except OSError:
+            continue
+        if resolved in seen or not resolved.is_dir():
+            continue
+        seen.add(resolved)
+        roots.append(resolved)
+    return roots
+
+
+def collect_local_github_slugs_from_workspace() -> set[str]:
+    """GitHub owner/repo slugs from local clones under common workspace roots."""
+    slugs: set[str] = set()
+    for root in _workspace_scan_roots():
+        for repo in discover_local_git_repos(root, max_depth=4, limit=None):
+            origin = _run_git(repo, "remote", "get-url", "origin")
+            parsed = parse_github_origin(origin)
+            if parsed is None:
+                continue
+            owner, repo_name = parsed
+            slugs.add(f"{owner.strip().lower()}/{repo_name.strip().lower()}")
+    return slugs
+
+
+def assess_config_git_coverage(profiles: list[dict]) -> MatchTermsCoverage:
+    """
+    Compare project-config GitHub slugs to local clones (workspace scan).
+
+    Cwd-independent — same result from ~/.gittan, a worktree, or any directory.
+    """
+    from core.github_slug_match import profile_match_term_github_slugs
+
+    configured: dict[str, str] = {}
+    for profile in profiles:
+        if profile.get("enabled") is False:
+            continue
+        name = str(profile.get("name") or "").strip()
+        for slug in profile_match_term_github_slugs(profile):
+            configured[slug] = name or slug
+
+    if not configured:
+        return MatchTermsCoverage("na", "No GitHub repo slugs in project config match_terms.", [])
+
+    local_slugs = collect_local_github_slugs_from_workspace()
+    configured_set = set(configured)
+    with_clone = configured_set & local_slugs
+    remote_only = sorted(configured_set - local_slugs)
+    unmapped_local = sorted(local_slugs - configured_set)
+    total = len(configured_set)
+    clone_count = len(with_clone)
+
+    if not remote_only and not unmapped_local:
+        return MatchTermsCoverage(
+            "ok",
+            f"All {total} configured repo slug(s) have local clones (workspace scan).",
+            [],
+        )
+
+    if not remote_only:
+        sample = ", ".join(unmapped_local[:3])
+        tail = f" (+{len(unmapped_local) - 3} more)" if len(unmapped_local) > 3 else ""
+        return MatchTermsCoverage(
+            "warn",
+            (
+                f"All {total} configured slugs have local clones; "
+                f"{len(unmapped_local)} local repo(s) not in config: {sample}{tail}."
+            ),
+            unmapped_local,
+        )
+
+    sample = ", ".join(remote_only[:3])
+    tail = f" (+{len(remote_only) - 3} more)" if len(remote_only) > 3 else ""
+    return MatchTermsCoverage(
+        "warn",
+        f"{clone_count}/{total} configured slugs have local clones; remote-only: {sample}{tail}.",
+        remote_only,
+    )
+
+
 def assess_match_terms_coverage(cwd: Path, profiles: list[dict]) -> MatchTermsCoverage:
+    """Cwd-based coverage for setup flows inside a single git repo."""
     hints = discover_git_project_hints(cwd)
     if hints is None:
         return MatchTermsCoverage("na", "Not inside a git repository.", [])

@@ -12,7 +12,8 @@ from rich.table import Table
 
 from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
 from collectors.toggl import toggl_source_enabled
-from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED
+from core.setup_github_env import probe_gh_cli_auth
+from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED, WARN_ICON
 
 
 def _format_github_users(users: list[str]) -> str:
@@ -67,13 +68,47 @@ def add_github_doctor_row(table: Table, gh_mode: str, github_user: str | None) -
             f"[{STYLE_MUTED}]Not configured ({gh_mode}); set --github-user or GITHUB_USER[/{STYLE_MUTED}]",
         )
     else:
-        token_note = "token present" if gh_token_present else "no token (public API limits apply)"
+        gh_cli = probe_gh_cli_auth()
+        if gh_token_present:
+            token_note = "token present"
+        elif gh_cli.authenticated:
+            token_note = (
+                "no GITHUB_TOKEN env var (gh CLI authenticated — "
+                "optional: export GITHUB_TOKEN=$(gh auth token))"
+            )
+        else:
+            token_note = "no token (public API limits apply; run `gh auth login` for private repos)"
         user_note = _format_github_users(gh_users)
         table.add_row(
             "GitHub Source",
             OK_ICON,
             f"[{STYLE_MUTED}]Enabled ({gh_mode}) for {user_note} — {token_note}{api_note}{warn_note}[/{STYLE_MUTED}]",
         )
+
+
+def add_gh_cli_doctor_row(table: Table) -> None:
+    """Append GitHub CLI (`gh`) auth status — optional but needed for private repo discovery."""
+    gh_cli = probe_gh_cli_auth()
+    if not gh_cli.installed:
+        table.add_row(
+            "GitHub CLI (gh)",
+            NA_ICON,
+            f"[{STYLE_MUTED}]Not installed (optional) — `brew install gh` for private repo listing[/{STYLE_MUTED}]",
+        )
+        return
+    if not gh_cli.authenticated:
+        table.add_row(
+            "GitHub CLI (gh)",
+            WARN_ICON,
+            f"[{STYLE_MUTED}]Installed but not logged in — run `gh auth login`[/{STYLE_MUTED}]",
+        )
+        return
+    login_note = f" as {gh_cli.login}" if gh_cli.login else ""
+    table.add_row(
+        "GitHub CLI (gh)",
+        OK_ICON,
+        f"[{STYLE_MUTED}]Authenticated{login_note}[/{STYLE_MUTED}]",
+    )
 
 
 def add_toggl_doctor_row(table: Table, toggl_source: str) -> None:

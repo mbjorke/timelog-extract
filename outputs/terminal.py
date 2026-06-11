@@ -11,6 +11,11 @@ from rich.text import Text
 from rich.tree import Tree
 
 from outputs.cli_heroes import print_command_hero
+from outputs.terminal_preview import (
+    format_event_detail,
+    pick_session_preview_events,
+    session_preview_omitted_summary,
+)
 from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
@@ -47,53 +52,6 @@ def _build_dynamic_legend(source_order: Sequence[str]) -> Text:
         if idx < len(source_order) - 1:
             legend.append("  ", style=STYLE_META)
     return legend
-
-
-def pick_session_preview_events(
-    session_events: Sequence[Dict[str, Any]],
-    source_order: Sequence[str],
-    max_lines: int = 5,
-) -> List[Dict[str, Any]]:
-    """
-    Pick up to max_lines events to print for a session: prefer at least one distinct
-    line per source (first chronological hit per source), then fill remaining slots
-    in time order with distinct project|detail markers.
-    """
-    ordered = sorted(session_events, key=lambda e: e["local_ts"])
-    sources_seen: List[str] = []
-    for ev in ordered:
-        if ev["source"] not in sources_seen:
-            sources_seen.append(ev["source"])
-    sources_by_order = sorted(
-        sources_seen,
-        key=lambda s: source_order.index(s) if s in source_order else 99,
-    )
-    markers = set()
-    picked: List[Dict[str, Any]] = []
-
-    def try_add(event: Dict[str, Any]) -> bool:
-        marker = f"{event['project']} | {event['detail']}"
-        if marker in markers:
-            return False
-        markers.add(marker)
-        picked.append(event)
-        return True
-
-    for src in sources_by_order:
-        if len(picked) >= max_lines:
-            break
-        for event in ordered:
-            if event["source"] != src:
-                continue
-            if try_add(event):
-                break
-
-    for event in ordered:
-        if len(picked) >= max_lines:
-            break
-        try_add(event)
-
-    return picked
 
 
 def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[str]):
@@ -273,10 +231,11 @@ def print_report(
 
             session_node = day_tree.add(session_text)
 
-            if getattr(args, "all_events", False):
-                display_events = session_events
+            use_compact = getattr(args, "compact", False) and not getattr(args, "all_events", False)
+            if use_compact:
+                display_events = pick_session_preview_events(session_events, source_order)
             else:
-                display_events = pick_session_preview_events(session_events, source_order, max_lines=5)
+                display_events = session_events
 
             for event in display_events:
                 src_color = get_source_color(event["source"])
@@ -284,17 +243,14 @@ def print_report(
                     (f"{event['local_ts'].strftime('%H:%M')} ", STYLE_POSITIVE),
                     (f"{_display_source_label(event['source'])} ", f"italic {src_color}"),
                     (f"{event['project']} ", STYLE_LABEL),
-                    (event["detail"], STYLE_META),
+                    (format_event_detail(event), STYLE_META),
                 )
                 session_node.add(event_line)
 
-            if not getattr(args, "all_events", False) and len(display_events) < len(session_events):
-                session_node.add(
-                    Text(
-                        f"… and {len(session_events) - len(display_events)} more",
-                        style=f"italic {STYLE_META}",
-                    )
-                )
+            if use_compact:
+                omitted = session_preview_omitted_summary(session_events, display_events)
+                if omitted:
+                    session_node.add(Text(omitted, style=f"italic {STYLE_META}"))
 
         console.print(day_tree)
 

@@ -3,7 +3,11 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from core.report_nudges import build_unexplained_gap_nudge
+from core.report_nudges import (
+    build_unanchored_anchors_nudge,
+    build_unexplained_gap_nudge,
+    unanchored_anchors_for_report,
+)
 
 
 class ReportNudgesTests(unittest.TestCase):
@@ -69,6 +73,45 @@ class ReportNudgesTests(unittest.TestCase):
         ]
         text = build_unexplained_gap_nudge(report, threshold_hours=1.5)
         self.assertIsNone(text)
+
+
+class UnanchoredAnchorsNudgeTests(unittest.TestCase):
+    def _report(self, events, profiles):
+        return SimpleNamespace(all_events=events, profiles=profiles)
+
+    def test_lists_unanchored_dir_above_min_hits(self):
+        events = [{"anchors": {"dir": "timelog-extract"}} for _ in range(30)]
+        report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
+        anchors = unanchored_anchors_for_report(report, min_hits=20)
+        self.assertEqual(anchors, [{"kind": "dir", "value": "timelog-extract", "hits": 30}])
+        text = build_unanchored_anchors_nudge(report, min_hits=20)
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertIn("timelog-extract", text)
+        self.assertIn("gittan map", text)
+
+    def test_lists_unanchored_branch_and_label(self):
+        events = (
+            [{"anchors": {"branch": "project-beta"}} for _ in range(25)]
+            + [{"anchors": {"label": "project beta redesign"}} for _ in range(22)]
+        )
+        report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
+        anchors = unanchored_anchors_for_report(report, min_hits=20)
+        kinds = {a["kind"]: a["value"] for a in anchors}
+        self.assertEqual(kinds, {"branch": "project-beta", "label": "project beta redesign"})
+        # Sorted by hits descending across kinds.
+        self.assertEqual(anchors[0]["kind"], "branch")
+
+    def test_anchored_dir_is_not_nudged(self):
+        events = [{"anchors": {"dir": "timelog-extract"}} for _ in range(30)]
+        report = self._report(events, [{"name": "gittan", "match_terms": ["timelog-extract"]}])
+        self.assertEqual(unanchored_anchors_for_report(report, min_hits=20), [])
+        self.assertIsNone(build_unanchored_anchors_nudge(report, min_hits=20))
+
+    def test_below_min_hits_is_not_nudged(self):
+        events = [{"anchors": {"dir": "timelog-extract"}} for _ in range(5)]
+        report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
+        self.assertEqual(unanchored_anchors_for_report(report, min_hits=20), [])
 
 
 if __name__ == "__main__":

@@ -1,10 +1,4 @@
-"""Interactive setup step: reconcile project -> customer mapping safely.
-
-This step is intentionally conservative and safe to run repeatedly:
-- It does not invent match_terms.
-- It only updates identity/billing fields (customer/default_client/project_id/canonical_project)
-  when the user explicitly confirms.
-"""
+"""Setup step: evidence mapping (Lovable/titles/repos) then customer->project identity."""
 
 from __future__ import annotations
 
@@ -16,6 +10,7 @@ import questionary
 from rich.panel import Panel
 
 from core.config import backup_projects_config_if_exists, load_projects_config_payload, save_projects_config_payload
+from core.mapping_assistant import reload_projects_after_evidence_mapping
 from core.setup_project_identity_candidates import print_customer_candidates_table
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
@@ -398,9 +393,8 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     if not projects:
         return "No projects"
 
-    console.print("")
+    console.print()
     print_command_hero(console, "setup:project-mapping")
-    console.print("")
     console.print(f"[{STYLE_LABEL}]Project mapping setup[/]")
     console.print(f"[{STYLE_MUTED}]Nothing is saved without your approval.[/]")
     proceed = questionary.select(
@@ -414,6 +408,8 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     if proceed == "Skip this step" or not proceed:
         console.print(f"[{STYLE_MUTED}]Skipped this step.[/]")
         return "Skip this step"
+
+    projects = reload_projects_after_evidence_mapping(console, config_path=config_path, dry_run=dry_run)
 
     collisions = _detect_customer_slug_collisions(projects)
     if collisions:

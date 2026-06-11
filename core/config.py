@@ -366,6 +366,8 @@ def apply_rule_to_project(
     project_name: str,
     rule_type: str,
     rule_value: str,
+    customer: str | None = None,
+    invoice_title: str | None = None,
 ) -> tuple[str, str, bool]:
     cleaned_name = str(project_name).strip()
     if not cleaned_name:
@@ -391,18 +393,23 @@ def apply_rule_to_project(
     created = False
     if target is None:
         created = True
+        cleaned_customer = str(customer or "").strip() or cleaned_name
+        cleaned_title = str(invoice_title or "").strip()
+        alias_values = [cleaned_name]
+        if cleaned_title and cleaned_title.lower() != cleaned_name.lower():
+            alias_values.append(cleaned_title)
         target = {
             "name": cleaned_name,
             "project_id": cleaned_name,
-            "customer": cleaned_name,
+            "customer": cleaned_customer,
             "ticket_mode": "optional",
-            "default_client": cleaned_name,
+            "default_client": cleaned_customer,
             "match_terms": [cleaned_name],
             "tracked_urls": [],
             "canonical_project": cleaned_name,
-            "aliases": [cleaned_name],
+            "aliases": alias_values,
             "email": "",
-            "invoice_title": "",
+            "invoice_title": cleaned_title,
             "invoice_description": "",
             "enabled": True,
         }

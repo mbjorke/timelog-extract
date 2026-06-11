@@ -21,19 +21,63 @@ def dedupe_events(events, event_key_fn):
     return sorted(unique.values(), key=lambda e: e["timestamp"])
 
 
-def make_event(source, ts, detail, project, uncategorized):
-    return {
+def make_event(source, ts, detail, project, uncategorized, anchors=None):
+    event = {
         "source": source,
         "timestamp": ts,
         "detail": detail,
         "project": project or uncategorized,
     }
+    # Namespaced corroborating-context metadata: a {kind: value} map of activity
+    # anchors (working directory, git branch, session title) that classification
+    # already uses, preserved for audit/suggestion. Never the primary detail.
+    # See docs/specs/working-directory-anchor-signal.md.
+    clean = {
+        str(kind): str(value).strip().lower()
+        for kind, value in (anchors or {}).items()
+        if kind and value and str(value).strip()
+    }
+    if clean:
+        event["anchors"] = clean
+    return event
+
+
+def event_anchors(event) -> dict:
+    """The {kind: value} anchor map for an event (empty dict if none)."""
+    anchors = event.get("anchors") if isinstance(event, dict) else None
+    return anchors if isinstance(anchors, dict) else {}
+
+
+def event_anchor(event, kind: str):
+    """One anchor value for a given kind, or None."""
+    return event_anchors(event).get(kind)
+
+
+_LOVABLE_DESKTOP_SOURCE = "Lovable (desktop)"
+
+
+def is_always_included_event(event, uncategorized) -> bool:
+    """Evidence that must stay visible even when uncategorized rows are filtered out."""
+    if str(event.get("source") or "") == _LOVABLE_DESKTOP_SOURCE:
+        # Lovable desktop has no Chromium History on many installs; storage UUID signals
+        # are the only mapping surface for new projects — hiding them breaks review.
+        return True
+    # Session titles (label anchors) are primary mapping signals for chat tools.
+    if str(event_anchors(event).get("label") or "").strip():
+        return True
+    return False
 
 
 def filter_included_events(all_events, args, profiles, uncategorized):
-    included_events = all_events if args.include_uncategorized else [
-        event for event in all_events if event["project"] != uncategorized
-    ]
+    included_events = (
+        all_events
+        if args.include_uncategorized
+        else [
+            event
+            for event in all_events
+            if event["project"] != uncategorized or is_always_included_event(event, uncategorized)
+        ]
+    )
     if args.only_project:
         only = args.only_project.strip()
         included_events = [e for e in included_events if e["project"] == only]

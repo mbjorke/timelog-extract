@@ -1,0 +1,266 @@
+"""Cursor composer session titles from local state.vscdb (activity anchor: label)."""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable
+
+from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
+
+SOURCE_NAME = "Cursor"
+_COMPOSER_HEADERS_KEY = "composer.composerHeaders"
+# Stay below default session gap (15 min in core.domain.compute_sessions).
+_COMPOSER_HEARTBEAT_MINUTES = 14
+# Threads older than this when touched in-window emit a point event, not full span.
+_COMPOSER_STALE_REVIVAL_MS = 24 * 60 * 60 * 1000
+
+
+def cursor_state_db_path(home: Path) -> Path:
+    return home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+
+
+def _composer_created_ms(composer: dict) -> int | None:
+    raw = composer.get("createdAt")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _composer_end_ms(composer: dict) -> int | None:
+    best: int | None = None
+    for key in ("lastUpdatedAt", "conversationCheckpointLastUpdatedAt"):
+        raw = composer.get(key)
+        if raw is None:
+            continue
+        try:
+            ms = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if best is None or ms > best:
+            best = ms
+    return best
+
+
+def _composer_activity_span_ms(
+    composer: dict,
+    dt_from: datetime,
+    dt_to: datetime,
+) -> tuple[int, int] | None:
+    end_ms = _composer_end_ms(composer)
+    if end_ms is None:
+        return None
+    created_ms = _composer_created_ms(composer)
+    if created_ms is None:
+        created_ms = end_ms
+    if end_ms < created_ms:
+        created_ms, end_ms = end_ms, created_ms
+
+    from_ms = int(dt_from.timestamp() * 1000)
+    to_ms = int(dt_to.timestamp() * 1000)
+    if not (from_ms <= end_ms <= to_ms):
+        return None
+
+    if created_ms < from_ms:
+        if end_ms - created_ms > _COMPOSER_STALE_REVIVAL_MS:
+            return end_ms, end_ms
+        start_ms = from_ms
+    else:
+        start_ms = created_ms
+
+    if end_ms < start_ms:
+        start_ms = end_ms
+    return start_ms, end_ms
+
+
+def _composer_span_overlaps_window(
+    start_ms: int,
+    end_ms: int,
+    dt_from: datetime,
+    dt_to: datetime,
+) -> bool:
+    try:
+        start_ts = datetime.fromtimestamp(start_ms / 1000.0, tz=timezone.utc)
+        end_ts = datetime.fromtimestamp(end_ms / 1000.0, tz=timezone.utc)
+    except (OSError, OverflowError, ValueError):
+        return False
+    return start_ts <= dt_to and end_ts >= dt_from
+
+
+def _composer_heartbeat_timestamps_ms(start_ms: int, end_ms: int) -> list[int]:
+    """Sample timestamps across an active composer span for session duration math."""
+    if end_ms <= start_ms:
+        return [start_ms]
+    step_ms = _COMPOSER_HEARTBEAT_MINUTES * 60 * 1000
+    stamps = [start_ms]
+    cursor = start_ms + step_ms
+    while cursor < end_ms:
+        stamps.append(cursor)
+        cursor += step_ms
+    if stamps[-1] != end_ms:
+        stamps.append(end_ms)
+    return stamps
+
+
+def _uri_fs_path(block: dict | None) -> str:
+    if not isinstance(block, dict):
+        return ""
+    env = block.get("environment")
+    if not isinstance(env, dict):
+        env = block
+    uri = env.get("uri")
+    if not isinstance(uri, dict):
+        return ""
+    return str(uri.get("fsPath") or uri.get("path") or "").strip()
+
+
+def _composer_workspace_path(composer: dict) -> str:
+    for key in ("workspaceIdentifier", "agentLocation"):
+        path = _uri_fs_path(composer.get(key))
+        if path:
+            return path
+    history = composer.get("agentLocationHistory")
+    if isinstance(history, list):
+        for entry in reversed(history):
+            if not isinstance(entry, dict):
+                continue
+            location = entry.get("location")
+            path = _uri_fs_path(location if isinstance(location, dict) else None)
+            if path:
+                return path
+    return ""
+
+
+def _composer_git_context(composer: dict) -> tuple[str, str | None]:
+    """Repo paths, branch names for classify haystack, and latest branch leaf anchor."""
+    parts: list[str] = []
+    branch_anchor: str | None = None
+    latest_ms = -1
+    for repo in composer.get("trackedGitRepos") or []:
+        if not isinstance(repo, dict):
+            continue
+        repo_path = str(repo.get("repoPath") or "").strip()
+        if repo_path:
+            parts.append(repo_path)
+            parts.append(Path(repo_path).name)
+        for branch in repo.get("branches") or []:
+            if not isinstance(branch, dict):
+                continue
+            name = str(branch.get("branchName") or "").strip()
+            if not name:
+                continue
+            parts.append(name)
+            try:
+                ms = int(branch.get("lastInteractionAt") or -1)
+            except (TypeError, ValueError):
+                ms = -1
+            if ms < latest_ms:
+                continue
+            latest_ms = ms
+            leaf = name.rsplit("/", 1)[-1].strip().lower()
+            if leaf and leaf not in _GENERIC_BRANCHES:
+                branch_anchor = leaf
+    return " ".join(parts), branch_anchor
+
+
+def _path_dir_leaf(path: str) -> str | None:
+    leaf = Path(path).name.strip().lower()
+    return leaf or None
+
+
+def _composer_classification_haystack(composer: dict, *, title: str) -> str:
+    workspace = _composer_workspace_path(composer)
+    git_text, _branch = _composer_git_context(composer)
+    return " ".join(part for part in (title, workspace, git_text) if part)
+
+
+def _read_composer_headers(db_path: Path) -> list[dict]:
+    if not db_path.is_file():
+        return []
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        row = conn.execute(
+            "SELECT value FROM ItemTable WHERE key = ?",
+            (_COMPOSER_HEADERS_KEY,),
+        ).fetchone()
+        conn.close()
+    except sqlite3.Error:
+        return []
+    if not row or not row[0]:
+        return []
+    try:
+        payload = json.loads(row[0])
+    except json.JSONDecodeError:
+        return []
+    composers = payload.get("allComposers")
+    return composers if isinstance(composers, list) else []
+
+
+def collect_cursor_composer_sessions(
+    profiles,
+    dt_from,
+    dt_to,
+    home: Path,
+    classify_project: Callable,
+    make_event: Callable,
+):
+    """Emit heartbeat events across each composer span (createdAt → lastUpdatedAt)."""
+    best_by_id: dict[str, tuple[int, int, dict]] = {}
+    for composer in _read_composer_headers(cursor_state_db_path(home)):
+        if not isinstance(composer, dict):
+            continue
+        composer_id = str(composer.get("composerId") or "").strip()
+        if not composer_id:
+            continue
+        span = _composer_activity_span_ms(composer, dt_from, dt_to)
+        if span is None:
+            continue
+        start_ms, end_ms = span
+        if not _composer_span_overlaps_window(start_ms, end_ms, dt_from, dt_to):
+            continue
+        prev = best_by_id.get(composer_id)
+        if prev is None or end_ms >= prev[1]:
+            best_by_id[composer_id] = (start_ms, end_ms, composer)
+
+    results = []
+    for start_ms, end_ms, composer in best_by_id.values():
+        name = str(composer.get("name") or "").strip()
+        workspace = _composer_workspace_path(composer)
+        _git_text, branch = _composer_git_context(composer)
+        dir_leaf = _path_dir_leaf(workspace) if workspace else None
+        label = _meaningful_label(name) or dir_leaf
+        if not label:
+            continue
+        haystack = _composer_classification_haystack(composer, title=name)
+        project = classify_project(haystack, profiles)
+        detail = name[:70] if name else label[:70]
+        context_bits: list[str] = []
+        if dir_leaf and dir_leaf.lower() not in detail.lower():
+            context_bits.append(dir_leaf)
+        if branch and branch.lower() not in detail.lower():
+            context_bits.append(f"@{branch}")
+        if context_bits:
+            detail = f"{detail} · {' · '.join(context_bits)}"[:100]
+        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        for ms in _composer_heartbeat_timestamps_ms(start_ms, end_ms):
+            try:
+                ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+            except (OSError, OverflowError, ValueError):
+                continue
+            if not (dt_from <= ts <= dt_to):
+                continue
+            results.append(
+                make_event(
+                    SOURCE_NAME,
+                    ts,
+                    detail,
+                    project,
+                    anchors=anchors,
+                )
+            )
+    return results

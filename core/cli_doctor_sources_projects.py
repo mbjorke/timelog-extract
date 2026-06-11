@@ -26,11 +26,14 @@ from core.config import (
     projects_config_resolution_warnings,
     resolve_worklog_path,
 )
-from core.git_project_bootstrap import assess_match_terms_coverage
+from core.git_project_bootstrap import assess_config_git_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
-from core.doctor_source_rows import add_github_doctor_row, add_toggl_doctor_row
-from collectors.lovable_desktop import lovable_desktop_history_candidates
+from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_toggl_doctor_row
+from collectors.lovable_desktop import (
+    lovable_desktop_has_storage_signals,
+    lovable_desktop_history_candidates,
+)
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
@@ -194,7 +197,7 @@ def doctor(
                 worklog_ok = False
         else:
             worklog_ok = check_file(worklog_path, "Worklog (Local)")
-        coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
+        coverage = assess_config_git_coverage(_profiles)
         coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
         coverage_detail = coverage.detail
         if coverage.status == "warn" and coverage.suggested_terms:
@@ -206,6 +209,12 @@ def doctor(
         lh = lovable_desktop_history_candidates(home)
         if lh:
             check_db(lh[0], "Lovable Desktop History", "urls")
+        elif lovable_desktop_has_storage_signals(home):
+            table.add_row(
+                "Lovable Desktop",
+                OK_ICON,
+                f"[{STYLE_MUTED}]No History DB; collecting via storage signals[/{STYLE_MUTED}]",
+            )
         else:
             table.add_row(
                 "Lovable Desktop History",
@@ -290,6 +299,7 @@ def doctor(
             style_muted=STYLE_MUTED,
         )
 
+        add_gh_cli_doctor_row(table)
         add_github_doctor_row(table, gh_mode, github_user)
         add_toggl_doctor_row(table, toggl_source)
     console.print(table)

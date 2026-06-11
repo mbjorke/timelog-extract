@@ -6,6 +6,7 @@ import os
 import shlex
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +68,24 @@ def _gh_read_token() -> str:
     except subprocess.TimeoutExpired:
         return ""
     return cp.stdout.strip() if cp.returncode == 0 else ""
+
+
+@dataclass(frozen=True)
+class GhCliAuthStatus:
+    installed: bool
+    authenticated: bool
+    login: str = ""
+
+
+def probe_gh_cli_auth() -> GhCliAuthStatus:
+    """Best-effort gh auth probe for doctor / setup hints (no network beyond gh subprocess)."""
+    if not shutil.which("gh"):
+        return GhCliAuthStatus(installed=False, authenticated=False)
+    token = _gh_read_token()
+    if not token:
+        return GhCliAuthStatus(installed=True, authenticated=False)
+    login = _gh_read_user()
+    return GhCliAuthStatus(installed=True, authenticated=True, login=login)
 
 
 def _gh_read_user() -> str:

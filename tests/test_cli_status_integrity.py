@@ -177,6 +177,38 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertNotIn("Mapping suggestions", r.output)
         self.assertNotIn("consider adding tracked_urls", r.output)
 
+    def test_status_renders_hours_only_project_reports(self):
+        start = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 6, 11, 9, 0, tzinfo=timezone.utc)
+        report = _FakeReport(
+            project_reports={
+                "timelog-extract": {"2026-06-11": {"hours": 2.0}},
+                "financing-portal": {"2026-06-11": {"hours": 0.5}},
+            },
+            overall_days={
+                "2026-06-11": {
+                    "hours": 2.5,
+                    "sessions": [
+                        (
+                            start,
+                            end,
+                            [
+                                {"project": "timelog-extract", "source": "Cursor"},
+                                {"project": "financing-portal", "source": "Chrome"},
+                            ],
+                        ),
+                    ],
+                }
+            },
+            included_events=[{"project": "timelog-extract"}],
+        )
+        with patch("core.report_service.run_timelog_report", return_value=report):
+            r = self.runner.invoke(app, ["status", "--today"])
+        self.assertEqual(r.exit_code, 0, msg=r.output)
+        self.assertNotIn("Error fetching status", r.output)
+        self.assertIn("timelog-extract", r.output)
+        self.assertIn("2.0h", r.output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 # Specs implementation status
 
 Status: active tracker  
-Last updated: 2026-06-01
+Last updated: 2026-06-11
 
 ## Purpose
 
@@ -32,6 +32,8 @@ Keep one fast, shared view of which specs are built, partially built, or still p
 | `docs/specs/timelog-health-monitor.md`                 | `not started`  | Draft spec for central worklog health and a future macOS menu bar counter.                                                      |
 | `docs/specs/local-evidence-shadow-log.md`              | `not started`  | Draft spec for opt-in local retained evidence when upstream logs rotate or disappear.                                           |
 | `docs/specs/repo-agent-skills.md`                      | `partial`      | First skills materialized in `docs/skills/` (`gittan-product-owner`, `gittan-source-collector`) with thin Cursor + Claude wrappers; remaining candidates (health, shadow-log, calendar, docs-foundation) not started. |
+| `docs/specs/intent-capture.md`                         | `not started`  | Draft spec for recording user intention (hashed URL → project) at moment of work; record contract only, capture surfaces downstream. |
+| `docs/specs/working-directory-anchor-signal.md`        | `built`        | Generalized to a multi-kind **activity anchor** model: events carry an `anchors` map — `dir` (Claude Code/Cursor/Windsurf/Antigravity/Gemini CLI), `branch` (Claude Code `gitBranch`), `label` (Codex `thread_name`). `projects-audit` emits unified **`top_signals`** (schema v2; `rule_type` per row) + `--write-anchor-plan`; `projects-anchor` applies `match_terms` and `tracked_urls`. Nudges: anchor kinds only; hosts stay on `gittan review` (see `docs/ideas/freelance-bridge-planning-arc.md`). Tests: `test_collectors_claude_code_context_dir.py`, `test_projects_audit.py`, `test_report_nudges.py`, `test_anchor_nudge.py`. Next slices: haystack from `anchors+detail` (#4), unified trim/anchor plan executor (#2), nudge registry (#3). |
 
 
 ## Update routine

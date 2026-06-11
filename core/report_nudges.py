@@ -5,12 +5,15 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
+from core.projects_audit import ANCHOR_KIND_LABELS, unanchored_top_anchors
 
 # MVP default: nudge when unexplained gap exceeds one focused session.
 UNEXPLAINED_GAP_NUDGE_THRESHOLD_HOURS = 1.5
 UNCATEGORIZED_NUDGE_THRESHOLD_HOURS = 2.0
 UNCATEGORIZED_NUDGE_THRESHOLD_RATIO = 0.35
 UNCATEGORIZED_NOISE_SUPPRESSION_RATIO = 0.8
+# Nudge about an unmapped activity anchor once it accounts for real activity.
+UNANCHORED_ANCHOR_NUDGE_MIN_HITS = 20
 _TRIAGE_NOISE_DOMAINS = {"cursor.com", "cursor.sh"}
 _TRIAGE_NOISE_TITLE_MARKERS = (
     "canvas sdk mirror failed",
@@ -137,3 +140,29 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
             "Run `gittan review --last-week` to map URL hosts to projects."
         )
     return None
+
+
+def unanchored_anchors_for_report(report, *, min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS) -> list[dict]:
+    """Unmapped activity anchors (dir/branch/label) above min_hits for this report."""
+    events = list(getattr(report, "all_events", []) or [])
+    profiles = list(getattr(report, "profiles", []) or [])
+    if not events or not profiles:
+        return []
+    return unanchored_top_anchors(events, profiles, min_hits=min_hits)
+
+
+def build_unanchored_anchors_nudge(report, *, min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS) -> str | None:
+    """Multi-line nudge listing unmapped activity anchors (report surface)."""
+    anchors = unanchored_anchors_for_report(report, min_hits=min_hits)
+    if not anchors:
+        return None
+    listed = ", ".join(
+        f"{a['value']} ({ANCHOR_KIND_LABELS.get(a['kind'], a['kind'])}, {a['hits']})"
+        for a in anchors[:5]
+    )
+    return (
+        f"Nudge: {len(anchors)} unmapped activity anchor"
+        f"{'' if len(anchors) == 1 else 's'} with activity: {listed}. "
+        "Run `gittan map` to review and apply project mappings "
+        "(batch alternative: `gittan projects-audit --write-anchor-plan`)."
+    )

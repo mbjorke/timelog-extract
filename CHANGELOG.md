@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `projects-audit`: unified `top_hosts` and `top_anchors` into one **`top_signals`** model.
+  - Schema v2 row shape: `{kind, value, hits, anchored, rule_type}`.
+  - `kind=host` → `tracked_urls`; `kind=dir/branch/label` → `match_terms`.
+  - `--write-anchor-plan` emits `rule_type` per row; `projects-anchor` applies both rule types.
+- Classification: multi-kind **activity anchor** model on collector events.
+  - `anchors` map: `dir` (IDE cwd leaf), `branch` (Claude Code `gitBranch` leaf), `label` (Codex `thread_name`).
+  - Generic branches and placeholder titles rejected; Claude Code feeds branch into the classification haystack.
+  - `status`/`report` nudges: activity anchors only (`dir`/`branch`/`label`); web hosts stay on `gittan review`.
+  - Audit batch plans may still propose `tracked_urls` via `top_signals`.
+
 ## 0.2.18 - 2026-05-30
 
 - Sources: **Google Antigravity IDE** activity via shared VS Code-fork collector ([#127](https://github.com/mbjorke/timelog-extract/pull/127)).

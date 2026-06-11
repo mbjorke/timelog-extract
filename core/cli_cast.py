@@ -172,8 +172,11 @@ def _record_doctor(w: CastWriter) -> None:
 def _collect_doctor_rows() -> list[dict[str, str]]:
     """Run all doctor checks and return structured rows — no Rich output."""
     from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
-    from core.git_project_bootstrap import assess_match_terms_coverage
-    from collectors.lovable_desktop import lovable_desktop_history_candidates
+    from core.git_project_bootstrap import assess_config_git_coverage
+    from collectors.lovable_desktop import (
+        lovable_desktop_has_storage_signals,
+        lovable_desktop_history_candidates,
+    )
 
     home = Path.home()
     rows: list[dict[str, str]] = []
@@ -238,13 +241,15 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
         warn("Worklog (Local)", f"Not found: {worklog_path}")
 
     # Git match_terms coverage
-    coverage = assess_match_terms_coverage(Path.cwd(), _profiles)
+    coverage = assess_config_git_coverage(_profiles)
     if coverage.status == "ok":
         ok("Git match_terms coverage", coverage.detail)
+    elif coverage.status == "na":
+        warn("Git match_terms coverage", coverage.detail)
     else:
         detail = coverage.detail
-        if coverage.status == "warn" and getattr(coverage, "suggested_terms", None):
-            detail += f" Suggested: {', '.join(coverage.suggested_terms)}"
+        if coverage.suggested_terms:
+            detail += f" Remote-only: {', '.join(coverage.suggested_terms[:5])}"
         warn("Git match_terms coverage", detail)
 
     # Chrome History
@@ -257,6 +262,8 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     lh = lovable_desktop_history_candidates(home)
     if lh:
         _check_db(lh[0], "Lovable Desktop History", "urls")
+    elif lovable_desktop_has_storage_signals(home):
+        ok("Lovable Desktop", "No History DB; collecting via storage signals")
     else:
         warn("Lovable Desktop History", "No History DB yet (browse in Lovable to create one)")
 

@@ -13,6 +13,10 @@ from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE
 
 SOURCE_NAME = "Lovable (desktop)"
 _URL_RE = re.compile(rb"https://[^\s\x00\"']+", re.IGNORECASE)
+_LOVABLE_PROJECT_UUID_RE = re.compile(
+    r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
+    re.IGNORECASE,
+)
 
 
 def lovable_desktop_root(home: Path) -> Path:
@@ -70,6 +74,7 @@ def collect_lovable_desktop(
             home,
             classify_project,
             make_event,
+            collapse_minutes=collapse_minutes,
             lovable_noise_profile=lovable_noise_profile,
         )
 
@@ -92,6 +97,7 @@ def collect_lovable_desktop(
             home,
             classify_project,
             make_event,
+            collapse_minutes=collapse_minutes,
             lovable_noise_profile=lovable_noise_profile,
         )
 
@@ -140,6 +146,138 @@ def _extract_lovable_urls(raw: bytes) -> List[str]:
     return urls
 
 
+def _trim_lovable_url_blob_suffix(url: str) -> str:
+    """Drop LevelDB / Session Storage junk appended after the URL token."""
+    clean = "".join(ch for ch in (url or "") if ord(ch) >= 32).strip()
+    if "^" in clean:
+        clean = clean.split("^", 1)[0].rstrip(".,;)")
+    return clean
+
+
+def _lovable_project_uuid_key(url: str) -> str:
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except ValueError:
+        # Binary blob fragments can contain brackets etc. that break urlparse.
+        return ""
+    match = _LOVABLE_PROJECT_UUID_RE.search(host)
+    return match.group(1).lower() if match else ""
+
+
+def _storage_url_last_offset(raw: bytes, url: str) -> int:
+    key = _lovable_project_uuid_key(url) or _trim_lovable_url_blob_suffix(url)[:48]
+    if not key:
+        return -1
+    return raw.rfind(key.encode("ascii", "ignore"))
+
+
+def _storage_tail_min_offset(raw: bytes, *, tail_bytes: int = 768) -> int:
+    """Offsets below this are treated as historical cache, not the latest write."""
+    size = len(raw)
+    return max(0, size - max(128, int(tail_bytes)))
+
+
+def _synthetic_lovable_project_url(uuid: str) -> str:
+    return f"https://{uuid}.lovableproject.com/"
+
+
+# RudderStack (Lovable's telemetry SDK) stores queue keys like
+# "rudder_<writeKey>.<uuid>.ack/.reclaimStart/.reclaimEnd" in localStorage.
+# Those UUIDs are message/queue ids, not Lovable projects.
+_ANALYTICS_UUID_CONTEXT_MARKERS = ("rudder", ".ack", ".reclaim", "inprogress", "queue")
+
+
+def _is_analytics_uuid_context(text: str, start: int, end: int) -> bool:
+    # Queue markers usually precede the UUID (key before value), sometimes by a
+    # couple hundred bytes of serialized JSON — look further back than ahead.
+    window = text[max(0, start - 256):min(len(text), end + 40)].lower()
+    return any(marker in window for marker in _ANALYTICS_UUID_CONTEXT_MARKERS)
+
+
+def _format_lovable_storage_detail(project: str, canonical: str) -> str:
+    uuid = _lovable_project_uuid_key(canonical)
+    short = f"{uuid[:8]}…" if uuid else ""
+    project_name = str(project or "").strip()
+    if project_name and project_name != "Uncategorized":
+        lead = f"{project_name} ({short})" if short else project_name
+        return f"{lead} — {canonical}"
+    if short:
+        return f"unmapped Lovable ({short}) — map UUID via gittan map — {canonical}"
+    return f"storage signal — {canonical}"
+
+
+def _register_storage_uuid_candidate(
+    best_by_uuid: dict[str, tuple[int, int, str]],
+    *,
+    uuid: str,
+    offset: int,
+    url: str,
+) -> None:
+    prefer = 2 if ".lovableproject.com" in url.lower() else 1 if ".lovable.app" in url.lower() else 0
+    prev = best_by_uuid.get(uuid)
+    if prev is None or (offset, prefer) > (prev[0], prev[1]):
+        best_by_uuid[uuid] = (offset, prefer, url)
+
+
+def _known_lovable_project_uuids(profiles) -> set[str]:
+    known: set[str] = set()
+    for profile in profiles or []:
+        for term in list(profile.get("match_terms") or []) + list(profile.get("tracked_urls") or []):
+            match = _LOVABLE_PROJECT_UUID_RE.search(str(term))
+            if match:
+                known.add(match.group(1).lower())
+    return known
+
+
+def _pick_storage_urls_from_blob(
+    raw: bytes,
+    urls: List[str],
+    *,
+    limit: int,
+    tail_bytes: int = 768,
+    profiles=None,
+) -> List[str]:
+    """Keep project URLs from the tail of a storage blob (latest write), not stale cache rows."""
+    if limit <= 0:
+        return []
+    min_offset = _storage_tail_min_offset(raw, tail_bytes=tail_bytes)
+    best_by_uuid: dict[str, tuple[int, int, str]] = {}
+    for url in urls:
+        trimmed = _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+        if not trimmed or not _is_plausible_lovable_storage_url(trimmed):
+            continue
+        uuid = _lovable_project_uuid_key(trimmed)
+        if not uuid:
+            continue
+        offset = _storage_url_last_offset(raw, trimmed)
+        if offset < min_offset:
+            continue
+        _register_storage_uuid_candidate(best_by_uuid, uuid=uuid, offset=offset, url=trimmed)
+    # LevelDB often stores bare project UUIDs without an https:// prefix.
+    decoded = raw.decode("utf-8", "ignore")
+    for match in _LOVABLE_PROJECT_UUID_RE.finditer(decoded):
+        uuid = match.group(1).lower()
+        if _is_analytics_uuid_context(decoded, match.start(), match.end()):
+            continue
+        offset = raw.rfind(uuid.encode("ascii", "ignore"))
+        if offset < min_offset:
+            continue
+        _register_storage_uuid_candidate(
+            best_by_uuid,
+            uuid=uuid,
+            offset=offset,
+            url=_synthetic_lovable_project_url(uuid),
+        )
+    ranked = sorted(best_by_uuid.values(), key=lambda row: (row[0], row[1]), reverse=True)
+    picked = [url for _offset, _prefer, url in ranked]
+    known = _known_lovable_project_uuids(profiles)
+    if known:
+        tracked = [url for url in picked if _lovable_project_uuid_key(url) in known]
+        if tracked:
+            return tracked[:limit]
+    return picked[:limit]
+
+
 def _is_plausible_lovable_storage_url(url: str) -> bool:
     try:
         parsed = urlparse(url or "")
@@ -158,7 +296,8 @@ def _is_plausible_lovable_storage_url(url: str) -> bool:
 
 
 def _canonicalize_lovable_storage_url(url: str) -> str:
-    clean = "".join(ch for ch in (url or "") if ord(ch) >= 32).strip()
+    clean = _trim_lovable_url_blob_suffix(url)
+    clean = "".join(ch for ch in clean if ord(ch) >= 32).strip()
     try:
         parsed = urlparse(clean)
     except ValueError:
@@ -237,6 +376,36 @@ def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "
     return urls
 
 
+def _storage_event_score(event: dict) -> tuple[int, int, datetime]:
+    detail = str(event.get("detail") or "")
+    url = detail.split("—", 1)[-1].strip() if "—" in detail else detail
+    host_score = 2 if ".lovableproject.com" in url.lower() else 1 if ".lovable.app" in url.lower() else 0
+    uuid_len = len(_lovable_project_uuid_key(url))
+    return (host_score, uuid_len, event["timestamp"])
+
+
+def _pick_best_storage_event(group: list) -> dict:
+    return max(enumerate(group), key=lambda item: (_storage_event_score(item[1]), item[0]))[1]
+
+
+def _merge_storage_events(events: list, *, merge_seconds: int) -> list:
+    """Collapse bursts from many LevelDB files touched in the same Lovable session."""
+    if not events or merge_seconds <= 0:
+        return events
+    sorted_events = sorted(events, key=lambda event: event["timestamp"])
+    merged: list[dict] = []
+    group = [sorted_events[0]]
+    for event in sorted_events[1:]:
+        gap = (event["timestamp"] - group[-1]["timestamp"]).total_seconds()
+        if gap <= merge_seconds:
+            group.append(event)
+            continue
+        merged.append(_pick_best_storage_event(group))
+        group = [event]
+    merged.append(_pick_best_storage_event(group))
+    return merged
+
+
 def _collect_lovable_desktop_from_storage(
     profiles,
     dt_from,
@@ -244,13 +413,16 @@ def _collect_lovable_desktop_from_storage(
     home,
     classify_project: Callable,
     make_event: Callable,
+    collapse_minutes: int = 15,
     lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
     """Fallback when Chromium History is absent: derive Lovable activity signals from local/session storage blobs."""
     files = _storage_signal_files(home)
     results = []
     profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
-    per_file_limit = 20 if profile == "normal" else 8 if profile == "balanced" else 5
+    # One tail signal per file touch (balanced/strict): file mtime is shared by every
+    # cached UUID in the blob; emitting several rows mis-attributes stale projects.
+    per_file_limit = 3 if profile == "normal" else 1
     for path in files:
         try:
             ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
@@ -266,8 +438,11 @@ def _collect_lovable_desktop_from_storage(
             _extract_lovable_urls(raw),
             lovable_noise_profile=lovable_noise_profile,
         )
-        for url in urls[:per_file_limit]:
-            project = classify_project(url, profiles)
-            detail = f"storage signal — {url[:60]}"
+        for url in _pick_storage_urls_from_blob(raw, urls, limit=per_file_limit, profiles=profiles):
+            uuid = _lovable_project_uuid_key(url)
+            canonical = _synthetic_lovable_project_url(uuid) if uuid else url
+            project = classify_project(canonical, profiles)
+            detail = _format_lovable_storage_detail(project, canonical)
             results.append(make_event(SOURCE_NAME, ts, detail, project))
-    return results
+    merge_seconds = max(60, int(collapse_minutes or 15) * 60)
+    return _merge_storage_events(results, merge_seconds=merge_seconds)

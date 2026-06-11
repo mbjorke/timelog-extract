@@ -45,14 +45,23 @@ _HEROES: dict[str, tuple[list[str], str]] = {
         ],
         "local setup with clear approval points",
     ),
+    "map": (
+        [
+            "    __      Gittan Map",
+            "   /oo\\     Local git repos, remotes, and command activity.",
+            "   \\__/     Active clone wins over stale configured slugs.",
+            "  o    o    Nothing is saved without your approval.",
+        ],
+        "git-local bindings -> your project map",
+    ),
     "setup:project-mapping": (
         [
             "    __      Gittan Project Mapping",
-            "   /oo\\     Map discovered projects to your customer domains.",
-            "   \\__/     Confirm each mapping before anything is saved.",
-            "  o    o    Safe to rerun whenever your client list changes.",
+            "   /oo\\     Git remotes and local folders, then customers.",
+            "   \\__/     Activity dots follow last commit timestamps.",
+            "  o    o    Nothing is saved without your approval.",
         ],
-        "project mapping with explicit approval points",
+        "git bindings -> customer mapping",
     ),
     "setup-global-timelog": (
         [

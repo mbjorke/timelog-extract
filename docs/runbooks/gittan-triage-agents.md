@@ -9,7 +9,7 @@ Purpose: let **non-interactive agents** (Cursor, Claude, CI) map URL hosts to pr
 | --- | --- |
 | **Interactive URL → project mapping** | `gittan review` (date flags as needed) |
 | **Read-only URL candidates** (stdout JSON) | `gittan review --json` |
-| **Rule hit audit** (zero-hit terms, `top_hosts`) | `gittan projects-audit --json` |
+| **Rule hit audit** (zero-hit terms, unified `top_signals`) | `gittan projects-audit --json` |
 
 `gittan review --json` **never** writes config. Schema: `schema_version` `1`, `command` `"gittan review"`, `candidates[]` with `url_key`, `suggested_project`, confidence, impact (see `core/cli_triage_map_context.py`). `gittan triage-map` is a deprecated alias with the same behavior.
 

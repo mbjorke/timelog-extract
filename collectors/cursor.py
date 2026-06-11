@@ -4,34 +4,76 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+from collectors.cursor_composer import collect_cursor_composer_sessions
 from urllib.parse import unquote, urlparse
 
 
 def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> bool:
     text = (line or "").lower()
     # Frequent Cursor diagnostics that are operational noise, not user work intent.
+    # Machine heartbeats/pollers fire on timers for every open workspace whether or
+    # not the user is present — counting them fabricates hours, so they are filtered
+    # at ALL profiles (including lenient).
     base_markers = (
         "error getting submodules",
         "[error] enoent",
         "[error] enotempty",
         "file not found - git:/",
         "[git][revparse] unable to read file: enoent",
-    )
-    strict_markers = (
-        # Background heartbeats that can keep sessions alive without real work.
+        # Periodic git poller (every ~3 min per open workspace, even when idle).
         "git_status: true",
         "git_status: false",
+        "> git --git-dir ",
         "candidate index",
         "exthostsearch [cursorignore] internal filesearch start",
-    )
-    ultra_strict_markers = (
-        # Extra aggressive filtering for repository churn and diagnostics floods.
+        # IDE startup / repo churn — not user intent.
         "cursor_agent_exec.startup.workspace_paths",
         "[model][openrepository] opened repository",
         "bootstrapping repository index at",
         "skipping acquiring lock for",
         "[vscodediagnosticsexecutor] execute:",
-        "> git --git-dir ",
+        "project config path",
+        "claude project config path",
+        "claude project local config path",
+        "pygls.protocol",
+        "glassdiffservice",
+        "discover tests for workspace",
+        "revived process, old id",
+        "failed to handle request",
+        '"key":"agent_exec"',
+        "send text to terminal: source",
+        "active interpreter [global]",
+        "error executing git:",
+        "difftabcontent",
+        "notgitrepository",
+        "[worktreemanager]",
+        "using worktrees root",
+        # Extension-host script runner (statusline/hook polling, fires many
+        # times per minute in ~/.claude and similar tool dirs).
+        "running script in directory:",
+        # Extension marketplace cache refresh — pure IDE plumbing.
+        "loadfrommarketplacesource",
+        # Config-path polling ("User config path:", "Claude user config path:").
+        "user config path:",
+        # Extension lifecycle (installs, updates, removal) and helper scripts.
+        "installing extension",
+        "extension is already requested to install",
+        "started downloading extension",
+        "extracted extension to",
+        "extension installed successfully",
+        "uninstalling extension",
+        "deleted marked for removal extension",
+        ".cursor/extensions",
+        "using tsserver from",
+        "using askpass script",
+        "canvas sdk mirror",
+    )
+    strict_markers = (
+        # Reserved: ambiguous signals to drop under strict but keep under lenient.
+    )
+    ultra_strict_markers = (
+        # Reserved for future extra-aggressive filtering beyond strict.
     )
     profile = (noise_profile or "strict").strip().lower()
     markers = list(base_markers)
@@ -122,10 +164,22 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                     if not workspace_path:
                         continue
                     project = classify_project(f"{workspace_path} {line}", profiles)
-                    detail = f"{Path(workspace_path).name} — {line.strip()[:90]}"
-                    results.append(make_event("Cursor", ts, detail, project))
+                    leaf = Path(workspace_path).name
+                    detail = f"{leaf} — {line.strip()[:90]}"
+                    dir_leaf = leaf.strip().lower()
+                    results.append(
+                        make_event(
+                            "Cursor", ts, detail, project,
+                            anchors={"dir": dir_leaf} if dir_leaf else None,
+                        )
+                    )
         except OSError:
             continue
+    results.extend(
+        collect_cursor_composer_sessions(
+            profiles, dt_from, dt_to, home, classify_project, make_event
+        )
+    )
     return results
 
 
@@ -163,10 +217,13 @@ def collect_cursor_checkpoints(
             if p:
                 paths.append(str(p))
         wid = data.get("workspaceId")
+        workspace_leaf = None
         if wid:
             mapped = workspace_map.get(wid)
             if mapped:
                 paths.append(str(mapped))
+                # The workspace root is the project leaf; request-file paths are not.
+                workspace_leaf = Path(str(mapped)).name.strip().lower() or None
         hay = " ".join(paths)
         if not hay:
             continue
@@ -174,5 +231,10 @@ def collect_cursor_checkpoints(
         agent_id = str(data.get("agentRequestId", "")).split("-")[0][:8]
         label = Path(paths[0]).name if paths else "checkpoint"
         detail = f"checkpoint {agent_id}… — {label}"
-        results.append(make_event(source_name, ts, detail, project))
+        results.append(
+            make_event(
+                source_name, ts, detail, project,
+                anchors={"dir": workspace_leaf} if workspace_leaf else None,
+            )
+        )
     return results

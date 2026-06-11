@@ -8,6 +8,8 @@ from pathlib import Path
 
 from collectors.cursor import collect_cursor
 
+from tests.event_helpers import make_test_event
+
 
 class CursorNoiseFilterTests(unittest.TestCase):
     def _write_workspace(self, home: Path, wid: str, folder_path: str) -> None:
@@ -53,12 +55,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "X",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 
@@ -72,8 +69,8 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 09:00:00 [info] cursor_agent_exec.startup.workspace_paths "
-                        "{\"workspacePathCount\":1} workspaceStorage/" + wid
+                        "2026-04-22 09:00:00 [info] user saved src/api.ts "
+                        "workspaceStorage/" + wid
                     )
                 ],
             )
@@ -84,16 +81,39 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Gittan CLI",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Cursor")
             self.assertEqual(out[0]["project"], "Gittan CLI")
+
+    def test_cursor_event_carries_workspace_leaf_context_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "c" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 09:00:00 [info] editing src/api.ts "
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "X",
+                make_event=make_test_event,
+            )
+            self.assertEqual(len(out), 1)
+            # Privacy-safe leaf only — no /Users/<name>/ prefix.
+            self.assertEqual(out[0]["anchors"]["dir"], "timelog-extract")
 
     def test_skips_cursor_git_status_heartbeat_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -117,16 +137,13 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 
-    def test_lenient_profile_keeps_git_status_heartbeat_lines(self):
+    def test_lenient_profile_also_skips_git_status_heartbeat_lines(self):
+        """Machine pollers fire every ~3 min per open workspace even when idle —
+        they fabricate hours and are dropped at every profile, including lenient."""
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "d" * 32
@@ -148,15 +165,43 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="lenient",
             )
-            self.assertEqual(len(out), 1)
+            self.assertEqual(out, [])
+
+    def test_skips_extension_host_script_runner_and_marketplace_lines(self):
+        """Statusline/hook script polling and marketplace cache refresh are IDE
+        plumbing that fires constantly — dropped at every profile."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "a1" * 16
+            self._write_workspace(home, wid, "/Users/me/.claude")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 19:56:52 [info] [2026-04-22T16:56:52.481Z] "
+                        "Running script in directory: /Users/me/.claude workspaceStorage/" + wid
+                    ),
+                    (
+                        "2026-04-22 20:31:31 [info] [2026-04-22T17:31:31.008Z] "
+                        "[info] loadFromMarketplaceSource workspaceStorage/" + wid
+                    ),
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "Uncategorized",
+                make_event=make_test_event,
+                noise_profile="lenient",
+            )
+            self.assertEqual(out, [])
 
     def test_ultra_strict_skips_vscode_diagnostics_executor_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -180,17 +225,12 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="ultra-strict",
             )
             self.assertEqual(out, [])
 
-    def test_strict_keeps_vscode_diagnostics_executor_lines(self):
+    def test_strict_skips_vscode_diagnostics_executor_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "f" * 32
@@ -212,15 +252,40 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "Project Alpha",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
                 noise_profile="strict",
             )
-            self.assertEqual(len(out), 1)
+            self.assertEqual(out, [])
+
+    def test_strict_skips_hooks_and_git_churn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "9" * 32
+            self._write_workspace(home, wid, "/Users/me/ax-finans")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 07:08:18 [info] Project config path (ax-finans): "
+                        "/Users/me/ax-finans/.cursor/hooks.json workspaceStorage/" + wid
+                    ),
+                    (
+                        "2026-04-22 07:08:22 [info] > git --git-dir /Users/me/ax-finans/.git status "
+                        "workspaceStorage/" + wid
+                    ),
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "financing-portal",
+                make_event=make_test_event,
+            )
+            self.assertEqual(out, [])
 
     def test_skips_gittan_sync_artifact_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,12 +310,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 home=home,
                 local_tz=timezone.utc,
                 classify_project=lambda _hay, _profiles: "timelog-extract",
-                make_event=lambda source, ts, detail, project: {
-                    "source": source,
-                    "timestamp": ts,
-                    "detail": detail,
-                    "project": project,
-                },
+                make_event=make_test_event,
             )
             self.assertEqual(out, [])
 

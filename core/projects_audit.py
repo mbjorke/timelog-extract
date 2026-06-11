@@ -32,6 +32,13 @@ TOP_HOSTS_NOTE = (
     "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
 )
 
+TOP_DIRS_NOTE = (
+    "top_dirs: working-directory leaves (context_dir) from terminal collectors, counted once per "
+    "event, sorted by frequency. anchored=true if some profile already has a match_term that is a "
+    "substring of the directory leaf (the same substring rule classification uses). Unanchored, "
+    "high-hit directories are match_term suggestion candidates."
+)
+
 
 def extract_hosts_from_detail(detail: str) -> list[str]:
     hosts: list[str] = []
@@ -74,6 +81,34 @@ def is_host_anchored_by_profiles(host: str, profiles: list[dict[str, Any]]) -> b
             if event_matches_tracked_url(stub_detail, str(raw)):
                 return True
     return False
+
+
+def is_dir_anchored_by_profiles(dir_leaf: str, profiles: list[dict[str, Any]]) -> bool:
+    """True if any profile match_term is a substring of the directory leaf.
+
+    Mirrors how classification anchors a working directory: the leaf is part of
+    the haystack, so a match_term that is a substring of it would classify the
+    event. tracked_urls do not apply to directory leaves.
+    """
+    leaf = str(dir_leaf or "").strip().lower()
+    if not leaf:
+        return False
+    for profile in profiles:
+        for term in profile.get("match_terms") or []:
+            t = str(term).strip().lower()
+            if t and t in leaf:
+                return True
+    return False
+
+
+def aggregate_top_dirs(events: list[dict[str, Any]], *, limit: int) -> list[tuple[str, int]]:
+    """Count each working-directory leaf (context_dir) once per event; descending."""
+    counts: Counter[str] = Counter()
+    for event in events:
+        leaf = str(event.get("context_dir") or "").strip().lower()
+        if leaf:
+            counts[leaf] += 1
+    return counts.most_common(max(0, int(limit)))
 
 
 def aggregate_top_hosts(events: list[dict[str, Any]], *, limit: int) -> list[tuple[str, int]]:
@@ -157,11 +192,22 @@ def build_projects_audit_payload(
         for host, n in top_rows
     ]
 
+    top_dir_rows = aggregate_top_dirs(events, limit=top_hosts_limit)
+    top_dirs_out = [
+        {
+            "dir": leaf,
+            "hits": int(n),
+            "anchored": is_dir_anchored_by_profiles(leaf, profiles),
+        }
+        for leaf, n in top_dir_rows
+    ]
+
     return {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "command": "gittan projects-audit",
         "hit_definition": HIT_DEFINITION_V1,
         "top_hosts_note": TOP_HOSTS_NOTE,
+        "top_dirs_note": TOP_DIRS_NOTE,
         "pool": pool,
         "options": {
             "date_from": date_from,
@@ -172,6 +218,7 @@ def build_projects_audit_payload(
         "event_count": len(events),
         "projects": projects_out,
         "top_hosts": top_hosts_out,
+        "top_dirs": top_dirs_out,
     }
 
 

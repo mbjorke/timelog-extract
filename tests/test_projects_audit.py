@@ -11,9 +11,11 @@ from typer.testing import CliRunner
 from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
+    aggregate_top_dirs,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
+    is_dir_anchored_by_profiles,
     is_host_anchored_by_profiles,
 )
 
@@ -185,6 +187,57 @@ class ProjectsAuditTests(unittest.TestCase):
         self.assertTrue(hosts["acme.com"][1])
         self.assertEqual(hosts["other.test"][0], 2)
         self.assertFalse(hosts["other.test"][1])
+
+    def test_top_dirs_counts_and_anchored(self) -> None:
+        profiles = [
+            {
+                "name": "alpha",
+                "match_terms": ["project-alpha"],
+                "tracked_urls": [],
+            }
+        ]
+        events = [
+            {"source": "Claude Code CLI", "detail": "log", "project": "alpha",
+             "context_dir": "project-alpha"},
+            {"source": "Claude Code CLI", "detail": "log", "project": "alpha",
+             "context_dir": "project-alpha"},
+            {"source": "Claude Code CLI", "detail": "log", "project": "Uncategorized",
+             "context_dir": "project-gamma"},
+            {"source": "Chrome", "detail": "no dir here", "project": "alpha"},
+        ]
+        tmp_cfg = self._temp_json()
+        self.addCleanup(Path(tmp_cfg).unlink, missing_ok=True)
+        payload = build_projects_audit_payload(
+            events=events,
+            profiles=profiles,
+            date_from="2026-06-01",
+            date_to="2026-06-02",
+            projects_config=tmp_cfg,
+            pool="deduped_all_events",
+            top_hosts_limit=10,
+        )
+        dirs = {r["dir"]: (r["hits"], r["anchored"]) for r in payload["top_dirs"]}
+        self.assertEqual(dirs["project-alpha"], (2, True))
+        self.assertEqual(dirs["project-gamma"], (1, False))
+        # Events without context_dir do not produce a top_dirs row.
+        self.assertNotIn("", dirs)
+
+    def test_aggregate_top_dirs_counts_once_per_event(self) -> None:
+        events = [
+            {"context_dir": "Repo-One"},
+            {"context_dir": "repo-one"},
+            {"context_dir": "repo-two"},
+            {"detail": "no dir"},
+        ]
+        rows = dict(aggregate_top_dirs(events, limit=10))
+        # case-insensitive aggregation collapses to a single lowercase key
+        self.assertEqual(rows.get("repo-one"), 2)
+        self.assertEqual(rows.get("repo-two"), 1)
+
+    def test_is_dir_anchored_substring_rule(self) -> None:
+        profiles = [{"name": "p", "match_terms": ["timelog-extract"], "tracked_urls": []}]
+        self.assertTrue(is_dir_anchored_by_profiles("timelog-extract", profiles))
+        self.assertFalse(is_dir_anchored_by_profiles("unrelated-repo", profiles))
 
     def test_is_host_anchored_tracked_url(self) -> None:
         profiles = [

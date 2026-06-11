@@ -99,8 +99,10 @@ def _classify_project(text: str, profiles: List[Dict[str, Any]]) -> str:
     return core_domain.classify_project(text, profiles, UNCATEGORIZED)
 
 
-def _make_event(source: str, ts: Any, detail: str, project: str) -> Dict[str, Any]:
-    return core_make_event(source, ts, detail, project, UNCATEGORIZED)
+def _make_event(
+    source: str, ts: Any, detail: str, project: str, context_dir: str | None = None
+) -> Dict[str, Any]:
+    return core_make_event(source, ts, detail, project, UNCATEGORIZED, context_dir=context_dir)
 
 
 def _get_date_range(date_from: Optional[str], date_to: Optional[str]):

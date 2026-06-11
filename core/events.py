@@ -21,13 +21,18 @@ def dedupe_events(events, event_key_fn):
     return sorted(unique.values(), key=lambda e: e["timestamp"])
 
 
-def make_event(source, ts, detail, project, uncategorized):
-    return {
+def make_event(source, ts, detail, project, uncategorized, context_dir=None):
+    event = {
         "source": source,
         "timestamp": ts,
         "detail": detail,
         "project": project or uncategorized,
     }
+    if context_dir:
+        # Namespaced corroborating-context metadata (working-directory leaf);
+        # never the primary detail. See docs/specs/working-directory-anchor-signal.md.
+        event["context_dir"] = context_dir
+    return event
 
 
 def filter_included_events(all_events, args, profiles, uncategorized):

@@ -1,7 +1,7 @@
 # Specs implementation status
 
 Status: active tracker  
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## Purpose
 
@@ -33,6 +33,7 @@ Keep one fast, shared view of which specs are built, partially built, or still p
 | `docs/specs/local-evidence-shadow-log.md`              | `not started`  | Draft spec for opt-in local retained evidence when upstream logs rotate or disappear.                                           |
 | `docs/specs/repo-agent-skills.md`                      | `partial`      | First skills materialized in `docs/skills/` (`gittan-product-owner`, `gittan-source-collector`) with thin Cursor + Claude wrappers; remaining candidates (health, shadow-log, calendar, docs-foundation) not started. |
 | `docs/specs/intent-capture.md`                         | `not started`  | Draft spec for recording user intention (hashed URL → project) at moment of work; record contract only, capture surfaces downstream. |
+| `docs/specs/working-directory-anchor-signal.md`        | `partial`      | Slice 1 built: Claude Code CLI events preserve `context_dir` (cwd leaf); `projects-audit` emits `top_dirs` with anchored flag. Tests: `tests/test_collectors_claude_code_context_dir.py`, `tests/test_projects_audit.py`. Suggestion/apply command + Cursor/Gemini `context_dir` are follow-ups. |
 
 
 ## Update routine

@@ -1,8 +1,22 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _cwd_leaf(obj) -> str | None:
+    """Privacy-safe working-directory leaf (basename) from a Claude Code entry.
+
+    Returns the last path segment (e.g. "timelog-extract") so no home prefix or
+    username segment is retained. Absent/blank cwd yields None.
+    """
+    cwd = obj.get("cwd") if isinstance(obj, dict) else None
+    if not cwd:
+        return None
+    leaf = os.path.basename(str(cwd).rstrip("/\\")).strip().lower()
+    return leaf or None
 
 
 def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
@@ -60,9 +74,13 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
             continue
         dir_name = proj_dir.name.lower()
         for jsonl_file in proj_dir.glob("*.jsonl"):
-            for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
+            for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
                 project = classify_project(f"{dir_name} {detail}", profiles)
-                results.append(make_event("Claude Code CLI", ts, detail, project))
+                results.append(
+                    make_event(
+                        "Claude Code CLI", ts, detail, project, context_dir=_cwd_leaf(obj)
+                    )
+                )
     return results
 
 

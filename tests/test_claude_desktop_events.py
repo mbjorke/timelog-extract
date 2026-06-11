@@ -148,6 +148,20 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         for ev in events:
             self.assertEqual(ev["project"], "project-alpha")
 
+    def test_session_title_enriches_detail(self) -> None:
+        base = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
+        body = _events_payload("session_01TITLED", [base, base + timedelta(minutes=2)], "/home/user/project-alpha")
+        _write_cache(self.home, "ev", "1/0/https://claude.ai/v1/sessions/session_01TITLED/events?limit=500", body)
+        meta = json.dumps(
+            {"id": "session_01TITLED", "title": "Build dashboard MVP", "session_status": "idle"}
+        ).encode("utf-8")
+        _write_cache(self.home, "meta", "1/0/https://claude.ai/v1/sessions/session_01TITLED", meta)
+
+        events = self._collect()
+        details = {ev["detail"] for ev in events}
+        self.assertEqual(details, {"Code session: Build dashboard MVP — 2 turns"})
+        self.assertEqual(events[0]["anchors"].get("label"), "build dashboard mvp")
+
     def test_background_only_cluster_emits_nothing(self) -> None:
         # Clusters with zero user/assistant turns (rate-limit pings, env
         # refreshes) must not claim hours.

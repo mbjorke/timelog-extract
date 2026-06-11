@@ -139,12 +139,18 @@ def _split_key(raw: bytes) -> Optional[tuple[str, bytes]]:
     return raw[20:key_end].decode("utf-8", "ignore"), raw[key_end:]
 
 
-def read_cache_entry(path: Path, *, key_substr: str = "") -> Optional[CacheEntry]:
+def read_cache_entry(
+    path: Path,
+    *,
+    key_substr: str = "",
+    key_predicate=None,
+) -> Optional[CacheEntry]:
     """Parse one ``*_0`` simple-cache file → CacheEntry, or None.
 
     The body is decoded only when the key contains ``key_substr`` (empty matches
-    all), so a non-matching entry never pays the decompression cost. Never
-    raises on malformed/binary/evicted entries; returns None instead.
+    all) and satisfies ``key_predicate`` (when given), so a non-matching entry
+    never pays the decompression cost. Never raises on malformed/binary/evicted
+    entries; returns None instead.
     """
     try:
         if path.stat().st_size > _DEFAULT_MAX_FILE_BYTES:
@@ -157,6 +163,8 @@ def read_cache_entry(path: Path, *, key_substr: str = "") -> Optional[CacheEntry
         return None
     key, after_key = split
     if key_substr and key_substr not in key:
+        return None
+    if key_predicate is not None and not key_predicate(key):
         return None
     body = _decode_body(after_key)
     if body is None:
@@ -173,6 +181,7 @@ def iter_cache_entries(
     key_substr: str,
     *,
     newer_than: Optional[datetime] = None,
+    key_predicate=None,
 ) -> Iterator[CacheEntry]:
     """Yield decoded cache entries whose key contains ``key_substr``.
 
@@ -191,6 +200,6 @@ def iter_cache_entries(
                 continue
             if mtime < newer_than:
                 continue
-        entry = read_cache_entry(path, key_substr=key_substr)
+        entry = read_cache_entry(path, key_substr=key_substr, key_predicate=key_predicate)
         if entry is not None:
             yield entry

@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from collectors.ai_logs import _anchors, _cwd_leaf
+from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
 from core.chromium_cache import codec_available, iter_cache_entries
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
@@ -104,6 +104,42 @@ def _thin(stamps: list[datetime]) -> list[datetime]:
     return kept
 
 
+def _session_titles(cache_dir: Path) -> dict[str, str]:
+    """Map session id → user-visible session title from cached session metadata.
+
+    Claude Desktop also caches `/v1/sessions/<id>` detail and `/v1/sessions?…`
+    list responses, whose `title` is the human session name shown in the app
+    (e.g. "Build Freelance Bridge SaaS dashboard MVP") — metadata, not message
+    content. Titles make the report detail invoice-readable.
+    """
+    titles: dict[str, str] = {}
+
+    def harvest(obj) -> None:
+        if not isinstance(obj, dict):
+            return
+        sid = str(obj.get("id") or "")
+        title = str(obj.get("title") or "").strip()
+        if sid and title:
+            titles[sid] = title
+
+    for entry in iter_cache_entries(
+        cache_dir,
+        _SESSIONS_KEY_MARKER.rstrip("/"),
+        key_predicate=lambda key: "/events" not in key,
+    ):
+        try:
+            payload = json.loads(entry.body)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        harvest(payload)
+        if isinstance(payload, dict):
+            rows = payload.get("data")
+            if isinstance(rows, list):
+                for row in rows:
+                    harvest(row)
+    return titles
+
+
 def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project, make_event):
     """Reconstruct Claude Desktop Code sessions from cached /events bodies."""
     cache_dir = claude_events_cache_dir(home)
@@ -148,18 +184,22 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
             is_turn = str(ev.get("type") or "").strip().lower() in _TURN_TYPES
             acc["stamps"].append((ts, is_turn))
 
+    titles = _session_titles(cache_dir) if sessions else {}
+
     results = []
     for sid, acc in sessions.items():
         if not acc["stamps"]:
             continue
         cwd = acc["cwd"]
+        title = titles.get(sid, "")
+        label = f"Code session: {title}" if title else f"Code session {sid[:20]}"
         for cluster in _clusters(acc["stamps"]):
             turns = sum(1 for _ts, is_turn in cluster if is_turn)
             if turns == 0:
                 # Background-only cluster (rate-limit pings, env refreshes):
                 # no real user/model turn, so no honest hours to claim.
                 continue
-            detail = f"Code session {sid[:20]} — {turns} turns"
+            detail = f"{label} — {turns} turns"
             project = classify_project(f"{cwd or ''} {detail}", profiles)
             for ts in _thin([pair[0] for pair in cluster]):
                 results.append(
@@ -168,7 +208,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
                         ts,
                         detail,
                         project,
-                        anchors=_anchors(dir=cwd),
+                        anchors=_anchors(dir=cwd, label=_meaningful_label(title)),
                     )
                 )
     return results

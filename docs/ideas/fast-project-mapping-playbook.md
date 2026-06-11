@@ -37,7 +37,9 @@ gittan projects-audit --from YYYY-MM-DD --to YYYY-MM-DD --projects-config /path/
 # Same window, JSON (schema v2; stdout only). Includes `top_signals` (kind, value, hits, anchored, rule_type).
 gittan projects-audit --from YYYY-MM-DD --to YYYY-MM-DD --projects-config /path/to/timelog_projects.json --json
 
-# Fewer rows per kind in the top_signals table / JSON (default 30; use 0 to omit signal mining)
+# Fewer rows per top_signals kind (legacy flag --max-top-hosts; caps hosts, dirs,
+# branches, and titles separately — not hosts-only; default 30; use 0 to omit mining).
+# May rename to --max-top-signals in a future breaking change.
 gittan projects-audit --from YYYY-MM-DD --to YYYY-MM-DD --projects-config /path/to/timelog_projects.json --max-top-hosts 20
 
 # Structural warnings (overlaps, risky broad terms)

@@ -43,7 +43,7 @@ the web view exists precisely for the moment an overlay is not enough.
 
 ## Stack direction (to validate before building)
 
-- **DB:** SQLite in `~/.gittan/` for state files can't hold well — triage
+- **DB:** SQLite in `~/.gittan/` can hold structured state — e.g. triage
   decisions, intent capture index, sync history. Python stdlib, single
   user-owned file, syncs as data (fits `decisions/private-not-local.md`).
 - **TUI:** React Ink-style terminal UI (tables, markdown, overlays,

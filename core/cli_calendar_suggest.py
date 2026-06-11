@@ -56,7 +56,7 @@ def calendar_suggest(
         raise SystemExit(
             f"Cannot read Calendar: {exc}. "
             "Grant Full Disk Access and verify with `gittan doctor` (Calendar row)."
-        )
+        ) from None
 
     suggestions = suggest_projects_from_titles(
         [summary for _cal, summary in rows], profiles, min_count=min_count

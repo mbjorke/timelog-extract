@@ -35,18 +35,15 @@ class ProjectsAuditTests(unittest.TestCase):
         self.assertTrue(is_junk_anchor_value(".gittan:"))
         self.assertTrue(is_junk_anchor_value("a5cda8b561bb6536e880481734199a568cb647f4"))
         self.assertTrue(is_junk_anchor_value(""))
-        # Auto-generated git-worktree leaves with a hex disambiguator suffix
-        # (Claude Code names worktrees <adjective>-<name>-<hex>).
-        self.assertTrue(is_junk_anchor_value("confident-hopper-fe58c2"))
-        self.assertTrue(is_junk_anchor_value("great-bassi-31c1d6"))
-        self.assertTrue(is_junk_anchor_value("affectionate-lovelace-f7d4f4"))
         # Real project anchors pass.
         self.assertFalse(is_junk_anchor_value("timelog-extract"))
         self.assertFalse(is_junk_anchor_value("project-beta-dashboard"))
-        # Real slugs whose tail is short or not all-hex must survive.
+        # A <slug>-<hex> suffix is NOT junk: Lovable renames repos with a hex
+        # suffix (financing-portal-dev-31e799cf), indistinguishable at the leaf
+        # level from a Claude worktree slug. Worktree leakage is handled at the
+        # path/remote layer, not here.
+        self.assertFalse(is_junk_anchor_value("financing-portal-dev-31e799cf"))
         self.assertFalse(is_junk_anchor_value("offer-craft-34"))
-        self.assertFalse(is_junk_anchor_value("light-up-world-yokgsf"))
-        self.assertFalse(is_junk_anchor_value("quote-design-refresh"))
 
     def test_unanchored_top_anchors_skips_junk_values(self) -> None:
         events = [

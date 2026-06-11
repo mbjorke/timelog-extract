@@ -13,9 +13,14 @@ worktrees this is fragile:
   to **Uncategorized**.
 - The `dir`/`branch` **anchors** still carry the per-worktree leaf
   (`confident-hopper-fe58c2`, branch `claude/<name>`), which pollutes
-  `unanchored_top_anchors` and `gittan map` suggestions. (Partial mitigation
-  shipped: `is_junk_anchor_value` now drops hex-suffixed worktree leaves; non-
-  hex names like `awesome-gates` still leak.)
+  `unanchored_top_anchors` and `gittan map` suggestions.
+
+A leaf-pattern heuristic cannot fix the anchor leak: a Claude worktree leaf
+(`confident-hopper-fe58c2`, `<slug>-<hex>`) is byte-for-byte indistinguishable
+from a real Lovable-renamed repo (`financing-portal-dev-31e799cf`). A
+`<slug>-<hex>` filter therefore produces false positives on real projects and
+was deliberately rejected. The only reliable signal is the **path** (a leaf
+under `.claude/worktrees/`) or the **remote slug**, which this spec uses.
 
 Git worktrees **share the same remote**, so the repo slug (`owner/repo`) is
 identical across every worktree of a project — a stable, worktree-invariant

@@ -9,10 +9,11 @@ from pathlib import Path
 from collectors.windsurf import collect_windsurf
 
 
-def _make_event(source, ts, detail, project, context_dir=None):
+def _make_event(source, ts, detail, project, anchors=None):
     event = {"source": source, "timestamp": ts, "detail": detail, "project": project}
-    if context_dir:
-        event["context_dir"] = context_dir
+    clean = {k: v for k, v in (anchors or {}).items() if v}
+    if clean:
+        event["anchors"] = clean
     return event
 
 
@@ -64,7 +65,7 @@ class WindsurfCollectorTests(unittest.TestCase):
             self.assertEqual(out[0]["source"], "Windsurf")
             self.assertEqual(out[0]["project"], "Gittan CLI")
             # Working-directory leaf is preserved (privacy-safe, no /Users/ prefix).
-            self.assertEqual(out[0]["context_dir"], "timelog-extract")
+            self.assertEqual(out[0]["anchors"]["dir"], "timelog-extract")
 
     def test_maps_workspace_id_to_folder(self):
         with tempfile.TemporaryDirectory() as tmp:

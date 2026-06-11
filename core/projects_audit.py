@@ -7,15 +7,27 @@ from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
+from core.events import event_anchors
 from core.triage_domain_signals import canonical_domain_key, tracked_fragment_matches_domain
 
 _URL_RE = re.compile(r"https?://[^\s)>\"']+", re.IGNORECASE)
 
-AUDIT_SCHEMA_VERSION = 1
+AUDIT_SCHEMA_VERSION = 2
 
 TRIM_PLAN_SCHEMA_VERSION = 1
 
 ANCHOR_PLAN_SCHEMA_VERSION = 1
+
+# Activity-anchor kinds preserved on events (core.events.make_event) and surfaced
+# by the audit: working directory, git branch, and session title. All three are
+# already part of the classification haystack for their source, so the same
+# substring rule decides whether a profile already anchors them.
+ANCHOR_KINDS = ("dir", "branch", "label")
+ANCHOR_KIND_LABELS = {
+    "dir": "working directory",
+    "branch": "git branch",
+    "label": "session title",
+}
 
 HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
@@ -34,11 +46,12 @@ TOP_HOSTS_NOTE = (
     "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
 )
 
-TOP_DIRS_NOTE = (
-    "top_dirs: working-directory leaves (context_dir) from terminal collectors, counted once per "
-    "event, sorted by frequency. anchored=true if some profile already has a match_term that is a "
-    "substring of the directory leaf (the same substring rule classification uses). Unanchored, "
-    "high-hit directories are match_term suggestion candidates."
+TOP_ANCHORS_NOTE = (
+    "top_anchors: activity anchors (kind=dir working directory, branch git branch, label session "
+    "title) from collectors, counted once per event, sorted by frequency within each kind. "
+    "anchored=true if some profile already has a match_term that is a substring of the anchor value "
+    "(the same substring rule classification uses). Unanchored, high-hit anchors are match_term "
+    "suggestion candidates."
 )
 
 
@@ -85,52 +98,59 @@ def is_host_anchored_by_profiles(host: str, profiles: list[dict[str, Any]]) -> b
     return False
 
 
-def is_dir_anchored_by_profiles(dir_leaf: str, profiles: list[dict[str, Any]]) -> bool:
-    """True if any profile match_term is a substring of the directory leaf.
+def is_value_anchored_by_profiles(value: str, profiles: list[dict[str, Any]]) -> bool:
+    """True if any profile match_term is a substring of the anchor value.
 
-    Mirrors how classification anchors a working directory: the leaf is part of
-    the haystack, so a match_term that is a substring of it would classify the
-    event. tracked_urls do not apply to directory leaves.
+    Mirrors how classification anchors an activity signal (working directory,
+    git branch, or session title): the value is part of the haystack, so a
+    match_term that is a substring of it would classify the event. tracked_urls
+    do not apply to anchor values.
     """
-    leaf = str(dir_leaf or "").strip().lower()
-    if not leaf:
+    needle = str(value or "").strip().lower()
+    if not needle:
         return False
     for profile in profiles:
         for term in profile.get("match_terms") or []:
             t = str(term).strip().lower()
-            if t and t in leaf:
+            if t and t in needle:
                 return True
     return False
 
 
-def aggregate_top_dirs(events: list[dict[str, Any]], *, limit: int) -> list[tuple[str, int]]:
-    """Count each working-directory leaf (context_dir) once per event; descending."""
+def aggregate_top_anchors(
+    events: list[dict[str, Any]], kind: str, *, limit: int
+) -> list[tuple[str, int]]:
+    """Count each anchor value of a given kind once per event; descending."""
     counts: Counter[str] = Counter()
     for event in events:
-        leaf = str(event.get("context_dir") or "").strip().lower()
-        if leaf:
-            counts[leaf] += 1
+        value = str(event_anchors(event).get(kind) or "").strip().lower()
+        if value:
+            counts[value] += 1
     return counts.most_common(max(0, int(limit)))
 
 
-def unanchored_top_dirs(
+def unanchored_top_anchors(
     events: list[dict[str, Any]],
     profiles: list[dict[str, Any]],
     *,
+    kinds: tuple[str, ...] = ANCHOR_KINDS,
     min_hits: int = 1,
-    limit: int = 10,
+    limit_per_kind: int = 10,
 ) -> list[dict[str, Any]]:
-    """Working-directory leaves not yet matched by any profile, descending by hits.
+    """Anchor values not yet matched by any profile, descending by hits.
 
-    Convenience for report/status nudges: combines aggregate_top_dirs with the
-    anchored check so callers get only actionable (unmapped) directories.
+    Convenience for report/status nudges across every anchor kind: combines
+    aggregate_top_anchors with the anchored check so callers get only actionable
+    (unmapped) anchors, each tagged with its kind.
     """
     floor = max(1, int(min_hits))
     out: list[dict[str, Any]] = []
-    for leaf, hits in aggregate_top_dirs(events, limit=max(0, int(limit))):
-        if hits < floor or is_dir_anchored_by_profiles(leaf, profiles):
-            continue
-        out.append({"dir": leaf, "hits": int(hits)})
+    for kind in kinds:
+        for value, hits in aggregate_top_anchors(events, kind, limit=max(0, int(limit_per_kind))):
+            if hits < floor or is_value_anchored_by_profiles(value, profiles):
+                continue
+            out.append({"kind": kind, "value": value, "hits": int(hits)})
+    out.sort(key=lambda row: row["hits"], reverse=True)
     return out
 
 
@@ -215,22 +235,24 @@ def build_projects_audit_payload(
         for host, n in top_rows
     ]
 
-    top_dir_rows = aggregate_top_dirs(events, limit=top_hosts_limit)
-    top_dirs_out = [
-        {
-            "dir": leaf,
-            "hits": int(n),
-            "anchored": is_dir_anchored_by_profiles(leaf, profiles),
-        }
-        for leaf, n in top_dir_rows
-    ]
+    top_anchors_out: list[dict[str, Any]] = []
+    for kind in ANCHOR_KINDS:
+        for value, n in aggregate_top_anchors(events, kind, limit=top_hosts_limit):
+            top_anchors_out.append(
+                {
+                    "kind": kind,
+                    "value": value,
+                    "hits": int(n),
+                    "anchored": is_value_anchored_by_profiles(value, profiles),
+                }
+            )
 
     return {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "command": "gittan projects-audit",
         "hit_definition": HIT_DEFINITION_V1,
         "top_hosts_note": TOP_HOSTS_NOTE,
-        "top_dirs_note": TOP_DIRS_NOTE,
+        "top_anchors_note": TOP_ANCHORS_NOTE,
         "pool": pool,
         "options": {
             "date_from": date_from,
@@ -241,7 +263,7 @@ def build_projects_audit_payload(
         "event_count": len(events),
         "projects": projects_out,
         "top_hosts": top_hosts_out,
-        "top_dirs": top_dirs_out,
+        "top_anchors": top_anchors_out,
     }
 
 
@@ -295,17 +317,18 @@ def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[s
     }
 
 
-def build_dir_anchor_plan_from_audit(
+def build_anchor_plan_from_audit(
     audit_payload: dict[str, Any], *, min_hits: int = 1
 ) -> dict[str, Any]:
-    """Build a `projects-anchor` plan (schema v1): match_term additions for dirs.
+    """Build a `projects-anchor` plan (schema v1): match_term additions for anchors.
 
-    Each addition is an **unanchored** working directory (`top_dirs` row with
-    `anchored=false`) seen at least `min_hits` times in the audit window. The
-    directory leaf is proposed as the match_term value, and `project_name`
-    defaults to that same leaf — review and edit it to target an existing
-    project before applying. Applying via `gittan projects-anchor` will create a
-    new project if the name does not exist.
+    Each addition is an **unanchored** activity anchor (`top_anchors` row with
+    `anchored=false`) — a working directory, git branch, or session title — seen
+    at least `min_hits` times in the audit window. The anchor value is proposed
+    as the match_term value (tagged with its `anchor_kind`), and `project_name`
+    defaults to that same value — review and edit it (and trim long title values)
+    to target an existing project before applying. Applying via
+    `gittan projects-anchor` creates a new project if the name does not exist.
     """
     sv = int(audit_payload.get("schema_version", 0))
     if sv != AUDIT_SCHEMA_VERSION:
@@ -313,27 +336,28 @@ def build_dir_anchor_plan_from_audit(
 
     floor = max(1, int(min_hits))
     additions: list[dict[str, Any]] = []
-    for row in audit_payload.get("top_dirs") or []:
+    for row in audit_payload.get("top_anchors") or []:
         if row.get("anchored"):
             continue
-        leaf = str(row.get("dir", "")).strip()
+        value = str(row.get("value", "")).strip()
         hits = int(row.get("hits", 0))
-        if not leaf or hits < floor:
+        if not value or hits < floor:
             continue
         additions.append(
             {
-                "project_name": leaf,
+                "project_name": value,
                 "rule_type": "match_terms",
-                "rule_value": leaf,
+                "rule_value": value,
+                "anchor_kind": str(row.get("kind", "")),
                 "hits": hits,
             }
         )
 
     note = (
-        "Candidate match_terms from unanchored working directories in the audit window only. "
-        "project_name defaults to the directory leaf — edit it to map to an existing project "
-        "(applying an unknown name creates a new project). Apply: gittan projects-anchor -i <file> "
-        "--dry-run then rerun without --dry-run."
+        "Candidate match_terms from unanchored activity anchors (anchor_kind = dir/branch/label) in "
+        "the audit window only. project_name defaults to the anchor value — edit it to map to an "
+        "existing project, and trim long session-title values (applying an unknown name creates a "
+        "new project). Apply: gittan projects-anchor -i <file> --dry-run then rerun without --dry-run."
     )
 
     return {

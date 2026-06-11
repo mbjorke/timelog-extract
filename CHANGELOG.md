@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Classification: generalized the working-directory anchor into a multi-kind **activity anchor** model. Events carry an `anchors` map — `dir` (working-directory leaf, from Claude Code/Cursor/Windsurf/Antigravity/Gemini CLI), `branch` (git branch leaf, from the Claude Code `gitBranch` record; namespace prefix dropped, generic branches like `main` rejected), and `label` (session title, from Codex `thread_name`; placeholders rejected). Claude Code now also feeds the branch into the classification haystack. `projects-audit` reports `top_anchors` (schema v2, replacing `top_dirs`) with a `kind` per row; `--write-anchor-plan` and `projects-anchor` carry an `anchor_kind`; the `status`/`report` nudges and interactive mapping work over every kind.
+
 ## 0.2.18 - 2026-05-30
 
 - Sources: **Google Antigravity IDE** activity via shared VS Code-fork collector ([#127](https://github.com/mbjorke/timelog-extract/pull/127)).

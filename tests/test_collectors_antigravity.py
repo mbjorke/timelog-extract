@@ -8,15 +8,16 @@ from pathlib import Path
 
 from collectors.antigravity import collect_antigravity
 
-def _make_event(source, ts, detail, project, context_dir=None):
+def _make_event(source, ts, detail, project, anchors=None):
     event = {
         "source": source,
         "timestamp": ts,
         "detail": detail,
         "project": project,
     }
-    if context_dir:
-        event["context_dir"] = context_dir
+    clean = {k: v for k, v in (anchors or {}).items() if v}
+    if clean:
+        event["anchors"] = clean
     return event
 
 

@@ -21,18 +21,36 @@ def dedupe_events(events, event_key_fn):
     return sorted(unique.values(), key=lambda e: e["timestamp"])
 
 
-def make_event(source, ts, detail, project, uncategorized, context_dir=None):
+def make_event(source, ts, detail, project, uncategorized, anchors=None):
     event = {
         "source": source,
         "timestamp": ts,
         "detail": detail,
         "project": project or uncategorized,
     }
-    if context_dir:
-        # Namespaced corroborating-context metadata (working-directory leaf);
-        # never the primary detail. See docs/specs/working-directory-anchor-signal.md.
-        event["context_dir"] = context_dir
+    # Namespaced corroborating-context metadata: a {kind: value} map of activity
+    # anchors (working directory, git branch, session title) that classification
+    # already uses, preserved for audit/suggestion. Never the primary detail.
+    # See docs/specs/working-directory-anchor-signal.md.
+    clean = {
+        str(kind): str(value).strip().lower()
+        for kind, value in (anchors or {}).items()
+        if kind and value and str(value).strip()
+    }
+    if clean:
+        event["anchors"] = clean
     return event
+
+
+def event_anchors(event) -> dict:
+    """The {kind: value} anchor map for an event (empty dict if none)."""
+    anchors = event.get("anchors") if isinstance(event, dict) else None
+    return anchors if isinstance(anchors, dict) else {}
+
+
+def event_anchor(event, kind: str):
+    """One anchor value for a given kind, or None."""
+    return event_anchors(event).get(kind)
 
 
 def filter_included_events(all_events, args, profiles, uncategorized):

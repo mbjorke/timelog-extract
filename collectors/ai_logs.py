@@ -35,6 +35,41 @@ def _meaningful_leaf(name) -> str | None:
     return leaf
 
 
+# Branch names that identify a workflow, not a project, are useless as anchors.
+_GENERIC_BRANCHES = {"main", "master", "develop", "dev", "trunk", "release", "staging", "prod"}
+
+
+def _branch_leaf(obj) -> str | None:
+    """Privacy-safe project anchor from a git branch name, or None.
+
+    Drops any leading namespace segment (``claude/``, ``feature/``, initials)
+    by keeping the part after the last ``/``, and rejects generic workflow
+    branches that do not name a project (``main``, ``develop``, …).
+    """
+    branch = obj.get("gitBranch") if isinstance(obj, dict) else None
+    leaf = str(branch or "").strip().rsplit("/", 1)[-1].strip().lower()
+    if not leaf or leaf in _GENERIC_BRANCHES:
+        return None
+    return leaf
+
+
+# Auto-generated/placeholder session titles carry no project signal.
+_GENERIC_LABELS = {"session", "untitled", "new session", "new chat", "conversation"}
+
+
+def _meaningful_label(name) -> str | None:
+    """Session title usable as an anchor, or None for generic placeholders."""
+    label = str(name or "").strip().lower()
+    if not label or label in _GENERIC_LABELS:
+        return None
+    return label[:80]
+
+
+def _anchors(**kinds) -> dict:
+    """Collect non-empty {kind: value} anchor pairs into a map."""
+    return {kind: value for kind, value in kinds.items() if value}
+
+
 def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
     results = []
     try:
@@ -91,10 +126,12 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
         dir_name = proj_dir.name.lower()
         for jsonl_file in proj_dir.glob("*.jsonl"):
             for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
-                project = classify_project(f"{dir_name} {detail}", profiles)
+                branch = _branch_leaf(obj)
+                project = classify_project(f"{dir_name} {branch or ''} {detail}", profiles)
                 results.append(
                     make_event(
-                        "Claude Code CLI", ts, detail, project, context_dir=_cwd_leaf(obj)
+                        "Claude Code CLI", ts, detail, project,
+                        anchors=_anchors(dir=_cwd_leaf(obj), branch=branch),
                     )
                 )
     return results
@@ -145,7 +182,7 @@ def collect_gemini_cli(profiles, dt_from, dt_to, home, classify_project, make_ev
                     ts,
                     f"[{role}] {detail}" if detail else "Gemini CLI",
                     project,
-                    context_dir=_meaningful_leaf(proj_name),
+                    anchors=_anchors(dir=_meaningful_leaf(proj_name)),
                 )
             )
     return results
@@ -187,5 +224,10 @@ def collect_codex_ide(
         sid = str(obj.get("id") or "").replace("-", "")[:10]
         detail = f"{thread[:65]} — id {sid}…" if sid else thread[:70]
         project = classify_project(thread, profiles)
-        results.append(make_event("Codex IDE", ts, detail, project))
+        results.append(
+            make_event(
+                "Codex IDE", ts, detail, project,
+                anchors=_anchors(label=_meaningful_label(thread)),
+            )
+        )
     return results

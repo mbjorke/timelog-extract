@@ -181,10 +181,11 @@ def collect_fork_logs(
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name
                         detail = f"{leaf} — {line.strip()[:90]}"
+                        dir_leaf = leaf.strip().lower()
                         results.append(
                             make_event(
                                 source_name, ts, detail, project,
-                                context_dir=leaf.strip().lower() or None,
+                                anchors={"dir": dir_leaf} if dir_leaf else None,
                             )
                         )
             except OSError:

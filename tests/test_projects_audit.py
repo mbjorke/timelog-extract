@@ -11,13 +11,14 @@ from typer.testing import CliRunner
 from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
-    aggregate_top_dirs,
-    build_dir_anchor_plan_from_audit,
+    AUDIT_SCHEMA_VERSION,
+    aggregate_top_anchors,
+    build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
-    is_dir_anchored_by_profiles,
     is_host_anchored_by_profiles,
+    is_value_anchored_by_profiles,
 )
 
 
@@ -189,7 +190,7 @@ class ProjectsAuditTests(unittest.TestCase):
         self.assertEqual(hosts["other.test"][0], 2)
         self.assertFalse(hosts["other.test"][1])
 
-    def test_top_dirs_counts_and_anchored(self) -> None:
+    def test_top_anchors_counts_and_anchored(self) -> None:
         profiles = [
             {
                 "name": "alpha",
@@ -199,11 +200,13 @@ class ProjectsAuditTests(unittest.TestCase):
         ]
         events = [
             {"source": "Claude Code CLI", "detail": "log", "project": "alpha",
-             "context_dir": "project-alpha"},
+             "anchors": {"dir": "project-alpha", "branch": "project-alpha-dashboard"}},
             {"source": "Claude Code CLI", "detail": "log", "project": "alpha",
-             "context_dir": "project-alpha"},
+             "anchors": {"dir": "project-alpha"}},
             {"source": "Claude Code CLI", "detail": "log", "project": "Uncategorized",
-             "context_dir": "project-gamma"},
+             "anchors": {"dir": "project-gamma"}},
+            {"source": "Codex IDE", "detail": "log", "project": "Uncategorized",
+             "anchors": {"label": "redesign the gamma report"}},
             {"source": "Chrome", "detail": "no dir here", "project": "alpha"},
         ]
         tmp_cfg = self._temp_json()
@@ -217,52 +220,60 @@ class ProjectsAuditTests(unittest.TestCase):
             pool="deduped_all_events",
             top_hosts_limit=10,
         )
-        dirs = {r["dir"]: (r["hits"], r["anchored"]) for r in payload["top_dirs"]}
-        self.assertEqual(dirs["project-alpha"], (2, True))
-        self.assertEqual(dirs["project-gamma"], (1, False))
-        # Events without context_dir do not produce a top_dirs row.
-        self.assertNotIn("", dirs)
+        rows = {(r["kind"], r["value"]): (r["hits"], r["anchored"]) for r in payload["top_anchors"]}
+        self.assertEqual(rows[("dir", "project-alpha")], (2, True))
+        self.assertEqual(rows[("dir", "project-gamma")], (1, False))
+        self.assertEqual(rows[("branch", "project-alpha-dashboard")], (1, True))
+        self.assertEqual(rows[("label", "redesign the gamma report")], (1, False))
+        # Events without anchors do not produce a row.
+        self.assertNotIn(("dir", ""), rows)
 
-    def test_aggregate_top_dirs_counts_once_per_event(self) -> None:
+    def test_aggregate_top_anchors_counts_once_per_event(self) -> None:
         events = [
-            {"context_dir": "Repo-One"},
-            {"context_dir": "repo-one"},
-            {"context_dir": "repo-two"},
+            {"anchors": {"dir": "Repo-One"}},
+            {"anchors": {"dir": "repo-one"}},
+            {"anchors": {"dir": "repo-two"}},
+            {"anchors": {"branch": "repo-one"}},
             {"detail": "no dir"},
         ]
-        rows = dict(aggregate_top_dirs(events, limit=10))
+        rows = dict(aggregate_top_anchors(events, "dir", limit=10))
         # case-insensitive aggregation collapses to a single lowercase key
         self.assertEqual(rows.get("repo-one"), 2)
         self.assertEqual(rows.get("repo-two"), 1)
+        # A different kind is counted separately.
+        self.assertEqual(dict(aggregate_top_anchors(events, "branch", limit=10)).get("repo-one"), 1)
 
-    def test_is_dir_anchored_substring_rule(self) -> None:
+    def test_is_value_anchored_substring_rule(self) -> None:
         profiles = [{"name": "p", "match_terms": ["timelog-extract"], "tracked_urls": []}]
-        self.assertTrue(is_dir_anchored_by_profiles("timelog-extract", profiles))
-        self.assertFalse(is_dir_anchored_by_profiles("unrelated-repo", profiles))
+        self.assertTrue(is_value_anchored_by_profiles("timelog-extract", profiles))
+        self.assertTrue(is_value_anchored_by_profiles("timelog-extract-dashboard", profiles))
+        self.assertFalse(is_value_anchored_by_profiles("unrelated-repo", profiles))
 
     def test_anchor_plan_from_audit_only_unanchored(self) -> None:
         audit = {
-            "schema_version": 1,
+            "schema_version": AUDIT_SCHEMA_VERSION,
             "command": "gittan projects-audit",
             "options": {},
-            "top_dirs": [
-                {"dir": "project-gamma", "hits": 12, "anchored": False},
-                {"dir": "project-alpha", "hits": 30, "anchored": True},
-                {"dir": "noise", "hits": 1, "anchored": False},
+            "top_anchors": [
+                {"kind": "dir", "value": "project-gamma", "hits": 12, "anchored": False},
+                {"kind": "branch", "value": "gamma-feature", "hits": 9, "anchored": False},
+                {"kind": "dir", "value": "project-alpha", "hits": 30, "anchored": True},
+                {"kind": "dir", "value": "noise", "hits": 1, "anchored": False},
             ],
         }
-        plan = build_dir_anchor_plan_from_audit(audit, min_hits=2)
+        plan = build_anchor_plan_from_audit(audit, min_hits=2)
         self.assertEqual(plan["schema_version"], 1)
-        self.assertEqual(plan["meta"]["anchor_candidates"], 1)
-        adds = {(a["project_name"], a["rule_type"], a["rule_value"]) for a in plan["additions"]}
-        self.assertIn(("project-gamma", "match_terms", "project-gamma"), adds)
-        # anchored dir excluded; below-min-hits dir excluded
-        self.assertNotIn(("project-alpha", "match_terms", "project-alpha"), adds)
-        self.assertNotIn(("noise", "match_terms", "noise"), adds)
+        self.assertEqual(plan["meta"]["anchor_candidates"], 2)
+        adds = {(a["project_name"], a["rule_type"], a["rule_value"], a["anchor_kind"]) for a in plan["additions"]}
+        self.assertIn(("project-gamma", "match_terms", "project-gamma", "dir"), adds)
+        self.assertIn(("gamma-feature", "match_terms", "gamma-feature", "branch"), adds)
+        # anchored anchor excluded; below-min-hits anchor excluded
+        self.assertNotIn(("project-alpha", "match_terms", "project-alpha", "dir"), adds)
+        self.assertNotIn(("noise", "match_terms", "noise", "dir"), adds)
 
     def test_anchor_plan_rejects_wrong_audit_schema(self) -> None:
         with self.assertRaises(ValueError):
-            build_dir_anchor_plan_from_audit({"schema_version": 99, "top_dirs": []})
+            build_anchor_plan_from_audit({"schema_version": 99, "top_anchors": []})
 
     def test_projects_anchor_applies_match_term(self) -> None:
         cfg_path = Path(self._temp_json())

@@ -280,7 +280,7 @@ def status(
         bool,
         typer.Option(
             "--anchor-nudge/--no-anchor-nudge",
-            help="Warn about unmapped working directories and offer to map them (interactive).",
+            help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).",
         ),
     ] = True,
 ):
@@ -451,18 +451,18 @@ def status(
                 should_prompt,
                 status_anchor_line,
             )
-            from core.report_nudges import unanchored_dirs_for_report
+            from core.report_nudges import unanchored_anchors_for_report
 
-            unmapped_dirs = unanchored_dirs_for_report(report)
-            warn_line = status_anchor_line(unmapped_dirs)
+            unmapped_anchors = unanchored_anchors_for_report(report)
+            warn_line = status_anchor_line(unmapped_anchors)
             if warn_line:
                 console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")
                 if should_prompt():
                     import questionary
 
-                    if questionary.confirm("Map these directories to projects now?", default=False).ask():
+                    if questionary.confirm("Map these anchors to projects now?", default=False).ask():
                         run_interactive_anchor_flow(
-                            console, unmapped_dirs, report.profiles, options.projects_config
+                            console, unmapped_anchors, report.profiles, options.projects_config
                         )
                 else:
                     console.print(

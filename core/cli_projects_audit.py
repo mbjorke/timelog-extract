@@ -23,9 +23,10 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
+    ANCHOR_KIND_LABELS,
     ANCHOR_PLAN_SCHEMA_VERSION,
     TRIM_PLAN_SCHEMA_VERSION,
-    build_dir_anchor_plan_from_audit,
+    build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
 )
@@ -77,9 +78,9 @@ def projects_audit(
             "--write-anchor-plan",
             help=(
                 "Write anchor-plan JSON (schema v1) to PATH: match_term additions for unanchored "
-                "working directories (top_dirs) seen in this window. project_name defaults to the "
-                "directory leaf — edit to map to an existing project. Review then: "
-                "projects-anchor -i PATH --dry-run."
+                "activity anchors (top_anchors: working dirs, git branches, session titles) seen in "
+                "this window. project_name defaults to the anchor value — edit to map to an existing "
+                "project. Review then: projects-anchor -i PATH --dry-run."
             ),
         ),
     ] = None,
@@ -137,12 +138,12 @@ def projects_audit(
             )
 
     if write_anchor_plan:
-        plan = build_dir_anchor_plan_from_audit(payload)
+        plan = build_anchor_plan_from_audit(payload)
         out_path = Path(write_anchor_plan).expanduser()
         out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if not json_out:
             console.print(
-                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate dirs) "
+                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate anchors) "
                 f"to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}). "
                 f"Edit project_name to map to existing projects; then "
                 f"`gittan projects-anchor -i {out_path}` --dry-run.[/dim]"
@@ -189,20 +190,22 @@ def projects_audit(
                 "yes" if row.get("anchored") else "no",
             )
         console.print(ht)
-    if payload.get("top_dirs"):
+    if payload.get("top_anchors"):
         console.print()
-        console.print(f"[dim]{payload.get('top_dirs_note', '')}[/dim]")
-        dt_table = Table(show_header=True, header_style="bold")
-        dt_table.add_column("Directory")
-        dt_table.add_column("Hits", justify="right")
-        dt_table.add_column("Anchored", justify="center")
-        for row in payload["top_dirs"]:
-            dt_table.add_row(
-                str(row.get("dir", "")),
+        console.print(f"[dim]{payload.get('top_anchors_note', '')}[/dim]")
+        at_table = Table(show_header=True, header_style="bold")
+        at_table.add_column("Kind")
+        at_table.add_column("Anchor")
+        at_table.add_column("Hits", justify="right")
+        at_table.add_column("Anchored", justify="center")
+        for row in payload["top_anchors"]:
+            at_table.add_row(
+                ANCHOR_KIND_LABELS.get(str(row.get("kind", "")), str(row.get("kind", ""))),
+                str(row.get("value", "")),
                 str(row.get("hits", 0)),
                 "yes" if row.get("anchored") else "no",
             )
-        console.print(dt_table)
+        console.print(at_table)
     console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
 
 

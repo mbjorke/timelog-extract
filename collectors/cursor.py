@@ -124,9 +124,11 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                     project = classify_project(f"{workspace_path} {line}", profiles)
                     leaf = Path(workspace_path).name
                     detail = f"{leaf} — {line.strip()[:90]}"
+                    dir_leaf = leaf.strip().lower()
                     results.append(
                         make_event(
-                            "Cursor", ts, detail, project, context_dir=leaf.strip().lower() or None
+                            "Cursor", ts, detail, project,
+                            anchors={"dir": dir_leaf} if dir_leaf else None,
                         )
                     )
         except OSError:
@@ -182,5 +184,10 @@ def collect_cursor_checkpoints(
         agent_id = str(data.get("agentRequestId", "")).split("-")[0][:8]
         label = Path(paths[0]).name if paths else "checkpoint"
         detail = f"checkpoint {agent_id}… — {label}"
-        results.append(make_event(source_name, ts, detail, project, context_dir=workspace_leaf))
+        results.append(
+            make_event(
+                source_name, ts, detail, project,
+                anchors={"dir": workspace_leaf} if workspace_leaf else None,
+            )
+        )
     return results

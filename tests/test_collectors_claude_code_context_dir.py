@@ -11,13 +11,20 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.ai_logs import _cwd_leaf, _meaningful_leaf, collect_claude_code
+from collectors.ai_logs import (
+    _branch_leaf,
+    _cwd_leaf,
+    _meaningful_label,
+    _meaningful_leaf,
+    collect_claude_code,
+)
 
 
-def _make_event(source, ts, detail, project, context_dir=None):
+def _make_event(source, ts, detail, project, anchors=None):
     event = {"source": source, "timestamp": ts, "detail": detail, "project": project}
-    if context_dir:
-        event["context_dir"] = context_dir
+    clean = {k: v for k, v in (anchors or {}).items() if v}
+    if clean:
+        event["anchors"] = clean
     return event
 
 
@@ -26,7 +33,7 @@ def _classify(_text, _profiles):
 
 
 class ClaudeCodeContextDirTests(unittest.TestCase):
-    def _write_session(self, home: Path, dir_name: str, cwd: str) -> None:
+    def _write_session(self, home: Path, dir_name: str, cwd: str, branch: str | None = None) -> None:
         proj_dir = home / ".claude" / "projects" / dir_name
         proj_dir.mkdir(parents=True, exist_ok=True)
         entry = {
@@ -35,7 +42,19 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
             "message": {"content": "log"},
             "type": "user",
         }
+        if branch is not None:
+            entry["gitBranch"] = branch
         (proj_dir / "session.jsonl").write_text(json.dumps(entry) + "\n", encoding="utf-8")
+
+    def _collect(self, home: Path):
+        return collect_claude_code(
+            profiles=[],
+            dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            dt_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
+            home=home,
+            classify_project=_classify,
+            make_event=_make_event,
+        )
 
     def test_context_dir_is_cwd_leaf(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -43,19 +62,50 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
             self._write_session(
                 home, "-home-user-timelog-extract", "/home/user/timelog-extract"
             )
-            events = collect_claude_code(
-                profiles=[],
-                dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
-                dt_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
-                home=home,
-                classify_project=_classify,
-                make_event=_make_event,
-            )
+            events = self._collect(home)
             self.assertEqual(len(events), 1)
-            self.assertEqual(events[0]["context_dir"], "timelog-extract")
+            self.assertEqual(events[0]["anchors"]["dir"], "timelog-extract")
             # detail is untouched and carries no path/home/username segment
             self.assertEqual(events[0]["detail"], "log")
-            self.assertNotIn("/", events[0]["context_dir"])
+            self.assertNotIn("/", events[0]["anchors"]["dir"])
+
+    def test_branch_anchor_drops_namespace_and_keeps_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_session(
+                home,
+                "-home-user-timelog-extract",
+                "/home/user/timelog-extract",
+                branch="feature/project-beta-dashboard",
+            )
+            events = self._collect(home)
+            self.assertEqual(len(events), 1)
+            # The namespace segment (feature/) is dropped; the project leaf stays.
+            self.assertEqual(events[0]["anchors"]["branch"], "project-beta-dashboard")
+            self.assertEqual(events[0]["anchors"]["dir"], "timelog-extract")
+
+    def test_generic_branch_yields_no_branch_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_session(
+                home, "-home-user-timelog-extract", "/home/user/timelog-extract", branch="main"
+            )
+            events = self._collect(home)
+            self.assertEqual(len(events), 1)
+            self.assertNotIn("branch", events[0]["anchors"])
+
+    def test_branch_leaf_helper(self) -> None:
+        self.assertEqual(_branch_leaf({"gitBranch": "claude/project-beta-CeFO5"}), "project-beta-cefo5")
+        self.assertEqual(_branch_leaf({"gitBranch": "project-alpha"}), "project-alpha")
+        self.assertIsNone(_branch_leaf({"gitBranch": "main"}))
+        self.assertIsNone(_branch_leaf({"gitBranch": ""}))
+        self.assertIsNone(_branch_leaf({}))
+
+    def test_meaningful_label_helper(self) -> None:
+        self.assertEqual(_meaningful_label("Project Beta home redesign"), "project beta home redesign")
+        self.assertIsNone(_meaningful_label("session"))
+        self.assertIsNone(_meaningful_label(""))
+        self.assertIsNone(_meaningful_label(None))
 
     def test_cwd_leaf_helper(self) -> None:
         self.assertEqual(_cwd_leaf({"cwd": "/Users/someone/Workspace/repo-x/"}), "repo-x")
@@ -67,7 +117,7 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
     def test_meaningful_leaf_rejects_hash_like_names(self) -> None:
         # Real project leaf passes (even with a hyphen).
         self.assertEqual(_meaningful_leaf("timelog-extract"), "timelog-extract")
-        self.assertEqual(_meaningful_leaf("akturo"), "akturo")
+        self.assertEqual(_meaningful_leaf("project-beta"), "project-beta")
         # Hash-like tmp dir names are rejected as noise.
         self.assertIsNone(_meaningful_leaf("a1b2c3d4e5f60718293a4b5c6d7e8f90"))
         self.assertIsNone(_meaningful_leaf(""))

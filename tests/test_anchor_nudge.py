@@ -17,14 +17,18 @@ class StatusAnchorLineTests(unittest.TestCase):
         self.assertIsNone(status_anchor_line([]))
 
     def test_singular_and_listing(self):
-        line = status_anchor_line([{"dir": "timelog-extract", "hits": 280}])
-        self.assertIn("1 unmapped working directory", line)
-        self.assertIn("timelog-extract (280)", line)
+        line = status_anchor_line([{"kind": "dir", "value": "timelog-extract", "hits": 280}])
+        self.assertIn("1 unmapped activity anchor", line)
+        self.assertIn("timelog-extract (working directory, 280)", line)
+
+    def test_listing_includes_kind_label(self):
+        line = status_anchor_line([{"kind": "branch", "value": "project-beta", "hits": 120}])
+        self.assertIn("project-beta (git branch, 120)", line)
 
     def test_truncates_and_counts_remainder(self):
-        dirs = [{"dir": f"d{i}", "hits": 10 - i} for i in range(5)]
-        line = status_anchor_line(dirs)
-        self.assertIn("5 unmapped working directories", line)
+        anchors = [{"kind": "dir", "value": f"d{i}", "hits": 10 - i} for i in range(5)]
+        line = status_anchor_line(anchors)
+        self.assertIn("5 unmapped activity anchors", line)
         self.assertIn("+2 more", line)
 
 
@@ -50,7 +54,7 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         with patch("questionary.select", return_value=self._fake_select("gittan")):
             added = run_interactive_anchor_flow(
                 console,
-                [{"dir": "timelog-extract", "hits": 280}],
+                [{"kind": "dir", "value": "timelog-extract", "hits": 280}],
                 load_projects_config_payload(cfg)["projects"],
                 str(cfg),
             )
@@ -65,7 +69,7 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         console = MagicMock()
         with patch("questionary.select", return_value=self._fake_select("Create new project: newrepo")):
             added = run_interactive_anchor_flow(
-                console, [{"dir": "newrepo", "hits": 40}], [], str(cfg)
+                console, [{"kind": "dir", "value": "newrepo", "hits": 40}], [], str(cfg)
             )
         self.assertEqual(added, 1)
         data = load_projects_config_payload(cfg)
@@ -79,20 +83,20 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         with patch("questionary.select", return_value=self._fake_select("Skip")):
             added = run_interactive_anchor_flow(
                 console,
-                [{"dir": "timelog-extract", "hits": 280}],
+                [{"kind": "dir", "value": "timelog-extract", "hits": 280}],
                 [{"name": "gittan", "match_terms": ["keep"]}],
                 str(cfg),
             )
         self.assertEqual(added, 0)
         self.assertEqual(cfg.read_text(encoding="utf-8"), before)
 
-    def test_stop_halts_remaining_dirs(self):
+    def test_stop_halts_remaining_anchors(self):
         cfg = self._cfg({"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]})
         console = MagicMock()
         with patch("questionary.select", return_value=self._fake_select("Stop mapping")):
             added = run_interactive_anchor_flow(
                 console,
-                [{"dir": "a", "hits": 50}, {"dir": "b", "hits": 40}],
+                [{"kind": "dir", "value": "a", "hits": 50}, {"kind": "branch", "value": "b", "hits": 40}],
                 [{"name": "gittan", "match_terms": ["keep"]}],
                 str(cfg),
             )

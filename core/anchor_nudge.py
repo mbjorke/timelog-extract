@@ -1,10 +1,11 @@
 """Status-surface anchor nudge: one-line warning + optional interactive mapping.
 
-The status command shows a short warning when activity comes from working
-directories no project matches yet. When the session is interactive, the user
-can map them to projects in place (questionary), which is the medium-weight tier
-of the modal wall (docs/ideas/conversational-ui-stack.md). A richer React Ink
-overlay can replace this surface later without changing the data contract.
+The status command shows a short warning when activity comes from anchors no
+project matches yet — a working directory, git branch, or session title. When
+the session is interactive, the user can map them to projects in place
+(questionary), which is the medium-weight tier of the modal wall
+(docs/ideas/conversational-ui-stack.md). A richer React Ink overlay can replace
+this surface later without changing the data contract.
 """
 
 from __future__ import annotations
@@ -18,20 +19,27 @@ from core.config import (
     load_projects_config_payload,
     save_projects_config_payload,
 )
+from core.projects_audit import ANCHOR_KIND_LABELS
 
 _CREATE_PREFIX = "Create new project: "
 _SKIP = "Skip"
 _STOP = "Stop mapping"
 
 
-def status_anchor_line(dirs: list[dict]) -> str | None:
-    """One-line status warning for unmapped working directories, or None."""
-    if not dirs:
+def _kind_label(kind: str) -> str:
+    return ANCHOR_KIND_LABELS.get(str(kind), str(kind) or "anchor")
+
+
+def status_anchor_line(anchors: list[dict]) -> str | None:
+    """One-line status warning for unmapped activity anchors, or None."""
+    if not anchors:
         return None
-    listed = ", ".join(f"{d['dir']} ({d['hits']})" for d in dirs[:3])
-    more = "" if len(dirs) <= 3 else f" +{len(dirs) - 3} more"
-    plural = "y" if len(dirs) == 1 else "ies"
-    return f"⚠ {len(dirs)} unmapped working director{plural}: {listed}{more}"
+    listed = ", ".join(
+        f"{a['value']} ({_kind_label(a.get('kind', ''))}, {a['hits']})" for a in anchors[:3]
+    )
+    more = "" if len(anchors) <= 3 else f" +{len(anchors) - 3} more"
+    plural = "" if len(anchors) == 1 else "s"
+    return f"⚠ {len(anchors)} unmapped activity anchor{plural}: {listed}{more}"
 
 
 def should_prompt() -> bool:
@@ -44,14 +52,15 @@ def should_prompt() -> bool:
 
 def run_interactive_anchor_flow(
     console,
-    dirs: list[dict],
+    anchors: list[dict],
     profiles: list[dict],
     projects_config: str,
 ) -> int:
-    """Map unmapped directories to projects via questionary; apply with backup.
+    """Map unmapped anchors to projects via questionary; apply with backup.
 
-    Returns the number of match_terms added. Each directory becomes a match_term
-    on the chosen (or newly created) project. Safe to call only when should_prompt().
+    Returns the number of match_terms added. Each anchor value (working
+    directory, git branch, or session title) becomes a match_term on the chosen
+    (or newly created) project. Safe to call only when should_prompt().
     """
     import questionary
 
@@ -60,41 +69,42 @@ def run_interactive_anchor_flow(
         key=str.lower,
     )
 
-    additions: list[tuple[str, str]] = []  # (project_name, dir_leaf)
-    for entry in dirs:
-        leaf = str(entry.get("dir", "")).strip()
-        if not leaf:
+    additions: list[tuple[str, str]] = []  # (project_name, anchor_value)
+    for entry in anchors:
+        value = str(entry.get("value", "")).strip()
+        if not value:
             continue
-        choices = [*existing, f"{_CREATE_PREFIX}{leaf}", _SKIP, _STOP]
+        kind = _kind_label(entry.get("kind", ""))
+        choices = [*existing, f"{_CREATE_PREFIX}{value}", _SKIP, _STOP]
         answer = questionary.select(
-            f"Map directory '{leaf}' ({entry.get('hits', 0)} events) to project",
+            f"Map {kind} '{value}' ({entry.get('hits', 0)} events) to project",
             choices=choices,
         ).ask()
         if answer is None or answer == _STOP:
             break
         if answer == _SKIP:
             continue
-        target = leaf if answer == f"{_CREATE_PREFIX}{leaf}" else answer
-        additions.append((target, leaf))
+        target = value if answer == f"{_CREATE_PREFIX}{value}" else answer
+        additions.append((target, value))
 
     if not additions:
-        console.print("[dim]No directories mapped.[/dim]")
+        console.print("[dim]No anchors mapped.[/dim]")
         return 0
 
     cfg_path = Path(projects_config).expanduser()
     payload = load_projects_config_payload(cfg_path)
-    for project_name, leaf in additions:
+    for project_name, value in additions:
         apply_rule_to_project(
             payload,
             project_name=project_name,
             rule_type="match_terms",
-            rule_value=leaf,
+            rule_value=value,
         )
 
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
         console.print(f"[dim]Backup:[/dim] {backup}")
     save_projects_config_payload(cfg_path, payload)
-    summary = ", ".join(f"{leaf}→{name}" for name, leaf in additions)
-    console.print(f"[green]Mapped {len(additions)} director(y/ies): {summary}[/green]")
+    summary = ", ".join(f"{value}→{name}" for name, value in additions)
+    console.print(f"[green]Mapped {len(additions)} anchor(s): {summary}[/green]")
     return len(additions)

@@ -12,22 +12,99 @@ from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
 
 SOURCE_NAME = "Cursor"
 _COMPOSER_HEADERS_KEY = "composer.composerHeaders"
+# Stay below default session gap (15 min in core.domain.compute_sessions).
+_COMPOSER_HEARTBEAT_MINUTES = 14
+# Threads older than this when touched in-window emit a point event, not full span.
+_COMPOSER_STALE_REVIVAL_MS = 24 * 60 * 60 * 1000
 
 
 def cursor_state_db_path(home: Path) -> Path:
     return home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
 
 
-def _composer_timestamp_ms(composer: dict) -> int | None:
-    for key in ("lastUpdatedAt", "conversationCheckpointLastUpdatedAt", "createdAt"):
+def _composer_created_ms(composer: dict) -> int | None:
+    raw = composer.get("createdAt")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _composer_end_ms(composer: dict) -> int | None:
+    best: int | None = None
+    for key in ("lastUpdatedAt", "conversationCheckpointLastUpdatedAt"):
         raw = composer.get(key)
         if raw is None:
             continue
         try:
-            return int(raw)
+            ms = int(raw)
         except (TypeError, ValueError):
             continue
-    return None
+        if best is None or ms > best:
+            best = ms
+    return best
+
+
+def _composer_activity_span_ms(
+    composer: dict,
+    dt_from: datetime,
+    dt_to: datetime,
+) -> tuple[int, int] | None:
+    end_ms = _composer_end_ms(composer)
+    if end_ms is None:
+        return None
+    created_ms = _composer_created_ms(composer)
+    if created_ms is None:
+        created_ms = end_ms
+    if end_ms < created_ms:
+        created_ms, end_ms = end_ms, created_ms
+
+    from_ms = int(dt_from.timestamp() * 1000)
+    to_ms = int(dt_to.timestamp() * 1000)
+    if not (from_ms <= end_ms <= to_ms):
+        return None
+
+    if created_ms < from_ms:
+        if end_ms - created_ms > _COMPOSER_STALE_REVIVAL_MS:
+            return end_ms, end_ms
+        start_ms = from_ms
+    else:
+        start_ms = created_ms
+
+    if end_ms < start_ms:
+        start_ms = end_ms
+    return start_ms, end_ms
+
+
+def _composer_span_overlaps_window(
+    start_ms: int,
+    end_ms: int,
+    dt_from: datetime,
+    dt_to: datetime,
+) -> bool:
+    try:
+        start_ts = datetime.fromtimestamp(start_ms / 1000.0, tz=timezone.utc)
+        end_ts = datetime.fromtimestamp(end_ms / 1000.0, tz=timezone.utc)
+    except (OSError, OverflowError, ValueError):
+        return False
+    return start_ts <= dt_to and end_ts >= dt_from
+
+
+def _composer_heartbeat_timestamps_ms(start_ms: int, end_ms: int) -> list[int]:
+    """Sample timestamps across an active composer span for session duration math."""
+    if end_ms <= start_ms:
+        return [start_ms]
+    step_ms = _COMPOSER_HEARTBEAT_MINUTES * 60 * 1000
+    stamps = [start_ms]
+    cursor = start_ms + step_ms
+    while cursor < end_ms:
+        stamps.append(cursor)
+        cursor += step_ms
+    if stamps[-1] != end_ms:
+        stamps.append(end_ms)
+    return stamps
 
 
 def _uri_fs_path(block: dict | None) -> str:
@@ -132,48 +209,51 @@ def collect_cursor_composer_sessions(
     classify_project: Callable,
     make_event: Callable,
 ):
-    """One event per composer chat active in the date window (session title anchor)."""
-    best_by_id: dict[str, tuple[int, dict]] = {}
+    """Emit heartbeat events across each composer span (createdAt → lastUpdatedAt)."""
+    best_by_id: dict[str, tuple[int, int, dict]] = {}
     for composer in _read_composer_headers(cursor_state_db_path(home)):
         if not isinstance(composer, dict):
             continue
         composer_id = str(composer.get("composerId") or "").strip()
         if not composer_id:
             continue
-        ms = _composer_timestamp_ms(composer)
-        if ms is None:
+        span = _composer_activity_span_ms(composer, dt_from, dt_to)
+        if span is None:
             continue
-        try:
-            ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
-        except (OSError, OverflowError, ValueError):
-            continue
-        if not (dt_from <= ts <= dt_to):
+        start_ms, end_ms = span
+        if not _composer_span_overlaps_window(start_ms, end_ms, dt_from, dt_to):
             continue
         prev = best_by_id.get(composer_id)
-        if prev is None or ms >= prev[0]:
-            best_by_id[composer_id] = (ms, composer)
+        if prev is None or end_ms >= prev[1]:
+            best_by_id[composer_id] = (start_ms, end_ms, composer)
 
     results = []
-    for _ms, composer in best_by_id.values():
+    for start_ms, end_ms, composer in best_by_id.values():
         name = str(composer.get("name") or "").strip()
-        label = _meaningful_label(name)
-        if not label:
-            continue
-        ms = _composer_timestamp_ms(composer) or 0
-        ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
         workspace = _composer_workspace_path(composer)
         _git_text, branch = _composer_git_context(composer)
         dir_leaf = _path_dir_leaf(workspace) if workspace else None
+        label = _meaningful_label(name) or dir_leaf
+        if not label:
+            continue
         haystack = _composer_classification_haystack(composer, title=name)
         project = classify_project(haystack, profiles)
-        detail = name[:70]
-        results.append(
-            make_event(
-                SOURCE_NAME,
-                ts,
-                detail,
-                project,
-                anchors=_anchors(label=label, dir=dir_leaf, branch=branch),
+        detail = name[:70] if name else label[:70]
+        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        for ms in _composer_heartbeat_timestamps_ms(start_ms, end_ms):
+            try:
+                ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+            except (OSError, OverflowError, ValueError):
+                continue
+            if not (dt_from <= ts <= dt_to):
+                continue
+            results.append(
+                make_event(
+                    SOURCE_NAME,
+                    ts,
+                    detail,
+                    project,
+                    anchors=anchors,
+                )
             )
-        )
     return results

@@ -32,10 +32,16 @@ terminal-tool analogue of the existing `top_hosts` suggestion for browser tools.
 4. Suggestion/apply loop: `projects-audit --write-anchor-plan PATH` writes a
    reviewable plan of match_term additions for unanchored dirs; `projects-anchor
    -i PATH [--dry-run]` applies it (with backup), mirroring the trim flow.
+5. Automatic surfacing (modal wall): `status` shows a one-line warning when
+   unmapped directories carry real activity and — on an interactive TTY — offers
+   to map them in place (questionary; `--no-anchor-nudge` opts out). `report`
+   prints a richer multi-line nudge listing the directories. `status` alerts;
+   `report` explains. A React Ink overlay can replace the interactive surface
+   later without changing the data contract.
 
 Out of scope here: extending `context_dir` to Cursor/Gemini collectors
-(follow-up), and auto-mapping a directory to an existing project (the plan
-defaults `project_name` to the leaf for human review).
+(follow-up), the React Ink overlay, and auto-mapping a directory to an existing
+project (the plan/flow keep a human choice per directory).
 
 ## Evidence role
 
@@ -80,6 +86,20 @@ Feature: Working-directory anchor signal
     Given an anchor plan adds match_term "timelog-extract" to project "gittan"
     When projects-anchor applies the plan without --dry-run
     Then the project "gittan" gains the match_term "timelog-extract"
+    And a config backup is written first
+
+  Scenario: status warns about unmapped directories
+    Given activity from working directory "timelog-extract" with no matching profile
+    And the events exceed the nudge threshold
+    When status runs
+    Then a one-line warning names "timelog-extract" and its event count
+    And on a non-interactive session the manual anchor commands are printed
+    And --no-anchor-nudge suppresses the warning entirely
+
+  Scenario: status maps a directory interactively
+    Given an interactive session and an unmapped directory "timelog-extract"
+    When the user confirms mapping and selects project "gittan"
+    Then "gittan" gains the match_term "timelog-extract"
     And a config backup is written first
 ```
 

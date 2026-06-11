@@ -20,7 +20,7 @@ from core.report_service import (
     generate_invoice_pdf,
     run_timelog_report,
 )
-from core.report_nudges import build_unexplained_gap_nudge
+from core.report_nudges import build_unanchored_dirs_nudge, build_unexplained_gap_nudge
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
 
@@ -158,6 +158,9 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     nudge = build_unexplained_gap_nudge(report)
     if nudge:
         print(nudge)
+    dirs_nudge = build_unanchored_dirs_nudge(report)
+    if dirs_nudge:
+        print(dirs_nudge)
     if getattr(report.args, "weekly", False):
         _print_weekly(report.project_reports)
     if report.args.narrative:

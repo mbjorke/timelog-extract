@@ -276,6 +276,13 @@ def status(
         str,
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
+    anchor_nudge: Annotated[
+        bool,
+        typer.Option(
+            "--anchor-nudge/--no-anchor-nudge",
+            help="Warn about unmapped working directories and offer to map them (interactive).",
+        ),
+    ] = True,
 ):
     """Quick hours snapshot with project totals and session counts.
 
@@ -438,6 +445,30 @@ def status(
         nudge = build_unexplained_gap_nudge(report)
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
+        if anchor_nudge:
+            from core.anchor_nudge import (
+                run_interactive_anchor_flow,
+                should_prompt,
+                status_anchor_line,
+            )
+            from core.report_nudges import unanchored_dirs_for_report
+
+            unmapped_dirs = unanchored_dirs_for_report(report)
+            warn_line = status_anchor_line(unmapped_dirs)
+            if warn_line:
+                console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")
+                if should_prompt():
+                    import questionary
+
+                    if questionary.confirm("Map these directories to projects now?", default=False).ask():
+                        run_interactive_anchor_flow(
+                            console, unmapped_dirs, report.profiles, options.projects_config
+                        )
+                else:
+                    console.print(
+                        f"[{STYLE_MUTED}]Run `gittan projects-audit --write-anchor-plan plan.json` "
+                        f"then `gittan projects-anchor -i plan.json`.[/{STYLE_MUTED}]"
+                    )
         timelog_projects = sorted(
             {
                 str(event.get("project", "")).strip()

@@ -113,6 +113,27 @@ def aggregate_top_dirs(events: list[dict[str, Any]], *, limit: int) -> list[tupl
     return counts.most_common(max(0, int(limit)))
 
 
+def unanchored_top_dirs(
+    events: list[dict[str, Any]],
+    profiles: list[dict[str, Any]],
+    *,
+    min_hits: int = 1,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Working-directory leaves not yet matched by any profile, descending by hits.
+
+    Convenience for report/status nudges: combines aggregate_top_dirs with the
+    anchored check so callers get only actionable (unmapped) directories.
+    """
+    floor = max(1, int(min_hits))
+    out: list[dict[str, Any]] = []
+    for leaf, hits in aggregate_top_dirs(events, limit=max(0, int(limit))):
+        if hits < floor or is_dir_anchored_by_profiles(leaf, profiles):
+            continue
+        out.append({"dir": leaf, "hits": int(hits)})
+    return out
+
+
 def aggregate_top_hosts(events: list[dict[str, Any]], *, limit: int) -> list[tuple[str, int]]:
     """Count each canonical host at most once per event; return (host, count) descending."""
     counts: Counter[str] = Counter()

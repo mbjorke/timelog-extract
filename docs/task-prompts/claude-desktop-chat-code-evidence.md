@@ -1,66 +1,101 @@
-# Claude Desktop: separate Chat / Cowork / Code evidence
+# Claude Desktop: Code / Chat session evidence from the cached events API
 
 ## Problem
 
-Claude Desktop has three distinct activity modes — **Chat**, **Cowork**, and
-**Code** — but the current `collect_claude_desktop` path only surfaces Cowork
-log rows. Chat and Code sessions leave no timeline evidence, so e.g. a
-~1h Claude Desktop Code session produces zero observed hours even though the
-work resulted in git commits on a `claude/...` branch.
+Claude Desktop has three activity modes — **Chat**, **Cowork**, **Code** — but
+the current `collect_claude_desktop` path only surfaces Cowork log rows. Code
+and Chat sessions leave no timeline evidence, so a multi-hour Claude Desktop
+Code session can produce **zero observed hours** even though it did real work.
 
-## Validated local evidence (2026-06-11)
+Earlier candidate sources turned out to be single-point or empty:
 
-All three modes leave local traces under
-`~/Library/Application Support/Claude/`:
+- session-metadata JSON (`claude-code-sessions/**/local_*.json`): one
+  `lastFocusedAt`, often a stale `lastActivityAt`.
+- `session-diff-stats-store` (Local Storage): one cumulative `updatedAt`
+  snapshot, not a duration.
+- per-turn CLI logs (`~/.claude/projects/**`): for the validated day, only two
+  `pr-link` rows (filtered as noise) — no real turns.
 
-1. **Chat** — IndexedDB (`IndexedDB/https_claude.ai_0.indexeddb.blob/...`)
-   contains chat records with conversation UUID, human title, model, and
-   ISO timestamp. Validated: a chat record (`<conversation-uuid>`, a project
-   title, `<iso-ts>`) matched the corresponding Claude.ai (web) Chrome-history
-   event at the same wall-clock minute — Chat events can be
-   **cross-checked against Claude.ai (web)/Chrome** rows (dedupe required:
-   same conversation should not double-count).
-2. **Code** — two stores:
-   - `Local Storage/leveldb/*.ldb` key `session-diff-stats-store` (origin
-     `https://claude.ai`): per-session diff stats keyed by
-     `<session>:<owner>/<repo>:<branch>` with additions/deletions/fileCount
-     and `updatedAt` epoch-ms. Validated: a `claude/<branch>` entry with
-     non-zero additions across several files.
-   - IndexedDB session records: title, environment id (`env_…`), repo URL
-     (`https://github.com/<owner>/<repo>`), `refs/heads/<branch>`, and
-     created/updated timestamps.
-3. **Cowork** — already collected today (keep as-is).
+## Validated evidence source (primary)
+
+Claude Desktop caches the **session events API** response locally, in the
+Chromium disk cache, **zstd-compressed**:
+
+```
+key:  https://claude.ai/v1/sessions/<session-id>/events?limit=500&after_id=...
+body: zstd → JSON {"data": [ {created_at, type, message, uuid, session_id}, ... ],
+                   "has_more", "first_id", "last_id"}
+```
+
+Location: `~/Library/Application Support/Claude/Cache/Cache_Data/*_0`
+(Chromium "simple cache" entries: 20-byte header, key, then the response
+stream; body is zstd, magic `28 b5 2f fd`; an EOF record marks stream end).
+
+`type` ∈ {`user`, `assistant`, `system`, `env_manager_log`, `control_request`,
+`control_response`, `result`, `rate_limit_event`, `tool_progress`}. Each event
+has a real `created_at` ISO timestamp; events also carry `cwd`/`owner/repo`
+which gives per-event project attribution.
+
+Validated reconstruction (one session, one day): ~2,360 events, 1,057
+`user`/`assistant` turns, clustered (15-min idle gap) into one ~2.6h active span
+plus short touches — matching the user's recollection and the
+`git-worktrees`/diff-stats signals for the same session id. The session id is
+exactly the value behind Claude Desktop's **"Copy link"**
+(`https://claude.ai/code/session_<id>`), so it is user-verifiable.
+
+### Privacy (mandatory)
+
+`message.content` contains the **full chat/code text** (and signature blobs).
+The collector must read **only** `created_at`, `type`, `session_id`, and the
+`cwd`/`owner/repo` attribution fields. Never persist or surface message content.
+
+### Retention caveat
+
+The cache evicts oldest entries (same as Lovable `Cache_Data`): recent sessions
+reconstruct reliably; sessions from days/weeks ago may be gone. Git commits on
+`claude/<branch>` remain the durable long-range fallback.
 
 ## Task
 
-1. Extend `collectors/ai_logs.py` (or a new `collectors/claude_desktop.py`
-   under the 500-line limit) with:
-   - **Chat events**: parse IndexedDB blob records (regex-over-bytes is
-     acceptable, same approach as Lovable storage) → conversation UUID,
-     title, timestamp. Detail: `<title> — chat/<uuid-prefix>`.
-   - **Code events**: parse `session-diff-stats-store` and IndexedDB session
-     records → repo, branch, updatedAt. Detail:
-     `<repo>@<branch> — +<additions>/-<deletions> (<fileCount> files)`.
-     Project classification gets repo+branch in the haystack, so
-     `match_terms` like `owner/repo` attribute directly.
-2. Source naming: keep `Claude Desktop` as the source, but prefix detail with
-   the mode (`[chat]`, `[code]`, `[cowork]`) OR introduce sub-sources — decide
-   with maintainer before implementation (affects `core/sources.py`,
-   evidence legend, and `AI_SOURCES`).
-3. Dedupe: a Chat conversation also visible as Claude.ai (web)/Chrome rows
-   must not double-count session time (existing collapse/dedupe in
-   aggregation may already cover this — verify with a fixture).
-4. Fixture tests for both stores (synthetic LevelDB/IndexedDB byte blobs);
-   never hardcode real customer/project names — use `project-alpha` style
-   placeholders.
+1. New `collectors/claude_desktop_events.py` (keep `ai_logs.py` under 500 lines):
+   - enumerate `Cache_Data/*_0` entries whose key contains
+     `/v1/sessions/` and `/events`,
+   - parse the simple-cache header, locate the zstd frame, decompress
+     (`zstandard`; add as a dependency), `json.loads` the body,
+   - collect `data[]` events, dedupe by `uuid`, keep only `created_at` in the
+     report window,
+   - emit one event per **active cluster** (15-min idle gap) so session hours
+     are honest, attributed via `cwd`/`owner/repo` (reuse the repo-slug helper
+     from `repo-slug-project-attribution.md` when available),
+   - detail: `Code session <session-prefix> — N turns` (no message text).
+2. Performance: cap scanned bytes per run; skip entries > a few MB pre-decompress
+   guard; never crash on unreadable/binary/evicted entries.
+3. Source naming: surface as `Claude Desktop` (mode `[code]`), or a dedicated
+   sub-source — decide with maintainer (affects `core/sources.py`, evidence
+   legend, `AI_SOURCES`). Chat-mode events from the same cache can be added the
+   same way and cross-checked 1:1 against Claude.ai (web)/Chrome (dedupe so a
+   conversation is not double-counted).
+4. `gittan doctor`: report Claude Desktop events cache availability (mirror the
+   Lovable storage-signals doctor row so doctor never contradicts the report).
+5. Fixture tests: synthetic simple-cache entry with a zstd `/events` body using
+   neutral placeholders (`project-alpha`, `owner/repo`, `session_<id>`); assert
+   (a) cluster→hours, (b) no message content leaks into detail, (c) evicted/
+   corrupt entry is skipped without error.
 
 ## Acceptance criteria
 
-- A Claude Desktop Code session with commits on a `claude/...` branch shows up
-  as observed time attributed to the right project.
-- Chat sessions appear once (no double-count with web evidence).
-- Cowork behavior unchanged.
-- Full autotest suite green; 500-line limit respected.
+- A Claude Desktop Code session reconstructs honest active hours from the cached
+  `/events` body, attributed to the correct project.
+- Message content never appears in any event detail or persisted artifact.
+- Evicted/old sessions degrade gracefully (no crash, no fabricated hours).
+- `gittan doctor` reflects events-cache availability.
+- Full autotest suite green; no Python file exceeds 500 lines.
+
+## Non-goals
+
+- No keystroke capture, no network MITM, no fetching from claude.ai — local
+  cache only (consistent with `lovable-cache-evidence.md` Non-goals).
+- Not storing or rendering chat/code message text.
 
 ## Traceability
 
@@ -68,11 +103,16 @@ All three modes leave local traces under
 - spec_status: draft
 - implementation_status: not built
 - created_at: 2026-06-11
-- last_updated_at: 2026-06-11
+- last_updated_at: 2026-06-12
 - implementation.pr: pending
 - implementation.branch: pending
 - implementation.commits: []
-- validation.evidence: investigation in PR #140 thread (2026-06-11); IndexedDB chat record matched a Claude.ai (web) event at the same minute; session-diff-stats-store matched claude/ branch work
+- validation.evidence: PR #140 thread (2026-06-11/12); zstd-decompressed cached /v1/sessions/<id>/events reconstructed ~2.6h active across 1,057 turns for the session behind Claude Desktop "Copy link"; cross-checked vs git-worktrees + diff-stats
 - validation.decision: NO-GO
 - changelog:
-  - 2026-06-11: Initial draft created from live validation-day investigation.
+  - 2026-06-11: Initial draft (IndexedDB / diff-stats sources).
+  - 2026-06-12: Rewritten around the validated primary source — zstd-compressed
+    cached `/v1/sessions/<id>/events` responses (full turn log with timestamps +
+    repo attribution). Demoted session-JSON/diff-stats/CLI-log to weaker
+    fallbacks. Added mandatory privacy (timestamps/type only, no message text),
+    retention caveat, doctor row, and zstandard dependency note.

@@ -145,6 +145,13 @@ def is_junk_anchor_value(value: str) -> bool:
     from log parsing (``.gittan:``), and hash-like hex names (plugin cache or
     tmp directories) are tool plumbing — suggesting them as match_terms is
     noise, not signal.
+
+    Also rejects auto-generated git-worktree leaves that carry a hex
+    disambiguator suffix (e.g. ``confident-hopper-fe58c2``,
+    ``great-bassi-31c1d6`` from Claude Code worktrees): the slug is generated
+    per worktree, not a project, so it pollutes mapping suggestions. Real
+    project slugs (``landsbanken-faq-helper``, ``offer-craft-34``) do not end
+    in a 6–12 char all-hex segment, so they are unaffected.
     """
     text = str(value or "").strip().lower()
     if not text:
@@ -156,6 +163,10 @@ def is_junk_anchor_value(value: str) -> bool:
     compact = text.replace("-", "").replace("_", "")
     if len(compact) >= 16 and all(c in "0123456789abcdef" for c in compact):
         return True
+    if "-" in text:
+        tail = text.rsplit("-", 1)[-1]
+        if 6 <= len(tail) <= 12 and all(c in "0123456789abcdef" for c in tail):
+            return True
     return False
 
 

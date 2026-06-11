@@ -1,0 +1,164 @@
+"""Claude Desktop Code session evidence from the cached events API.
+
+Claude Desktop Code sessions leave no first-class local log; the only local
+trace of the full turn-by-turn timeline is the cached response of
+``https://claude.ai/v1/sessions/<id>/events`` in the Chromium disk cache
+(zstd-compressed JSON). This collector reconstructs honest active spans from
+those cached bodies. Spec: ``docs/task-prompts/claude-desktop-chat-code-evidence.md``.
+
+Privacy (mandatory): only ``created_at``, ``type``, ``uuid``, ``session_id``,
+and the ``cwd`` attribution field are read. ``message`` content (full chat and
+code text) is never accessed, persisted, or surfaced.
+
+Retention: the cache evicts oldest entries, so recent sessions reconstruct
+reliably while old sessions degrade to nothing (never fabricated hours).
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+from collectors.ai_logs import _anchors, _cwd_leaf
+from core.chromium_cache import codec_available, iter_cache_entries
+
+CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
+
+_SESSIONS_KEY_MARKER = "/v1/sessions/"
+_SESSION_ID_RE = re.compile(r"/v1/sessions/([^/?]+)/events")
+
+# Event types that represent a real user/model turn (for the turn count in the
+# detail line); all evented timestamps still extend the active span.
+_TURN_TYPES = frozenset({"user", "assistant"})
+
+# Sessions split into separate active clusters after this idle gap, matching
+# the report's default session gap.
+_CLUSTER_GAP_SECONDS = 15 * 60
+# Within a cluster, keep real turn timestamps at most this far apart so
+# compute_sessions() reconstructs the span without emitting every turn.
+_THIN_SPACING_SECONDS = 5 * 60
+
+
+def claude_events_cache_dir(home: Path) -> Path:
+    return home / "Library" / "Application Support" / "Claude" / "Cache" / "Cache_Data"
+
+
+def claude_events_cache_status(home: Path) -> tuple[bool, str]:
+    """(usable, reason) for `gittan doctor`: cache dir presence + zstd codec."""
+    if not claude_events_cache_dir(home).is_dir():
+        return False, "No Claude Desktop cache yet (open Claude Desktop to create one)"
+    if not codec_available()["zstd"]:
+        return False, "zstandard codec missing (pip install 'timelog-extract[cache-evidence]')"
+    return True, "Events cache readable"
+
+
+def _parse_created_at(raw) -> Optional[datetime]:
+    if not raw:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts
+
+
+def _session_id_from_key(key: str) -> str:
+    match = _SESSION_ID_RE.search(key)
+    return match.group(1) if match else ""
+
+
+def _clusters(stamps: list[tuple[datetime, bool]]) -> list[list[tuple[datetime, bool]]]:
+    """Split (timestamp, is_turn) pairs into active clusters by idle gap."""
+    ordered = sorted(stamps, key=lambda pair: pair[0])
+    clusters: list[list[tuple[datetime, bool]]] = []
+    for pair in ordered:
+        if clusters and (pair[0] - clusters[-1][-1][0]).total_seconds() <= _CLUSTER_GAP_SECONDS:
+            clusters[-1].append(pair)
+        else:
+            clusters.append([pair])
+    return clusters
+
+
+def _thin(stamps: list[datetime]) -> list[datetime]:
+    """Keep first/last plus intermediates ≥ _THIN_SPACING_SECONDS apart.
+
+    Every kept value is a real event timestamp (nothing is fabricated); the
+    spacing just keeps the timeline readable while compute_sessions() still
+    sees one continuous span.
+    """
+    if not stamps:
+        return []
+    kept = [stamps[0]]
+    for ts in stamps[1:-1]:
+        if (ts - kept[-1]).total_seconds() >= _THIN_SPACING_SECONDS:
+            kept.append(ts)
+    if stamps[-1] != kept[-1]:
+        kept.append(stamps[-1])
+    return kept
+
+
+def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project, make_event):
+    """Reconstruct Claude Desktop Code sessions from cached /events bodies."""
+    cache_dir = claude_events_cache_dir(home)
+    if not cache_dir.is_dir():
+        return []
+
+    # session id -> accumulator; uuid-dedupe spans overlapping cache entries
+    # (the app re-fetches /events with after_id pagination).
+    sessions: dict[str, dict] = {}
+    for entry in iter_cache_entries(cache_dir, _SESSIONS_KEY_MARKER, newer_than=dt_from):
+        if "/events" not in entry.key:
+            continue
+        try:
+            payload = json.loads(entry.body)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        rows = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            continue
+        key_sid = _session_id_from_key(entry.key)
+        for ev in rows:
+            if not isinstance(ev, dict):
+                continue
+            sid = str(ev.get("session_id") or "") or key_sid
+            if not sid:
+                continue
+            acc = sessions.setdefault(sid, {"uuids": set(), "stamps": [], "cwd": None})
+            if ev.get("cwd") and not acc["cwd"]:
+                acc["cwd"] = _cwd_leaf(ev)
+            uuid = str(ev.get("uuid") or "")
+            if uuid:
+                if uuid in acc["uuids"]:
+                    continue
+                acc["uuids"].add(uuid)
+            ts = _parse_created_at(ev.get("created_at"))
+            if ts is None or not (dt_from <= ts <= dt_to):
+                continue
+            is_turn = str(ev.get("type") or "").strip().lower() in _TURN_TYPES
+            acc["stamps"].append((ts, is_turn))
+
+    results = []
+    for sid, acc in sessions.items():
+        if not acc["stamps"]:
+            continue
+        cwd = acc["cwd"]
+        for cluster in _clusters(acc["stamps"]):
+            turns = sum(1 for _ts, is_turn in cluster if is_turn)
+            detail = f"Code session {sid[:20]} — {turns} turns"
+            project = classify_project(f"{cwd or ''} {detail}", profiles)
+            for ts in _thin([pair[0] for pair in cluster]):
+                results.append(
+                    make_event(
+                        CLAUDE_DESKTOP_CODE_SOURCE,
+                        ts,
+                        detail,
+                        project,
+                        anchors=_anchors(dir=cwd),
+                    )
+                )
+    return results

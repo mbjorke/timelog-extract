@@ -348,6 +348,7 @@ def collect_runtime_events(
         build_collector_specs_fn=build_collector_specs,
         collect_claude_code=runtime_collectors.collect_claude_code,
         collect_claude_desktop=runtime_collectors.collect_claude_desktop,
+        collect_claude_desktop_code=runtime_collectors.collect_claude_desktop_code,
         collect_claude_ai_urls=runtime_collectors.collect_claude_ai_urls,
         collect_gemini_web_urls=runtime_collectors.collect_gemini_web_urls,
         collect_chrome=runtime_collectors.collect_chrome,

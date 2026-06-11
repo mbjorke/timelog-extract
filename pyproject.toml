@@ -27,6 +27,12 @@ dependencies = [
   "questionary"
 ]
 
+[project.optional-dependencies]
+# Codecs for Electron/Chromium cache-backed sources (Claude Desktop Code=zstd,
+# Lovable Desktop=brotli). Without them those collectors silently yield nothing
+# and `gittan doctor` explains what to install.
+cache-evidence = ["zstandard>=0.21", "brotli>=1.1"]
+
 [project.urls]
 Homepage = "https://gittan.sh"
 Repository = "https://github.com/mbjorke/timelog-extract"

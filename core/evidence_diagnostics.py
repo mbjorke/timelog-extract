@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, Dict, List
 
+from core.sources import AI_SOURCES
+
 
 def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     source_counts = Counter(str(event.get("source") or "") for event in report.included_events)
@@ -12,6 +14,17 @@ def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     all_events = list(getattr(report, "all_events", None) or [])
     included = list(getattr(report, "included_events", None) or [])
     excluded_uncategorized = max(0, len(all_events) - len(included))
+    collected_counts = Counter(str(event.get("source") or "") for event in all_events)
+    collected_counts.pop("", None)
+    # Sources that produced raw evidence but had every row excluded (uncategorized).
+    collected_but_excluded = {
+        source: count
+        for source, count in collected_counts.items()
+        if count > 0 and source_counts.get(source, 0) == 0
+    }
+    silent_ai_sources = sorted(
+        source for source in AI_SOURCES if collected_counts.get(source, 0) == 0
+    )
     observed_hours = float(sum(float(day.get("hours", 0.0) or 0.0) for day in (report.overall_days or {}).values()))
     screen_values = [float(v or 0.0) for v in (report.screen_time_days or {}).values()]
     # Screen Time may be stored as seconds/day (large integers) or hours/day (small floats).
@@ -28,6 +41,8 @@ def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
         "delta_hours": delta_hours,
         "source_counts": dict(source_counts),
         "excluded_uncategorized_events": excluded_uncategorized,
+        "collected_but_excluded": collected_but_excluded,
+        "silent_ai_sources": silent_ai_sources,
     }
 
 

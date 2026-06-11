@@ -53,6 +53,25 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
         snap = build_evidence_snapshot(report)
         self.assertAlmostEqual(snap["screen_time_hours"], 9.0, places=3)
 
+    def test_snapshot_reports_collected_but_excluded_and_silent_ai_sources(self):
+        report = SimpleNamespace(
+            included_events=[{"source": "Cursor"}],
+            all_events=[
+                {"source": "Cursor"},
+                {"source": "Claude Desktop"},
+                {"source": "Claude Desktop"},
+            ],
+            overall_days={"2026-06-11": {"hours": 1.0}},
+            screen_time_days={},
+        )
+        snap = build_evidence_snapshot(report)
+        # Claude Desktop collected rows but none survived the uncategorized filter.
+        self.assertEqual(snap["collected_but_excluded"], {"Claude Desktop": 2})
+        # AI sources with zero collected rows are listed as silent.
+        self.assertIn("Claude Code CLI", snap["silent_ai_sources"])
+        self.assertIn("Gemini CLI", snap["silent_ai_sources"])
+        self.assertNotIn("Claude Desktop", snap["silent_ai_sources"])
+
     def test_warnings_trigger_on_gap_low_diversity_and_low_chrome(self):
         snapshot = {
             "delta_hours": 5.0,

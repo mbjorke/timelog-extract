@@ -151,6 +151,16 @@ def evidence_check(
         console.print("- Source counts (report-included evidence):")
         for source, count in sorted(source_counts.items(), key=lambda item: (-item[1], item[0])):
             console.print(f"  - {source}: {count}")
+    collected_but_excluded = snapshot.get("collected_but_excluded") or {}
+    if collected_but_excluded:
+        console.print("- Collected but fully excluded (all rows uncategorized):")
+        for source, count in sorted(collected_but_excluded.items(), key=lambda item: (-item[1], item[0])):
+            console.print(f"  - {source}: {count} (map with `gittan review` or `gittan map` to include)")
+    silent_ai = snapshot.get("silent_ai_sources") or []
+    if silent_ai:
+        console.print(
+            f"- AI sources with no local evidence in this window: {', '.join(silent_ai)}"
+        )
     excluded = int(snapshot.get("excluded_uncategorized_events") or 0)
     if excluded:
         console.print(

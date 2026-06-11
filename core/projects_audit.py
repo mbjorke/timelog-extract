@@ -29,6 +29,19 @@ ANCHOR_KIND_LABELS = {
     "label": "session title",
 }
 
+# A *signal* is any frequency-counted, profile-anchorable value the audit can
+# turn into a rule suggestion. Anchors (dir/branch/label → match_terms) and web
+# hosts (host → tracked_urls) share one model: aggregate per event, flag whether
+# a profile already anchors the value, and propose the matching rule type.
+SIGNAL_KINDS = ("host", "dir", "branch", "label")
+SIGNAL_KIND_LABELS = {"host": "web host", **ANCHOR_KIND_LABELS}
+SIGNAL_RULE_TYPE = {
+    "host": "tracked_urls",
+    "dir": "match_terms",
+    "branch": "match_terms",
+    "label": "match_terms",
+}
+
 HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
     "substring of the event detail (same text field used by project classification). "
@@ -40,18 +53,14 @@ HIT_DEFINITION_V1 = (
     "prove a rule is unused outside the window."
 )
 
-TOP_HOSTS_NOTE = (
-    "top_hosts: http(s) hosts parsed from event details, counted once per host per event, sorted by "
-    "frequency. anchored=true if some profile already has a match_term substring of the host or a "
-    "tracked_urls rule matching a stub URL for that host (same rules as tracked_url hits)."
-)
-
-TOP_ANCHORS_NOTE = (
-    "top_anchors: activity anchors (kind=dir working directory, branch git branch, label session "
-    "title) from collectors, counted once per event, sorted by frequency within each kind. "
-    "anchored=true if some profile already has a match_term that is a substring of the anchor value "
-    "(the same substring rule classification uses). Unanchored, high-hit anchors are match_term "
-    "suggestion candidates."
+TOP_SIGNALS_NOTE = (
+    "top_signals: frequency-counted, profile-anchorable values, counted once per value per event, "
+    "sorted by frequency within each kind. kind=host (web host parsed from detail → tracked_urls), "
+    "kind=dir/branch/label (working directory / git branch / session title → match_terms). "
+    "anchored=true if some profile rule already covers the value (a match_term that is a substring "
+    "of it, or for hosts a match_term/tracked_urls rule matching a stub URL for that host — the same "
+    "rules as classification). Unanchored, high-hit signals are rule suggestion candidates; rule_type "
+    "names the rule each kind would add."
 )
 
 
@@ -169,6 +178,66 @@ def aggregate_top_hosts(events: list[dict[str, Any]], *, limit: int) -> list[tup
     return counts.most_common(max(0, int(limit)))
 
 
+def aggregate_signal(events: list[dict[str, Any]], kind: str, *, limit: int) -> list[tuple[str, int]]:
+    """Count one signal kind once per value per event; descending (host or anchor)."""
+    if kind == "host":
+        return aggregate_top_hosts(events, limit=limit)
+    return aggregate_top_anchors(events, kind, limit=limit)
+
+
+def is_signal_anchored(value: str, kind: str, profiles: list[dict[str, Any]]) -> bool:
+    """True if a profile rule already covers this signal value (host or anchor rules)."""
+    if kind == "host":
+        return is_host_anchored_by_profiles(value, profiles)
+    return is_value_anchored_by_profiles(value, profiles)
+
+
+def build_top_signals(
+    events: list[dict[str, Any]],
+    profiles: list[dict[str, Any]],
+    *,
+    limit: int,
+    kinds: tuple[str, ...] = SIGNAL_KINDS,
+) -> list[dict[str, Any]]:
+    """Unified rule-suggestion signals across every kind (host + anchors).
+
+    Each row is ``{kind, value, hits, anchored, rule_type}``; rows are grouped by
+    kind in ``kinds`` order, sorted by hits within each kind.
+    """
+    rows: list[dict[str, Any]] = []
+    for kind in kinds:
+        for value, hits in aggregate_signal(events, kind, limit=limit):
+            rows.append(
+                {
+                    "kind": kind,
+                    "value": value,
+                    "hits": int(hits),
+                    "anchored": is_signal_anchored(value, kind, profiles),
+                    "rule_type": SIGNAL_RULE_TYPE.get(kind, "match_terms"),
+                }
+            )
+    return rows
+
+
+def unanchored_top_signals(
+    events: list[dict[str, Any]],
+    profiles: list[dict[str, Any]],
+    *,
+    kinds: tuple[str, ...] = SIGNAL_KINDS,
+    min_hits: int = 1,
+    limit_per_kind: int = 10,
+) -> list[dict[str, Any]]:
+    """Unanchored rule-suggestion signals (any kind), descending by hits."""
+    floor = max(1, int(min_hits))
+    out = [
+        row
+        for row in build_top_signals(events, profiles, limit=max(0, int(limit_per_kind)), kinds=kinds)
+        if not row["anchored"] and row["hits"] >= floor
+    ]
+    out.sort(key=lambda row: row["hits"], reverse=True)
+    return out
+
+
 def build_projects_audit_payload(
     *,
     events: list[dict[str, Any]],
@@ -225,34 +294,13 @@ def build_projects_audit_payload(
             }
         )
 
-    top_rows = aggregate_top_hosts(events, limit=top_hosts_limit)
-    top_hosts_out = [
-        {
-            "host": host,
-            "hits": int(n),
-            "anchored": is_host_anchored_by_profiles(host, profiles),
-        }
-        for host, n in top_rows
-    ]
-
-    top_anchors_out: list[dict[str, Any]] = []
-    for kind in ANCHOR_KINDS:
-        for value, n in aggregate_top_anchors(events, kind, limit=top_hosts_limit):
-            top_anchors_out.append(
-                {
-                    "kind": kind,
-                    "value": value,
-                    "hits": int(n),
-                    "anchored": is_value_anchored_by_profiles(value, profiles),
-                }
-            )
+    top_signals_out = build_top_signals(events, profiles, limit=top_hosts_limit)
 
     return {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "command": "gittan projects-audit",
         "hit_definition": HIT_DEFINITION_V1,
-        "top_hosts_note": TOP_HOSTS_NOTE,
-        "top_anchors_note": TOP_ANCHORS_NOTE,
+        "top_signals_note": TOP_SIGNALS_NOTE,
         "pool": pool,
         "options": {
             "date_from": date_from,
@@ -262,8 +310,7 @@ def build_projects_audit_payload(
         },
         "event_count": len(events),
         "projects": projects_out,
-        "top_hosts": top_hosts_out,
-        "top_anchors": top_anchors_out,
+        "top_signals": top_signals_out,
     }
 
 
@@ -320,12 +367,13 @@ def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[s
 def build_anchor_plan_from_audit(
     audit_payload: dict[str, Any], *, min_hits: int = 1
 ) -> dict[str, Any]:
-    """Build a `projects-anchor` plan (schema v1): match_term additions for anchors.
+    """Build a `projects-anchor` plan (schema v1): rule additions from signals.
 
-    Each addition is an **unanchored** activity anchor (`top_anchors` row with
-    `anchored=false`) — a working directory, git branch, or session title — seen
-    at least `min_hits` times in the audit window. The anchor value is proposed
-    as the match_term value (tagged with its `anchor_kind`), and `project_name`
+    Each addition is an **unanchored** signal (`top_signals` row with
+    `anchored=false`) — a web host (→ tracked_urls), or a working directory, git
+    branch, or session title (→ match_terms) — seen at least `min_hits` times in
+    the audit window. Each row carries its own `rule_type`; the signal value is
+    proposed as the rule value (tagged with its `anchor_kind`), and `project_name`
     defaults to that same value — review and edit it (and trim long title values)
     to target an existing project before applying. Applying via
     `gittan projects-anchor` creates a new project if the name does not exist.
@@ -336,28 +384,30 @@ def build_anchor_plan_from_audit(
 
     floor = max(1, int(min_hits))
     additions: list[dict[str, Any]] = []
-    for row in audit_payload.get("top_anchors") or []:
+    for row in audit_payload.get("top_signals") or []:
         if row.get("anchored"):
             continue
         value = str(row.get("value", "")).strip()
         hits = int(row.get("hits", 0))
         if not value or hits < floor:
             continue
+        kind = str(row.get("kind", ""))
         additions.append(
             {
                 "project_name": value,
-                "rule_type": "match_terms",
+                "rule_type": str(row.get("rule_type") or SIGNAL_RULE_TYPE.get(kind, "match_terms")),
                 "rule_value": value,
-                "anchor_kind": str(row.get("kind", "")),
+                "anchor_kind": kind,
                 "hits": hits,
             }
         )
 
     note = (
-        "Candidate match_terms from unanchored activity anchors (anchor_kind = dir/branch/label) in "
-        "the audit window only. project_name defaults to the anchor value — edit it to map to an "
-        "existing project, and trim long session-title values (applying an unknown name creates a "
-        "new project). Apply: gittan projects-anchor -i <file> --dry-run then rerun without --dry-run."
+        "Candidate rules from unanchored signals (anchor_kind = host/dir/branch/label) in the audit "
+        "window only; rule_type is tracked_urls for hosts, match_terms otherwise. project_name "
+        "defaults to the signal value — edit it to map to an existing project, and trim long "
+        "session-title values (applying an unknown name creates a new project). Apply: "
+        "gittan projects-anchor -i <file> --dry-run then rerun without --dry-run."
     )
 
     return {

@@ -23,7 +23,7 @@ Do not make breaking renames now. If we later want `capture/review` wording, add
 | Classified candidates | Map URL hosts to projects (interactive) | `gittan review` | Canonical mapping flow; bulk + row review, writes `tracked_urls`. |
 | Classified candidates | Read-only URL mapping candidates | `gittan review --json` | Machine-readable candidates; no config writes. |
 | Classified candidates | Rule hit audit / trim stale terms | `gittan projects-audit` / `projects-trim` | Complements `gittan review`; not a replacement. |
-| Classified candidates | Anchor unmapped working directories as match_terms | `gittan projects-audit --write-anchor-plan` / `projects-anchor` | Surfaces unanchored `top_dirs`; review plan then apply (dry-run + backup). |
+| Classified candidates | Anchor unmapped signals (dirs/branches/titles → match_terms, hosts → tracked_urls) | `gittan projects-audit --write-anchor-plan` / `projects-anchor` | Surfaces unanchored `top_signals`; review plan then apply (dry-run + backup). |
 | Approved summary | Quick total/status check | `gittan status --today --additive` | High-level summary across projects/sessions. |
 | Onboarding | Run setup wizard | `gittan setup` | One-click default; `--interactive` and `--dry-run` available. |
 

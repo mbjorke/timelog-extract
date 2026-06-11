@@ -49,13 +49,17 @@ weaker auto-suggestion than a path leaf. See
    privacy-safe: a `dir` leaf (`timelog-extract`) carries no home prefix or
    username (`/Users/<name>/…`); a `branch` leaf drops any namespace segment; a
    `label` is the title only.
-2. `top_anchors` aggregation in `projects-audit` (schema v2), analogous to
-   `top_hosts`, with a `kind` and an `anchored` flag (true if any profile
-   match_term is a substring of the value) per row.
+2. `top_signals` aggregation in `projects-audit` (schema v2) — one unified model
+   that folds the former `top_hosts` and `top_anchors`. Each row is
+   `{kind, value, hits, anchored, rule_type}`: `kind=host` (web host from detail
+   → `tracked_urls`) or `kind=dir/branch/label` (→ `match_terms`). `anchored` is
+   true if a profile rule already covers the value (the same rules
+   classification uses).
 3. Suggestion/apply loop: `projects-audit --write-anchor-plan PATH` writes a
-   reviewable plan of match_term additions for unanchored anchors (any kind,
-   tagged with `anchor_kind`); `projects-anchor -i PATH [--dry-run]` applies it
-   (with backup), mirroring the trim flow.
+   reviewable plan of rule additions for unanchored signals (any kind, each
+   tagged with `anchor_kind` and its own `rule_type`); `projects-anchor -i PATH
+   [--dry-run]` applies it (with backup, `match_terms` or `tracked_urls`),
+   mirroring the trim flow.
 4. Automatic surfacing (modal wall): `status` shows a one-line warning when
    unmapped anchors carry real activity and — on an interactive TTY — offers to
    map them in place (questionary; `--no-anchor-nudge` opts out). `report`

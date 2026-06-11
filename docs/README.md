@@ -45,7 +45,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Timelog capture health and future menu bar counter** → [`specs/timelog-health-monitor.md`](specs/timelog-health-monitor.md)
 - **Local retained evidence / shadow log** → [`specs/local-evidence-shadow-log.md`](specs/local-evidence-shadow-log.md)
 - **Intent capture (record user intention at moment of work)** → [`specs/intent-capture.md`](specs/intent-capture.md)
-- **Working-directory anchor signal (preserve cwd leaf, `top_dirs` audit)** → [`specs/working-directory-anchor-signal.md`](specs/working-directory-anchor-signal.md)
+- **Activity anchor signal (preserve dir/branch/title, unified `top_signals` audit)** → [`specs/working-directory-anchor-signal.md`](specs/working-directory-anchor-signal.md)
 - **Private-first vs local-first principle** → [`decisions/private-not-local.md`](decisions/private-not-local.md)
 - **Conversational UI / modal wall stack direction** → [`ideas/conversational-ui-stack.md`](ideas/conversational-ui-stack.md)
 - **Agent-runtime integration + distribution (Hermes example)** → [`ideas/hermes-agent-distribution.md`](ideas/hermes-agent-distribution.md)

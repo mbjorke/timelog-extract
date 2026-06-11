@@ -184,9 +184,14 @@ class ProjectsAuditTests(unittest.TestCase):
             pool="deduped_all_events",
             top_hosts_limit=10,
         )
-        hosts = {r["host"]: (r["hits"], r["anchored"]) for r in payload["top_hosts"]}
+        hosts = {
+            r["value"]: (r["hits"], r["anchored"], r["rule_type"])
+            for r in payload["top_signals"]
+            if r["kind"] == "host"
+        }
         self.assertEqual(hosts["acme.com"][0], 1)
         self.assertTrue(hosts["acme.com"][1])
+        self.assertEqual(hosts["acme.com"][2], "tracked_urls")
         self.assertEqual(hosts["other.test"][0], 2)
         self.assertFalse(hosts["other.test"][1])
 
@@ -220,11 +225,13 @@ class ProjectsAuditTests(unittest.TestCase):
             pool="deduped_all_events",
             top_hosts_limit=10,
         )
-        rows = {(r["kind"], r["value"]): (r["hits"], r["anchored"]) for r in payload["top_anchors"]}
+        rows = {(r["kind"], r["value"]): (r["hits"], r["anchored"]) for r in payload["top_signals"]}
         self.assertEqual(rows[("dir", "project-alpha")], (2, True))
         self.assertEqual(rows[("dir", "project-gamma")], (1, False))
         self.assertEqual(rows[("branch", "project-alpha-dashboard")], (1, True))
         self.assertEqual(rows[("label", "redesign the gamma report")], (1, False))
+        # Anchors carry the match_terms rule_type.
+        self.assertTrue(all(r["rule_type"] == "match_terms" for r in payload["top_signals"] if r["kind"] != "host"))
         # Events without anchors do not produce a row.
         self.assertNotIn(("dir", ""), rows)
 
@@ -254,26 +261,54 @@ class ProjectsAuditTests(unittest.TestCase):
             "schema_version": AUDIT_SCHEMA_VERSION,
             "command": "gittan projects-audit",
             "options": {},
-            "top_anchors": [
-                {"kind": "dir", "value": "project-gamma", "hits": 12, "anchored": False},
-                {"kind": "branch", "value": "gamma-feature", "hits": 9, "anchored": False},
-                {"kind": "dir", "value": "project-alpha", "hits": 30, "anchored": True},
-                {"kind": "dir", "value": "noise", "hits": 1, "anchored": False},
+            "top_signals": [
+                {"kind": "host", "value": "other.test", "hits": 14, "anchored": False, "rule_type": "tracked_urls"},
+                {"kind": "dir", "value": "project-gamma", "hits": 12, "anchored": False, "rule_type": "match_terms"},
+                {"kind": "branch", "value": "gamma-feature", "hits": 9, "anchored": False, "rule_type": "match_terms"},
+                {"kind": "dir", "value": "project-alpha", "hits": 30, "anchored": True, "rule_type": "match_terms"},
+                {"kind": "dir", "value": "noise", "hits": 1, "anchored": False, "rule_type": "match_terms"},
             ],
         }
         plan = build_anchor_plan_from_audit(audit, min_hits=2)
         self.assertEqual(plan["schema_version"], 1)
-        self.assertEqual(plan["meta"]["anchor_candidates"], 2)
+        self.assertEqual(plan["meta"]["anchor_candidates"], 3)
         adds = {(a["project_name"], a["rule_type"], a["rule_value"], a["anchor_kind"]) for a in plan["additions"]}
+        # host → tracked_urls; anchors → match_terms
+        self.assertIn(("other.test", "tracked_urls", "other.test", "host"), adds)
         self.assertIn(("project-gamma", "match_terms", "project-gamma", "dir"), adds)
         self.assertIn(("gamma-feature", "match_terms", "gamma-feature", "branch"), adds)
-        # anchored anchor excluded; below-min-hits anchor excluded
+        # anchored signal excluded; below-min-hits signal excluded
         self.assertNotIn(("project-alpha", "match_terms", "project-alpha", "dir"), adds)
         self.assertNotIn(("noise", "match_terms", "noise", "dir"), adds)
 
     def test_anchor_plan_rejects_wrong_audit_schema(self) -> None:
         with self.assertRaises(ValueError):
-            build_anchor_plan_from_audit({"schema_version": 99, "top_anchors": []})
+            build_anchor_plan_from_audit({"schema_version": 99, "top_signals": []})
+
+    def test_projects_anchor_applies_tracked_url(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        plan = {
+            "schema_version": 1,
+            "additions": [
+                {"project_name": "existing", "rule_type": "tracked_urls", "rule_value": "other.test"},
+            ],
+        }
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        result = self.runner.invoke(
+            app,
+            ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+        )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        data = load_projects_config_payload(cfg_path)
+        proj = next(p for p in data["projects"] if p["name"] == "existing")
+        self.assertIn("other.test", [str(u).lower() for u in proj["tracked_urls"]])
 
     def test_projects_anchor_applies_match_term(self) -> None:
         cfg_path = Path(self._temp_json())

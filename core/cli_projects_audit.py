@@ -23,8 +23,8 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
-    ANCHOR_KIND_LABELS,
     ANCHOR_PLAN_SCHEMA_VERSION,
+    SIGNAL_KIND_LABELS,
     TRIM_PLAN_SCHEMA_VERSION,
     build_anchor_plan_from_audit,
     build_projects_audit_payload,
@@ -59,7 +59,7 @@ def projects_audit(
     screen_time: Annotated[str, typer.Option(help="Screen time: auto/on/off")] = "auto",
     max_top_hosts: Annotated[
         int,
-        typer.Option(help="Max http(s) hosts to list in top_hosts (0 disables)"),
+        typer.Option(help="Max rows per kind in top_signals (hosts/dirs/branches/titles; 0 disables)"),
     ] = 30,
     write_trim_plan: Annotated[
         Optional[str],
@@ -77,10 +77,10 @@ def projects_audit(
         typer.Option(
             "--write-anchor-plan",
             help=(
-                "Write anchor-plan JSON (schema v1) to PATH: match_term additions for unanchored "
-                "activity anchors (top_anchors: working dirs, git branches, session titles) seen in "
-                "this window. project_name defaults to the anchor value — edit to map to an existing "
-                "project. Review then: projects-anchor -i PATH --dry-run."
+                "Write anchor-plan JSON (schema v1) to PATH: rule additions for unanchored signals "
+                "(top_signals: web hosts → tracked_urls; working dirs, git branches, session titles → "
+                "match_terms) seen in this window. project_name defaults to the signal value — edit to "
+                "map to an existing project. Review then: projects-anchor -i PATH --dry-run."
             ),
         ),
     ] = None,
@@ -143,7 +143,7 @@ def projects_audit(
         out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if not json_out:
             console.print(
-                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate anchors) "
+                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate signals) "
                 f"to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}). "
                 f"Edit project_name to map to existing projects; then "
                 f"`gittan projects-anchor -i {out_path}` --dry-run.[/dim]"
@@ -176,36 +176,24 @@ def projects_audit(
         if first:
             table.add_row(pname, "(no rules)", "—")
     console.print(table)
-    if int(max_top_hosts) > 0 and payload.get("top_hosts"):
+    if int(max_top_hosts) > 0 and payload.get("top_signals"):
         console.print()
-        console.print(f"[dim]{payload.get('top_hosts_note', '')}[/dim]")
-        ht = Table(show_header=True, header_style="bold")
-        ht.add_column("Host")
-        ht.add_column("Hits", justify="right")
-        ht.add_column("Anchored", justify="center")
-        for row in payload["top_hosts"]:
-            ht.add_row(
-                str(row.get("host", "")),
-                str(row.get("hits", 0)),
-                "yes" if row.get("anchored") else "no",
-            )
-        console.print(ht)
-    if payload.get("top_anchors"):
-        console.print()
-        console.print(f"[dim]{payload.get('top_anchors_note', '')}[/dim]")
-        at_table = Table(show_header=True, header_style="bold")
-        at_table.add_column("Kind")
-        at_table.add_column("Anchor")
-        at_table.add_column("Hits", justify="right")
-        at_table.add_column("Anchored", justify="center")
-        for row in payload["top_anchors"]:
-            at_table.add_row(
-                ANCHOR_KIND_LABELS.get(str(row.get("kind", "")), str(row.get("kind", ""))),
+        console.print(f"[dim]{payload.get('top_signals_note', '')}[/dim]")
+        st = Table(show_header=True, header_style="bold")
+        st.add_column("Kind")
+        st.add_column("Signal")
+        st.add_column("Rule", justify="center")
+        st.add_column("Hits", justify="right")
+        st.add_column("Anchored", justify="center")
+        for row in payload["top_signals"]:
+            st.add_row(
+                SIGNAL_KIND_LABELS.get(str(row.get("kind", "")), str(row.get("kind", ""))),
                 str(row.get("value", "")),
+                str(row.get("rule_type", "")),
                 str(row.get("hits", 0)),
                 "yes" if row.get("anchored") else "no",
             )
-        console.print(at_table)
+        console.print(st)
     console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
 
 
@@ -310,8 +298,8 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
         rv = str(item.get("rule_value", "")).strip()
         if not pn or not rv:
             raise ValueError(f"additions[{idx}]: project_name and rule_value required")
-        if rt != "match_terms":
-            raise ValueError(f"additions[{idx}]: only match_terms additions are supported")
+        if rt not in {"match_terms", "tracked_urls"}:
+            raise ValueError(f"additions[{idx}]: rule_type must be match_terms or tracked_urls")
         out.append({"project_name": pn, "rule_type": rt, "rule_value": rv})
     return out
 
@@ -325,7 +313,7 @@ def projects_anchor(
     ] = None,
     dry_run: Annotated[bool, typer.Option(help="Print planned additions only; no write")] = False,
 ) -> None:
-    """Add match_terms to projects from an anchor plan (e.g. unanchored directories)."""
+    """Add rules to projects from an anchor plan (unanchored signals: hosts, dirs, branches, titles)."""
     from rich.console import Console
 
     console = Console()
@@ -352,7 +340,7 @@ def projects_anchor(
         )
         verb = "add (new project)" if created else "add"
         preview.append(
-            f"{verb}: {item['project_name']} match_terms={item['rule_value']!r}"
+            f"{verb}: {item['project_name']} {item['rule_type']}={item['rule_value']!r}"
         )
 
     console.print("\n".join(preview))

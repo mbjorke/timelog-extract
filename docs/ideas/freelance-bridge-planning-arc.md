@@ -1,20 +1,20 @@
-# Freelance Bridge planning arc — execution log and roadmap
+# Freelance Bridge planning arc — PR #140 execution log
 
-Status: active branch work (`claude/freelance-bridge-dashboard-CeFO5`, 2026-06)  
+Status: branch log for [#140](https://github.com/mbjorke/timelog-extract/pull/140)  
 Last updated: 2026-06-11
+
+> **How to build forward after merge:** see the canonical roadmap
+> [`../roadmaps/mapping-signals-continuation-2026-06.md`](../roadmaps/mapping-signals-continuation-2026-06.md)
+> (tracks, PR order, draft-vs-built split). This file keeps the #140 slice detail.
 
 ## Context
 
 The **Freelance Bridge** dashboard prototype is retired as a product shape
-(see `conversational-ui-stack.md`). This branch carries the **private-first**
-replacement: stronger local signals, audit-driven rule suggestions, modal-wall
-nudges, and planning docs for intent capture and triage UX — not a hosted
-middleware dashboard.
+(see `conversational-ui-stack.md`). PR #140 ships the **private-first**
+mapping slice: activity anchors, unified `top_signals` audit, and modal-wall
+nudges — plus draft docs for intent capture and triage UX (not built in #140).
 
-Use this file as the **agent handoff** when resuming the branch: what landed,
-what was intentionally *not* unified yet, and the recommended next slices.
-
-## Completed slices
+## Completed in #140
 
 | # | Slice | Status | Evidence |
 | --- | --- | --- | --- |
@@ -38,51 +38,26 @@ path instead of two parallel ones:
 
 **One suggestion/plan path:** `projects-audit --write-anchor-plan` tags each
 addition with the correct `rule_type` (hosts → `tracked_urls`); `projects-anchor`
-applies **both** rule types (`apply_rule_to_project` already supported
-`tracked_urls`; the apply loader was relaxed from match_terms-only).
-
-**Audit JSON:** `schema_version: 2`; payload key is `top_signals` only (no
-stale `top_hosts` / `top_anchors` keys). Internal helpers
-`aggregate_top_hosts` / `aggregate_top_anchors` remain as per-kind backends
-for `aggregate_signal` — intentional.
+applies **both** rule types.
 
 ### Boundary held on purpose (#1)
 
 **`status` / `report` nudges stay anchor-only** (`dir` / `branch` / `label`).
-They call `unanchored_top_anchors`, not `unanchored_top_signals`.
+**`gittan review` keeps interactive host → project mapping.**
 
-**`gittan review` keeps interactive host → project mapping.** Batch host
-suggestions live in audit + `--write-anchor-plan` + `projects-anchor`; the
-modal-wall nudge does not compete with review for hosts.
+## Next slices (after #140 — see roadmap for order)
 
-Uncategorized / screen-time nudges still point at `gittan review` for URL
-hosts.
-
-## Recommended next slices (not built)
-
-Order from the 2026-06-11 design session — adjust if product priority shifts.
-
-| # | Slice | Rationale |
+| # | Slice | Track |
 | --- | --- | --- |
-| **4** | Derive classification **haystack** from `anchors + detail` in one place | Cheap correctness win while the anchor model is fresh; reduces drift between what collectors prepend and what `classify_project` sees |
-| **2** | Merge `projects-trim` + `projects-anchor` into one **plan executor** (`op ∈ {add, remove}`) | One reviewed JSON plan for rule hygiene instead of parallel trim/anchor commands |
-| **3** | **Nudge registry** | Centralise threshold/copy/surface routing for report/status nudges (anchors, uncategorized, screen-time, …) |
+| **4** | Haystack from `anchors + detail` | A — config hygiene |
+| **2** | Unified trim/anchor plan executor | A |
+| **3** | Nudge registry | A |
+| — | Intent capture MVP | B |
+| — | Triage UX restart | B (after intent) |
 
-Other follow-ups already on the anchor spec: `label` coverage beyond Codex;
-React Ink overlay for medium-weight mapping; intent capture (`specs/intent-capture.md`).
+Full table and branch naming: `../roadmaps/mapping-signals-continuation-2026-06.md`.
 
-## Verification notes (#1)
+## Verification (#140)
 
-- Full gate: `bash scripts/run_autotests.sh` (643 tests at time of merge).
-- Live smoke: `gittan projects-audit --json` → `schema_version: 2`, `top_signals`
-  rows with `rule_type`; human table includes a **Rule** column; mixed plans
-  tag `anchor_kind` + `rule_type` (host rows appear when browser activity exists
-  in the window).
-
-## Related
-
-- `../specs/working-directory-anchor-signal.md` — normative anchor + audit contract
-- `conversational-ui-stack.md` — modal wall; why review owns high-weight host mapping
-- `fast-project-mapping-playbook.md` — operator workflow using `top_signals`
-- `triage-design-session-learnings.md` — paused triage UX; needs intent capture
-- `../specs/intent-capture.md` — next root fix for weak web/chat signals
+- `bash scripts/run_autotests.sh`
+- `gittan projects-audit --json` → `schema_version: 2`, `top_signals`

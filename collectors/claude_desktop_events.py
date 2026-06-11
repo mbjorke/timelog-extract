@@ -97,7 +97,9 @@ def _thin(stamps: list[datetime]) -> list[datetime]:
     for ts in stamps[1:-1]:
         if (ts - kept[-1]).total_seconds() >= _THIN_SPACING_SECONDS:
             kept.append(ts)
-    if stamps[-1] != kept[-1]:
+    # Close the span with the real last timestamp, unless it would render as a
+    # duplicate row seconds after the previous kept one.
+    if (stamps[-1] - kept[-1]).total_seconds() > 60:
         kept.append(stamps[-1])
     return kept
 
@@ -125,7 +127,11 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
         for ev in rows:
             if not isinstance(ev, dict):
                 continue
-            sid = str(ev.get("session_id") or "") or key_sid
+            # Prefer the session id from the cache key: it is the public id
+            # behind Claude Desktop's "Copy link" (user-verifiable), and it
+            # unifies events that carry an internal session_id UUID with those
+            # that carry none — otherwise one session splits in two.
+            sid = key_sid or str(ev.get("session_id") or "")
             if not sid:
                 continue
             acc = sessions.setdefault(sid, {"uuids": set(), "stamps": [], "cwd": None})
@@ -149,6 +155,10 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
         cwd = acc["cwd"]
         for cluster in _clusters(acc["stamps"]):
             turns = sum(1 for _ts, is_turn in cluster if is_turn)
+            if turns == 0:
+                # Background-only cluster (rate-limit pings, env refreshes):
+                # no real user/model turn, so no honest hours to claim.
+                continue
             detail = f"Code session {sid[:20]} — {turns} turns"
             project = classify_project(f"{cwd or ''} {detail}", profiles)
             for ts in _thin([pair[0] for pair in cluster]):

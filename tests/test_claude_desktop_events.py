@@ -111,6 +111,60 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         self.assertEqual(len(details), 2)
         self.assertIn("Code session session_01TESTALPHA — 31 turns", details)
 
+    def test_internal_uuid_session_merges_with_key_session_id(self) -> None:
+        # Real cache bodies mix events carrying an internal session_id UUID
+        # with events carrying none; the cache key holds the public
+        # session_<id>. All must land in ONE session keyed by the public id,
+        # with cwd attribution shared (regression: one session split in two,
+        # half Uncategorized).
+        base = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
+        data = [
+            {
+                "uuid": "ev-init",
+                "type": "system",
+                "created_at": base.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                "session_id": "1976e51a-5e65-5a0c-bbbb-000000000000",
+                "cwd": "/home/user/project-alpha",
+            },
+            {
+                "uuid": "ev-turn-1",
+                "type": "user",
+                "created_at": (base + timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                # no session_id field at all
+            },
+            {
+                "uuid": "ev-turn-2",
+                "type": "assistant",
+                "created_at": (base + timedelta(minutes=4)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                "session_id": "1976e51a-5e65-5a0c-bbbb-000000000000",
+            },
+        ]
+        body = json.dumps({"data": data}).encode("utf-8")
+        _write_cache(self.home, "split", "1/0/https://claude.ai/v1/sessions/session_01MERGE/events?limit=500", body)
+
+        events = self._collect()
+        details = {ev["detail"] for ev in events}
+        self.assertEqual(details, {"Code session session_01MERGE — 2 turns"})
+        for ev in events:
+            self.assertEqual(ev["project"], "project-alpha")
+
+    def test_background_only_cluster_emits_nothing(self) -> None:
+        # Clusters with zero user/assistant turns (rate-limit pings, env
+        # refreshes) must not claim hours.
+        base = datetime(2026, 6, 11, 13, 13, tzinfo=timezone.utc)
+        data = [
+            {
+                "uuid": f"bg-{i}",
+                "type": "rate_limit_event",
+                "created_at": (base + timedelta(minutes=i)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                "session_id": "sess-bg",
+            }
+            for i in range(3)
+        ]
+        body = json.dumps({"data": data}).encode("utf-8")
+        _write_cache(self.home, "bg", "1/0/https://claude.ai/v1/sessions/session_01BG/events", body)
+        self.assertEqual(self._collect(), [])
+
     def test_duplicate_uuids_across_entries_counted_once(self) -> None:
         base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         stamps = [base + timedelta(minutes=i) for i in range(3)]

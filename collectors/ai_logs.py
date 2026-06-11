@@ -137,15 +137,71 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
     return results
 
 
+def _claude_session_timestamp_ms(data: dict) -> int | None:
+    for key in ("lastActivityAt", "createdAt"):
+        raw = data.get(key)
+        if raw is None:
+            continue
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _collect_claude_code_session_titles(profiles, dt_from, dt_to, home, classify_project, make_event):
+    """Session titles from Claude Desktop claude-code-sessions (label anchor)."""
+    sessions_dir = home / "Library" / "Application Support" / "Claude" / "claude-code-sessions"
+    if not sessions_dir.is_dir():
+        return []
+    results = []
+    for json_file in sessions_dir.glob("**/local_*.json"):
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        title = str(data.get("title") or "").strip()
+        label = _meaningful_label(title)
+        if not label:
+            continue
+        ms = _claude_session_timestamp_ms(data)
+        if ms is None:
+            continue
+        try:
+            ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+        except (OSError, OverflowError, ValueError):
+            continue
+        if not (dt_from <= ts <= dt_to):
+            continue
+        detail = title[:70]
+        project = classify_project(title, profiles)
+        results.append(
+            make_event(
+                "Claude Desktop",
+                ts,
+                detail,
+                project,
+                anchors=_anchors(label=label),
+            )
+        )
+    return results
+
+
 def collect_claude_desktop(profiles, dt_from, dt_to, home, classify_project, make_event):
     results = []
     sessions_dir = home / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
-    if not sessions_dir.exists():
-        return results
-    for jsonl_file in sessions_dir.glob("**/*.jsonl"):
-        for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
-            project = classify_project(detail, profiles)
-            results.append(make_event("Claude Desktop", ts, detail, project))
+    if sessions_dir.exists():
+        for jsonl_file in sessions_dir.glob("**/*.jsonl"):
+            for ts, detail, _ in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
+                project = classify_project(detail, profiles)
+                results.append(make_event("Claude Desktop", ts, detail, project))
+    results.extend(
+        _collect_claude_code_session_titles(
+            profiles, dt_from, dt_to, home, classify_project, make_event
+        )
+    )
     return results
 
 

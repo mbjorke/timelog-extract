@@ -17,6 +17,10 @@ from core.domain import classify_project
 from scripts.calibration.gap_day_triage import fetch_chrome_rows_for_day
 
 _URL_RE = re.compile(r"https?://\S+")
+_LOVABLE_UUID_PROJECT_HOST_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.lovableproject\.com$",
+    re.IGNORECASE,
+)
 UNCATEGORIZED = "Uncategorized"
 URL_FIRST_SOURCES = {"Chrome", "Lovable (desktop)"}
 
@@ -76,7 +80,8 @@ def _is_valid_url_key(key: str) -> bool:
         return False
     host = text.split("/", 1)[0]
     if host.endswith(".lovableproject.com"):
-        return False
+        # Per-project UUID hosts are the mapping unit for Lovable desktop storage signals.
+        return bool(_LOVABLE_UUID_PROJECT_HOST_RE.match(host))
     if host.startswith("api.individual.githubcopilot.com"):
         return False
     return True
@@ -97,6 +102,11 @@ def _confidence_label(score: float, events: int) -> str:
     return "low"
 
 
+def _is_lovable_project_url_key(key: str) -> bool:
+    host = str(key or "").split("/", 1)[0].lower()
+    return bool(_LOVABLE_UUID_PROJECT_HOST_RE.match(host))
+
+
 def _finalize_url_candidates_from_grouped(
     grouped: dict[str, dict[str, Any]],
     *,
@@ -107,7 +117,8 @@ def _finalize_url_candidates_from_grouped(
     candidates: list[UrlCandidate] = []
     for key, bucket in grouped.items():
         events = int(bucket["events"])
-        if not include_low_signal and events < max(1, int(min_events)):
+        required_events = 1 if _is_lovable_project_url_key(key) else max(1, int(min_events))
+        if not include_low_signal and events < required_events:
             continue
         top_title = bucket["titles"].most_common(1)[0][0] if bucket["titles"] else "Untitled"
         votes = bucket["project_votes"]
@@ -261,6 +272,35 @@ def build_url_candidates_from_gap_days(
         include_sample_urls=False,
     )
     return _apply_max_rows_limit(finalized, max_rows)
+
+
+def merge_url_candidate_lists(*lists: list[UrlCandidate], max_rows: int) -> list[UrlCandidate]:
+    """Merge URL candidate rows from Chrome gap-days and collected report events."""
+    by_key: dict[str, UrlCandidate] = {}
+    for rows in lists:
+        for row in rows:
+            prev = by_key.get(row.url_key)
+            if prev is None:
+                by_key[row.url_key] = row
+                continue
+            sample_urls = list(dict.fromkeys([*prev.sample_urls, *row.sample_urls]))[:3]
+            by_key[row.url_key] = UrlCandidate(
+                title=row.title if row.events >= prev.events else prev.title,
+                url_key=row.url_key,
+                suggested_project=row.suggested_project if row.confidence_score >= prev.confidence_score else prev.suggested_project,
+                confidence_label=row.confidence_label if row.confidence_score >= prev.confidence_score else prev.confidence_label,
+                confidence_score=max(prev.confidence_score, row.confidence_score),
+                impact_hours=max(prev.impact_hours, row.impact_hours),
+                events=prev.events + row.events,
+                days=max(prev.days, row.days),
+                last_seen=max(prev.last_seen, row.last_seen),
+                sample_urls=sample_urls,
+            )
+    merged = list(by_key.values())
+    merged.sort(
+        key=lambda row: (_confidence_rank(row.confidence_label), -row.confidence_score, -row.events, row.url_key)
+    )
+    return _apply_max_rows_limit(merged, max_rows)
 
 
 def _auto_assign_high(rows: list[UrlCandidate], project_names: list[str]) -> dict[str, str]:

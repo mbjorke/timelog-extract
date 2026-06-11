@@ -56,7 +56,11 @@ def report(
     include_uncategorized: Annotated[bool, typer.Option(help="Show uncategorized")] = False,
     only_project: Annotated[Optional[str], typer.Option(help="Filter by project")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
-    all_events: Annotated[bool, typer.Option(help="Verbose events")] = False,
+    all_events: Annotated[bool, typer.Option(help="Legacy alias (full session list is default).")] = False,
+    compact: Annotated[
+        bool,
+        typer.Option("--compact", help="Dense session tree: hide IDE log noise."),
+    ] = False,
     source_summary: Annotated[bool, typer.Option(help="Show source counts")] = False,
     weekly: Annotated[bool, typer.Option("--weekly", help="Add an ISO week × project hours pivot")] = False,
     narrative: Annotated[bool, typer.Option(help="Executive summary")] = False,
@@ -86,6 +90,13 @@ def report(
             help="Use one primary project per session in report breakdown so rows add up to total.",
         ),
     ] = False,
+    map_prompt: Annotated[
+        bool,
+        typer.Option(
+            "--map-prompt/--no-map-prompt",
+            help="After a terminal report, offer git-local project mapping suggestions (interactive TTY only).",
+        ),
+    ] = True,
     invoice_mode: Annotated[
         str,
         typer.Option(
@@ -103,12 +114,9 @@ def report(
     ] = None,
 ):
     """Build detailed local evidence reports for a selected timeframe.
-    Common use cases:
-    - Daily overview: `gittan report --today --noise-profile strict --lovable-noise-profile balanced`
-    - Investigate why time was counted: `gittan report --today --all-events --noise-profile lenient`
-    - Conservative reporting baseline: `gittan report --today --noise-profile ultra-strict --lovable-noise-profile strict`
-    - Additive breakdown in summary: add `--additive-summary`
-    - Invoice calibration against approved hours: add `--invoice-mode calibrated-a --invoice-ground-truth <path>`
+
+    Tips: `--compact` for a dense session tree; `--additive-summary` for one project per session;
+    `--invoice-mode calibrated-a --invoice-ground-truth <path>` for invoice reconciliation.
     """
     from core.report_cli import run_timelog_cli
 
@@ -143,6 +151,7 @@ def report(
             "only_project": only_project,
             "customer": customer,
             "all_events": all_events,
+            "compact": compact,
             "source_summary": source_summary,
             "weekly": weekly,
             "narrative": narrative,
@@ -164,6 +173,7 @@ def report(
             "additive_summary": additive_summary,
             "invoice_mode": invoice_mode,
             "invoice_ground_truth": invoice_ground_truth,
+            "map_prompt": map_prompt,
         },
     )
     run_timelog_cli(options)

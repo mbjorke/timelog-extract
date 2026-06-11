@@ -52,12 +52,6 @@ class TriageMapTests(unittest.TestCase):
                 },
                 {
                     "source": "Chrome",
-                    "timestamp": datetime(2026, 4, 11, 10, 0, tzinfo=timezone.utc),
-                    "detail": "storage signal — https://00000000-0000-4000-8000-000000000001.lovableproject.com",
-                    "project": "Uncategorized",
-                },
-                {
-                    "source": "Chrome",
                     "timestamp": datetime(2026, 4, 11, 11, 0, tzinfo=timezone.utc),
                     "detail": "Repo — https://github.com/org/repo/issues/1",
                     "project": "Uncategorized",
@@ -73,6 +67,21 @@ class TriageMapTests(unittest.TestCase):
         rows = build_url_candidates(report=report, profiles=[], max_rows=10, min_events=2)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].url_key, "github.com/org/repo")
+
+    def test_build_url_candidates_includes_lovable_project_uuid_host(self):
+        report = SimpleNamespace(
+            included_events=[
+                {
+                    "source": "Lovable (desktop)",
+                    "timestamp": datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc),
+                    "detail": "storage signal — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
+                    "project": "Uncategorized",
+                }
+            ]
+        )
+        rows = build_url_candidates(report=report, profiles=[], max_rows=10, min_events=1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].url_key, "62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com")
 
     def test_build_url_candidates_include_low_signal_keeps_noise_rows(self):
         report = SimpleNamespace(

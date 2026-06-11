@@ -4,6 +4,8 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+from collectors.cursor_composer import collect_cursor_composer_sessions
 from urllib.parse import unquote, urlparse
 
 
@@ -23,15 +25,32 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         "git_status: false",
         "candidate index",
         "exthostsearch [cursorignore] internal filesearch start",
-    )
-    ultra_strict_markers = (
-        # Extra aggressive filtering for repository churn and diagnostics floods.
+        # IDE startup / repo churn — not user intent (default strict profile).
         "cursor_agent_exec.startup.workspace_paths",
         "[model][openrepository] opened repository",
         "bootstrapping repository index at",
         "skipping acquiring lock for",
         "[vscodediagnosticsexecutor] execute:",
         "> git --git-dir ",
+        "project config path",
+        "claude project config path",
+        "claude project local config path",
+        "pygls.protocol",
+        "glassdiffservice",
+        "discover tests for workspace",
+        "revived process, old id",
+        "failed to handle request",
+        '"key":"agent_exec"',
+        "send text to terminal: source",
+        "active interpreter [global]",
+        "error executing git:",
+        "difftabcontent",
+        "notgitrepository",
+        "[worktreemanager]",
+        "using worktrees root",
+    )
+    ultra_strict_markers = (
+        # Reserved for future extra-aggressive filtering beyond strict.
     )
     profile = (noise_profile or "strict").strip().lower()
     markers = list(base_markers)
@@ -133,6 +152,11 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                     )
         except OSError:
             continue
+    results.extend(
+        collect_cursor_composer_sessions(
+            profiles, dt_from, dt_to, home, classify_project, make_event
+        )
+    )
     return results
 
 

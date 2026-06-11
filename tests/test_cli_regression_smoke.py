@@ -104,7 +104,10 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("GitHub Source", completed.stdout)
         self.assertIn("Enabled (on) for user 'example-user'", completed.stdout)
         normalized = " ".join(completed.stdout.split())
-        self.assertIn("public API limits apply", normalized)
+        self.assertTrue(
+            "public API limits apply" in normalized or "gh auth token" in normalized,
+            msg=normalized,
+        )
 
     def test_doctor_rejects_invalid_github_source(self):
         completed = subprocess.run(

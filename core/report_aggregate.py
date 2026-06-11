@@ -6,6 +6,9 @@ import argparse
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 
+from core.domain import session_duration_hours
+from core.project_hours import build_project_reports_from_sessions
+
 
 @dataclass
 class AggregationResult:
@@ -41,21 +44,12 @@ def aggregate_report(
         args.min_session_passive,
     )
 
-    project_buckets: Dict[str, List[Dict[str, Any]]] = {}
-    for event in included_events:
-        project_name = event["project"]
-        project_buckets.setdefault(project_name, []).append(event)
-
-    project_reports: Dict[str, Any] = {}
-    for project_name in sorted(project_buckets.keys()):
-        project_events = project_buckets[project_name]
-        project_grouped = group_by_day_fn(project_events, exclude_list)
-        project_reports[project_name] = estimate_hours_by_day_fn(
-            project_grouped,
-            args.gap_minutes,
-            args.min_session,
-            args.min_session_passive,
-        )
+    project_reports = build_project_reports_from_sessions(
+        overall_days,
+        session_duration_hours_fn=session_duration_hours,
+        min_session_minutes=args.min_session,
+        min_session_passive_minutes=args.min_session_passive,
+    )
 
     return AggregationResult(
         all_events=deduped_events,

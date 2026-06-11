@@ -53,10 +53,31 @@ def event_anchor(event, kind: str):
     return event_anchors(event).get(kind)
 
 
+_LOVABLE_DESKTOP_SOURCE = "Lovable (desktop)"
+
+
+def is_always_included_event(event, uncategorized) -> bool:
+    """Evidence that must stay visible even when uncategorized rows are filtered out."""
+    if str(event.get("source") or "") == _LOVABLE_DESKTOP_SOURCE:
+        # Lovable desktop has no Chromium History on many installs; storage UUID signals
+        # are the only mapping surface for new projects — hiding them breaks review.
+        return True
+    # Session titles (label anchors) are primary mapping signals for chat tools.
+    if str(event_anchors(event).get("label") or "").strip():
+        return True
+    return False
+
+
 def filter_included_events(all_events, args, profiles, uncategorized):
-    included_events = all_events if args.include_uncategorized else [
-        event for event in all_events if event["project"] != uncategorized
-    ]
+    included_events = (
+        all_events
+        if args.include_uncategorized
+        else [
+            event
+            for event in all_events
+            if event["project"] != uncategorized or is_always_included_event(event, uncategorized)
+        ]
+    )
     if args.only_project:
         only = args.only_project.strip()
         included_events = [e for e in included_events if e["project"] == only]

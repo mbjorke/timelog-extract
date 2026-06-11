@@ -7,8 +7,11 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from collectors.lovable_desktop import (
-    _filter_lovable_storage_urls,
+    _merge_storage_events,
     _extract_lovable_urls,
+    _filter_lovable_storage_urls,
+    _pick_storage_urls_from_blob,
+    _trim_lovable_url_blob_suffix,
     collect_lovable_desktop,
     lovable_desktop_history_candidates,
     lovable_desktop_root,
@@ -109,6 +112,84 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertNotIn("https://lovable.dev/", filtered)
         self.assertNotIn("https://www.lovable.dev", filtered)
         self.assertNotIn("https://www.lovable.dev/", filtered)
+
+    def test_trim_lovable_url_blob_suffix_strips_leveldb_junk(self):
+        raw = "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/^0https://lovable.dev"
+        self.assertEqual(
+            _trim_lovable_url_blob_suffix(raw),
+            "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/",
+        )
+
+    def test_pick_storage_urls_prefers_last_written_project_uuid(self):
+        blob = (
+            b"older https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/ "
+            + b"padding " * 20
+            + b"newer https://8614fa76-4875-4307-96bf-0c58a76fb0bd.lovableproject.com/ tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("8614fa76", picked[0])
+        self.assertNotIn("80f778b5", picked[0])
+
+    def test_merge_storage_events_collapses_same_second_file_burst(self):
+        ts = datetime(2026, 6, 11, 9, 48, tzinfo=timezone.utc)
+        events = [
+            {
+                "timestamp": ts,
+                "detail": "storage signal — https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/",
+            },
+            {
+                "timestamp": ts,
+                "detail": "storage signal — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
+            },
+        ]
+        merged = _merge_storage_events(events, merge_seconds=900)
+        self.assertEqual(len(merged), 1)
+        self.assertIn("62146e85", merged[0]["detail"])
+
+    def test_pick_storage_urls_reads_bare_leveldb_uuid_tokens(self):
+        blob = b"prefix " * 7000 + b"62146e85-26f9-4cf9-b3f2-601c44411dda.ack\x00tail"
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("62146e85", picked[0])
+
+    def test_pick_storage_urls_prefers_tracked_profile_uuid_over_newer_tail(self):
+        prefix = b"x" * 54_000
+        tail = (
+            b"https://121726c8-b8f3-4a58-8b27-08104baf8fa5.lovableproject.com/ "
+            b"https://810513a4-6676-4f18-ae92-097467e52d98.lovableproject.com/ end"
+        )
+        blob = prefix + tail
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        profiles = [
+            {
+                "name": "timelog-extract",
+                "match_terms": ["121726c8-b8f3-4a58-8b27-08104baf8fa5"],
+                "tracked_urls": [],
+            }
+        ]
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768, profiles=profiles)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("121726c8", picked[0])
+
+    def test_pick_storage_urls_ignores_mapped_uuid_outside_tail(self):
+        # Mimics a LevelDB touch: many historical UUIDs remain in-file, but only the
+        # tail write (new unmapped project) should surface as a storage signal.
+        prefix = b"x" * 54_000
+        tail = (
+            b"https://121726c8-b8f3-4a58-8b27-08104baf8fa5.lovableproject.com/ "
+            b"https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/ "
+            b"https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/ end"
+        )
+        blob = prefix + tail
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("62146e85", picked[0])
+        self.assertNotIn("80f778b5", picked[0])
+        self.assertNotIn("121726c8", picked[0])
 
     def test_filter_lovable_storage_urls_balanced_skips_malformed_urls_without_crashing(self):
         urls = [

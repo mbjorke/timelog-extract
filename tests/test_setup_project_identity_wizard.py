@@ -173,7 +173,15 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
             )
             before = cfg.read_text(encoding="utf-8")
 
-            with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
+            projects_payload = json.loads(cfg.read_text(encoding="utf-8"))["projects"]
+
+            def _reload_projects(_console, *, config_path, dry_run):
+                return projects_payload
+
+            with mock.patch(
+                "core.setup_project_identity_wizard.reload_projects_after_evidence_mapping",
+                side_effect=_reload_projects,
+            ), mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
             ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_mock.return_value.ask.return_value = "Atlas Studio"
@@ -219,7 +227,15 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
+            projects_payload = json.loads(cfg.read_text(encoding="utf-8"))["projects"]
+
+            def _reload_projects(_console, *, config_path, dry_run):
+                return projects_payload
+
+            with mock.patch(
+                "core.setup_project_identity_wizard.reload_projects_after_evidence_mapping",
+                side_effect=_reload_projects,
+            ), mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
             ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_mock.return_value.ask.return_value = "Atlas Studio"
@@ -297,7 +313,15 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
+            projects_payload = json.loads(cfg.read_text(encoding="utf-8"))["projects"]
+
+            def _reload_projects(_console, *, config_path, dry_run):
+                return projects_payload
+
+            with mock.patch(
+                "core.setup_project_identity_wizard.reload_projects_after_evidence_mapping",
+                side_effect=_reload_projects,
+            ), mock.patch("core.setup_project_identity_wizard.questionary.text") as text_mock, mock.patch(
                 "core.setup_project_identity_wizard.questionary.select"
             ) as select_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
                 text_prompt = mock.Mock()

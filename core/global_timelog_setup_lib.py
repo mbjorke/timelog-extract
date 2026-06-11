@@ -187,8 +187,8 @@ def _run_smoke_report(console, *, dry_run: bool) -> str:
 def _run_mapping_wizard_with_summary(console, *, dry_run: bool) -> tuple[str, str]:
     outcome = run_project_identity_wizard(console, config_path=resolve_projects_config_path(), dry_run=dry_run)
     status_map = {
-        "Confirmed": ("PASS", "Confirmed customer->project mapping."),
-        "Confirmed (dry-run)": ("PASS (dry-run)", "Confirmed customer->project mapping."),
+        "Confirmed": ("PASS", "Mapped evidence signals and/or customer->project fields."),
+        "Confirmed (dry-run)": ("PASS (dry-run)", "Previewed evidence + customer mapping."),
         "Skip this step": ("SKIPPED", "User skipped mapping."),
         "No customers provided": ("SKIPPED", "No customers provided."),
         "No candidates selected": ("SKIPPED", "No candidates selected."),

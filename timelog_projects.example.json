@@ -1,4 +1,5 @@
 {
+  "_profile_field_guide": "name = stable project slug from repo (config key; shown in reports). customer = who you bill (e.g. ax-or.com). invoice_title = optional friendly label (e.g. Ålandsbanken Chatbot). canonical_project = rollup when several profiles share one product — not the customer.",
   "projects": [
     {
       "name": "example-project-alpha",

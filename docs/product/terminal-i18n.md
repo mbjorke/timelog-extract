@@ -19,4 +19,4 @@ User-facing output is being moved to **English** for consistency and tooling.
 
 ## Session preview rule
 
-When `--all-events` is off, each session prints up to **5** lines. The picker **first** adds one distinct `project \| detail` line per **source** (in `SOURCE_ORDER`), then fills remaining slots in time order. This keeps e.g. GitHub visible alongside Cursor in the same session.
+By default, each session prints **all** evidence rows. With `--compact`, the picker hides Cursor IDE log noise and dead Chrome rows; composer session titles (`label` anchors), Lovable, worklog, GitHub, and other high-signal rows stay visible.

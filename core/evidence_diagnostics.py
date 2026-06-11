@@ -9,6 +9,9 @@ from typing import Any, Dict, List
 def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
     source_counts = Counter(str(event.get("source") or "") for event in report.included_events)
     source_counts.pop("", None)
+    all_events = list(getattr(report, "all_events", None) or [])
+    included = list(getattr(report, "included_events", None) or [])
+    excluded_uncategorized = max(0, len(all_events) - len(included))
     observed_hours = float(sum(float(day.get("hours", 0.0) or 0.0) for day in (report.overall_days or {}).values()))
     screen_values = [float(v or 0.0) for v in (report.screen_time_days or {}).values()]
     # Screen Time may be stored as seconds/day (large integers) or hours/day (small floats).
@@ -24,6 +27,7 @@ def build_evidence_snapshot(report: Any) -> Dict[str, Any]:
         "screen_time_hours": screen_time_hours,
         "delta_hours": delta_hours,
         "source_counts": dict(source_counts),
+        "excluded_uncategorized_events": excluded_uncategorized,
     }
 
 

@@ -20,9 +20,11 @@ from core.report_service import (
     generate_invoice_pdf,
     run_timelog_report,
 )
+from core.mapping_assistant import maybe_run_mapping_assistant_after_report
 from core.report_nudges import build_unanchored_anchors_nudge, build_unexplained_gap_nudge
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
+from rich.console import Console
 
 
 def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
@@ -158,9 +160,11 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     nudge = build_unexplained_gap_nudge(report)
     if nudge:
         print(nudge)
-    anchors_nudge = build_unanchored_anchors_nudge(report)
-    if anchors_nudge:
-        print(anchors_nudge)
+    mapped_interactively = maybe_run_mapping_assistant_after_report(Console(), report)
+    if not mapped_interactively:
+        anchors_nudge = build_unanchored_anchors_nudge(report)
+        if anchors_nudge:
+            print(anchors_nudge)
     if getattr(report.args, "weekly", False):
         _print_weekly(report.project_reports)
     if report.args.narrative:

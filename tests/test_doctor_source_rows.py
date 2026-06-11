@@ -7,8 +7,10 @@ from unittest.mock import patch, MagicMock
 
 from rich.table import Table
 
-from core.doctor_source_rows import add_github_doctor_row, add_toggl_doctor_row
-from outputs.terminal_theme import NA_ICON, OK_ICON
+from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_toggl_doctor_row
+from core.setup_github_env import GhCliAuthStatus
+from outputs.terminal_theme import NA_ICON, OK_ICON, WARN_ICON
+
 
 
 def _make_table() -> tuple[Table, list[tuple]]:
@@ -46,7 +48,10 @@ class AddGithubDoctorRowTests(unittest.TestCase):
 
     def test_github_user_from_env_shows_enabled(self):
         table, rows = _make_table()
-        with patch.dict("os.environ", {"GITHUB_USER": "myuser", "GITHUB_TOKEN": ""}, clear=False):
+        gh_status = GhCliAuthStatus(installed=True, authenticated=False)
+        with patch.dict("os.environ", {"GITHUB_USER": "myuser", "GITHUB_TOKEN": ""}, clear=False), patch(
+            "core.doctor_source_rows.probe_gh_cli_auth", return_value=gh_status
+        ):
             add_github_doctor_row(table, "auto", None)
         self.assertEqual(len(rows), 1)
         label, icon, msg = rows[0]
@@ -119,6 +124,59 @@ class AddGithubDoctorRowTests(unittest.TestCase):
             add_github_doctor_row(table, "auto", None)
         _, _, msg = rows[0]
         self.assertIn("usually need /api/v3", msg)
+
+    def test_github_no_env_token_but_gh_authenticated_shows_hint(self):
+        table, rows = _make_table()
+        gh_status = GhCliAuthStatus(installed=True, authenticated=True, login="mbjorke")
+        with patch.dict("os.environ", {"GITHUB_USER": "mbjorke", "GITHUB_TOKEN": ""}, clear=False), patch(
+            "core.doctor_source_rows.probe_gh_cli_auth", return_value=gh_status
+        ):
+            add_github_doctor_row(table, "auto", None)
+        _, _, msg = rows[0]
+        self.assertIn("gh auth token", msg)
+
+    def test_github_no_token_and_gh_not_authenticated_mentions_gh_login(self):
+        table, rows = _make_table()
+        gh_status = GhCliAuthStatus(installed=True, authenticated=False)
+        with patch.dict("os.environ", {"GITHUB_USER": "mbjorke", "GITHUB_TOKEN": ""}, clear=False), patch(
+            "core.doctor_source_rows.probe_gh_cli_auth", return_value=gh_status
+        ):
+            add_github_doctor_row(table, "auto", None)
+        _, _, msg = rows[0]
+        self.assertIn("gh auth login", msg)
+
+
+class AddGhCliDoctorRowTests(unittest.TestCase):
+    def test_gh_not_installed(self):
+        table, rows = _make_table()
+        with patch("core.doctor_source_rows.probe_gh_cli_auth", return_value=GhCliAuthStatus(False, False)):
+            add_gh_cli_doctor_row(table)
+        label, icon, msg = rows[0]
+        self.assertEqual(label, "GitHub CLI (gh)")
+        self.assertEqual(icon, NA_ICON)
+        self.assertIn("Not installed", msg)
+
+    def test_gh_installed_not_authenticated(self):
+        table, rows = _make_table()
+        with patch(
+            "core.doctor_source_rows.probe_gh_cli_auth",
+            return_value=GhCliAuthStatus(installed=True, authenticated=False),
+        ):
+            add_gh_cli_doctor_row(table)
+        _, icon, msg = rows[0]
+        self.assertEqual(icon, WARN_ICON)
+        self.assertIn("gh auth login", msg)
+
+    def test_gh_authenticated(self):
+        table, rows = _make_table()
+        with patch(
+            "core.doctor_source_rows.probe_gh_cli_auth",
+            return_value=GhCliAuthStatus(installed=True, authenticated=True, login="mbjorke"),
+        ):
+            add_gh_cli_doctor_row(table)
+        _, icon, msg = rows[0]
+        self.assertEqual(icon, OK_ICON)
+        self.assertIn("mbjorke", msg)
 
 
 class AddTogglDoctorRowTests(unittest.TestCase):

@@ -69,8 +69,8 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 09:00:00 [info] cursor_agent_exec.startup.workspace_paths "
-                        "{\"workspacePathCount\":1} workspaceStorage/" + wid
+                        "2026-04-22 09:00:00 [info] user saved src/api.ts "
+                        "workspaceStorage/" + wid
                     )
                 ],
             )
@@ -195,7 +195,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
-    def test_strict_keeps_vscode_diagnostics_executor_lines(self):
+    def test_strict_skips_vscode_diagnostics_executor_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "f" * 32
@@ -220,7 +220,37 @@ class CursorNoiseFilterTests(unittest.TestCase):
                 make_event=make_test_event,
                 noise_profile="strict",
             )
-            self.assertEqual(len(out), 1)
+            self.assertEqual(out, [])
+
+    def test_strict_skips_hooks_and_git_churn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "9" * 32
+            self._write_workspace(home, wid, "/Users/me/ax-finans")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 07:08:18 [info] Project config path (ax-finans): "
+                        "/Users/me/ax-finans/.cursor/hooks.json workspaceStorage/" + wid
+                    ),
+                    (
+                        "2026-04-22 07:08:22 [info] > git --git-dir /Users/me/ax-finans/.git status "
+                        "workspaceStorage/" + wid
+                    ),
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 4, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 4, 22, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "financing-portal",
+                make_event=make_test_event,
+            )
+            self.assertEqual(out, [])
 
     def test_skips_gittan_sync_artifact_lines(self):
         with tempfile.TemporaryDirectory() as tmp:

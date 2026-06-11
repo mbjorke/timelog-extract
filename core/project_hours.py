@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Callable, Dict
 
+from core.domain import compute_sessions
 from core.events import event_anchors
 from core.sources import AI_SOURCES
 
@@ -43,6 +44,18 @@ def _event_local_ts(event: dict) -> datetime | None:
     return ts if isinstance(ts, datetime) else None
 
 
+def _cap_allocation_to_session_hours(
+    allocation: dict[str, float],
+    session_hours: float,
+) -> dict[str, float]:
+    """Scale project chunks down when high-signal spans overlap in one session."""
+    total = sum(allocation.values())
+    if total <= 0 or session_hours <= 0 or total <= session_hours + 1e-9:
+        return allocation
+    scale = session_hours / total
+    return {project: value * scale for project, value in allocation.items()}
+
+
 def _high_signal_hours_by_project(
     session_events: list,
     *,
@@ -60,18 +73,21 @@ def _high_signal_hours_by_project(
 
     out: dict[str, float] = {}
     for project, events in by_project.items():
-        timestamps = [ts for e in events if (ts := _event_local_ts(e)) is not None]
-        if not timestamps:
+        with_ts = [event for event in events if _event_local_ts(event) is not None]
+        if not with_ts:
             continue
-        start_ts, end_ts = min(timestamps), max(timestamps)
-        out[project] = session_duration_hours_fn(
-            events,
-            start_ts,
-            end_ts,
-            min_session_minutes,
-            min_session_passive_minutes,
-            AI_SOURCES,
-        )
+        project_hours = 0.0
+        for start_ts, end_ts, chunk_events in compute_sessions(with_ts, gap_minutes=15):
+            project_hours += session_duration_hours_fn(
+                chunk_events,
+                start_ts,
+                end_ts,
+                min_session_minutes,
+                min_session_passive_minutes,
+                AI_SOURCES,
+            )
+        if project_hours > 0:
+            out[project] = project_hours
     return out
 
 
@@ -92,7 +108,7 @@ def allocate_session_hours_by_project(
             min_session_passive_minutes=min_session_passive_minutes,
         )
         if high_signal:
-            return high_signal
+            return _cap_allocation_to_session_hours(high_signal, hours)
 
     weights: dict[str, float] = defaultdict(float)
     chrome_seen: set[tuple[str, str]] = set()

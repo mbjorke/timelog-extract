@@ -37,6 +37,64 @@ class ProjectHoursTests(unittest.TestCase):
         self.assertLess(split["financing-portal"], 0.5)
         self.assertGreater(split["timelog-extract"], 0.0)
 
+    def test_mixed_composer_and_worklog_capped_to_session_wall_clock(self):
+        """Overlapping high-signal spans must not exceed one session's wall-clock hours."""
+        session_start = datetime(2026, 6, 11, 8, 44, tzinfo=timezone.utc)
+        session_end = datetime(2026, 6, 11, 20, 23, tzinfo=timezone.utc)
+        events = []
+        cursor_ts = datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc)
+        while cursor_ts <= session_end:
+            events.append(
+                {
+                    "source": "Cursor",
+                    "project": "timelog-extract",
+                    "detail": "Freelance bridge dashboard development",
+                    "local_ts": cursor_ts,
+                    "anchors": {"label": "freelance bridge dashboard development"},
+                }
+            )
+            cursor_ts += timedelta(minutes=14)
+        events.extend(
+            [
+                {
+                    "source": "Worklog (TIMELOG.md)",
+                    "project": "financing-portal",
+                    "detail": "commit",
+                    "local_ts": datetime(2026, 6, 11, 9, 0, tzinfo=timezone.utc),
+                },
+                {
+                    "source": "Worklog (TIMELOG.md)",
+                    "project": "financing-portal",
+                    "detail": "commit2",
+                    "local_ts": datetime(2026, 6, 11, 11, 29, tzinfo=timezone.utc),
+                },
+                {
+                    "source": "Lovable (desktop)",
+                    "project": "financing-portal",
+                    "detail": "storage signal",
+                    "local_ts": datetime(2026, 6, 11, 19, 49, tzinfo=timezone.utc),
+                },
+            ]
+        )
+        session_hours = session_duration_hours(
+            events,
+            session_start,
+            session_end,
+            15,
+            5,
+            AI_SOURCES,
+        )
+        split = allocate_session_hours_by_project(
+            events,
+            session_hours,
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertLessEqual(sum(split.values()), session_hours + 0.02)
+        self.assertGreater(split["timelog-extract"], split["financing-portal"])
+        self.assertLess(split["financing-portal"], 2.0)
+
     def test_label_anchor_gets_high_weight(self):
         self.assertGreater(
             event_attribution_weight(

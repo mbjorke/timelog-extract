@@ -59,7 +59,7 @@ class LovableCacheTests(unittest.TestCase):
             display_title="Project Alpha",
         )
         self.assertIn("Project Alpha", detail)
-        self.assertIn("map UUID via gittan map", detail)
+        self.assertIn("map UUID via gittan review", detail)
 
     def test_load_lovable_project_titles_from_projects_search_cache(self):
         payload = json.dumps(

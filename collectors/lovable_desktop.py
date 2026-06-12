@@ -208,13 +208,13 @@ def _format_lovable_event_detail(
         if project_name and project_name != "Uncategorized":
             return f"{project_name} — {title}"
         if short:
-            return f"{title} ({short}) — map UUID via gittan map — {canonical}"
+            return f"{title} ({short}) — map UUID via gittan review — {canonical}"
         return f"{title} — {canonical}"
     if project_name and project_name != "Uncategorized":
         lead = f"{project_name} ({short})" if short else project_name
         return f"{lead} — {canonical}"
     if short:
-        return f"unmapped Lovable ({short}) — map UUID via gittan map — {canonical}"
+        return f"unmapped Lovable ({short}) — map UUID via gittan review — {canonical}"
     return f"storage signal — {canonical}"
 
 

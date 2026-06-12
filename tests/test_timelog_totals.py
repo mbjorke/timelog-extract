@@ -33,7 +33,7 @@ class TestComputeTimelogProjectTotals(unittest.TestCase):
 
         try:
             return compute_timelog_project_totals(
-                worklog_path=tmppath,
+                worklog_paths=[tmppath],
                 profiles=profiles,
                 local_tz=_tz(),
                 classify_project_fn=lambda text, profs: _classify(text, profs),

@@ -104,9 +104,16 @@ def _classify_project(text: str, profiles: List[Dict[str, Any]]) -> str:
 
 
 def _make_event(
-    source: str, ts: Any, detail: str, project: str, anchors: dict | None = None
+    source: str,
+    ts: Any,
+    detail: str,
+    project: str,
+    anchors: dict | None = None,
+    mapping_ref: str | None = None,
 ) -> Dict[str, Any]:
-    return core_make_event(source, ts, detail, project, UNCATEGORIZED, anchors=anchors)
+    return core_make_event(
+        source, ts, detail, project, UNCATEGORIZED, anchors=anchors, mapping_ref=mapping_ref
+    )
 
 
 def _get_date_range(date_from: Optional[str], date_to: Optional[str]):
@@ -301,6 +308,7 @@ def run_timelog_report(
     profiles = context.profiles
     loaded_config_path = context.loaded_config_path
     worklog_path = context.worklog_path
+    worklog_paths = context.worklog_paths
 
     all_events, collector_status = collect_runtime_events(
         context=context,
@@ -349,7 +357,7 @@ def run_timelog_report(
     )
 
     timelog_totals = compute_timelog_project_totals(
-        worklog_path=worklog_path,
+        worklog_paths=worklog_paths,
         profiles=profiles,
         local_tz=LOCAL_TZ,
         classify_project_fn=_classify_project,

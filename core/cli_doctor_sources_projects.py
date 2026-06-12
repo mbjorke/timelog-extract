@@ -34,6 +34,7 @@ from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
     lovable_desktop_history_candidates,
 )
+from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
@@ -209,11 +210,12 @@ def doctor(
         lh = lovable_desktop_history_candidates(home)
         if lh:
             check_db(lh[0], "Lovable Desktop History", "urls")
-        elif lovable_desktop_has_storage_signals(home):
+        elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
+            cache_ok, cache_reason = lovable_cache_status(home)
             table.add_row(
                 "Lovable Desktop",
-                OK_ICON,
-                f"[{STYLE_MUTED}]No History DB; collecting via storage signals[/{STYLE_MUTED}]",
+                OK_ICON if cache_ok else NA_ICON,
+                f"[{STYLE_MUTED}]{cache_reason}[/{STYLE_MUTED}]",
             )
         else:
             table.add_row(

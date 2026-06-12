@@ -85,22 +85,28 @@ def _decode_body(after_key: bytes) -> Optional[bytes]:
     eof = after_key.find(struct.pack("<Q", _EOF_MAGIC))
     body_region = after_key[:eof] if eof > 0 else after_key
 
-    # zstd: locate frame magic anywhere in the post-key bytes.
+    # zstd: locate frame magic anywhere in the post-key bytes. Read one byte
+    # past the cap so an over-cap stream is rejected, not silently truncated.
     zi = after_key.find(_ZSTD_MAGIC)
     if zi >= 0:
         zstd = _import_zstd()
         if zstd is not None:
             try:
                 reader = zstd.ZstdDecompressor().stream_reader(io.BytesIO(after_key[zi:]))
-                return reader.read(_MAX_DECODED_BYTES)
+                out = reader.read(_MAX_DECODED_BYTES + 1)
+                if 0 < len(out) <= _MAX_DECODED_BYTES:
+                    return out
             except Exception:
                 pass
 
-    # gzip: magic-prefixed deflate stream.
+    # gzip: magic-prefixed deflate stream, decoded with a bounded decompressor.
     gi = after_key.find(_GZIP_MAGIC)
     if gi >= 0:
         try:
-            return zlib.decompress(after_key[gi:], 16 + zlib.MAX_WBITS)
+            decomp = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            out = decomp.decompress(after_key[gi:], _MAX_DECODED_BYTES + 1)
+            if 0 < len(out) <= _MAX_DECODED_BYTES:
+                return out
         except Exception:
             pass
 
@@ -110,7 +116,7 @@ def _decode_body(after_key: bytes) -> Optional[bytes]:
         for skip in range(0, 8):
             try:
                 out = brotli.decompress(body_region[skip:])
-                if out:
+                if 0 < len(out) <= _MAX_DECODED_BYTES:
                     return out
             except Exception:
                 continue

@@ -113,12 +113,12 @@ Lovable's project paths there) and its field extraction. See
 
 ## Traceability
 
-- story_id: GH-pending
+- story_id: GH-142
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-06-11
 - last_updated_at: 2026-06-12
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/141
 - implementation.branch: task/claude-desktop-events
 - implementation.commits: [5c76a70]
 - validation.evidence: PR #140 thread (2026-06-11/12); zstd-decompressed cached /v1/sessions/<id>/events reconstructed ~2.6h active across 1,057 turns for the session behind Claude Desktop "Copy link"; cross-checked vs git-worktrees + diff-stats

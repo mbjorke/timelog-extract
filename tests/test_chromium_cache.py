@@ -68,6 +68,20 @@ class ChromiumCacheTests(unittest.TestCase):
             self.assertEqual(list(iter_cache_entries(d, "/v1/sessions/", newer_than=future)), [])
 
     @unittest.skipUnless(codec_available()["zstd"], "zstandard not installed")
+    def test_decoded_size_over_cap_is_rejected(self) -> None:
+        import zstandard
+        from unittest import mock
+
+        import core.chromium_cache as cc
+
+        with TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            bomb = zstandard.ZstdCompressor().compress(b"\x00" * 4096)
+            self._write(d, "bomb", "1/0/https://x/v1/sessions/s/events", bomb)
+            with mock.patch.object(cc, "_MAX_DECODED_BYTES", 1024):
+                self.assertIsNone(read_cache_entry(d / "bomb_0"))
+
+    @unittest.skipUnless(codec_available()["zstd"], "zstandard not installed")
     def test_zstd_body_roundtrip(self) -> None:
         import zstandard
 

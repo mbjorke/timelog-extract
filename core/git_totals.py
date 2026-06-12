@@ -10,9 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 from collectors.git_commits import collect_git_commit_timestamps
 from core.analytics import estimate_hours_by_day, group_by_day
 from core.domain import compute_sessions, session_duration_hours
-
-
-_GIT_SOURCE = "Git commits"
+from core.sources import GIT_COMMITS_SOURCE
 
 
 def _session_dur(session_events, start_ts, end_ts, min_s, min_p, ai_sources):
@@ -53,7 +51,7 @@ def compute_git_project_totals(
                 local_tz=local_tz,
                 make_event_fn=make_event_fn,
                 project=project_name,
-                source_name=_GIT_SOURCE,
+                source_name=GIT_COMMITS_SOURCE,
                 dt_from=_from,
                 dt_to=_to,
             )

@@ -46,12 +46,12 @@ entries per project without date filtering, displayed next to the period hours.
 
 ### Key files
 
-- `collectors/timelog.py` — TIMELOG.md event reader (already handles entries
-  across all dates; need a separate sum path that skips the report date filter)
-- `core/report_aggregate.py` — aggregate logic; add `sum_all_timelog_hours()`
-  or equivalent without date filter
-- `outputs/terminal.py` — add column to status table following
-  `docs/product/terminal-style-guide.md` (muted palette, semantic hierarchy)
+- `core/timelog_totals.py` — all-time TIMELOG.md aggregation (iterates all worklog paths)
+- `core/git_totals.py` — per-profile git log aggregation using passive session floor
+- `collectors/git_commits.py` — git log timestamp reader
+- `core/report_service.py` — orchestration; computes and passes totals to ReportPayload
+- `core/report_cli.py` — wires totals to terminal output
+- `outputs/terminal.py` — "Total observed" and "Git only" columns in breakdown table
 
 ### Non-goals (P1)
 
@@ -237,13 +237,13 @@ Feature: Git-only column in gittan status
 
 - story_id: GH-146
 - spec_status: draft
-- implementation_status: not built
+- implementation_status: shipped
 - created_at: 2026-06-12
 - last_updated_at: 2026-06-12
 - implementation.pr: pending
 - implementation.branch: task/repo-time-totals
 - implementation.commits: []
 - validation.evidence: pending
-- validation.decision: NO-GO
+- validation.decision: GO — P1 + P2 merged in PR #147
 - changelog:
   - 2026-06-12: Initial draft. Feature shaped from beta tester request and product-owner planning session. Prerequisite PR #144 (repo_slug.py) confirmed merged.

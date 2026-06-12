@@ -183,6 +183,7 @@ def print_report(
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
     timelog_project_totals: Optional[Dict[str, float]] = None,
+    git_project_totals: Optional[Dict[str, float]] = None,
 ):
     print_command_hero(console, "report")
     console.print()
@@ -333,16 +334,21 @@ def print_report(
         heading += " (additive: primary project per session)"
     console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
     show_totals = bool(timelog_project_totals)
+    show_git = bool(git_project_totals)
     breakdown_table = Table.grid(padding=(0, 2))
     breakdown_table.add_column(style=STYLE_BODY)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     if show_totals:
+        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
+    if show_git:
         breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
     header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
     if show_totals:
         header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
+    if show_git:
+        header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")
     header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]
     breakdown_table.add_row(*header_row)
 
@@ -383,6 +389,10 @@ def print_report(
             cust_total = sum((timelog_project_totals or {}).get(p, 0.0) for p in customer_projects)
             cust_total_text = f"{cust_total:.1f}h" if cust_total else "—"
             cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_total_text}[/bold {CLR_VALUE_ORANGE}]")
+        if show_git:
+            cust_git = sum((git_project_totals or {}).get(p, 0.0) for p in customer_projects)
+            cust_git_text = f"{cust_git:.1f}h" if cust_git else "—"
+            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_git_text}[/bold {CLR_VALUE_ORANGE}]")
         cust_row += [f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]", ""]
         breakdown_table.add_row(*cust_row)
 
@@ -410,6 +420,10 @@ def print_report(
                 proj_total = (timelog_project_totals or {}).get(project_name, 0.0)
                 proj_total_text = f"{proj_total:.1f}h" if proj_total else "—"
                 proj_row.append(f"[{STYLE_META}]{proj_total_text}[/{STYLE_META}]")
+            if show_git:
+                proj_git = (git_project_totals or {}).get(project_name, 0.0)
+                proj_git_text = f"{proj_git:.1f}h" if proj_git else "—"
+                proj_row.append(f"[{STYLE_META}]{proj_git_text}[/{STYLE_META}]")
             proj_row += [
                 f"[{STYLE_BODY}]{proj_b_text}[/{STYLE_BODY}]",
                 f"[{STYLE_META}]{days}[/{STYLE_META}]",

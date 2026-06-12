@@ -37,6 +37,7 @@ from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
 from core.timelog_totals import compute_timelog_project_totals
+from core.git_totals import compute_git_project_totals
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
@@ -87,6 +88,7 @@ class ReportPayload:
     args: argparse.Namespace
     source_strategy_effective: str
     timelog_project_totals: Dict[str, float] = field(default_factory=dict)
+    git_project_totals: Dict[str, float] = field(default_factory=dict)
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -209,6 +211,7 @@ def _print_report(
     args: argparse.Namespace,
     config_path: Optional[Path],
     timelog_project_totals: Optional[Dict[str, float]] = None,
+    git_project_totals: Optional[Dict[str, float]] = None,
 ) -> None:
     terminal_output.print_report(
         overall_days=overall_days,
@@ -223,6 +226,7 @@ def _print_report(
         session_duration_hours_fn=_session_duration_hours,
         billable_total_hours_fn=_billable_total_hours,
         timelog_project_totals=timelog_project_totals,
+        git_project_totals=git_project_totals,
     )
 
 
@@ -357,6 +361,20 @@ def run_timelog_report(
         min_session_passive_minutes=args.min_session_passive,
     )
 
+    git_totals: Dict[str, float] = {}
+    if getattr(args, "git_source", False):
+        git_totals = compute_git_project_totals(
+            profiles=profiles,
+            local_tz=LOCAL_TZ,
+            make_event_fn=_make_event,
+            ai_sources=AI_SOURCES,
+            dt_from=dt_from,
+            dt_to=dt_to,
+            gap_minutes=args.gap_minutes,
+            min_session_minutes=args.min_session,
+            min_session_passive_minutes=args.min_session_passive,
+        )
+
     return ReportPayload(
         dt_from=dt_from,
         dt_to=dt_to,
@@ -373,6 +391,7 @@ def run_timelog_report(
         args=args,
         source_strategy_effective=context.source_strategy_effective,
         timelog_project_totals=timelog_totals,
+        git_project_totals=git_totals,
     )
 
 

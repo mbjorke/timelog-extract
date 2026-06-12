@@ -6,6 +6,7 @@ GITHUB_SOURCE = "GitHub"
 TOGGL_SOURCE = "Toggl"
 JIRA_SOURCE = "Jira"
 CALENDAR_SOURCE = "Calendar"
+GIT_COMMITS_SOURCE = "Git commits"
 
 SOURCE_ORDER = [
     "Claude Code CLI",

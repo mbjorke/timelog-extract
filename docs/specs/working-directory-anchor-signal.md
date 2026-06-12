@@ -23,7 +23,7 @@ collection. `projects-audit` therefore could not surface it, and there was no
 material for an "add this as a match_term?" suggestion — the analogue of the
 existing `top_hosts` suggestion for browser tools.
 
-## The three anchor kinds
+## The anchor kinds
 
 An event carries a namespaced `anchors` map (`{kind: value}`), per the
 source-collector contract (extra provider metadata uses a private/namespaced
@@ -33,14 +33,21 @@ whether a profile already anchors it.
 
 | Kind | Value | Coverage | Notes |
 | --- | --- | --- | --- |
+| `repo` | git remote slug (`owner/repo`) | Claude Code (cwd → local `origin`), Claude Desktop (Code) (session metadata / cwd) | **worktree-invariant**: identical across every worktree of a project; canonical anchor when worktree leaves appear |
 | `dir` | working-directory leaf (basename) | Claude Code, Cursor, Windsurf, Antigravity, Gemini CLI | structured; strongest suggestion |
 | `branch` | git branch leaf (after last `/`) | Claude Code (`gitBranch`) | namespace prefix dropped; generic branches (`main`, …) rejected |
-| `label` | session title | Codex IDE (`thread_name`) | full-coverage signal; placeholders (`session`, …) rejected; trim before use as match_term |
+| `label` | session title | Codex IDE (`thread_name`), Claude Desktop (Code) | full-coverage signal; placeholders (`session`, …) rejected; trim before use as match_term |
 
-Why three: `dir` exists only where there is a cwd; `branch` rides the same record
-and is often more descriptive; `label` is the only kind with **full coverage**
-across chat tools (every session has a title) — but it is free text, so it is a
-weaker auto-suggestion than a path leaf. See
+Why several: `dir` exists only where there is a cwd; `branch` rides the same
+record and is often more descriptive; `label` is the only kind with **full
+coverage** across chat tools (every session has a title) — but it is free text,
+so it is a weaker auto-suggestion than a path leaf. `repo` is the strongest of
+all when present: adding the slug (e.g. `owner/repo`) to a project's
+`match_terms` makes attribution **worktree-proof** — per-worktree `dir`/`branch`
+leaves (`confident-hopper-fe58c2`) stop nagging once the slug anchors the same
+events, because the work is already attributed. The slug comes from the local
+git remote config only (no network). See
+`docs/task-prompts/repo-slug-project-attribution.md` and
 `docs/ideas/triage-signal-examples.md`.
 
 ## Scope

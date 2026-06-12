@@ -67,15 +67,21 @@ attribution key that the directory leaf is not.
 
 ## Traceability
 
-- story_id: GH-pending
-- spec_status: draft
-- implementation_status: not built
+- story_id: GH-143
+- spec_status: approved
+- implementation_status: built
 - created_at: 2026-06-12
 - last_updated_at: 2026-06-12
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/repo-slug-attribution
 - implementation.commits: []
-- validation.evidence: investigation in PR #140 thread (2026-06-11/12); worktree leaves observed leaking as anchors; repo slug shown stable across worktrees in git-worktrees.json, diff-stats keys, and /events payloads
-- validation.decision: NO-GO
+- validation.evidence: investigation in PR #140 thread (2026-06-11/12); worktree leaves observed leaking as anchors; repo slug shown stable across worktrees in git-worktrees.json, diff-stats keys, and /events payloads; fixture tests prove sibling-worktree attribution and leaf-nag suppression
+- validation.decision: conditional GO
 - changelog:
   - 2026-06-12: Initial draft from git-worktree attribution investigation.
+  - 2026-06-12: Implemented on `task/repo-slug-attribution` —
+    `core/repo_slug.py` (cached path→slug, worktree-aware), `repo` anchor kind
+    in the unified signal model, slug fed into the classification haystack for
+    Claude Code CLI and Claude Desktop (Code) (explicit slug from session
+    metadata git outcomes preferred), and event-level anchor coverage so
+    mapped slugs silence per-worktree dir/branch leaf nags.

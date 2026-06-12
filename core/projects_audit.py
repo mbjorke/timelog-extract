@@ -19,11 +19,14 @@ TRIM_PLAN_SCHEMA_VERSION = 1
 ANCHOR_PLAN_SCHEMA_VERSION = 1
 
 # Activity-anchor kinds preserved on events (core.events.make_event) and surfaced
-# by the audit: working directory, git branch, and session title. All three are
-# already part of the classification haystack for their source, so the same
-# substring rule decides whether a profile already anchors them.
-ANCHOR_KINDS = ("dir", "branch", "label")
+# by the audit: git repo slug, working directory, git branch, and session title.
+# All are already part of the classification haystack for their source, so the
+# same substring rule decides whether a profile already anchors them. The repo
+# slug (owner/repo) is the worktree-invariant key — see
+# docs/task-prompts/repo-slug-project-attribution.md.
+ANCHOR_KINDS = ("repo", "dir", "branch", "label")
 ANCHOR_KIND_LABELS = {
+    "repo": "git repo",
     "dir": "working directory",
     "branch": "git branch",
     "label": "session title",
@@ -33,10 +36,11 @@ ANCHOR_KIND_LABELS = {
 # turn into a rule suggestion. Anchors (dir/branch/label → match_terms) and web
 # hosts (host → tracked_urls) share one model: aggregate per event, flag whether
 # a profile already anchors the value, and propose the matching rule type.
-SIGNAL_KINDS = ("host", "dir", "branch", "label")
+SIGNAL_KINDS = ("host", "repo", "dir", "branch", "label")
 SIGNAL_KIND_LABELS = {"host": "web host", **ANCHOR_KIND_LABELS}
 SIGNAL_RULE_TYPE = {
     "host": "tracked_urls",
+    "repo": "match_terms",
     "dir": "match_terms",
     "branch": "match_terms",
     "label": "match_terms",
@@ -166,6 +170,30 @@ def is_junk_anchor_value(value: str) -> bool:
     return False
 
 
+def _events_without_anchored_coverage(
+    events: list[dict[str, Any]], profiles: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Events where no anchor value is matched by any profile yet.
+
+    If *any* anchor on an event is already anchored (e.g. the repo slug is in
+    match_terms), the event's other anchors are not actionable mapping gaps:
+    the work is attributed. This is what makes per-worktree dir/branch leaves
+    stop nagging once the worktree-invariant slug is mapped.
+    """
+    cache: dict[str, bool] = {}
+
+    def anchored(value: str) -> bool:
+        if value not in cache:
+            cache[value] = is_value_anchored_by_profiles(value, profiles)
+        return cache[value]
+
+    return [
+        event
+        for event in events
+        if not any(anchored(value) for value in event_anchors(event).values())
+    ]
+
+
 def unanchored_top_anchors(
     events: list[dict[str, Any]],
     profiles: list[dict[str, Any]],
@@ -178,12 +206,14 @@ def unanchored_top_anchors(
 
     Convenience for report/status nudges across every anchor kind: combines
     aggregate_top_anchors with the anchored check so callers get only actionable
-    (unmapped) anchors, each tagged with its kind.
+    (unmapped) anchors, each tagged with its kind. Events already covered by an
+    anchored value (any kind) are excluded entirely.
     """
     floor = max(1, int(min_hits))
+    uncovered = _events_without_anchored_coverage(events, profiles)
     out: list[dict[str, Any]] = []
     for kind in kinds:
-        for value, hits in aggregate_top_anchors(events, kind, limit=max(0, int(limit_per_kind))):
+        for value, hits in aggregate_top_anchors(uncovered, kind, limit=max(0, int(limit_per_kind))):
             if hits < floor or is_junk_anchor_value(value) or is_value_anchored_by_profiles(value, profiles):
                 continue
             out.append({"kind": kind, "value": value, "hits": int(hits)})

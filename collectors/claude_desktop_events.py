@@ -24,6 +24,7 @@ from typing import Optional
 
 from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
 from core.chromium_cache import codec_available, iter_cache_entries
+from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
 
@@ -104,23 +105,55 @@ def _thin(stamps: list[datetime]) -> list[datetime]:
     return kept
 
 
-def _session_titles(cache_dir: Path) -> dict[str, str]:
-    """Map session id → user-visible session title from cached session metadata.
+def _session_repo_slug(obj: dict) -> str:
+    """Repo slug from session metadata git outcomes/sources, or ``""``.
+
+    ``session_context.outcomes[].git_info.repo`` carries an explicit
+    ``owner/repo`` for sessions bound to a repository; ``sources[].url`` holds
+    the clone URL. Both are worktree-invariant attribution keys.
+    """
+    ctx = obj.get("session_context")
+    if not isinstance(ctx, dict):
+        return ""
+    for outcome in ctx.get("outcomes") or []:
+        if not isinstance(outcome, dict):
+            continue
+        git_info = outcome.get("git_info")
+        if isinstance(git_info, dict):
+            slug = str(git_info.get("repo") or "").strip().lower()
+            if "/" in slug:
+                return slug
+    for source in ctx.get("sources") or []:
+        if isinstance(source, dict) and source.get("url"):
+            slug = slug_from_remote_url(source["url"])
+            if slug:
+                return slug
+    return ""
+
+
+def _session_meta(cache_dir: Path) -> dict[str, dict[str, str]]:
+    """Map session id → {title, slug} from cached session metadata.
 
     Claude Desktop also caches `/v1/sessions/<id>` detail and `/v1/sessions?…`
-    list responses, whose `title` is the human session name shown in the app
-    (e.g. "Build Freelance Bridge SaaS dashboard MVP") — metadata, not message
-    content. Titles make the report detail invoice-readable.
+    list responses: `title` is the human session name shown in the app
+    (invoice-readable detail) and the session context carries the repo slug
+    (worktree-invariant attribution). Metadata only — never message content.
     """
-    titles: dict[str, str] = {}
+    meta: dict[str, dict[str, str]] = {}
 
     def harvest(obj) -> None:
         if not isinstance(obj, dict):
             return
         sid = str(obj.get("id") or "")
+        if not sid:
+            return
+        entry = meta.setdefault(sid, {"title": "", "slug": ""})
         title = str(obj.get("title") or "").strip()
-        if sid and title:
-            titles[sid] = title
+        if title and not entry["title"]:
+            entry["title"] = title
+        slug = _session_repo_slug(obj)
+        if slug and not entry["slug"]:
+            entry["slug"] = slug
 
     for entry in iter_cache_entries(
         cache_dir,
@@ -137,7 +170,7 @@ def _session_titles(cache_dir: Path) -> dict[str, str]:
             if isinstance(rows, list):
                 for row in rows:
                     harvest(row)
-    return titles
+    return meta
 
 
 def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project, make_event):
@@ -170,9 +203,12 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
             sid = key_sid or str(ev.get("session_id") or "")
             if not sid:
                 continue
-            acc = sessions.setdefault(sid, {"uuids": set(), "stamps": [], "cwd": None})
+            acc = sessions.setdefault(
+                sid, {"uuids": set(), "stamps": [], "cwd": None, "cwd_path": ""}
+            )
             if ev.get("cwd") and not acc["cwd"]:
                 acc["cwd"] = _cwd_leaf(ev)
+                acc["cwd_path"] = str(ev.get("cwd") or "")
             uuid = str(ev.get("uuid") or "")
             if uuid:
                 if uuid in acc["uuids"]:
@@ -184,14 +220,17 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
             is_turn = str(ev.get("type") or "").strip().lower() in _TURN_TYPES
             acc["stamps"].append((ts, is_turn))
 
-    titles = _session_titles(cache_dir) if sessions else {}
+    meta = _session_meta(cache_dir) if sessions else {}
 
     results = []
     for sid, acc in sessions.items():
         if not acc["stamps"]:
             continue
         cwd = acc["cwd"]
-        title = titles.get(sid, "")
+        title = meta.get(sid, {}).get("title", "")
+        # Worktree-invariant attribution: explicit slug from session metadata,
+        # else resolved from the session cwd when it is a local repo path.
+        slug = meta.get(sid, {}).get("slug", "") or resolve_path_repo_slug(acc["cwd_path"])
         label = f"Code session: {title}" if title else f"Code session {sid[:20]}"
         for cluster in _clusters(acc["stamps"]):
             turns = sum(1 for _ts, is_turn in cluster if is_turn)
@@ -200,7 +239,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
                 # no real user/model turn, so no honest hours to claim.
                 continue
             detail = f"{label} — {turns} turns"
-            project = classify_project(f"{cwd or ''} {detail}", profiles)
+            project = classify_project(f"{slug} {cwd or ''} {detail}", profiles)
             for ts in _thin([pair[0] for pair in cluster]):
                 results.append(
                     make_event(
@@ -208,7 +247,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
                         ts,
                         detail,
                         project,
-                        anchors=_anchors(dir=cwd, label=_meaningful_label(title)),
+                        anchors=_anchors(repo=slug, dir=cwd, label=_meaningful_label(title)),
                     )
                 )
     return results

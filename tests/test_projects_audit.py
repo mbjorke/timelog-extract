@@ -12,15 +12,11 @@ from core.cli import app
 from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
 from core.projects_audit import (
     AUDIT_SCHEMA_VERSION,
-    aggregate_top_anchors,
     build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
     is_host_anchored_by_profiles,
-    is_junk_anchor_value,
-    is_value_anchored_by_profiles,
-    unanchored_top_anchors,
 )
 
 
@@ -28,33 +24,8 @@ class ProjectsAuditTests(unittest.TestCase):
     def setUp(self) -> None:
         self.runner = CliRunner()
 
-    def test_junk_anchor_values_rejected(self) -> None:
-        # Tool plumbing never qualifies as a project mapping suggestion.
-        self.assertTrue(is_junk_anchor_value(".claude"))
-        self.assertTrue(is_junk_anchor_value(".git"))
-        self.assertTrue(is_junk_anchor_value(".gittan:"))
-        self.assertTrue(is_junk_anchor_value("a5cda8b561bb6536e880481734199a568cb647f4"))
-        self.assertTrue(is_junk_anchor_value(""))
-        # Real project anchors pass.
-        self.assertFalse(is_junk_anchor_value("timelog-extract"))
-        self.assertFalse(is_junk_anchor_value("project-beta-dashboard"))
-        # A <slug>-<hex> suffix is NOT junk: Lovable renames repos with a hex
-        # suffix (financing-portal-dev-31e799cf), indistinguishable at the leaf
-        # level from a Claude worktree slug. Worktree leakage is handled at the
-        # path/remote layer, not here.
-        self.assertFalse(is_junk_anchor_value("financing-portal-dev-31e799cf"))
-        self.assertFalse(is_junk_anchor_value("offer-craft-34"))
-
-    def test_unanchored_top_anchors_skips_junk_values(self) -> None:
-        events = [
-            {"source": "Cursor", "detail": "x", "anchors": {"dir": ".claude"}},
-            {"source": "Cursor", "detail": "x", "anchors": {"dir": ".claude"}},
-            {"source": "Cursor", "detail": "x", "anchors": {"dir": "project-gamma"}},
-        ]
-        out = unanchored_top_anchors(events, [], min_hits=1)
-        values = [row["value"] for row in out]
-        self.assertNotIn(".claude", values)
-        self.assertIn("project-gamma", values)
+    # Anchor-value rules and unmapped-anchor aggregation tests live in
+    # tests/test_projects_audit_anchors.py (500-line file split).
 
     def test_match_term_hits_substring(self) -> None:
         profiles = [
@@ -264,27 +235,6 @@ class ProjectsAuditTests(unittest.TestCase):
         self.assertTrue(all(r["rule_type"] == "match_terms" for r in payload["top_signals"] if r["kind"] != "host"))
         # Events without anchors do not produce a row.
         self.assertNotIn(("dir", ""), rows)
-
-    def test_aggregate_top_anchors_counts_once_per_event(self) -> None:
-        events = [
-            {"anchors": {"dir": "Repo-One"}},
-            {"anchors": {"dir": "repo-one"}},
-            {"anchors": {"dir": "repo-two"}},
-            {"anchors": {"branch": "repo-one"}},
-            {"detail": "no dir"},
-        ]
-        rows = dict(aggregate_top_anchors(events, "dir", limit=10))
-        # case-insensitive aggregation collapses to a single lowercase key
-        self.assertEqual(rows.get("repo-one"), 2)
-        self.assertEqual(rows.get("repo-two"), 1)
-        # A different kind is counted separately.
-        self.assertEqual(dict(aggregate_top_anchors(events, "branch", limit=10)).get("repo-one"), 1)
-
-    def test_is_value_anchored_substring_rule(self) -> None:
-        profiles = [{"name": "p", "match_terms": ["timelog-extract"], "tracked_urls": []}]
-        self.assertTrue(is_value_anchored_by_profiles("timelog-extract", profiles))
-        self.assertTrue(is_value_anchored_by_profiles("timelog-extract-dashboard", profiles))
-        self.assertFalse(is_value_anchored_by_profiles("unrelated-repo", profiles))
 
     def test_anchor_plan_from_audit_only_unanchored(self) -> None:
         audit = {

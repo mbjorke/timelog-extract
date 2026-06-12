@@ -5,6 +5,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.repo_slug import resolve_path_repo_slug
+
 
 def _cwd_leaf(obj) -> str | None:
     """Privacy-safe working-directory leaf (basename) from a Claude Code entry.
@@ -153,11 +155,17 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
                 if _claude_jsonl_is_noise(obj, detail):
                     continue
                 branch = _branch_leaf(obj)
-                project = classify_project(f"{dir_name} {branch or ''} {detail}", profiles)
+                # Worktree-invariant attribution: the remote slug is identical
+                # across worktrees, so a session in a sibling worktree still
+                # classifies to the project even when the path/leaf does not.
+                slug = resolve_path_repo_slug(str(obj.get("cwd") or "")) if isinstance(obj, dict) else ""
+                project = classify_project(
+                    f"{slug} {dir_name} {branch or ''} {detail}", profiles
+                )
                 results.append(
                     make_event(
                         "Claude Code CLI", ts, detail, project,
-                        anchors=_anchors(dir=_cwd_leaf(obj), branch=branch),
+                        anchors=_anchors(repo=slug, dir=_cwd_leaf(obj), branch=branch),
                     )
                 )
     return results

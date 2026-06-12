@@ -26,6 +26,7 @@ SOURCE_ORDER = [
     "Chrome",
     "Lovable (desktop)",
     GITHUB_SOURCE,
+    GIT_COMMITS_SOURCE,
     TOGGL_SOURCE,
     CALENDAR_SOURCE,
 ]

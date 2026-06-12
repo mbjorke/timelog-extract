@@ -10,6 +10,7 @@ CALENDAR_SOURCE = "Calendar"
 SOURCE_ORDER = [
     "Claude Code CLI",
     "Claude Desktop",
+    "Claude Desktop (Code)",
     "Claude.ai (web)",
     "Gemini (web)",
     "Cursor",
@@ -31,6 +32,7 @@ SOURCE_ORDER = [
 AI_SOURCES = {
     "Claude Code CLI",
     "Claude Desktop",
+    "Claude Desktop (Code)",
     "Gemini CLI",
     "Claude.ai (web)",
     "Gemini (web)",

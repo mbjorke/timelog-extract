@@ -67,6 +67,13 @@ class RuntimeCollectors:
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 
+    def collect_claude_desktop_code(self, profiles, dt_from, dt_to):
+        from collectors.claude_desktop_events import collect_claude_desktop_code
+
+        return collect_claude_desktop_code(
+            profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
+        )
+
     def collect_claude_ai_urls(self, profiles, dt_from, dt_to):
         return self.chrome.collect_claude_ai_urls(
             profiles,

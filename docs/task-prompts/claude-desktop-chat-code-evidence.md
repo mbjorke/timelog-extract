@@ -113,14 +113,14 @@ Lovable's project paths there) and its field extraction. See
 
 ## Traceability
 
-- story_id: GH-pending
-- spec_status: draft
-- implementation_status: not built
+- story_id: GH-142
+- spec_status: approved
+- implementation_status: built
 - created_at: 2026-06-11
 - last_updated_at: 2026-06-12
-- implementation.pr: pending
-- implementation.branch: pending
-- implementation.commits: []
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/141
+- implementation.branch: task/claude-desktop-events
+- implementation.commits: [5c76a70]
 - validation.evidence: PR #140 thread (2026-06-11/12); zstd-decompressed cached /v1/sessions/<id>/events reconstructed ~2.6h active across 1,057 turns for the session behind Claude Desktop "Copy link"; cross-checked vs git-worktrees + diff-stats
 - validation.decision: NO-GO
 - changelog:
@@ -130,3 +130,8 @@ Lovable's project paths there) and its field extraction. See
     repo attribution). Demoted session-JSON/diff-stats/CLI-log to weaker
     fallbacks. Added mandatory privacy (timestamps/type only, no message text),
     retention caveat, doctor row, and zstandard dependency note.
+  - 2026-06-12: Implemented on `task/claude-desktop-events` — shared
+    `core/chromium_cache.py` reader + `collectors/claude_desktop_events.py`
+    (source `Claude Desktop (Code)`), doctor row, `cache-evidence` optional
+    extra, fixture tests. Real-data smoke: the validated session reconstructs
+    06:51→09:28+ attributed to the correct project.

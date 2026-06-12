@@ -222,6 +222,15 @@ def doctor(
                 f"[{STYLE_MUTED}]No History DB yet (browse in Lovable to create one)[/{STYLE_MUTED}]",
             )
 
+        from collectors.claude_desktop_events import claude_events_cache_status
+
+        events_ok, events_reason = claude_events_cache_status(home)
+        table.add_row(
+            "Claude Desktop (Code)",
+            OK_ICON if events_ok else NA_ICON,
+            f"[{STYLE_MUTED}]{events_reason}[/{STYLE_MUTED}]",
+        )
+
         mail_path = home / "Library" / "Mail"
         if mail_path.exists():
             try:

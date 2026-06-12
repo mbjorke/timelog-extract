@@ -29,6 +29,7 @@ def build_collector_specs(
     mail_msg: str,
     collect_claude_code: Callable,
     collect_claude_desktop: Callable,
+    collect_claude_desktop_code: Callable,
     collect_claude_ai_urls: Callable,
     collect_gemini_web_urls: Callable,
     collect_chrome: Callable,
@@ -63,6 +64,7 @@ def build_collector_specs(
     return [
         CollectorSpec("Claude Code CLI", collect_claude_code, "events"),
         CollectorSpec("Claude Desktop", collect_claude_desktop, "events"),
+        CollectorSpec("Claude Desktop (Code)", collect_claude_desktop_code, "events"),
         CollectorSpec("Claude.ai (specific URLs)", collect_claude_ai_urls, "visits"),
         CollectorSpec("Gemini (web, specific URLs)", collect_gemini_web_urls, "visits"),
         CollectorSpec(

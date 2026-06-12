@@ -52,6 +52,7 @@ class TogglSourceTests(unittest.TestCase):
                 mail_msg="mail unavailable",
                 collect_claude_code=lambda *_: [],
                 collect_claude_desktop=lambda *_: [],
+                collect_claude_desktop_code=lambda *_: [],
                 collect_claude_ai_urls=lambda *_: [],
                 collect_gemini_web_urls=lambda *_: [],
                 collect_chrome=lambda *_: [],

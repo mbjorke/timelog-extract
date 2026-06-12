@@ -267,6 +267,15 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     else:
         warn("Lovable Desktop History", "No History DB yet (browse in Lovable to create one)")
 
+    # Claude Desktop Code events cache
+    from collectors.claude_desktop_events import claude_events_cache_status
+
+    events_ok, events_reason = claude_events_cache_status(home)
+    if events_ok:
+        ok("Claude Desktop (Code)", events_reason)
+    else:
+        warn("Claude Desktop (Code)", events_reason)
+
     # Apple Mail
     mail = home / "Library/Mail"
     if mail.exists():

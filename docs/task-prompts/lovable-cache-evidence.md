@@ -1,5 +1,38 @@
 # Lovable Desktop: cache-mtime evidence for full-day session reconstruction
 
+## Backlog (product-owner)
+
+Ordered slice after Claude Desktop Code (#141 / GH-142) and repo-slug attribution
+(#144 / GH-143). Spec: this file. Story: **GH-145**.
+
+### Lovable cache-mtime + project titles
+
+- **priority:** `now`
+- **problem:** Morning Lovable sessions vanish because LevelDB storage signals
+  only keep each file's final write; the report shows at most one late-day touch.
+- **user value:** Honest hours and **invoice-readable project titles** (not bare
+  UUID prefixes) for Lovable Desktop work that never touched History DB.
+- **non-goals:** No keystroke capture, no network MITM, no chat text from disk
+  (see below). Cache is a last-resort source — not a replacement for git/TIMELOG
+  when those exist.
+- **dependencies:** `core/chromium_cache.py` (merged #141); optional
+  `timelog-extract[cache-evidence]` for brotli; existing
+  `_LOVABLE_PROJECT_UUID_RE` + RudderStack filter in `lovable_desktop.py`.
+- **acceptance:** See Behavior Contract + Acceptance Criteria below.
+- **validation:** Re-run the 2026-06-11 window: cache mtimes 09:32–09:53 (and
+  git-bot commits 09:38–09:47) appear in `gittan report` with human project
+  title in detail; RudderStack UUIDs absent; `bash scripts/run_autotests.sh`
+  green.
+
+### Later (same Electron-cache family)
+
+- **priority:** `later`
+- **Claude Desktop Chat events** from cached session list (dedupe vs
+  Claude.ai/web/Chrome) — spec slice not yet written.
+- **priority:** `later`
+- **`gittan doctor` parity** for all cache-backed sources (Claude events cache ✓;
+  Lovable cache row when this ships).
+
 ## Problem
 
 Lovable Desktop has no Chromium `History` database, so the collector falls back
@@ -62,12 +95,80 @@ the `tiba=` beacon when present.
 ## Shared Electron-cache reader (build once, reuse)
 
 Lovable Desktop and Claude Desktop both use the Chromium "simple cache" with
-compressed HTTP bodies (Lovable=brotli, Claude=zstd). Use one shared helper —
-`core/chromium_cache.py` (`iter_cache_entries(cache_dir, key_substr)` →
-`(key, mtime, body_bytes)`, codecs imported lazily, missing codec = no-op). This
-collector supplies the Lovable URL paths and field extraction; the Claude Code
-spec (`docs/task-prompts/claude-desktop-chat-code-evidence.md`) reuses the same
-reader. Build the helper once, not per app.
+compressed HTTP bodies (Lovable=brotli, Claude=zstd). Use the shared helper
+`core/chromium_cache.py` (`iter_cache_entries`, `read_cache_entry`, lazy
+codecs, missing codec = skip entry). This collector supplies Lovable URL paths
+and field extraction; Claude Desktop (Code) already uses the same reader (merged
+#141). **Do not fork** a second cache parser per app.
+
+## Behavior Contract
+
+Evidence role: **direct_work_evidence** (same class as existing Lovable storage
+signals — local traces that justify observed hours when History DB is absent).
+Privacy: project UUID, mtime, and **metadata titles only** (`display_name`,
+`tiba=` beacon). Never persist or surface chat message text from cache bodies.
+
+```gherkin
+Feature: Lovable Desktop cache evidence for full-day sessions
+  Recover honest timeline hours from Chromium cache mtimes when LevelDB storage
+  signals were overwritten, with invoice-readable project titles.
+
+  Background:
+    Given Lovable Desktop has no History database
+    And the collector already reads storage signals as a fallback
+    And core/chromium_cache.py is available with brotli when cache-evidence extra is installed
+
+  Scenario: Morning session visible from cache mtimes when storage was overwritten
+    Given cache files under lovable-desktop Cache/Cache_Data contain a project UUID
+    And those files have mtimes between 09:32 and 09:53 local on the report day
+    And LevelDB storage signals for the same UUID only show a late-day write at 18:45
+    When gittan report runs for that day
+    Then Lovable (desktop) events appear at the cache mtime timestamps
+    And the session is not limited to the single late storage-signal touch
+
+  Scenario: Human project title in report detail for invoice review
+    Given a cached projects/search response maps the UUID to display_name "Project Alpha"
+    When gittan report includes a cache-evidence event for that UUID
+    Then the event detail shows "Project Alpha" (or the mapped project name)
+    And the detail is not only "unmapped Lovable (<uuid-prefix>…)"
+
+  Scenario: Unknown UUID keeps the existing map nudge format
+    Given a cache file references a Lovable UUID with no profile mapping
+    And projects/search has no title for that UUID
+    When gittan report runs
+    Then the event detail uses the unmapped Lovable (uuid…) — map UUID via gittan map format
+    And the event project is Uncategorized
+
+  Scenario: RudderStack analytics UUID never fabricates a project
+    Given a cache entry contains a UUID only inside RudderStack analytics context
+    When the Lovable collector scans cache files
+    Then no event is emitted for that UUID
+
+  Scenario: Missing brotli codec degrades gracefully
+    Given brotli is not installed
+    And cache mtimes still identify activity for a known UUID
+    When gittan report runs
+    Then cache-mtime events may still appear from raw cache key/beacon scans
+    And gittan doctor explains cache-evidence optional extra when projects/search bodies cannot be decoded
+    And the collector never crashes
+
+  Scenario: Corrupt or oversized cache entry is skipped silently
+    Given a cache file is truncated binary garbage or exceeds the size guard
+    When the Lovable collector scans cache files
+    Then no error is raised
+    And other valid cache entries in the same run still produce events
+```
+
+### Test mapping
+
+| Scenario | Evidence (planned) |
+| --- | --- |
+| Morning session from cache mtimes | `tests/test_lovable_desktop.py` fixture: in-window cache file + late-only storage signal |
+| Human project title | fixture: synthetic brotli `projects/search` body via `chromium_cache` |
+| Unknown UUID nudge | fixture: unmapped uuid, no search title |
+| RudderStack skip | existing + extended `_is_analytics_uuid_context` cache scan test |
+| Missing brotli | mock/import skip; doctor row assertion |
+| Corrupt/oversized skip | fixture junk `_0` entry |
 
 ## Task
 
@@ -87,29 +188,39 @@ reader. Build the helper once, not per app.
    response (brotli body; `id` → `display_name`); fall back to the
    `tiba=<title>` beacon. Title is stronger mapping evidence than the bare UUID.
 5. Fixture tests: synthetic cache dir with (a) known-uuid file in window,
-   (b) rudder-context uuid file (must be skipped), (c) out-of-window file.
+   (b) rudder-context uuid file (must be skipped), (c) out-of-window file,
+   (d) brotli `projects/search` title map, (e) corrupt/oversized entry skipped.
+6. `gittan doctor`: extend the Lovable row when cache evidence is readable
+   (mirror Claude Desktop (Code) events-cache row pattern).
 
 ## Acceptance criteria
 
 - A Lovable work session that only left cache traces (no storage-blob tail
   write) appears in `gittan report` for that window with the right timestamps.
+- Report details show **human project titles** when `projects/search` or
+  `tiba=` provides them (invoice-readable, not UUID-only).
 - RudderStack/telemetry UUIDs never appear as projects.
+- Evicted/corrupt/oversized cache entries degrade gracefully (no crash).
+- `gittan doctor` reflects Lovable cache readability when applicable.
 - Full autotest suite green; no Python file exceeds 500 lines.
 
 ## Traceability
 
-- story_id: GH-pending
-- spec_status: draft
+- story_id: GH-145
+- spec_status: approved
 - implementation_status: not built
 - created_at: 2026-06-11
-- last_updated_at: 2026-06-11
+- last_updated_at: 2026-06-12
 - implementation.pr: pending
 - implementation.branch: pending
 - implementation.commits: []
-- validation.evidence: investigation in PR #140 thread (2026-06-11); cache-mtime reconstruction matched gpt-engineer-app[bot] commit window 09:38–09:47
+- validation.evidence: investigation in PR #140 thread (2026-06-11); cache-mtime reconstruction matched gpt-engineer-app[bot] commit window 09:38–09:47; PO backlog + Gherkin behavior contract added 2026-06-12
 - validation.decision: NO-GO
 - changelog:
   - 2026-06-11: Initial draft created from live validation-day investigation.
   - 2026-06-11: Added Non-goals (no keystroke/MITM capture; chat text is
     server-only, confirmed by raw byte scan) and `projects/search` UUID→title
     bonus source. doctor now reports Lovable as collecting via storage signals.
+  - 2026-06-12: Product-owner pass — backlog (`now`), Behavior Contract
+    (Gherkin), test mapping table, doctor row task, traceability GH-145;
+    clarified reuse of merged `core/chromium_cache.py` (#141).

@@ -115,14 +115,14 @@ Lovable's project paths there) and its field extraction. See
 
 - story_id: GH-142
 - spec_status: approved
-- implementation_status: built
+- implementation_status: verified
 - created_at: 2026-06-11
 - last_updated_at: 2026-06-12
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/141
 - implementation.branch: task/claude-desktop-events
 - implementation.commits: [5c76a70]
 - validation.evidence: PR #140 thread (2026-06-11/12); zstd-decompressed cached /v1/sessions/<id>/events reconstructed ~2.6h active across 1,057 turns for the session behind Claude Desktop "Copy link"; cross-checked vs git-worktrees + diff-stats
-- validation.decision: NO-GO
+- validation.decision: GO
 - changelog:
   - 2026-06-11: Initial draft (IndexedDB / diff-stats sources).
   - 2026-06-12: Rewritten around the validated primary source — zstd-compressed
@@ -135,3 +135,6 @@ Lovable's project paths there) and its field extraction. See
     (source `Claude Desktop (Code)`), doctor row, `cache-evidence` optional
     extra, fixture tests. Real-data smoke: the validated session reconstructs
     06:51→09:28+ attributed to the correct project.
+  - 2026-06-12: Merged via PR #141; maintainer validated real-data output
+    (single titled session, honest span, no background-ping hours). Story
+    GH-142 closed; status verified / GO.

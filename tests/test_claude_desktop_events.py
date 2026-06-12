@@ -162,6 +162,34 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         self.assertEqual(details, {"Code session: Build dashboard MVP — 2 turns"})
         self.assertEqual(events[0]["anchors"].get("label"), "build dashboard mvp")
 
+    def test_session_metadata_repo_slug_attributes_project(self) -> None:
+        # Session metadata carries an explicit owner/repo in git outcomes —
+        # worktree-invariant attribution even when cwd is a sandbox path.
+        base = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
+        body = _events_payload("session_01SLUG", [base, base + timedelta(minutes=2)], "/home/user/sandbox")
+        _write_cache(self.home, "ev2", "1/0/https://claude.ai/v1/sessions/session_01SLUG/events?limit=500", body)
+        meta = json.dumps(
+            {
+                "id": "session_01SLUG",
+                "title": "Fix the widget",
+                "session_context": {
+                    "outcomes": [
+                        {
+                            "type": "git_repository",
+                            "git_info": {"repo": "owner-a/project-alpha", "type": "github"},
+                        }
+                    ]
+                },
+            }
+        ).encode("utf-8")
+        _write_cache(self.home, "meta2", "1/0/https://claude.ai/v1/sessions/session_01SLUG", meta)
+
+        events = self._collect()
+        self.assertTrue(events)
+        for ev in events:
+            self.assertEqual(ev["project"], "project-alpha")
+            self.assertEqual(ev["anchors"].get("repo"), "owner-a/project-alpha")
+
     def test_background_only_cluster_emits_nothing(self) -> None:
         # Clusters with zero user/assistant turns (rate-limit pings, env
         # refreshes) must not claim hours.

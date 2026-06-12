@@ -156,6 +156,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.profiles,
         report.args,
         report.config_path,
+        report.timelog_project_totals or None,
     )
     nudge = build_unexplained_gap_nudge(report)
     if nudge:

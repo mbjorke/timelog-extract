@@ -182,6 +182,7 @@ def print_report(
     uncategorized: str,
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
+    timelog_project_totals: Optional[Dict[str, float]] = None,
 ):
     print_command_hero(console, "report")
     console.print()
@@ -331,17 +332,19 @@ def print_report(
     if additive_summary:
         heading += " (additive: primary project per session)"
     console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
+    show_totals = bool(timelog_project_totals)
     breakdown_table = Table.grid(padding=(0, 2))
     breakdown_table.add_column(style=STYLE_BODY)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
+    if show_totals:
+        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
-    breakdown_table.add_row(
-        "",
-        f"[{STYLE_META}]Hours[/{STYLE_META}]",
-        f"[{STYLE_META}]Billable[/{STYLE_META}]",
-        f"[{STYLE_META}]Days[/{STYLE_META}]",
-    )
+    header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
+    if show_totals:
+        header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
+    header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]
+    breakdown_table.add_row(*header_row)
 
     profile_by_name = {p["name"]: p for p in profiles}
     projects_by_customer = defaultdict(list)
@@ -372,12 +375,16 @@ def print_report(
             )
             cust_b_text = f"{cust_b:.2f}h"
 
-        breakdown_table.add_row(
+        cust_row = [
             f"[bold {STYLE_BODY}]{customer_name}[/bold {STYLE_BODY}]",
             f"[bold {CLR_VALUE_ORANGE}]{customer_hours:.1f}h[/bold {CLR_VALUE_ORANGE}]",
-            f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]",
-            "",
-        )
+        ]
+        if show_totals:
+            cust_total = sum((timelog_project_totals or {}).get(p, 0.0) for p in customer_projects)
+            cust_total_text = f"{cust_total:.1f}h" if cust_total else "—"
+            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_total_text}[/bold {CLR_VALUE_ORANGE}]")
+        cust_row += [f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]", ""]
+        breakdown_table.add_row(*cust_row)
 
         for project_name in customer_projects:
             hours = (
@@ -395,12 +402,19 @@ def print_report(
                 proj_b = billable_total_hours_fn(hours, args.billable_unit)
                 proj_b_text = f"{proj_b:.2f}h"
 
-            breakdown_table.add_row(
+            proj_row = [
                 f"[{STYLE_META}]  · {project_name}[/{STYLE_META}]",
                 f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",
+            ]
+            if show_totals:
+                proj_total = (timelog_project_totals or {}).get(project_name, 0.0)
+                proj_total_text = f"{proj_total:.1f}h" if proj_total else "—"
+                proj_row.append(f"[{STYLE_META}]{proj_total_text}[/{STYLE_META}]")
+            proj_row += [
                 f"[{STYLE_BODY}]{proj_b_text}[/{STYLE_BODY}]",
                 f"[{STYLE_META}]{days}[/{STYLE_META}]",
-            )
+            ]
+            breakdown_table.add_row(*proj_row)
         breakdown_table.add_section()
 
     console.print(breakdown_table)

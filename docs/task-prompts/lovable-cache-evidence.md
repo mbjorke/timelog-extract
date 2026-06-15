@@ -208,14 +208,14 @@ Feature: Lovable Desktop cache evidence for full-day sessions
 
 - story_id: GH-145
 - spec_status: approved
-- implementation_status: not built
+- implementation_status: built
 - created_at: 2026-06-11
-- last_updated_at: 2026-06-12
-- implementation.pr: pending
-- implementation.branch: pending
-- implementation.commits: []
-- validation.evidence: investigation in PR #140 thread (2026-06-11); cache-mtime reconstruction matched gpt-engineer-app[bot] commit window 09:38–09:47; PO backlog + Gherkin behavior contract added 2026-06-12
-- validation.decision: NO-GO
+- last_updated_at: 2026-06-15
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/148
+- implementation.branch: task/lovable-cache-evidence
+- implementation.commits: [f3031a8, c1fa8d6, 914a182, 84e6747, 9bd6b5f]
+- validation.evidence: PR #148; autotests 793 green; live 2026-06-11 Lovable title + landsbanken mapping; composer span bounded vs Screen Time
+- validation.decision: conditional GO
 - changelog:
   - 2026-06-11: Initial draft created from live validation-day investigation.
   - 2026-06-11: Added Non-goals (no keystroke/MITM capture; chat text is
@@ -224,3 +224,4 @@ Feature: Lovable Desktop cache evidence for full-day sessions
   - 2026-06-12: Product-owner pass — backlog (`now`), Behavior Contract
     (Gherkin), test mapping table, doctor row task, traceability GH-145;
     clarified reuse of merged `core/chromium_cache.py` (#141).
+  - 2026-06-15: Implementation on task/lovable-cache-evidence; PR #148 opened.

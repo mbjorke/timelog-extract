@@ -334,7 +334,7 @@ def print_report(
         console.print(
             f"[{STYLE_META}]Est. (presence): soft-work fill between evidenced events, "
             f"capped by Screen Time — not billable. Delta (est.) compares estimate to "
-            f"presence; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
+            f"Screen Time; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
         )
 
     print_report_warnings(

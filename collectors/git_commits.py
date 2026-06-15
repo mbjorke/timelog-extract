@@ -78,11 +78,17 @@ def git_commits_collector_status(
             "reason": "No profile has git_repo configured",
             "events": 0,
         }
-    missing = [p for p in repo_paths if not p.exists()]
+    missing = [p for p in repo_paths if not p.is_dir()]
     if missing:
         return {
             "enabled": False,
-            "reason": f"git_repo path not found ({missing[0].name})",
+            "reason": f"git_repo is not a directory ({missing[0].name})",
+            "events": 0,
+        }
+    if not git_enabled:
+        return {
+            "enabled": False,
+            "reason": "Pass --git on report to include Git-only hours column",
             "events": 0,
         }
     event_count = 0
@@ -105,12 +111,6 @@ def git_commits_collector_status(
                 dt_to=dt_to,
             )
             event_count += len(events)
-    if not git_enabled:
-        return {
-            "enabled": False,
-            "reason": "Pass --git on report to include Git-only hours column",
-            "events": event_count,
-        }
     if event_count == 0:
         return {
             "enabled": True,

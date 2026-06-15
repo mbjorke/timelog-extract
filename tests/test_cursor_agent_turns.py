@@ -74,13 +74,16 @@ class CursorAgentTurnsTests(unittest.TestCase):
             dt_from = datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc)
             dt_to = datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc)
             local_tz = timezone.utc
-            make_event = lambda source, ts, detail, project, anchors=None: {
-                "source": source,
-                "timestamp": ts,
-                "detail": detail,
-                "project": project,
-                "anchors": anchors or {},
-            }
+
+            def make_event(source, ts, detail, project, anchors=None):
+                return {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                    "anchors": anchors or {},
+                }
+
             events, covered = collect_cursor_agent_turns(
                 profiles, dt_from, dt_to, home, local_tz, lambda t, p: "timelog-extract", make_event
             )

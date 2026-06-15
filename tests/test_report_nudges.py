@@ -38,6 +38,8 @@ class ReportNudgesTests(unittest.TestCase):
     def test_gap_nudge_suppressed_when_presence_estimate_shown(self):
         """Cursor-heavy days: Est. (presence) replaces observed-vs-screen alarm."""
         report = self._report(estimated=5.5, screen_hours=15.1)
+        report.overall_days = {"2026-06-11": {"hours": 5.5}}
+        report.screen_time_days = {"2026-06-11": 15.1 * 3600.0}
         report.presence_estimated = PresenceEstimatedResult(
             overall_days={"2026-06-11": 10.0},
             project_days={"project-alpha": {"2026-06-11": 10.0}},

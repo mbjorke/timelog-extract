@@ -39,7 +39,7 @@ def build_evidence_warnings(
     screen = float(snapshot.get("screen_time_hours", 0) or 0)
     observed = float(snapshot.get("observed_hours", 0) or 0)
 
-    if screen > 0 and observed > 0 and observed <= screen:
+    if screen > 0 and observed <= screen:
         coverage = observed / screen
         if coverage < LOW_COVERAGE_RATIO and _has_mappable_unattributed(snapshot):
             pct = int(round(coverage * 100))

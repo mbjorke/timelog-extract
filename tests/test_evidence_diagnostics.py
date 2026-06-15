@@ -124,6 +124,17 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
         warnings = build_evidence_warnings(snapshot)
         self.assertFalse(any("Low project coverage" in msg for msg in warnings))
 
+    def test_low_coverage_warns_at_zero_observed(self):
+        snapshot = {
+            "observed_hours": 0.0,
+            "screen_time_hours": 8.0,
+            "collected_but_excluded": {"Chrome": 5},
+            "excluded_uncategorized_events": 0,
+            "codec_blocked": [],
+        }
+        warnings = build_evidence_warnings(snapshot)
+        self.assertTrue(any("Low project coverage" in msg for msg in warnings))
+
     @patch("core.evidence_diagnostics.codec_blocked_sources")
     def test_codec_blocked_surfaces_install_hint(self, mock_blocked):
         mock_blocked.return_value = [
@@ -134,7 +145,7 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
             "screen_time_hours": 8.0,
             "codec_blocked": [],
         }
-        warnings = build_evidence_warnings(snapshot, home=Path("/tmp"))
+        warnings = build_evidence_warnings(snapshot, home=Path.cwd())
         self.assertTrue(any("cache-evidence" in msg for msg in warnings))
 
 

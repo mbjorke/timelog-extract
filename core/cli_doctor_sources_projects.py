@@ -247,7 +247,9 @@ def doctor(
                 codec_blocked.append("Lovable Desktop")
             table.add_row(
                 "Lovable Desktop",
-                OK_ICON if cache_ok else (FAIL_ICON if cache_codec_missing else NA_ICON),
+                FAIL_ICON
+                if cache_codec_missing
+                else (OK_ICON if cache_ok else NA_ICON),
                 f"[{STYLE_MUTED}]{cache_reason}[/{STYLE_MUTED}]",
             )
         else:

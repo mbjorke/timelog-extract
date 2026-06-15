@@ -170,7 +170,6 @@ def collect_cursor_agent_turns(
     for (conversation_id, workspace_id), stamps in buckets.items():
         if not stamps:
             continue
-        covered.add(conversation_id)
         composer = composers.get(conversation_id, {})
         name = str(composer.get("name") or "").strip()
         workspace = _composer_workspace_path(composer) if composer else ""
@@ -195,6 +194,7 @@ def collect_cursor_agent_turns(
         project = classify_project(haystack, profiles)
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
 
+        emitted = False
         for cluster in _clusters(stamps):
             cluster_turns = len(cluster)
             base = name[:70] if name else (label[:70] if label else "agent chat")
@@ -212,4 +212,7 @@ def collect_cursor_agent_turns(
                         anchors=anchors,
                     )
                 )
+                emitted = True
+        if emitted:
+            covered.add(conversation_id)
     return results, covered

@@ -314,6 +314,35 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_skips_skills_cursor_sync_manifest_poller(self):
+        """skills-cursor manifest sync fires on a timer while Cursor is open — not user work."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "2" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-06-15 02:17:30.381 [warning] Failed to persist sync manifest "
+                        '{"skillDir":"/Users/me/.cursor/skills-cursor"} '
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 6, 15, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 15, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "Uncategorized",
+                make_event=make_test_event,
+                noise_profile="lenient",
+            )
+            self.assertEqual(out, [])
+
 
 if __name__ == "__main__":
     unittest.main()

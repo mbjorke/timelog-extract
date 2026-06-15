@@ -40,6 +40,16 @@ from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
 
+
+def _codec_missing_reason(reason: str) -> bool:
+    """True when a cache status reason indicates a missing decode codec.
+
+    Covers both fully-disabled (zstandard for Claude events) and degraded
+    (brotli for Lovable titles) states — both fixed by the same install.
+    """
+    low = (reason or "").lower()
+    return "missing" in low and any(w in low for w in ("codec", "zstandard", "brotli"))
+
 _DOCTOR_LOG = logging.getLogger(__name__)
 
 
@@ -94,6 +104,8 @@ def doctor(
     print_command_hero(console, "doctor")
     console.print("")
     home = Path.home()
+    # Sources disabled purely because their cache-evidence codec is missing.
+    codec_blocked: list[str] = []
     workspace_root = runtime_workspace_root()
     projects_cfg = resolve_projects_config_path().expanduser()
     _profiles, loaded_config_path, workspace = load_profiles(
@@ -207,14 +219,20 @@ def doctor(
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
+        # Cache sources silently produce zero events when their codec is missing.
+        # That under-counts AI-heavy days with no obvious cause, so a present-cache-
+        # but-missing-codec state must read as a fixable failure, not a benign N/A.
         lh = lovable_desktop_history_candidates(home)
         if lh:
             check_db(lh[0], "Lovable Desktop History", "urls")
         elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
             cache_ok, cache_reason = lovable_cache_status(home)
+            cache_codec_missing = _codec_missing_reason(cache_reason)
+            if cache_codec_missing:
+                codec_blocked.append("Lovable Desktop")
             table.add_row(
                 "Lovable Desktop",
-                OK_ICON if cache_ok else NA_ICON,
+                OK_ICON if cache_ok else (FAIL_ICON if cache_codec_missing else NA_ICON),
                 f"[{STYLE_MUTED}]{cache_reason}[/{STYLE_MUTED}]",
             )
         else:
@@ -227,9 +245,12 @@ def doctor(
         from collectors.claude_desktop_events import claude_events_cache_status
 
         events_ok, events_reason = claude_events_cache_status(home)
+        events_codec_missing = _codec_missing_reason(events_reason)
+        if events_codec_missing:
+            codec_blocked.append("Claude Desktop (Code)")
         table.add_row(
             "Claude Desktop (Code)",
-            OK_ICON if events_ok else NA_ICON,
+            OK_ICON if events_ok else (FAIL_ICON if events_codec_missing else NA_ICON),
             f"[{STYLE_MUTED}]{events_reason}[/{STYLE_MUTED}]",
         )
 
@@ -314,6 +335,16 @@ def doctor(
         add_github_doctor_row(table, gh_mode, github_user)
         add_toggl_doctor_row(table, toggl_source)
     console.print(table)
+    if codec_blocked:
+        console.print(
+            f"\n{WARN_ICON} [bold]Evidence codecs missing[/bold] — "
+            f"{', '.join(codec_blocked)} disabled or degraded, so AI-session hours "
+            f"are silently under-counted."
+        )
+        console.print(
+            f"  [{STYLE_MUTED}]Fix: pipx inject timelog-extract zstandard brotli   "
+            f"(or: pip install 'timelog-extract[cache-evidence]')[/{STYLE_MUTED}]"
+        )
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"

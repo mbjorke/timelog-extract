@@ -24,9 +24,9 @@ if [[ -n "${GITTAN_COMPARE_NEW:-}" ]]; then
   read -r -a NEW_CMD <<<"$GITTAN_COMPARE_NEW"
 else
   if [[ -x "$ROOT/.venv/bin/python" ]]; then
-    NEW_CMD=( "$ROOT/.venv/bin/python" "${TIMOLOG_ENTRY:-timelog_extract.py}" )
+    NEW_CMD=( "$ROOT/.venv/bin/python" "${TIMELOG_ENTRY:-timelog_extract.py}" )
   else
-    NEW_CMD=( "${PYTHON:-python3}" "${TIMOLOG_ENTRY:-timelog_extract.py}" )
+    NEW_CMD=( "${PYTHON:-python3}" "${TIMELOG_ENTRY:-timelog_extract.py}" )
   fi
 fi
 SCREEN_TIME="${GITTAN_COMPARE_SCREEN_TIME:-off}"
@@ -36,7 +36,7 @@ PERIODS=()
 ANY_OBSERVED_DELTA=0
 
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 

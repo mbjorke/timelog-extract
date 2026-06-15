@@ -2,15 +2,19 @@
 
 ## Unreleased
 
-- `projects-audit`: unified `top_hosts` and `top_anchors` into one **`top_signals`** model.
-  - Schema v2 row shape: `{kind, value, hits, anchored, rule_type}`.
-  - `kind=host` → `tracked_urls`; `kind=dir/branch/label` → `match_terms`.
-  - `--write-anchor-plan` emits `rule_type` per row; `projects-anchor` applies both rule types.
-- Classification: multi-kind **activity anchor** model on collector events.
-  - `anchors` map: `dir` (IDE cwd leaf), `branch` (Claude Code `gitBranch` leaf), `label` (Codex `thread_name`).
-  - Generic branches and placeholder titles rejected; Claude Code feeds branch into the classification haystack.
-  - `status`/`report` nudges: activity anchors only (`dir`/`branch`/`label`); web hosts stay on `gittan review`.
-  - Audit batch plans may still propose `tracked_urls` via `top_signals`.
+## 0.2.19 - 2026-06-15
+
+- Report trust (GH-146): **Cursor agent-turn** evidence from structured logs; **presence-estimated** hours band (Screen Time–capped, display-only); **evidence-check** coverage ratio and codec visibility in report footer; **sanity bounds** for implausible sessions; **project-hour remainder** allocation so CLI-heavy sessions do not drop unattributed hours ([#147](https://github.com/mbjorke/timelog-extract/pull/147)).
+- Sources: **Lovable Desktop** cache-mtime + `projects/search` title evidence (GH-145); doctor row for cache readability; merge prefers mapped UUIDs over storage noise ([#148](https://github.com/mbjorke/timelog-extract/pull/148)).
+- Sources: **Claude Desktop (Code)** via cached `/events` API and shared Chromium cache reader (`cache-evidence` extra: `zstandard`, `brotli`) ([#141](https://github.com/mbjorke/timelog-extract/pull/141)).
+- Sources: opt-in **macOS Calendar** collector with title/code classification and project suggestions ([#136](https://github.com/mbjorke/timelog-extract/pull/136), [#138](https://github.com/mbjorke/timelog-extract/pull/138), [#139](https://github.com/mbjorke/timelog-extract/pull/139)).
+- Classification: **activity anchors** (`dir` / `branch` / `label` on events); **`gittan map`**; unified **`top_signals`** in `projects-audit` (hosts + anchors); `projects-anchor` applies host and match-term rules ([#140](https://github.com/mbjorke/timelog-extract/pull/140)).
+- Attribution: worktree-invariant project mapping via **git remote slug** (GH-143) ([#144](https://github.com/mbjorke/timelog-extract/pull/144)).
+- Cursor: bound retrospective **composer spans** past midnight (no fabricated heartbeats); filter **skills-cursor** sync-manifest timer noise ([#148](https://github.com/mbjorke/timelog-extract/pull/148)).
+- CLI: **`--weekly`** ISO week × project pivot view ([#137](https://github.com/mbjorke/timelog-extract/pull/137)); **`gittan status`** git/timelog total-observed columns (repo-time-totals, in [#147](https://github.com/mbjorke/timelog-extract/pull/147)).
+- Fix: global timelog post-commit hook no longer fails under `set -u` ([#133](https://github.com/mbjorke/timelog-extract/pull/133)).
+- Dev: `scripts/compare_gittan_versions.sh` for pipx vs repo regression compare; **CONTRIBUTING** documents `pip install -e ".[cache-evidence]"`.
+- Docs: Cursor evidence ceiling spec; presence-estimated and repo-time-totals task prompts; portable repo skills; `~/.gittan` config access rule ([#134](https://github.com/mbjorke/timelog-extract/pull/134), [#135](https://github.com/mbjorke/timelog-extract/pull/135), [#132](https://github.com/mbjorke/timelog-extract/pull/132)).
 
 ## 0.2.18 - 2026-05-30
 

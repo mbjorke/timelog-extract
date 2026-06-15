@@ -177,6 +177,7 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
         lovable_desktop_has_storage_signals,
         lovable_desktop_history_candidates,
     )
+    from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 
     home = Path.home()
     rows: list[dict[str, str]] = []
@@ -262,8 +263,9 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     lh = lovable_desktop_history_candidates(home)
     if lh:
         _check_db(lh[0], "Lovable Desktop History", "urls")
-    elif lovable_desktop_has_storage_signals(home):
-        ok("Lovable Desktop", "No History DB; collecting via storage signals")
+    elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
+        cache_ok, cache_reason = lovable_cache_status(home)
+        (ok if cache_ok else warn)("Lovable Desktop", cache_reason)
     else:
         warn("Lovable Desktop History", "No History DB yet (browse in Lovable to create one)")
 

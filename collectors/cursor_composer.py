@@ -14,8 +14,12 @@ SOURCE_NAME = "Cursor"
 _COMPOSER_HEADERS_KEY = "composer.composerHeaders"
 # Stay below default session gap (15 min in core.domain.compute_sessions).
 _COMPOSER_HEARTBEAT_MINUTES = 14
-# Threads older than this when touched in-window emit a point event, not full span.
-_COMPOSER_STALE_REVIVAL_MS = 24 * 60 * 60 * 1000
+# When lastUpdated spills to a later day, extend same-day metadata span modestly.
+_COMPOSER_SPILLED_DAY_EXTENSION_MS = 4 * 60 * 60 * 1000
+# Branch touches shortly after midnight imply the session ran through the evening.
+_COMPOSER_SPILLED_GRACE_MS = 6 * 60 * 60 * 1000
+# Credit most of the remaining calendar day (not full midnight fabricate).
+_COMPOSER_SPILLED_DAY_FRACTION = 0.88
 
 
 def cursor_state_db_path(home: Path) -> Path:
@@ -30,6 +34,59 @@ def _composer_created_ms(composer: dict) -> int | None:
         return int(raw)
     except (TypeError, ValueError):
         return None
+
+
+def _composer_in_window_touch_ms(composer: dict, from_ms: int, to_ms: int) -> list[int]:
+    """Same-day composer activity timestamps already present in local metadata."""
+    stamps: list[int] = []
+    for key in ("createdAt", "lastUpdatedAt", "conversationCheckpointLastUpdatedAt"):
+        raw = composer.get(key)
+        if raw is None:
+            continue
+        try:
+            ms = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if from_ms <= ms <= to_ms:
+            stamps.append(ms)
+    for repo in composer.get("trackedGitRepos") or []:
+        if not isinstance(repo, dict):
+            continue
+        for branch in repo.get("branches") or []:
+            if not isinstance(branch, dict):
+                continue
+            raw = branch.get("lastInteractionAt")
+            if raw is None:
+                continue
+            try:
+                ms = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if from_ms <= ms <= to_ms:
+                stamps.append(ms)
+    return sorted(set(stamps))
+
+
+def _composer_grace_touch_ms(composer: dict, to_ms: int) -> list[int]:
+    """Branch interactions just after the report day (session spill signal)."""
+    grace_end = to_ms + _COMPOSER_SPILLED_GRACE_MS
+    stamps: list[int] = []
+    for repo in composer.get("trackedGitRepos") or []:
+        if not isinstance(repo, dict):
+            continue
+        for branch in repo.get("branches") or []:
+            if not isinstance(branch, dict):
+                continue
+            raw = branch.get("lastInteractionAt")
+            if raw is None:
+                continue
+            try:
+                ms = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if to_ms < ms <= grace_end:
+                stamps.append(ms)
+    return sorted(set(stamps))
 
 
 def _composer_end_ms(composer: dict) -> int | None:
@@ -52,6 +109,12 @@ def _composer_activity_span_ms(
     dt_from: datetime,
     dt_to: datetime,
 ) -> tuple[int, int] | None:
+    """Return the composer activity span clipped to the report window.
+
+    Uses overlap (not end-in-window) so sessions still open after midnight
+    count on the earlier day up to ``dt_to``. Stale threads created long before
+    the window emit a single point at their in-window touch.
+    """
     end_ms = _composer_end_ms(composer)
     if end_ms is None:
         return None
@@ -63,19 +126,46 @@ def _composer_activity_span_ms(
 
     from_ms = int(dt_from.timestamp() * 1000)
     to_ms = int(dt_to.timestamp() * 1000)
-    if not (from_ms <= end_ms <= to_ms):
+    if end_ms < from_ms or created_ms > to_ms:
         return None
 
-    if created_ms < from_ms:
-        if end_ms - created_ms > _COMPOSER_STALE_REVIVAL_MS:
-            return end_ms, end_ms
-        start_ms = from_ms
-    else:
-        start_ms = created_ms
+    clipped_start = max(created_ms, from_ms)
+    clipped_end = min(end_ms, to_ms)
+    if clipped_end < clipped_start:
+        clipped_start = clipped_end
 
-    if end_ms < start_ms:
-        start_ms = end_ms
-    return start_ms, end_ms
+    # Threads that predate this report day: credit the in-window touch only.
+    if created_ms < from_ms:
+        return clipped_end, clipped_end
+
+    # lastUpdated moved to a later calendar day (typical for retrospective runs).
+    # Do not fabricate heartbeats through midnight — bound to same-day metadata.
+    if end_ms > to_ms:
+        touches = _composer_in_window_touch_ms(composer, from_ms, to_ms)
+        if not touches:
+            return clipped_start, clipped_start
+        activity_start = min(min(touches), clipped_start)
+        latest_day = max(touches)
+        if latest_day < activity_start:
+            activity_start = latest_day
+        grace_touches = _composer_grace_touch_ms(composer, to_ms)
+        if grace_touches:
+            remaining = to_ms - latest_day
+            if remaining > 0:
+                activity_end = min(
+                    to_ms,
+                    latest_day + int(remaining * _COMPOSER_SPILLED_DAY_FRACTION),
+                )
+            else:
+                activity_end = latest_day
+        else:
+            activity_end = min(
+                to_ms,
+                latest_day + _COMPOSER_SPILLED_DAY_EXTENSION_MS,
+            )
+        return activity_start, activity_end
+
+    return clipped_start, clipped_end
 
 
 def _composer_span_overlaps_window(

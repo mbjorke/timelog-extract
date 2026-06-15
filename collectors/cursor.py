@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.cursor_composer import collect_cursor_composer_sessions
+from core.triage_noise import is_uncategorized_noise_detail
 from urllib.parse import unquote, urlparse
 
 
@@ -82,6 +83,9 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
     if profile == "ultra-strict":
         markers.extend(ultra_strict_markers)
     if any(marker in text for marker in markers):
+        return True
+    # skills-cursor sync manifest, file-watcher drops, etc. — shared with review clustering.
+    if is_uncategorized_noise_detail(line):
         return True
     # Local Gittan sync/diagnostic artifacts should not count as user work.
     if ".gittan" in text and ("timelog_projects.json" in text or "decisions-" in text):

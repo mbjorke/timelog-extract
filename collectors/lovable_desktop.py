@@ -194,16 +194,32 @@ def _is_analytics_uuid_context(text: str, start: int, end: int) -> bool:
     return any(marker in window for marker in _ANALYTICS_UUID_CONTEXT_MARKERS)
 
 
-def _format_lovable_storage_detail(project: str, canonical: str) -> str:
+def _format_lovable_event_detail(
+    project: str,
+    canonical: str,
+    *,
+    display_title: str = "",
+) -> str:
     uuid = _lovable_project_uuid_key(canonical)
     short = f"{uuid[:8]}…" if uuid else ""
     project_name = str(project or "").strip()
+    title = str(display_title or "").strip()
+    if title:
+        if project_name and project_name != "Uncategorized":
+            return f"{project_name} — {title}"
+        if short:
+            return f"{title} ({short}) — map UUID via gittan review — {canonical}"
+        return f"{title} — {canonical}"
     if project_name and project_name != "Uncategorized":
         lead = f"{project_name} ({short})" if short else project_name
         return f"{lead} — {canonical}"
     if short:
-        return f"unmapped Lovable ({short}) — map UUID via gittan map — {canonical}"
+        return f"unmapped Lovable ({short}) — map UUID via gittan review — {canonical}"
     return f"storage signal — {canonical}"
+
+
+def _format_lovable_storage_detail(project: str, canonical: str) -> str:
+    return _format_lovable_event_detail(project, canonical)
 
 
 def _register_storage_uuid_candidate(
@@ -376,12 +392,15 @@ def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "
     return urls
 
 
-def _storage_event_score(event: dict) -> tuple[int, int, datetime]:
+def _storage_event_score(event: dict) -> tuple[int, int, int, int, datetime]:
+    project = str(event.get("project") or "").strip()
+    mapped = 1 if project and project != "Uncategorized" else 0
     detail = str(event.get("detail") or "")
+    titled = 1 if detail and "unmapped Lovable" not in detail and "storage signal" not in detail else 0
     url = detail.split("—", 1)[-1].strip() if "—" in detail else detail
     host_score = 2 if ".lovableproject.com" in url.lower() else 1 if ".lovable.app" in url.lower() else 0
     uuid_len = len(_lovable_project_uuid_key(url))
-    return (host_score, uuid_len, event["timestamp"])
+    return (mapped, titled, host_score, uuid_len, event["timestamp"])
 
 
 def _pick_best_storage_event(group: list) -> dict:
@@ -416,7 +435,10 @@ def _collect_lovable_desktop_from_storage(
     collapse_minutes: int = 15,
     lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE,
 ):
-    """Fallback when Chromium History is absent: derive Lovable activity signals from local/session storage blobs."""
+    """Fallback when Chromium History is absent: storage blobs + cache mtimes."""
+    from collectors.lovable_cache import collect_lovable_cache_events, load_lovable_project_titles
+
+    title_map = load_lovable_project_titles(home)
     files = _storage_signal_files(home)
     results = []
     profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
@@ -441,8 +463,19 @@ def _collect_lovable_desktop_from_storage(
         for url in _pick_storage_urls_from_blob(raw, urls, limit=per_file_limit, profiles=profiles):
             uuid = _lovable_project_uuid_key(url)
             canonical = _synthetic_lovable_project_url(uuid) if uuid else url
-            project = classify_project(canonical, profiles)
-            detail = _format_lovable_storage_detail(project, canonical)
+            display_title = title_map.get(uuid or "", "")
+            project = classify_project(f"{canonical} {display_title}", profiles)
+            detail = _format_lovable_event_detail(project, canonical, display_title=display_title)
             results.append(make_event(SOURCE_NAME, ts, detail, project))
+    cache_events = collect_lovable_cache_events(
+        profiles,
+        dt_from,
+        dt_to,
+        home,
+        classify_project,
+        make_event,
+        collapse_minutes=collapse_minutes,
+        title_map=title_map,
+    )
     merge_seconds = max(60, int(collapse_minutes or 15) * 60)
-    return _merge_storage_events(results, merge_seconds=merge_seconds)
+    return _merge_storage_events(results + cache_events, merge_seconds=merge_seconds)

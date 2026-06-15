@@ -9,7 +9,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from core.domain import classify_project
-from collectors.cursor_composer import collect_cursor_composer_sessions
+from collectors.cursor_composer import (
+    _composer_activity_span_ms,
+    collect_cursor_composer_sessions,
+)
 
 
 class CursorComposerTests(unittest.TestCase):
@@ -133,6 +136,164 @@ class CursorComposerTests(unittest.TestCase):
             ai_sources=AI_SOURCES,
         )
         self.assertGreaterEqual(hours, 1.5)
+
+    def test_composer_span_overlaps_window_when_end_is_next_day(self):
+        created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
+        updated_ms = int(datetime(2026, 6, 12, 14, 30, tzinfo=timezone.utc).timestamp() * 1000)
+        branch_ms = int(datetime(2026, 6, 11, 11, 18, tzinfo=timezone.utc).timestamp() * 1000)
+        dt_from = datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc)
+        dt_to = datetime(2026, 6, 11, 23, 59, 59, tzinfo=timezone.utc)
+        span = _composer_activity_span_ms(
+            {
+                "createdAt": created_ms,
+                "lastUpdatedAt": updated_ms,
+                "trackedGitRepos": [
+                    {
+                        "repoPath": "/Users/example/Workspace/Project/timelog-extract",
+                        "branches": [{"branchName": "task/example", "lastInteractionAt": branch_ms}],
+                    }
+                ],
+            },
+            dt_from,
+            dt_to,
+        )
+        self.assertIsNotNone(span)
+        start_ms, end_ms = span
+        self.assertEqual(start_ms, created_ms)
+        self.assertEqual(end_ms, branch_ms + 4 * 60 * 60 * 1000)
+
+    def test_composer_spill_with_grace_branch_extends_proportionally(self):
+        created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
+        updated_ms = int(datetime(2026, 6, 12, 14, 30, tzinfo=timezone.utc).timestamp() * 1000)
+        branch_ms = int(datetime(2026, 6, 11, 11, 18, tzinfo=timezone.utc).timestamp() * 1000)
+        grace_ms = int(datetime(2026, 6, 12, 0, 48, tzinfo=timezone.utc).timestamp() * 1000)
+        dt_from = datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc)
+        dt_to = datetime(2026, 6, 11, 23, 59, 59, tzinfo=timezone.utc)
+        to_ms = int(dt_to.timestamp() * 1000)
+        remaining = to_ms - branch_ms
+        expected_end = min(to_ms, branch_ms + int(remaining * 0.88))
+        span = _composer_activity_span_ms(
+            {
+                "createdAt": created_ms,
+                "lastUpdatedAt": updated_ms,
+                "trackedGitRepos": [
+                    {
+                        "repoPath": "/Users/example/Workspace/Project/timelog-extract",
+                        "branches": [
+                            {"branchName": "task/example", "lastInteractionAt": branch_ms},
+                            {"branchName": "claude/freelance-bridge", "lastInteractionAt": grace_ms},
+                        ],
+                    }
+                ],
+            },
+            dt_from,
+            dt_to,
+        )
+        self.assertIsNotNone(span)
+        start_ms, end_ms = span
+        self.assertEqual(start_ms, created_ms)
+        self.assertEqual(end_ms, expected_end)
+        self.assertGreater(end_ms, branch_ms + 4 * 60 * 60 * 1000)
+        self.assertLess(end_ms, to_ms)
+
+    def test_composer_spill_to_next_day_does_not_fabricate_through_midnight(self):
+        created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
+        updated_ms = int(datetime(2026, 6, 12, 14, 30, tzinfo=timezone.utc).timestamp() * 1000)
+        payload = {
+            "allComposers": [
+                {
+                    "composerId": "bridge-1",
+                    "name": "Freelance bridge dashboard development",
+                    "createdAt": created_ms,
+                    "lastUpdatedAt": updated_ms,
+                    "workspaceIdentifier": {
+                        "uri": {
+                            "fsPath": "/Users/example/Workspace/Project/timelog-extract",
+                        }
+                    },
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "state.vscdb"
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                ("composer.composerHeaders", json.dumps(payload)),
+            )
+            conn.commit()
+            conn.close()
+            home = Path(tmp)
+            cursor_dir = home / "Library/Application Support/Cursor/User/globalStorage"
+            cursor_dir.mkdir(parents=True)
+            (cursor_dir / "state.vscdb").write_bytes(db_path.read_bytes())
+
+            events = collect_cursor_composer_sessions(
+                profiles=[{"name": "timelog-extract", "match_terms": ["timelog-extract"]}],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=lambda text, p: classify_project(text, p, "Uncategorized"),
+                make_event=lambda source, ts, detail, project, anchors=None: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                    "anchors": anchors or {},
+                },
+            )
+        self.assertLessEqual(len(events), 25)
+        self.assertGreaterEqual(len(events), 1)
+
+    def test_composer_same_day_last_updated_keeps_span_heartbeats(self):
+        created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
+        updated_ms = int(datetime(2026, 6, 11, 22, 40, tzinfo=timezone.utc).timestamp() * 1000)
+        payload = {
+            "allComposers": [
+                {
+                    "composerId": "bridge-1",
+                    "name": "Freelance bridge dashboard development",
+                    "createdAt": created_ms,
+                    "lastUpdatedAt": updated_ms,
+                    "workspaceIdentifier": {
+                        "uri": {
+                            "fsPath": "/Users/example/Workspace/Project/timelog-extract",
+                        }
+                    },
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "state.vscdb"
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                ("composer.composerHeaders", json.dumps(payload)),
+            )
+            conn.commit()
+            conn.close()
+            home = Path(tmp)
+            cursor_dir = home / "Library/Application Support/Cursor/User/globalStorage"
+            cursor_dir.mkdir(parents=True)
+            (cursor_dir / "state.vscdb").write_bytes(db_path.read_bytes())
+
+            events = collect_cursor_composer_sessions(
+                profiles=[{"name": "timelog-extract", "match_terms": ["timelog-extract"]}],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=lambda text, p: classify_project(text, p, "Uncategorized"),
+                make_event=lambda source, ts, detail, project, anchors=None: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                    "anchors": anchors or {},
+                },
+            )
+        self.assertGreaterEqual(len(events), 50)
 
     def test_stale_revived_composer_emits_point_event_only(self):
         created_ms = int(datetime(2026, 5, 28, 11, 35, tzinfo=timezone.utc).timestamp() * 1000)

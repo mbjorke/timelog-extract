@@ -35,6 +35,7 @@ def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
         included_events=report.included_events,
         collector_status=report.collector_status,
         screen_time_days=report.screen_time_days,
+        presence_estimated=report.presence_estimated,
         dt_from=report.dt_from,
         dt_to=report.dt_to,
         worklog_path=str(report.worklog_path),
@@ -158,6 +159,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.config_path,
         report.timelog_project_totals or None,
         report.git_project_totals or None,
+        report.presence_estimated,
     )
     nudge = build_unexplained_gap_nudge(report)
     if nudge:

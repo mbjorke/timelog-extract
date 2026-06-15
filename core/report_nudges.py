@@ -110,14 +110,22 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
     required_attrs = ("screen_time_days", "overall_days", "project_reports")
     if not all(hasattr(report, attr) for attr in required_attrs):
         return None
-    payload = analyze_screen_time_gaps(report)
-    max_unexplained = 0.0
-    worst_day = ""
-    for row in payload.get("days", []):
-        unexplained = float(row.get("unexplained_screen_time_hours", 0.0) or 0.0)
-        if unexplained > max_unexplained:
-            max_unexplained = unexplained
-            worst_day = str(row.get("day") or "")
+    presence = getattr(report, "presence_estimated", None)
+    if presence is not None and getattr(presence, "available", False):
+        # Under-evidenced Cursor-heavy days already show Est. (presence) in the
+        # report summary; alarming on observed-vs-screen here is redundant and
+        # wrongly suggests URL triage. See docs/specs/cursor-evidence-ceiling.md.
+        max_unexplained = 0.0
+        worst_day = ""
+    else:
+        payload = analyze_screen_time_gaps(report)
+        max_unexplained = 0.0
+        worst_day = ""
+        for row in payload.get("days", []):
+            unexplained = float(row.get("unexplained_screen_time_hours", 0.0) or 0.0)
+            if unexplained > max_unexplained:
+                max_unexplained = unexplained
+                worst_day = str(row.get("day") or "")
     if max_unexplained < float(threshold_hours):
         max_unexplained = 0.0
         worst_day = ""

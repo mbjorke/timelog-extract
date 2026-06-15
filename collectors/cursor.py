@@ -5,7 +5,8 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.cursor_composer import collect_cursor_composer_sessions
+from collectors.cursor_agent_turns import collect_cursor_agent_turns
+from collectors.cursor_composer import collect_cursor_composer_sessions, load_cursor_workspaces
 from core.triage_noise import is_uncategorized_noise_detail
 from urllib.parse import unquote, urlparse
 
@@ -113,26 +114,6 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
     return False
 
 
-def load_cursor_workspaces(home: Path):
-    storage_dir = home / "Library" / "Application Support" / "Cursor" / "User" / "workspaceStorage"
-    workspace_map = {}
-    if not storage_dir.exists():
-        return workspace_map
-    for workspace_json in storage_dir.glob("*/workspace.json"):
-        workspace_id = workspace_json.parent.name
-        try:
-            data = json.loads(workspace_json.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        raw_uri = data.get("folder") or data.get("workspace")
-        if not raw_uri:
-            continue
-        parsed = urlparse(raw_uri)
-        path = unquote(parsed.path) if parsed.scheme == "file" else raw_uri
-        workspace_map[workspace_id] = path
-    return workspace_map
-
-
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
     logs_dir = home / "Library" / "Application Support" / "Cursor" / "logs"
@@ -209,9 +190,19 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                     )
         except OSError:
             continue
+    agent_events, turn_composers = collect_cursor_agent_turns(
+        profiles, dt_from, dt_to, home, local_tz, classify_project, make_event
+    )
+    results.extend(agent_events)
     results.extend(
         collect_cursor_composer_sessions(
-            profiles, dt_from, dt_to, home, classify_project, make_event
+            profiles,
+            dt_from,
+            dt_to,
+            home,
+            classify_project,
+            make_event,
+            exclude_composer_ids=turn_composers,
         )
     )
     return results

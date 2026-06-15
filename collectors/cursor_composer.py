@@ -11,6 +11,8 @@ from typing import Callable
 from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
 
 SOURCE_NAME = "Cursor"
+from urllib.parse import unquote, urlparse
+
 _COMPOSER_HEADERS_KEY = "composer.composerHeaders"
 # Stay below default session gap (15 min in core.domain.compute_sessions).
 _COMPOSER_HEARTBEAT_MINUTES = 14
@@ -27,6 +29,26 @@ _COMPOSER_SPILLED_DAY_FRACTION = 0.88
 
 def cursor_state_db_path(home: Path) -> Path:
     return home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+
+
+def load_cursor_workspaces(home: Path):
+    storage_dir = home / "Library" / "Application Support" / "Cursor" / "User" / "workspaceStorage"
+    workspace_map: dict[str, str] = {}
+    if not storage_dir.exists():
+        return workspace_map
+    for workspace_json in storage_dir.glob("*/workspace.json"):
+        workspace_id = workspace_json.parent.name
+        try:
+            data = json.loads(workspace_json.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        raw_uri = data.get("folder") or data.get("workspace")
+        if not raw_uri:
+            continue
+        parsed = urlparse(raw_uri)
+        path = unquote(parsed.path) if parsed.scheme == "file" else raw_uri
+        workspace_map[workspace_id] = path
+    return workspace_map
 
 
 def _composer_created_ms(composer: dict) -> int | None:
@@ -319,8 +341,11 @@ def collect_cursor_composer_sessions(
     home: Path,
     classify_project: Callable,
     make_event: Callable,
+    *,
+    exclude_composer_ids: set[str] | None = None,
 ):
     """Emit bounded heartbeat bursts anchored on each composer's real touches."""
+    skip = exclude_composer_ids or set()
     from_ms = int(dt_from.timestamp() * 1000)
     to_ms = int(dt_to.timestamp() * 1000)
     best_by_id: dict[str, tuple[int, int, dict]] = {}
@@ -328,7 +353,7 @@ def collect_cursor_composer_sessions(
         if not isinstance(composer, dict):
             continue
         composer_id = str(composer.get("composerId") or "").strip()
-        if not composer_id:
+        if not composer_id or composer_id in skip:
             continue
         span = _composer_activity_span_ms(composer, dt_from, dt_to)
         if span is None:

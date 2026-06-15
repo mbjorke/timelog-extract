@@ -186,6 +186,7 @@ def print_report(
     billable_total_hours_fn: Any,
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
+    presence_estimated: Any = None,
 ):
     print_command_hero(console, "report")
     console.print()
@@ -260,8 +261,22 @@ def print_report(
 
         if screen_time_days and day in screen_time_days:
             screen_h = screen_time_days[day] / 3600
-            delta = day_payload["hours"] - screen_h
-            console.print(f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {delta:+.1f}h)[/{STYLE_META}]")
+            observed_delta = day_payload["hours"] - screen_h
+            presence_day = None
+            if presence_estimated is not None and getattr(presence_estimated, "available", False):
+                presence_day = float(
+                    (getattr(presence_estimated, "overall_days", None) or {}).get(day, 0.0) or 0.0
+                )
+            if presence_day is not None and presence_day > 0:
+                est_delta = presence_day - screen_h
+                console.print(
+                    f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h "
+                    f"(est. delta {est_delta:+.1f}h; evidenced {observed_delta:+.1f}h)[/{STYLE_META}]"
+                )
+            else:
+                console.print(
+                    f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {observed_delta:+.1f}h)[/{STYLE_META}]"
+                )
         console.print()
 
     # Review summary dashboard
@@ -274,6 +289,13 @@ def print_report(
         "Observed timeline hours",
         f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
     )
+
+    if presence_estimated is not None and getattr(presence_estimated, "available", False):
+        est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
+        summary_table.add_row(
+            "Est. (presence)",
+            f"[italic {STYLE_META}]{est_total:.1f}h[/italic {STYLE_META}]",
+        )
 
     if args.billable_unit and args.billable_unit > 0:
         grand_billable = sum(
@@ -292,9 +314,28 @@ def print_report(
     if screen_time_days:
         screen_total_h = sum(screen_time_days.values()) / 3600
         summary_table.add_row("Screen Time Comparison", f"{screen_total_h:.1f}h")
-        summary_table.add_row("Delta", f"{total_h - screen_total_h:+.1f}h")
+        observed_delta = total_h - screen_total_h
+        if presence_estimated is not None and getattr(presence_estimated, "available", False):
+            est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
+            est_delta = est_total - screen_total_h
+            summary_table.add_row(
+                "Delta (est.)",
+                f"[bold {CLR_VALUE_ORANGE}]{est_delta:+.1f}h[/bold {CLR_VALUE_ORANGE}]",
+            )
+            summary_table.add_row(
+                "Delta (evidenced)",
+                f"[italic {STYLE_META}]{observed_delta:+.1f}h[/italic {STYLE_META}]",
+            )
+        else:
+            summary_table.add_row("Delta", f"{observed_delta:+.1f}h")
 
     console.print(summary_table)
+    if presence_estimated is not None and getattr(presence_estimated, "available", False):
+        console.print(
+            f"[{STYLE_META}]Est. (presence): soft-work fill between evidenced events, "
+            f"capped by Screen Time — not billable. Delta (est.) compares estimate to "
+            f"presence; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
+        )
 
     warnings = plausibility_warnings(
         overall_days=overall_days,

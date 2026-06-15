@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
+from core.presence_estimated import PresenceEstimatedResult
 from core.report_nudges import (
     build_unanchored_anchors_nudge,
     build_unexplained_gap_nudge,
@@ -31,6 +32,17 @@ class ReportNudgesTests(unittest.TestCase):
 
     def test_nudge_hidden_when_gap_below_threshold(self):
         report = self._report(estimated=2.0, screen_hours=3.0)
+        text = build_unexplained_gap_nudge(report, threshold_hours=1.5)
+        self.assertIsNone(text)
+
+    def test_gap_nudge_suppressed_when_presence_estimate_shown(self):
+        """Cursor-heavy days: Est. (presence) replaces observed-vs-screen alarm."""
+        report = self._report(estimated=5.5, screen_hours=15.1)
+        report.presence_estimated = PresenceEstimatedResult(
+            overall_days={"2026-06-11": 10.0},
+            project_days={"project-alpha": {"2026-06-11": 10.0}},
+            total_hours=10.0,
+        )
         text = build_unexplained_gap_nudge(report, threshold_hours=1.5)
         self.assertIsNone(text)
 

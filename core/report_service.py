@@ -33,6 +33,7 @@ from core.report_runtime import (
 )
 from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
+from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
@@ -88,6 +89,9 @@ class ReportPayload:
     source_strategy_effective: str
     timelog_project_totals: Dict[str, float] = field(default_factory=dict)
     git_project_totals: Dict[str, float] = field(default_factory=dict)
+    presence_estimated: PresenceEstimatedResult = field(
+        default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
+    )
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -211,6 +215,7 @@ def _print_report(
     config_path: Optional[Path],
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
+    presence_estimated: Optional[PresenceEstimatedResult] = None,
 ) -> None:
     terminal_output.print_report(
         overall_days=overall_days,
@@ -226,6 +231,7 @@ def _print_report(
         billable_total_hours_fn=_billable_total_hours,
         timelog_project_totals=timelog_project_totals,
         git_project_totals=git_project_totals,
+        presence_estimated=presence_estimated,
     )
 
 
@@ -366,6 +372,13 @@ def run_timelog_report(
             min_session_passive_minutes=args.min_session_passive,
         )
 
+    presence_estimated = compute_presence_estimated(
+        agg.overall_days,
+        agg.project_reports,
+        screen_time_days,
+        session_gap_minutes=args.gap_minutes,
+    )
+
     return ReportPayload(
         dt_from=dt_from,
         dt_to=dt_to,
@@ -383,6 +396,7 @@ def run_timelog_report(
         source_strategy_effective=context.source_strategy_effective,
         timelog_project_totals=timelog_totals,
         git_project_totals=git_totals,
+        presence_estimated=presence_estimated,
     )
 
 

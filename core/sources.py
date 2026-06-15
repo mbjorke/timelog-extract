@@ -15,6 +15,7 @@ SOURCE_ORDER = [
     "Claude.ai (web)",
     "Gemini (web)",
     "Cursor",
+    "Cursor (agent)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
     "Windsurf",
@@ -41,6 +42,7 @@ AI_SOURCES = {
     "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
+    "Cursor (agent)",
     "GitHub Copilot CLI",
     WORKLOG_SOURCE,
 }

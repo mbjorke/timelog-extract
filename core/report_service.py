@@ -36,7 +36,6 @@ from core.report_aggregate import AggregationResult, aggregate_report
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
-from core.timelog_totals import compute_timelog_project_totals
 from core.git_totals import compute_git_project_totals
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
@@ -301,7 +300,6 @@ def run_timelog_report(
     profiles = context.profiles
     loaded_config_path = context.loaded_config_path
     worklog_path = context.worklog_path
-    worklog_paths = context.worklog_paths
 
     all_events, collector_status = collect_runtime_events(
         context=context,
@@ -349,18 +347,10 @@ def run_timelog_report(
         dt_to=dt_to,
     )
 
-    timelog_totals = compute_timelog_project_totals(
-        worklog_paths=worklog_paths,
-        profiles=profiles,
-        local_tz=LOCAL_TZ,
-        classify_project_fn=_classify_project,
-        make_event_fn=_make_event,
-        source_name=WORKLOG_SOURCE,
-        ai_sources=AI_SOURCES,
-        gap_minutes=args.gap_minutes,
-        min_session_minutes=args.min_session,
-        min_session_passive_minutes=args.min_session_passive,
-    )
+    # "Total observed" column withdrawn (GH-146) until the accuracy net is complete
+    # and the column returns with a corrected label. Aggregation lives in
+    # core.timelog_totals.compute_timelog_project_totals for easy re-introduction.
+    timelog_totals: Dict[str, float] = {}
 
     git_totals: Dict[str, float] = {}
     if getattr(args, "git_source", False):

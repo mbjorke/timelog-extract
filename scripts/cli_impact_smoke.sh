@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 PY="${PYTHON:-python3}"
-ENTRY="${TIMOLOG_ENTRY:-timelog_extract.py}"
+ENTRY="${TIMELOG_ENTRY:-timelog_extract.py}"
 echo "==> $PY $ENTRY -V"
 "$PY" "$ENTRY" -V
 echo "==> report --today --source-summary --quiet"

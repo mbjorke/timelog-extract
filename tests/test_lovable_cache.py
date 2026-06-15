@@ -18,6 +18,7 @@ from collectors.lovable_cache import (
 from collectors.lovable_desktop import (
     _collect_lovable_desktop_from_storage,
     _format_lovable_event_detail,
+    _merge_storage_events,
     lovable_desktop_root,
 )
 
@@ -60,6 +61,28 @@ class LovableCacheTests(unittest.TestCase):
         )
         self.assertIn("Project Alpha", detail)
         self.assertIn("map UUID via gittan review", detail)
+
+    def test_merge_storage_events_prefers_mapped_project(self):
+        ts = datetime(2026, 6, 11, 10, 11, tzinfo=timezone.utc)
+        ts2 = datetime(2026, 6, 11, 10, 14, tzinfo=timezone.utc)
+        mapped = {
+            "timestamp": ts,
+            "project": "project-alpha",
+            "detail": "project-alpha — Project Alpha",
+            "source": "Lovable (desktop)",
+        }
+        unmapped = {
+            "timestamp": ts2,
+            "project": "Uncategorized",
+            "detail": (
+                "unmapped Lovable (d7afafcd…) — map UUID via gittan review — "
+                "https://d7afafcd-1b04-4306-93be-b91f00000000.lovableproject.com/"
+            ),
+            "source": "Lovable (desktop)",
+        }
+        merged = _merge_storage_events([unmapped, mapped], merge_seconds=900)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["project"], "project-alpha")
 
     def test_load_lovable_project_titles_from_projects_search_cache(self):
         payload = json.dumps(

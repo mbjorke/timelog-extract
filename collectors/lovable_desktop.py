@@ -392,12 +392,15 @@ def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "
     return urls
 
 
-def _storage_event_score(event: dict) -> tuple[int, int, datetime]:
+def _storage_event_score(event: dict) -> tuple[int, int, int, int, datetime]:
+    project = str(event.get("project") or "").strip()
+    mapped = 1 if project and project != "Uncategorized" else 0
     detail = str(event.get("detail") or "")
+    titled = 1 if detail and "unmapped Lovable" not in detail and "storage signal" not in detail else 0
     url = detail.split("—", 1)[-1].strip() if "—" in detail else detail
     host_score = 2 if ".lovableproject.com" in url.lower() else 1 if ".lovable.app" in url.lower() else 0
     uuid_len = len(_lovable_project_uuid_key(url))
-    return (host_score, uuid_len, event["timestamp"])
+    return (mapped, titled, host_score, uuid_len, event["timestamp"])
 
 
 def _pick_best_storage_event(group: list) -> dict:

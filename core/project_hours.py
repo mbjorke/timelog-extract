@@ -91,25 +91,8 @@ def _high_signal_hours_by_project(
     return out
 
 
-def allocate_session_hours_by_project(
-    session_events: list,
-    hours: float,
-    *,
-    session_duration_hours_fn: Callable[..., float] | None = None,
-    min_session_minutes: int = 15,
-    min_session_passive_minutes: int = 5,
-) -> Dict[str, float]:
-    """Split session duration across projects; prefer high-signal spans when present."""
-    if session_duration_hours_fn is not None:
-        high_signal = _high_signal_hours_by_project(
-            session_events,
-            session_duration_hours_fn=session_duration_hours_fn,
-            min_session_minutes=min_session_minutes,
-            min_session_passive_minutes=min_session_passive_minutes,
-        )
-        if high_signal:
-            return _cap_allocation_to_session_hours(high_signal, hours)
-
+def _weighted_project_split(session_events: list, hours: float) -> Dict[str, float]:
+    """Split hours by event attribution weights (Chrome tab churn deduped)."""
     weights: dict[str, float] = defaultdict(float)
     chrome_seen: set[tuple[str, str]] = set()
     for event in session_events:
@@ -131,6 +114,34 @@ def allocate_session_hours_by_project(
         share = hours / len(projects) if projects else hours
         return {name: share for name in projects}
     return {project: hours * (weight / total) for project, weight in weights.items()}
+
+
+def allocate_session_hours_by_project(
+    session_events: list,
+    hours: float,
+    *,
+    session_duration_hours_fn: Callable[..., float] | None = None,
+    min_session_minutes: int = 15,
+    min_session_passive_minutes: int = 5,
+) -> Dict[str, float]:
+    """Split session duration across projects; prefer high-signal spans when present."""
+    if session_duration_hours_fn is not None:
+        high_signal = _high_signal_hours_by_project(
+            session_events,
+            session_duration_hours_fn=session_duration_hours_fn,
+            min_session_minutes=min_session_minutes,
+            min_session_passive_minutes=min_session_passive_minutes,
+        )
+        if high_signal:
+            capped = _cap_allocation_to_session_hours(high_signal, hours)
+            allocated = sum(capped.values())
+            if allocated < hours - 1e-9:
+                remainder = hours - allocated
+                for project, chunk in _weighted_project_split(session_events, remainder).items():
+                    capped[project] = capped.get(project, 0.0) + chunk
+            return capped
+
+    return _weighted_project_split(session_events, hours)
 
 
 def build_project_reports_from_sessions(

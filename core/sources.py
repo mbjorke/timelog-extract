@@ -6,6 +6,7 @@ GITHUB_SOURCE = "GitHub"
 TOGGL_SOURCE = "Toggl"
 JIRA_SOURCE = "Jira"
 CALENDAR_SOURCE = "Calendar"
+GIT_COMMITS_SOURCE = "Git commits"
 
 SOURCE_ORDER = [
     "Claude Code CLI",
@@ -14,6 +15,7 @@ SOURCE_ORDER = [
     "Claude.ai (web)",
     "Gemini (web)",
     "Cursor",
+    "Cursor (agent)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
     "Windsurf",
@@ -25,6 +27,7 @@ SOURCE_ORDER = [
     "Chrome",
     "Lovable (desktop)",
     GITHUB_SOURCE,
+    GIT_COMMITS_SOURCE,
     TOGGL_SOURCE,
     CALENDAR_SOURCE,
 ]
@@ -39,6 +42,7 @@ AI_SOURCES = {
     "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
+    "Cursor (agent)",
     "GitHub Copilot CLI",
     WORKLOG_SOURCE,
 }

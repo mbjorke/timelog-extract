@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,9 +33,12 @@ from core.report_runtime import (
 )
 from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
+from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
 from core.screen_time import collect_screen_time as core_collect_screen_time
-from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
+from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
+from core.git_totals import compute_git_project_totals
+from collectors.git_commits import git_commits_collector_status
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
@@ -85,6 +88,11 @@ class ReportPayload:
     collector_status: Dict[str, Dict[str, Any]]
     args: argparse.Namespace
     source_strategy_effective: str
+    timelog_project_totals: Dict[str, float] = field(default_factory=dict)
+    git_project_totals: Dict[str, float] = field(default_factory=dict)
+    presence_estimated: PresenceEstimatedResult = field(
+        default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
+    )
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -206,6 +214,9 @@ def _print_report(
     profiles: List[Dict[str, Any]],
     args: argparse.Namespace,
     config_path: Optional[Path],
+    timelog_project_totals: Optional[Dict[str, float]] = None,
+    git_project_totals: Optional[Dict[str, float]] = None,
+    presence_estimated: Optional[PresenceEstimatedResult] = None,
 ) -> None:
     terminal_output.print_report(
         overall_days=overall_days,
@@ -219,6 +230,9 @@ def _print_report(
         uncategorized=UNCATEGORIZED,
         session_duration_hours_fn=_session_duration_hours,
         billable_total_hours_fn=_billable_total_hours,
+        timelog_project_totals=timelog_project_totals,
+        git_project_totals=git_project_totals,
+        presence_estimated=presence_estimated,
     )
 
 
@@ -340,6 +354,41 @@ def run_timelog_report(
         dt_to=dt_to,
     )
 
+    # "Total observed" column withdrawn (GH-146) until the accuracy net is complete
+    # and the column returns with a corrected label. Aggregation lives in
+    # core.timelog_totals.compute_timelog_project_totals for easy re-introduction.
+    timelog_totals: Dict[str, float] = {}
+
+    git_totals: Dict[str, float] = {}
+    collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(
+        profiles,
+        local_tz=LOCAL_TZ,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        git_enabled=bool(getattr(args, "git_source", False)),
+        make_event_fn=_make_event,
+        source_name=GIT_COMMITS_SOURCE,
+    )
+    if getattr(args, "git_source", False):
+        git_totals = compute_git_project_totals(
+            profiles=profiles,
+            local_tz=LOCAL_TZ,
+            make_event_fn=_make_event,
+            ai_sources=AI_SOURCES,
+            dt_from=dt_from,
+            dt_to=dt_to,
+            gap_minutes=args.gap_minutes,
+            min_session_minutes=args.min_session,
+            min_session_passive_minutes=args.min_session_passive,
+        )
+
+    presence_estimated = compute_presence_estimated(
+        agg.overall_days,
+        agg.project_reports,
+        screen_time_days,
+        session_gap_minutes=args.gap_minutes,
+    )
+
     return ReportPayload(
         dt_from=dt_from,
         dt_to=dt_to,
@@ -355,6 +404,9 @@ def run_timelog_report(
         collector_status=collector_status,
         args=args,
         source_strategy_effective=context.source_strategy_effective,
+        timelog_project_totals=timelog_totals,
+        git_project_totals=git_totals,
+        presence_estimated=presence_estimated,
     )
 
 

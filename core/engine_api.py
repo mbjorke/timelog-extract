@@ -28,6 +28,7 @@ def _payload_from_report(report) -> Dict[str, Any]:
         included_events=report.included_events,
         collector_status=report.collector_status,
         screen_time_days=report.screen_time_days,
+        presence_estimated=report.presence_estimated,
         dt_from=report.dt_from,
         dt_to=report.dt_to,
         worklog_path=str(report.worklog_path),

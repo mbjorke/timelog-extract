@@ -37,7 +37,7 @@ Agents can run the same loop mechanically:
 bash scripts/cli_impact_smoke.sh
 ```
 
-Override entrypoint if needed: `TIMOLOG_ENTRY=timelog_extract.py PYTHON=python3.12 bash scripts/cli_impact_smoke.sh`.
+Override entrypoint if needed: `TIMELOG_ENTRY=timelog_extract.py PYTHON=python3.12 bash scripts/cli_impact_smoke.sh`.
 
 ## CI experiment loop (A/B/C setup quality)
 

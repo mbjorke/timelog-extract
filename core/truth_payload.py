@@ -106,6 +106,7 @@ def build_truth_payload(
     included_events: List[Dict[str, Any]],
     collector_status: Dict[str, Dict[str, Any]],
     screen_time_days: Dict[str, float] | None,
+    presence_estimated: Any | None = None,
     dt_from: datetime,
     dt_to: datetime,
     worklog_path: str,
@@ -165,7 +166,20 @@ def build_truth_payload(
             k: round(v / 3600.0, 6) for k, v in sorted(screen_time_days.items())
         }
 
-    return {
+    presence_block: Dict[str, Any] | None = None
+    if presence_estimated is not None and getattr(presence_estimated, "available", False):
+        presence_block = {
+            "total_hours": round(float(presence_estimated.total_hours), 6),
+            "hours_by_day": dict(sorted(presence_estimated.overall_days.items())),
+            "projects_by_day": {
+                project: dict(sorted(days.items()))
+                for project, days in sorted(presence_estimated.project_days.items())
+            },
+            "label": "presence_estimated",
+            "note": "Screen-Time-bounded estimate between evidenced events; not billable.",
+        }
+
+    out: Dict[str, Any] = {
         "schema": "timelog_extract.truth_payload",
         "version": TRUTH_PAYLOAD_VERSION,
         "generator": {"package": "timelog-extract", "version": package_version()},
@@ -199,3 +213,6 @@ def build_truth_payload(
         "projects": project_totals,
         "days": days_out,
     }
+    if presence_block is not None:
+        out["presence_estimated_hours"] = presence_block
+    return out

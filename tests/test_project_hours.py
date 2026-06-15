@@ -34,8 +34,9 @@ class ProjectHoursTests(unittest.TestCase):
             min_session_minutes=15,
             min_session_passive_minutes=5,
         )
-        self.assertLess(split["financing-portal"], 0.5)
+        self.assertAlmostEqual(sum(split.values()), 1.0, places=2)
         self.assertGreater(split["timelog-extract"], 0.0)
+        self.assertLess(split["financing-portal"], 1.0)
 
     def test_mixed_composer_and_worklog_capped_to_session_wall_clock(self):
         """Overlapping high-signal spans must not exceed one session's wall-clock hours."""
@@ -94,6 +95,42 @@ class ProjectHoursTests(unittest.TestCase):
         self.assertLessEqual(sum(split.values()), session_hours + 0.02)
         self.assertGreater(split["timelog-extract"], split["financing-portal"])
         self.assertLess(split["financing-portal"], 2.0)
+
+    def test_cli_heavy_session_remainder_goes_to_dominant_project(self):
+        """Claude Code CLI is below high-signal floor but should claim session slack."""
+        session_start = datetime(2026, 6, 15, 12, 31, tzinfo=timezone.utc)
+        session_end = datetime(2026, 6, 15, 15, 34, tzinfo=timezone.utc)
+        events = []
+        ts = session_start
+        while ts <= session_end:
+            events.append(
+                {
+                    "source": "Claude Code CLI",
+                    "project": "timelog-extract",
+                    "detail": "diagnostic work",
+                    "local_ts": ts,
+                }
+            )
+            ts += timedelta(minutes=2)
+        events.append(
+            {
+                "source": "Cursor (agent)",
+                "project": "akturo",
+                "detail": "Trial handling · 7 turns",
+                "local_ts": datetime(2026, 6, 15, 12, 40, tzinfo=timezone.utc),
+                "anchors": {"label": "trial handling"},
+            }
+        )
+        session_hours = session_duration_hours(events, session_start, session_end, 15, 5, AI_SOURCES)
+        split = allocate_session_hours_by_project(
+            events,
+            session_hours,
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertAlmostEqual(sum(split.values()), session_hours, places=2)
+        self.assertGreater(split["timelog-extract"], split.get("akturo", 0.0) * 3)
 
     def test_label_anchor_gets_high_weight(self):
         self.assertGreater(

@@ -15,7 +15,8 @@ If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of tru
 ### Development setup
 
 ```bash
-python3 -m pip install -e .   # editable install from repo root
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[cache-evidence]"   # editable install from repo root
 ```
 
 ### Running tests (full CI suite)

@@ -42,7 +42,7 @@ Prefer **combining** unrelated follow-up work into **one** PR per version when p
 
 ## Checklist when bumping the package version
 
-There is **no single automated `release` command** in this repository — follow the steps below (and run **`./scripts/run_autotests.sh`** before pushing the version bump). Tagging and PyPI are separate steps after **`main`** contains the bump commit.
+There is **no single automated `release` command** in this repository — follow the steps below (and run **`./scripts/run_autotests.sh`** before pushing the version bump). Optional: **`bash scripts/compare_gittan_versions.sh`** (pipx `gittan` vs repo) on a few date windows before tagging — see script header for `--from` / `--to`. Tagging and PyPI are separate steps after **`main`** contains the bump commit.
 
 1. Set **`pyproject.toml`** → `[project] version` to `X.Y.Z`.
 2. Update the **dev fallback** in **`core/cli_options.py`** (`package_version()`) to `X.Y.Z-dev` so runs without an editable install still report a sensible string.

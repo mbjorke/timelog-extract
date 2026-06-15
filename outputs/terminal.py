@@ -25,7 +25,9 @@ from outputs.terminal_theme import (
     CLR_VALUE_ORANGE,
     CLR_MUTED,
     STYLE_BORDER,
+    WARN_ICON,
 )
+from outputs.terminal_warnings import print_report_warnings
 
 console = Console()
 
@@ -182,6 +184,9 @@ def print_report(
     uncategorized: str,
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
+    timelog_project_totals: Optional[Dict[str, float]] = None,
+    git_project_totals: Optional[Dict[str, float]] = None,
+    presence_estimated: Any = None,
 ):
     print_command_hero(console, "report")
     console.print()
@@ -256,8 +261,22 @@ def print_report(
 
         if screen_time_days and day in screen_time_days:
             screen_h = screen_time_days[day] / 3600
-            delta = day_payload["hours"] - screen_h
-            console.print(f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {delta:+.1f}h)[/{STYLE_META}]")
+            observed_delta = day_payload["hours"] - screen_h
+            presence_day = None
+            if presence_estimated is not None and getattr(presence_estimated, "available", False):
+                presence_day = float(
+                    (getattr(presence_estimated, "overall_days", None) or {}).get(day, 0.0) or 0.0
+                )
+            if presence_day is not None and presence_day > 0:
+                est_delta = presence_day - screen_h
+                console.print(
+                    f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h "
+                    f"(est. delta {est_delta:+.1f}h; evidenced {observed_delta:+.1f}h)[/{STYLE_META}]"
+                )
+            else:
+                console.print(
+                    f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {observed_delta:+.1f}h)[/{STYLE_META}]"
+                )
         console.print()
 
     # Review summary dashboard
@@ -270,6 +289,13 @@ def print_report(
         "Observed timeline hours",
         f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
     )
+
+    if presence_estimated is not None and getattr(presence_estimated, "available", False):
+        est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
+        summary_table.add_row(
+            "Est. (presence)",
+            f"[italic {STYLE_META}]{est_total:.1f}h[/italic {STYLE_META}]",
+        )
 
     if args.billable_unit and args.billable_unit > 0:
         grand_billable = sum(
@@ -284,12 +310,43 @@ def print_report(
             f"[bold {CLR_VALUE_ORANGE}]{grand_billable:.2f}h[/bold {CLR_VALUE_ORANGE}]",
         )
 
+    screen_total_h: Optional[float] = None
     if screen_time_days:
         screen_total_h = sum(screen_time_days.values()) / 3600
         summary_table.add_row("Screen Time Comparison", f"{screen_total_h:.1f}h")
-        summary_table.add_row("Delta", f"{total_h - screen_total_h:+.1f}h")
+        observed_delta = total_h - screen_total_h
+        if presence_estimated is not None and getattr(presence_estimated, "available", False):
+            est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
+            est_delta = est_total - screen_total_h
+            summary_table.add_row(
+                "Delta (est.)",
+                f"[bold {CLR_VALUE_ORANGE}]{est_delta:+.1f}h[/bold {CLR_VALUE_ORANGE}]",
+            )
+            summary_table.add_row(
+                "Delta (evidenced)",
+                f"[italic {STYLE_META}]{observed_delta:+.1f}h[/italic {STYLE_META}]",
+            )
+        else:
+            summary_table.add_row("Delta", f"{observed_delta:+.1f}h")
 
     console.print(summary_table)
+    if presence_estimated is not None and getattr(presence_estimated, "available", False):
+        console.print(
+            f"[{STYLE_META}]Est. (presence): soft-work fill between evidenced events, "
+            f"capped by Screen Time — not billable. Delta (est.) compares estimate to "
+            f"Screen Time; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
+        )
+
+    print_report_warnings(
+        console,
+        overall_days=overall_days,
+        project_reports=project_reports,
+        observed_hours=total_h,
+        screen_time_hours=screen_total_h,
+        session_duration_hours_fn=session_duration_hours_fn,
+        args=args,
+    )
+
     console.print()
     if getattr(args, "only_project", None):
         flat_events: List[Dict[str, Any]] = []
@@ -331,17 +388,24 @@ def print_report(
     if additive_summary:
         heading += " (additive: primary project per session)"
     console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
+    show_totals = bool(timelog_project_totals)
+    show_git = bool(git_project_totals)
     breakdown_table = Table.grid(padding=(0, 2))
     breakdown_table.add_column(style=STYLE_BODY)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
+    if show_totals:
+        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
+    if show_git:
+        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
-    breakdown_table.add_row(
-        "",
-        f"[{STYLE_META}]Hours[/{STYLE_META}]",
-        f"[{STYLE_META}]Billable[/{STYLE_META}]",
-        f"[{STYLE_META}]Days[/{STYLE_META}]",
-    )
+    header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
+    if show_totals:
+        header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
+    if show_git:
+        header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")
+    header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]
+    breakdown_table.add_row(*header_row)
 
     profile_by_name = {p["name"]: p for p in profiles}
     projects_by_customer = defaultdict(list)
@@ -372,12 +436,20 @@ def print_report(
             )
             cust_b_text = f"{cust_b:.2f}h"
 
-        breakdown_table.add_row(
+        cust_row = [
             f"[bold {STYLE_BODY}]{customer_name}[/bold {STYLE_BODY}]",
             f"[bold {CLR_VALUE_ORANGE}]{customer_hours:.1f}h[/bold {CLR_VALUE_ORANGE}]",
-            f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]",
-            "",
-        )
+        ]
+        if show_totals:
+            cust_total = sum((timelog_project_totals or {}).get(p, 0.0) for p in customer_projects)
+            cust_total_text = f"{cust_total:.1f}h" if cust_total else "—"
+            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_total_text}[/bold {CLR_VALUE_ORANGE}]")
+        if show_git:
+            cust_git = sum((git_project_totals or {}).get(p, 0.0) for p in customer_projects)
+            cust_git_text = f"{cust_git:.1f}h" if cust_git else "—"
+            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_git_text}[/bold {CLR_VALUE_ORANGE}]")
+        cust_row += [f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]", ""]
+        breakdown_table.add_row(*cust_row)
 
         for project_name in customer_projects:
             hours = (
@@ -395,12 +467,23 @@ def print_report(
                 proj_b = billable_total_hours_fn(hours, args.billable_unit)
                 proj_b_text = f"{proj_b:.2f}h"
 
-            breakdown_table.add_row(
+            proj_row = [
                 f"[{STYLE_META}]  · {project_name}[/{STYLE_META}]",
                 f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",
+            ]
+            if show_totals:
+                proj_total = (timelog_project_totals or {}).get(project_name, 0.0)
+                proj_total_text = f"{proj_total:.1f}h" if proj_total else "—"
+                proj_row.append(f"[{STYLE_META}]{proj_total_text}[/{STYLE_META}]")
+            if show_git:
+                proj_git = (git_project_totals or {}).get(project_name, 0.0)
+                proj_git_text = f"{proj_git:.1f}h" if proj_git else "—"
+                proj_row.append(f"[{STYLE_META}]{proj_git_text}[/{STYLE_META}]")
+            proj_row += [
                 f"[{STYLE_BODY}]{proj_b_text}[/{STYLE_BODY}]",
                 f"[{STYLE_META}]{days}[/{STYLE_META}]",
-            )
+            ]
+            breakdown_table.add_row(*proj_row)
         breakdown_table.add_section()
 
     console.print(breakdown_table)

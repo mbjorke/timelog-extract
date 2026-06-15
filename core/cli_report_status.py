@@ -112,6 +112,13 @@ def report(
             help="Path to reconciliation ground-truth JSON used with --invoice-mode calibrated-a.",
         ),
     ] = None,
+    git_source: Annotated[
+        bool,
+        typer.Option(
+            "--git",
+            help="Show Git-only column (requires git_repo in project config).",
+        ),
+    ] = False,
 ):
     """Build detailed local evidence reports for a selected timeframe.
 
@@ -174,6 +181,7 @@ def report(
             "invoice_mode": invoice_mode,
             "invoice_ground_truth": invoice_ground_truth,
             "map_prompt": map_prompt,
+            "git_source": git_source,
         },
     )
     run_timelog_cli(options)

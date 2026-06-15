@@ -42,8 +42,13 @@ Naming notes:
 - Install in editable mode from the repository root:
 
   ```bash
-  python3 -m pip install -e .
+  python3 -m venv .venv
+  .venv/bin/python -m pip install -e ".[cache-evidence]"
   ```
+
+  The **`cache-evidence`** extra (`zstandard`, `brotli`) enables Claude Desktop (Code) and Lovable cache collectors. Without it, reports still run but show a codec warning and those sources stay empty.
+
+  Use **`.venv/bin/python timelog_extract.py`** (or `gittan` after `pip install -e .`) — not bare system `python3`.
 
 - Run the same checks as CI **before you push** (agents: see `AGENTS.md` fast-path step 6 and `.cursor/rules/pre-push-quality-gate.mdc`):
 

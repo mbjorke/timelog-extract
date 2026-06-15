@@ -65,9 +65,14 @@ class CursorComposerTests(unittest.TestCase):
         self.assertIn("freelance bridge", events[0]["anchors"].get("label", ""))
         self.assertIn("Freelance bridge", events[0]["detail"])
 
-    def test_collect_cursor_composer_sessions_emits_span_heartbeats(self):
+    def test_collect_cursor_composer_sessions_grids_dense_touches(self):
+        # Dense consecutive touches (createdAt + staggered branch interactions
+        # ≤14 min apart) represent genuine back-to-back activity and must still
+        # merge into one continuous gridded session.
         created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
-        updated_ms = int(datetime(2026, 6, 11, 11, 0, tzinfo=timezone.utc).timestamp() * 1000)
+        branch_a = int(datetime(2026, 6, 11, 9, 34, tzinfo=timezone.utc).timestamp() * 1000)
+        branch_b = int(datetime(2026, 6, 11, 9, 46, tzinfo=timezone.utc).timestamp() * 1000)
+        updated_ms = int(datetime(2026, 6, 11, 9, 58, tzinfo=timezone.utc).timestamp() * 1000)
         payload = {
             "allComposers": [
                 {
@@ -80,6 +85,15 @@ class CursorComposerTests(unittest.TestCase):
                             "fsPath": "/Users/example/Workspace/Project/timelog-extract",
                         }
                     },
+                    "trackedGitRepos": [
+                        {
+                            "repoPath": "/Users/example/Workspace/Project/timelog-extract",
+                            "branches": [
+                                {"branchName": "task/a", "lastInteractionAt": branch_a},
+                                {"branchName": "task/b", "lastInteractionAt": branch_b},
+                            ],
+                        }
+                    ],
                 }
             ]
         }
@@ -119,11 +133,13 @@ class CursorComposerTests(unittest.TestCase):
                     "anchors": anchors or {},
                 },
             )
-        self.assertGreaterEqual(len(events), 8)
+        self.assertGreaterEqual(len(events), 3)
         self.assertTrue(all(event["project"] == "timelog-extract" for event in events))
         from core.domain import compute_sessions, session_duration_hours
         from core.sources import AI_SOURCES
 
+        # Dense touches merge into one continuous session, bounded to the touch
+        # span (~36 min) — not inflated to a fabricated multi-hour grid.
         sessions = compute_sessions(events, gap_minutes=15)
         self.assertEqual(len(sessions), 1)
         start_ts, end_ts, session_events = sessions[0]
@@ -135,7 +151,8 @@ class CursorComposerTests(unittest.TestCase):
             min_session_passive_minutes=5,
             ai_sources=AI_SOURCES,
         )
-        self.assertGreaterEqual(hours, 1.5)
+        self.assertGreaterEqual(hours, 0.4)
+        self.assertLessEqual(hours, 1.0)
 
     def test_composer_span_overlaps_window_when_end_is_next_day(self):
         created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
@@ -246,7 +263,10 @@ class CursorComposerTests(unittest.TestCase):
         self.assertLessEqual(len(events), 25)
         self.assertGreaterEqual(len(events), 1)
 
-    def test_composer_same_day_last_updated_keeps_span_heartbeats(self):
+    def test_composer_same_day_idle_span_is_not_filled(self):
+        # createdAt and lastUpdatedAt are 13h apart with no intermediate touches:
+        # this is a thread left open, not 13h of work. We must emit two bounded
+        # bursts (createdAt, lastUpdatedAt), never a heartbeat grid through the day.
         created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
         updated_ms = int(datetime(2026, 6, 11, 22, 40, tzinfo=timezone.utc).timestamp() * 1000)
         payload = {
@@ -293,7 +313,9 @@ class CursorComposerTests(unittest.TestCase):
                     "anchors": anchors or {},
                 },
             )
-        self.assertGreaterEqual(len(events), 50)
+        # Two touches, 13h apart → two bounded bursts, not a full-day grid.
+        self.assertLessEqual(len(events), 4)
+        self.assertGreaterEqual(len(events), 1)
 
     def test_stale_revived_composer_emits_point_event_only(self):
         created_ms = int(datetime(2026, 5, 28, 11, 35, tzinfo=timezone.utc).timestamp() * 1000)

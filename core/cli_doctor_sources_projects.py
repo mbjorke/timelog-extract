@@ -35,6 +35,7 @@ from collectors.lovable_desktop import (
     lovable_desktop_history_candidates,
 )
 from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
+from core.cache_evidence_health import codec_missing_reason
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
@@ -94,6 +95,8 @@ def doctor(
     print_command_hero(console, "doctor")
     console.print("")
     home = Path.home()
+    # Sources disabled purely because their cache-evidence codec is missing.
+    codec_blocked: list[str] = []
     workspace_root = runtime_workspace_root()
     projects_cfg = resolve_projects_config_path().expanduser()
     _profiles, loaded_config_path, workspace = load_profiles(
@@ -205,16 +208,48 @@ def doctor(
             coverage_detail = f"{coverage.detail} Suggested cues: {', '.join(coverage.suggested_terms)}"
         table.add_row("Git match_terms coverage", coverage_icon, f"[{STYLE_MUTED}]{coverage_detail}[/{STYLE_MUTED}]")
 
+        from collectors.git_commits import configured_git_repo_paths
+
+        git_repos = configured_git_repo_paths(_profiles)
+        if not git_repos:
+            table.add_row(
+                "Git commits",
+                NA_ICON,
+                f"[{STYLE_MUTED}]No profile has git_repo configured (--git column)[/{STYLE_MUTED}]",
+            )
+        else:
+            missing_repos = [p for p in git_repos if not p.exists()]
+            if missing_repos:
+                table.add_row(
+                    "Git commits",
+                    FAIL_ICON,
+                    f"[{STYLE_MUTED}]git_repo path not found ({missing_repos[0].name})[/{STYLE_MUTED}]",
+                )
+            else:
+                table.add_row(
+                    "Git commits",
+                    OK_ICON,
+                    f"[{STYLE_MUTED}]{len(git_repos)} repo(s); pass --git on report for Git-only hours[/{STYLE_MUTED}]",
+                )
+
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
+        # Cache sources silently produce zero events when their codec is missing.
+        # That under-counts AI-heavy days with no obvious cause, so a present-cache-
+        # but-missing-codec state must read as a fixable failure, not a benign N/A.
         lh = lovable_desktop_history_candidates(home)
         if lh:
             check_db(lh[0], "Lovable Desktop History", "urls")
         elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
             cache_ok, cache_reason = lovable_cache_status(home)
+            cache_codec_missing = codec_missing_reason(cache_reason)
+            if cache_codec_missing:
+                codec_blocked.append("Lovable Desktop")
             table.add_row(
                 "Lovable Desktop",
-                OK_ICON if cache_ok else NA_ICON,
+                FAIL_ICON
+                if cache_codec_missing
+                else (OK_ICON if cache_ok else NA_ICON),
                 f"[{STYLE_MUTED}]{cache_reason}[/{STYLE_MUTED}]",
             )
         else:
@@ -227,9 +262,12 @@ def doctor(
         from collectors.claude_desktop_events import claude_events_cache_status
 
         events_ok, events_reason = claude_events_cache_status(home)
+        events_codec_missing = codec_missing_reason(events_reason)
+        if events_codec_missing:
+            codec_blocked.append("Claude Desktop (Code)")
         table.add_row(
             "Claude Desktop (Code)",
-            OK_ICON if events_ok else NA_ICON,
+            OK_ICON if events_ok else (FAIL_ICON if events_codec_missing else NA_ICON),
             f"[{STYLE_MUTED}]{events_reason}[/{STYLE_MUTED}]",
         )
 
@@ -314,6 +352,16 @@ def doctor(
         add_github_doctor_row(table, gh_mode, github_user)
         add_toggl_doctor_row(table, toggl_source)
     console.print(table)
+    if codec_blocked:
+        console.print(
+            f"\n{WARN_ICON} [bold]Evidence codecs missing[/bold] — "
+            f"{', '.join(codec_blocked)} disabled or degraded, so AI-session hours "
+            f"are silently under-counted."
+        )
+        console.print(
+            f"  [{STYLE_MUTED}]Fix: pipx inject timelog-extract zstandard brotli   "
+            f"(or: pip install 'timelog-extract[cache-evidence]')[/{STYLE_MUTED}]"
+        )
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"

@@ -40,6 +40,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Which specs are implemented right now** → [`specs/implementation-status.md`](specs/implementation-status.md)
 - **Behavior-contract format for new specs** → [`specs/behavior-contract-standard.md`](specs/behavior-contract-standard.md)
 - **Source evidence roles and weighting** → [`specs/source-evidence-policy.md`](specs/source-evidence-policy.md)
+- **Cursor honest evidence ceiling (no per-turn local store)** → [`specs/cursor-evidence-ceiling.md`](specs/cursor-evidence-ceiling.md)
 - **Collector/source implementation contract** → [`specs/source-collector-contract.md`](specs/source-collector-contract.md)
 - **Scheduled → reported time bridge (shared `reported_time` for Calendar/Toggl/Jira)** → [`specs/scheduled-reported-time-bridge.md`](specs/scheduled-reported-time-bridge.md)
 - **Timelog capture health and future menu bar counter** → [`specs/timelog-health-monitor.md`](specs/timelog-health-monitor.md)

@@ -130,4 +130,4 @@ Feature: The presence estimate is honest and never billable by default
 - supersedes: the gap-bridging-into-observed approach (rejected: mixing estimate
   into billable)
 - related: GH-146 net (`core/sanity_bounds.py`), composer burst-per-touch fix,
-  evidence-gap-recalibration-task.md
+  evidence-gap-recalibration-task.md, `docs/specs/cursor-evidence-ceiling.md`

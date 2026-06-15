@@ -1,5 +1,21 @@
 # Per-project totals in gittan status: Total observed + Git-only columns
 
+> **Status update (2026-06-15, product-owner pass):** Beta testing surfaced a
+> **catastrophic accuracy regression in the period `Hours` column** (entire days
+> collapsing into single ~24h sessions; a one-month report read 672h vs ~46.8h
+> Screen Time). Root cause was in `collectors/cursor_composer.py`, not in this
+> story — but it made the **Total observed** column look broken by comparison and
+> proved the report can be wildly wrong while CI is green. Decisions taken:
+>
+> - **Total observed (P1) column: REMOVE for now.** It is the *least*-corrupted
+>   column, but shipping it next to an inflated `Hours` column shows two
+>   contradictory numbers and erodes trust. Defer re-introduction until the
+>   accuracy guardrails (see *Critical dependency* below) land. The aggregation
+>   code (`core/timelog_totals.py`) may stay; only the **column is withdrawn**.
+> - **Git-only (P2): keep**, reframed explicitly as a display-only comparison
+>   signal that also rides on session math.
+> - This spec is now `draft` again pending the column-removal follow-up.
+
 ## Problem
 
 `gittan status` and `gittan report` show hours for the **selected period only**.
@@ -34,15 +50,54 @@ git-only collector reuses for project attribution.
 | Column | Source | Always shown |
 |---|---|---|
 | This period | Existing report engine | Yes |
-| Total observed | TIMELOG.md all-time sum | Yes (P1) |
+| Total observed | TIMELOG.md all-time sum | **Withdrawn (P1) — removed until accuracy net lands** |
 | Git only | `git log` per configured repo | No — requires `--git` flag (P2) |
 
-## P1 — Total observed column
+**Semantics note (important):** "This period" `Hours` aggregates **all sources**
+for the window; "Total observed" sums **only TIMELOG.md, all-time**. These are not
+comparable magnitudes — a sparse manual worklog will read *lower* than a single
+month of all-source activity. The original spec did not state this, which is why
+the column was misread as "everything Gittan ever saw." Any re-introduction must
+ship with an explicit label/legend (see decision in status banner).
+
+## Critical dependency: session integrity (must land before re-introducing P1)
+
+The period `Hours` column is only trustworthy if session computation is sound.
+Beta testing proved it was not: `collectors/cursor_composer.py` laid a 14-minute
+heartbeat grid across each composer thread's entire `createdAt → lastUpdatedAt`
+span. Long-lived threads (days–weeks) fabricated continuous activity around the
+clock, so the 15-minute session gap never closed and whole days merged into single
+~24h sessions. 27 of 30 days collapsed; akturo read 293.8h for one month.
+
+Fixed by switching to **bounded bursts anchored on real touches** (createdAt,
+lastUpdatedAt, checkpoints, branch interactions); idle gaps are no longer filled.
+After the fix the same month reads 108.9h with zero day-collapse.
+
+**This class of bug had no test coverage and two tests actively froze the buggy
+behavior as expected.** Re-introducing the Total observed column is gated on the
+following sibling backlog items (product-owner pass, 2026-06-15):
+
+1. **Accuracy sanity-bound guardrails** — ✅ **LANDED (2026-06-15).**
+   `core/sanity_bounds.py` flags sessions > 16h, days attributing > 24h, and
+   observed-vs-Screen-Time over-attribution > 1.5×; warnings render under the
+   Review summary (`outputs/terminal.py`). Covered by `tests/test_sanity_bounds.py`.
+2. **Golden eval covers high-frequency telemetry** — ⏳ pending. Add a Cursor
+   composer `state.vscdb` fixture so this bug class is caught by `run_golden_eval.py`.
+
+Until (2) also lands, do not show two project-hour magnitudes side by side.
+
+## P1 — Total observed column (WITHDRAWN until accuracy net lands)
 
 ### Task
 
-Add a **Total observed** column to `gittan status` that sums all TIMELOG.md
-entries per project without date filtering, displayed next to the period hours.
+~~Add a **Total observed** column to `gittan status` that sums all TIMELOG.md
+entries per project without date filtering, displayed next to the period hours.~~
+**Withdrawn — done (2026-06-15).** `core/report_service.py` no longer populates
+`timelog_project_totals` (set to `{}`), so the terminal column is dormant
+(`show_totals` is always False). The rendering scaffolding in `outputs/terminal.py`
+and the aggregation helper `core/timelog_totals.py` (+ `tests/test_timelog_totals.py`)
+are intentionally retained, so re-introduction is just restoring the compute call
+once the column returns with a corrected label.
 
 ### Key files
 
@@ -236,14 +291,23 @@ Feature: Git-only column in gittan status
 ## Traceability
 
 - story_id: GH-146
-- spec_status: draft
-- implementation_status: shipped
+- spec_status: draft (reopened 2026-06-15 after accuracy regression)
+- implementation_status: P2 shipped; P1 column withdrawn pending accuracy net
 - created_at: 2026-06-12
-- last_updated_at: 2026-06-12
-- implementation.pr: pending
+- last_updated_at: 2026-06-15
+- implementation.pr: #147 (P1 + P2)
 - implementation.branch: task/repo-time-totals
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: GO — P1 + P2 merged in PR #147
+- validation.evidence: cursor composer burst-per-touch fix verified against live
+  data (672h → 108.9h, 0 day-collapse); `tests/test_cursor_composer.py` rewritten;
+  full suite 801 green
+- validation.decision: CONDITIONAL — P2 stands; P1 column withdrawn until
+  sanity-bound guardrails + high-frequency golden fixture land
+- related:
+  - session-integrity fix in `collectors/cursor_composer.py` (burst-per-touch)
+  - follow-up backlog: accuracy guardrails, golden telemetry fixture, P1 column removal
 - changelog:
   - 2026-06-12: Initial draft. Feature shaped from beta tester request and product-owner planning session. Prerequisite PR #144 (repo_slug.py) confirmed merged.
+  - 2026-06-15: Reopened after beta testing exposed period-`Hours` day-collapse
+    (composer heartbeat fill). Documented session-integrity dependency, withdrew
+    the Total observed column, added semantics note, recorded guardrail follow-ups.

@@ -14,6 +14,9 @@ SOURCE_NAME = "Cursor"
 _COMPOSER_HEADERS_KEY = "composer.composerHeaders"
 # Stay below default session gap (15 min in core.domain.compute_sessions).
 _COMPOSER_HEARTBEAT_MINUTES = 14
+# Touches closer than this merge into one continuous burst; wider gaps between
+# createdAt and lastUpdatedAt are left empty instead of fabricated as work.
+_COMPOSER_TOUCH_MERGE_MINUTES = 14
 # When lastUpdated spills to a later day, extend same-day metadata span modestly.
 _COMPOSER_SPILLED_DAY_EXTENSION_MS = 4 * 60 * 60 * 1000
 # Branch touches shortly after midnight imply the session ran through the evening.
@@ -182,19 +185,37 @@ def _composer_span_overlaps_window(
     return start_ts <= dt_to and end_ts >= dt_from
 
 
-def _composer_heartbeat_timestamps_ms(start_ms: int, end_ms: int) -> list[int]:
-    """Sample timestamps across an active composer span for session duration math."""
-    if end_ms <= start_ms:
-        return [start_ms]
+def _composer_touch_burst_ms(touches: list[int]) -> list[int]:
+    """Grid heartbeats only within bounded bursts anchored on real touches.
+
+    ``createdAt``/``lastUpdatedAt`` are two discrete points; a long-lived thread
+    can span days between them. Filling that gap with a heartbeat grid fabricates
+    work that never happened. Instead, touches within ``_COMPOSER_TOUCH_MERGE_MINUTES``
+    merge into one continuous burst (genuine back-to-back activity still grids),
+    while wider idle gaps are left empty. A lone touch emits a single point.
+    """
+    ordered = sorted({int(t) for t in touches})
+    if not ordered:
+        return []
+    merge_ms = _COMPOSER_TOUCH_MERGE_MINUTES * 60 * 1000
     step_ms = _COMPOSER_HEARTBEAT_MINUTES * 60 * 1000
-    stamps = [start_ms]
-    cursor = start_ms + step_ms
-    while cursor < end_ms:
-        stamps.append(cursor)
-        cursor += step_ms
-    if stamps[-1] != end_ms:
+    clusters: list[list[int]] = [[ordered[0], ordered[0]]]
+    for ms in ordered[1:]:
+        if ms - clusters[-1][1] <= merge_ms:
+            clusters[-1][1] = ms
+        else:
+            clusters.append([ms, ms])
+    stamps: list[int] = []
+    for start_ms, end_ms in clusters:
+        if end_ms <= start_ms:
+            stamps.append(start_ms)
+            continue
+        cursor = start_ms
+        while cursor < end_ms:
+            stamps.append(cursor)
+            cursor += step_ms
         stamps.append(end_ms)
-    return stamps
+    return sorted(set(stamps))
 
 
 def _uri_fs_path(block: dict | None) -> str:
@@ -299,7 +320,9 @@ def collect_cursor_composer_sessions(
     classify_project: Callable,
     make_event: Callable,
 ):
-    """Emit heartbeat events across each composer span (createdAt → lastUpdatedAt)."""
+    """Emit bounded heartbeat bursts anchored on each composer's real touches."""
+    from_ms = int(dt_from.timestamp() * 1000)
+    to_ms = int(dt_to.timestamp() * 1000)
     best_by_id: dict[str, tuple[int, int, dict]] = {}
     for composer in _read_composer_headers(cursor_state_db_path(home)):
         if not isinstance(composer, dict):
@@ -337,7 +360,12 @@ def collect_cursor_composer_sessions(
         if context_bits:
             detail = f"{detail} · {' · '.join(context_bits)}"[:100]
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
-        for ms in _composer_heartbeat_timestamps_ms(start_ms, end_ms):
+        touches = _composer_in_window_touch_ms(composer, from_ms, to_ms)
+        if not touches:
+            # Predate/spill threads with no in-window metadata touch: credit the
+            # single bounded anchor the span resolved to, not a fabricated grid.
+            touches = [min(max(end_ms, from_ms), to_ms)]
+        for ms in _composer_touch_burst_ms(touches):
             try:
                 ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
             except (OSError, OverflowError, ValueError):

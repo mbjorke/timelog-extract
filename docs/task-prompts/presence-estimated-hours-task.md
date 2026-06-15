@@ -124,9 +124,19 @@ Feature: The presence estimate is honest and never billable by default
 
 ## Traceability
 
-- story_id: (assign on pickup)
-- spec_status: draft
+- story_id: GH-146
+- spec_status: approved
+- implementation_status: built
 - created_at: 2026-06-15
+- last_updated_at: 2026-06-15
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/147
+- implementation.branch: task/repo-time-totals
+- implementation.commits: []
+- validation.evidence: tests/test_presence_estimated.py; maintainer 2026-06-11 Cursor day (5.5h evidenced → 15.1h presence cap)
+- validation.decision: conditional GO
+- changelog:
+  - 2026-06-15: Initial draft created.
+  - 2026-06-15: Implemented display-only presence estimate; terminal Delta (est.) primary.
 - supersedes: the gap-bridging-into-observed approach (rejected: mixing estimate
   into billable)
 - related: GH-146 net (`core/sanity_bounds.py`), composer burst-per-touch fix,

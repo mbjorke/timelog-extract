@@ -35,9 +35,10 @@ from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
 from core.screen_time import collect_screen_time as core_collect_screen_time
-from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
+from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
 from core.git_totals import compute_git_project_totals
+from collectors.git_commits import git_commits_collector_status
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
@@ -359,6 +360,15 @@ def run_timelog_report(
     timelog_totals: Dict[str, float] = {}
 
     git_totals: Dict[str, float] = {}
+    collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(
+        profiles,
+        local_tz=LOCAL_TZ,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        git_enabled=bool(getattr(args, "git_source", False)),
+        make_event_fn=_make_event,
+        source_name=GIT_COMMITS_SOURCE,
+    )
     if getattr(args, "git_source", False):
         git_totals = compute_git_project_totals(
             profiles=profiles,

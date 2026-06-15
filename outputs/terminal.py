@@ -27,7 +27,7 @@ from outputs.terminal_theme import (
     STYLE_BORDER,
     WARN_ICON,
 )
-from core.sanity_bounds import plausibility_warnings
+from outputs.terminal_warnings import print_report_warnings
 
 console = Console()
 
@@ -337,17 +337,15 @@ def print_report(
             f"presence; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
         )
 
-    warnings = plausibility_warnings(
+    print_report_warnings(
+        console,
         overall_days=overall_days,
         project_reports=project_reports,
         observed_hours=total_h,
         screen_time_hours=screen_total_h,
         session_duration_hours_fn=session_duration_hours_fn,
-        min_session_minutes=getattr(args, "min_session", 15),
-        min_session_passive_minutes=getattr(args, "min_session_passive", 5),
+        args=args,
     )
-    for warning in warnings:
-        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{warning}[/{CLR_VALUE_ORANGE}]")
 
     console.print()
     if getattr(args, "only_project", None):

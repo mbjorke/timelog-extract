@@ -48,6 +48,78 @@ def _iter_commit_timestamps(
             continue
 
 
+def configured_git_repo_paths(profiles: List[Dict[str, Any]]) -> List[Path]:
+    paths: list[Path] = []
+    for profile in profiles:
+        git_repo = profile.get("git_repo")
+        if not git_repo:
+            continue
+        repo_paths = [git_repo] if isinstance(git_repo, str) else list(git_repo)
+        for raw in repo_paths:
+            paths.append(Path(str(raw)).expanduser())
+    return paths
+
+
+def git_commits_collector_status(
+    profiles: List[Dict[str, Any]],
+    *,
+    local_tz: Any,
+    dt_from: datetime,
+    dt_to: datetime,
+    git_enabled: bool,
+    make_event_fn: Any,
+    source_name: str,
+) -> Dict[str, Any]:
+    """collector_status row for Git commits (--git comparison column)."""
+    repo_paths = configured_git_repo_paths(profiles)
+    if not repo_paths:
+        return {
+            "enabled": False,
+            "reason": "No profile has git_repo configured",
+            "events": 0,
+        }
+    missing = [p for p in repo_paths if not p.exists()]
+    if missing:
+        return {
+            "enabled": False,
+            "reason": f"git_repo path not found ({missing[0].name})",
+            "events": 0,
+        }
+    event_count = 0
+    for profile in profiles:
+        git_repo = profile.get("git_repo")
+        if not git_repo:
+            continue
+        repo_paths_profile = [git_repo] if isinstance(git_repo, str) else list(git_repo)
+        for raw in repo_paths_profile:
+            repo = Path(str(raw)).expanduser()
+            if not repo.exists():
+                continue
+            events = collect_git_commit_timestamps(
+                repo_path=repo,
+                local_tz=local_tz,
+                make_event_fn=make_event_fn,
+                project=str(profile.get("name") or ""),
+                source_name=source_name,
+                dt_from=dt_from,
+                dt_to=dt_to,
+            )
+            event_count += len(events)
+    if not git_enabled:
+        return {
+            "enabled": False,
+            "reason": "Pass --git on report to include Git-only hours column",
+            "events": event_count,
+        }
+    if event_count == 0:
+        return {
+            "enabled": True,
+            "reason": "git_repo configured; no commits in report window",
+            "events": 0,
+        }
+    return {"enabled": True, "reason": "", "events": event_count}
+
+
 def collect_git_commit_timestamps(
     repo_path: Path,
     local_tz: Any,

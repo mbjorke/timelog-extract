@@ -9,36 +9,36 @@ from __future__ import annotations
 
 import unittest
 
-from core.cli_doctor_sources_projects import _codec_missing_reason
+from core.cache_evidence_health import codec_missing_reason
 
 
 class CodecMissingReasonTests(unittest.TestCase):
     def test_zstandard_missing_is_flagged(self):
         self.assertTrue(
-            _codec_missing_reason(
+            codec_missing_reason(
                 "zstandard codec missing (pip install 'timelog-extract[cache-evidence]')"
             )
         )
 
     def test_brotli_degraded_is_flagged(self):
         self.assertTrue(
-            _codec_missing_reason(
+            codec_missing_reason(
                 "Cache present; brotli missing — project titles limited (pip install ...)"
             )
         )
 
     def test_readable_states_are_not_flagged(self):
-        self.assertFalse(_codec_missing_reason("Events cache readable"))
-        self.assertFalse(_codec_missing_reason("Cache readable (35 project titles from cache)"))
+        self.assertFalse(codec_missing_reason("Events cache readable"))
+        self.assertFalse(codec_missing_reason("Cache readable (35 project titles from cache)"))
 
     def test_absent_cache_is_not_flagged(self):
         # "No cache yet" is benign — must not read as a codec problem.
         self.assertFalse(
-            _codec_missing_reason("No Claude Desktop cache yet (open Claude Desktop to create one)")
+            codec_missing_reason("No Claude Desktop cache yet (open Claude Desktop to create one)")
         )
 
     def test_empty_reason_is_safe(self):
-        self.assertFalse(_codec_missing_reason(""))
+        self.assertFalse(codec_missing_reason(""))
 
 
 if __name__ == "__main__":

@@ -35,20 +35,11 @@ from collectors.lovable_desktop import (
     lovable_desktop_history_candidates,
 )
 from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
+from core.cache_evidence_health import codec_missing_reason
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
-
-
-def _codec_missing_reason(reason: str) -> bool:
-    """True when a cache status reason indicates a missing decode codec.
-
-    Covers both fully-disabled (zstandard for Claude events) and degraded
-    (brotli for Lovable titles) states — both fixed by the same install.
-    """
-    low = (reason or "").lower()
-    return "missing" in low and any(w in low for w in ("codec", "zstandard", "brotli"))
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 
@@ -217,6 +208,30 @@ def doctor(
             coverage_detail = f"{coverage.detail} Suggested cues: {', '.join(coverage.suggested_terms)}"
         table.add_row("Git match_terms coverage", coverage_icon, f"[{STYLE_MUTED}]{coverage_detail}[/{STYLE_MUTED}]")
 
+        from collectors.git_commits import configured_git_repo_paths
+
+        git_repos = configured_git_repo_paths(_profiles)
+        if not git_repos:
+            table.add_row(
+                "Git commits",
+                NA_ICON,
+                f"[{STYLE_MUTED}]No profile has git_repo configured (--git column)[/{STYLE_MUTED}]",
+            )
+        else:
+            missing_repos = [p for p in git_repos if not p.exists()]
+            if missing_repos:
+                table.add_row(
+                    "Git commits",
+                    FAIL_ICON,
+                    f"[{STYLE_MUTED}]git_repo path not found ({missing_repos[0].name})[/{STYLE_MUTED}]",
+                )
+            else:
+                table.add_row(
+                    "Git commits",
+                    OK_ICON,
+                    f"[{STYLE_MUTED}]{len(git_repos)} repo(s); pass --git on report for Git-only hours[/{STYLE_MUTED}]",
+                )
+
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
         check_db(chrome_path, "Chrome History", "urls")
         # Cache sources silently produce zero events when their codec is missing.
@@ -227,7 +242,7 @@ def doctor(
             check_db(lh[0], "Lovable Desktop History", "urls")
         elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
             cache_ok, cache_reason = lovable_cache_status(home)
-            cache_codec_missing = _codec_missing_reason(cache_reason)
+            cache_codec_missing = codec_missing_reason(cache_reason)
             if cache_codec_missing:
                 codec_blocked.append("Lovable Desktop")
             table.add_row(
@@ -245,7 +260,7 @@ def doctor(
         from collectors.claude_desktop_events import claude_events_cache_status
 
         events_ok, events_reason = claude_events_cache_status(home)
-        events_codec_missing = _codec_missing_reason(events_reason)
+        events_codec_missing = codec_missing_reason(events_reason)
         if events_codec_missing:
             codec_blocked.append("Claude Desktop (Code)")
         table.add_row(

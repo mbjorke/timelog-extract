@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from datetime import datetime
 from typing import Annotated, Optional
 
@@ -140,8 +142,9 @@ def evidence_check(
         quiet=True,
     )
     report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-    snapshot = build_evidence_snapshot(report)
-    warnings = build_evidence_warnings(snapshot)
+    home = Path.home()
+    snapshot = build_evidence_snapshot(report, home=home)
+    warnings = build_evidence_warnings(snapshot, home=home)
     console.print("[bold]Evidence check[/bold]")
     console.print(f"- Observed timeline hours: {snapshot['observed_hours']:.1f}h")
     console.print(f"- Screen Time hours: {snapshot['screen_time_hours']:.1f}h")

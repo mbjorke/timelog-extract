@@ -10,13 +10,11 @@ from core.triage_noise import is_uncategorized_noise_detail
 from urllib.parse import unquote, urlparse
 
 
-def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> bool:
-    text = (line or "").lower()
-    # Frequent Cursor diagnostics that are operational noise, not user work intent.
-    # Machine heartbeats/pollers fire on timers for every open workspace whether or
-    # not the user is present — counting them fabricates hours, so they are filtered
-    # at ALL profiles (including lenient).
-    base_markers = (
+# Frequent Cursor diagnostics that are operational noise, not user work intent.
+# Machine heartbeats/pollers fire on timers for every open workspace whether or
+# not the user is present — counting them fabricates hours, so they are filtered
+# at ALL profiles (including lenient).
+_BASE_NOISE_MARKERS = (
         "error getting submodules",
         "[error] enoent",
         "[error] enotempty",
@@ -70,19 +68,40 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
         "using askpass script",
         "canvas sdk mirror",
     )
-    strict_markers = (
-        # Reserved: ambiguous signals to drop under strict but keep under lenient.
-    )
-    ultra_strict_markers = (
-        # Reserved for future extra-aggressive filtering beyond strict.
-    )
+_STRICT_NOISE_MARKERS = (
+    # Reserved: ambiguous signals to drop under strict but keep under lenient.
+)
+_ULTRA_STRICT_NOISE_MARKERS = (
+    # Reserved for future extra-aggressive filtering beyond strict.
+)
+
+
+def _compile_noise_markers(*groups: tuple[str, ...]):
+    """Single compiled alternation so noise filtering is one regex search per line.
+
+    Equivalent to ``any(marker in text)`` but avoids rebuilding a ~50-item list
+    and scanning it per line across millions of Cursor log lines.
+    """
+    markers = [marker for group in groups for marker in group]
+    if not markers:
+        return None
+    return re.compile("|".join(re.escape(marker) for marker in markers))
+
+
+_NOISE_MARKER_RE = {
+    "lenient": _compile_noise_markers(_BASE_NOISE_MARKERS),
+    "strict": _compile_noise_markers(_BASE_NOISE_MARKERS, _STRICT_NOISE_MARKERS),
+    "ultra-strict": _compile_noise_markers(
+        _BASE_NOISE_MARKERS, _STRICT_NOISE_MARKERS, _ULTRA_STRICT_NOISE_MARKERS
+    ),
+}
+
+
+def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> bool:
+    text = (line or "").lower()
     profile = (noise_profile or "strict").strip().lower()
-    markers = list(base_markers)
-    if profile in {"strict", "ultra-strict"}:
-        markers.extend(strict_markers)
-    if profile == "ultra-strict":
-        markers.extend(ultra_strict_markers)
-    if any(marker in text for marker in markers):
+    marker_re = _NOISE_MARKER_RE.get(profile, _NOISE_MARKER_RE["strict"])
+    if marker_re is not None and marker_re.search(text):
         return True
     # skills-cursor sync manifest, file-watcher drops, etc. — shared with review clustering.
     if is_uncategorized_noise_detail(line):
@@ -130,7 +149,9 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
         m = ts_pattern.match(line)
         if m:
             try:
-                return datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=local_tz)
+                # fromisoformat accepts "YYYY-MM-DD HH:MM:SS" and is ~20x faster
+                # than strptime across millions of log lines (identical result).
+                return datetime.fromisoformat(m.group(1)).replace(tzinfo=local_tz)
             except ValueError:
                 return None
         m = ts_iso_bracket_pattern.match(line)
@@ -147,7 +168,16 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
             return parsed
         return None
 
+    # A log file last written before the window starts cannot contain in-window
+    # lines (logs are append-only), so skip it without reading — avoids scanning
+    # months of rotated Cursor logs on every report.
+    from_ts = dt_from.timestamp()
     for log_file in logs_dir.glob("**/*.log"):
+        try:
+            if log_file.stat().st_mtime < from_ts:
+                continue
+        except OSError:
+            continue
         try:
             with open(log_file, encoding="utf-8", errors="replace") as fh:
                 for line in fh:

@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from core.git_activity_discovery import collect_git_command_slug_hits
-from core.git_project_bootstrap import build_repo_project_seed, discover_local_git_repos, parse_github_origin
+from core.git_project_bootstrap import (
+    build_repo_project_seed,
+    discover_local_git_repos,
+    iter_workspace_git_repos,
+    parse_github_origin,
+)
 
 
 @dataclass(frozen=True)
@@ -189,27 +194,33 @@ def index_local_slug_bindings(
         git_hits = collect_git_command_slug_hits(cursor_home or Path.home(), dt_from, dt_to, tz)
 
     by_slug: dict[str, SlugGitBinding] = {}
-    roots = scan_roots or _default_scan_roots()
-    for root in roots:
-        for repo in discover_local_git_repos(root, max_depth=4, limit=None):
-            origin = _git_remote_origin(repo)
-            parsed = parse_github_origin(origin)
-            if parsed is None:
-                continue
-            owner, repo_name = parsed
-            slug = f"{owner.strip().lower()}/{repo_name.strip().lower()}"
-            hits, _folder = git_hits.get(slug, (0, repo.name))
-            commit_epoch = _git_last_commit_epoch(repo)
-            candidate = SlugGitBinding(
-                slug=slug,
-                remote_url=slug_to_remote_url(slug),
-                local_path=format_tilde_path(repo),
-                last_commit_epoch=commit_epoch,
-                git_cmd_hits=int(hits),
-            )
-            existing = by_slug.get(slug)
-            if existing is None or git_activity_score(candidate) > git_activity_score(existing):
-                by_slug[slug] = candidate
+    if scan_roots is None:
+        roots = _default_scan_roots()
+        repo_paths = iter_workspace_git_repos()
+    else:
+        roots = [Path(root).expanduser().resolve() for root in scan_roots]
+        repo_paths = []
+        for root in roots:
+            repo_paths.extend(discover_local_git_repos(root, max_depth=4, limit=None))
+    for repo in repo_paths:
+        origin = _git_remote_origin(repo)
+        parsed = parse_github_origin(origin)
+        if parsed is None:
+            continue
+        owner, repo_name = parsed
+        slug = f"{owner.strip().lower()}/{repo_name.strip().lower()}"
+        hits, _folder = git_hits.get(slug, (0, repo.name))
+        commit_epoch = _git_last_commit_epoch(repo)
+        candidate = SlugGitBinding(
+            slug=slug,
+            remote_url=slug_to_remote_url(slug),
+            local_path=format_tilde_path(repo),
+            last_commit_epoch=commit_epoch,
+            git_cmd_hits=int(hits),
+        )
+        existing = by_slug.get(slug)
+        if existing is None or git_activity_score(candidate) > git_activity_score(existing):
+            by_slug[slug] = candidate
 
     for slug, (hits, folder_name) in git_hits.items():
         if slug in by_slug:

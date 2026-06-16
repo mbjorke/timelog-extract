@@ -312,17 +312,39 @@ def _workspace_scan_roots() -> list[Path]:
     return roots
 
 
+def _local_repo_scan_specs() -> list[tuple[Path, int]]:
+    """(root, max_depth) pairs for discovering local git clones."""
+    specs = [(root, 4) for root in _workspace_scan_roots()]
+    # Common layout: ~/project-name (outside ~/Workspace). Depth 1 only so we do
+    # not walk ~/Library, ~/Documents, etc.
+    specs.append((Path.home(), 1))
+    return specs
+
+
+def iter_workspace_git_repos() -> list[Path]:
+    """Local git repo roots under workspace roots and top-level ~/ clones."""
+    repos: list[Path] = []
+    seen: set[Path] = set()
+    for root, max_depth in _local_repo_scan_specs():
+        for repo in discover_local_git_repos(root, max_depth=max_depth, limit=None):
+            resolved = repo.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            repos.append(resolved)
+    return repos
+
+
 def collect_local_github_slugs_from_workspace() -> set[str]:
     """GitHub owner/repo slugs from local clones under common workspace roots."""
     slugs: set[str] = set()
-    for root in _workspace_scan_roots():
-        for repo in discover_local_git_repos(root, max_depth=4, limit=None):
-            origin = _run_git(repo, "remote", "get-url", "origin")
-            parsed = parse_github_origin(origin)
-            if parsed is None:
-                continue
-            owner, repo_name = parsed
-            slugs.add(f"{owner.strip().lower()}/{repo_name.strip().lower()}")
+    for repo in iter_workspace_git_repos():
+        origin = _run_git(repo, "remote", "get-url", "origin")
+        parsed = parse_github_origin(origin)
+        if parsed is None:
+            continue
+        owner, repo_name = parsed
+        slugs.add(f"{owner.strip().lower()}/{repo_name.strip().lower()}")
     return slugs
 
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from core.git_project_bootstrap import (
     assess_config_git_coverage,
     assess_match_terms_coverage,
+    collect_local_github_slugs_from_workspace,
     discover_git_project_hints,
 )
 
@@ -86,6 +87,22 @@ class GitProjectBootstrapTests(unittest.TestCase):
             coverage = assess_config_git_coverage(profiles)
         self.assertEqual(coverage.status, "ok")
         self.assertIn("All 1 configured", coverage.detail)
+
+    def test_collect_local_github_slugs_includes_home_top_level_clone(self):
+        with tempfile.TemporaryDirectory() as home:
+            home_path = Path(home)
+            workspace = home_path / "Workspace"
+            workspace.mkdir()
+            repo = home_path / "ax-finans"
+            repo.mkdir()
+            self._init_repo(str(repo), "https://github.com/ax-finans/financing-portal.git")
+            with mock.patch("core.git_project_bootstrap.Path.home", return_value=home_path):
+                with mock.patch(
+                    "core.git_project_bootstrap._workspace_scan_roots",
+                    return_value=[workspace],
+                ):
+                    slugs = collect_local_github_slugs_from_workspace()
+            self.assertIn("ax-finans/financing-portal", slugs)
 
 
 if __name__ == "__main__":

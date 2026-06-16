@@ -195,10 +195,12 @@ def index_local_slug_bindings(
 
     by_slug: dict[str, SlugGitBinding] = {}
     if scan_roots is None:
+        roots = _default_scan_roots()
         repo_paths = iter_workspace_git_repos()
     else:
+        roots = [Path(root).expanduser().resolve() for root in scan_roots]
         repo_paths = []
-        for root in scan_roots:
+        for root in roots:
             repo_paths.extend(discover_local_git_repos(root, max_depth=4, limit=None))
     for repo in repo_paths:
         origin = _git_remote_origin(repo)

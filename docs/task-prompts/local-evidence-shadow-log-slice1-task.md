@@ -213,7 +213,7 @@ yields data to choose the engine, without establishing any durable store early.
 
 ## Traceability
 
-- story_id: `pending` (no GH issue yet; spec `docs/specs/local-evidence-shadow-log.md`)
+- story_id: `GH-151` (https://github.com/mbjorke/timelog-extract/issues/151)
 - spec_status: `draft`
 - implementation_status: `not built`
 - created_at: 2026-06-18
@@ -228,3 +228,4 @@ yields data to choose the engine, without establishing any durable store early.
     evidence shadow log, prompted by GitButler architecture inspiration. Locked
     the engine-agnostic record contract, fingerprint-excludes-project decision,
     and JSONL-first-vs-tiered storage fork gated on a volume measurement spike.
+  - 2026-06-18: Filed tracking issue GH-151; story_id set.

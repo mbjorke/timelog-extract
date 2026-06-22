@@ -1,0 +1,25 @@
+{
+  "description": "Cursor composer golden guard: long-lived thread must not fabricate multi-day heartbeat grids. Uses isolated HOME with state.vscdb only (see golden_cursor_composer_headers.json).",
+  "timezone_note": "Eval sets TZ=UTC before importing the report stack.",
+  "config_path": "tests/fixtures/golden_cursor_projects.json",
+  "date_from": "2024-01-01",
+  "date_to": "2024-01-30",
+  "composer_headers_path": "tests/fixtures/golden_cursor_composer_headers.json",
+  "run_options": {
+    "quiet": true,
+    "screen_time": "off",
+    "chrome_source": "off",
+    "mail_source": "off",
+    "github_source": "off",
+    "calendar_source": "off"
+  },
+  "invariants": {
+    "max_hours_any_day": 16.0,
+    "max_day_total_hours": 24.0,
+    "max_period_total_hours": 4.0
+  },
+  "expectations": [
+    { "date": "2024-01-01", "project": "project-alpha", "hours": 0.08333333333333333 },
+    { "date": "2024-01-30", "project": "project-alpha", "hours": 0.08333333333333333 }
+  ]
+}

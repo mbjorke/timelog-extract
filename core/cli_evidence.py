@@ -34,9 +34,19 @@ def evidence(
 
     console = Console()
 
+    data_controls = sum([export is not None, prune_older_than is not None, erase])
+    if data_controls > 1:
+        console.print(
+            "[red]Error:[/red] --export, --prune-older-than, and --erase are mutually exclusive."
+        )
+        raise typer.Exit(code=1)
+
     if export is not None:
         result = evidence_store.export_store(export)
-        console.print(f"Exported {result['records']} record(s) → {result['path']}")
+        msg = f"Exported {result['records']} record(s) → {result['path']}"
+        if result["records"] == 0:
+            msg += f" [{STYLE_MUTED}](store is empty)[/{STYLE_MUTED}]"
+        console.print(msg)
         return
     if prune_older_than is not None:
         try:

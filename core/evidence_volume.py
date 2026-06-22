@@ -51,6 +51,14 @@ def measure_evidence_volume(
     collector saw. Fingerprint cardinality is computed at the evidence layer
     (project-independent), so it can be lower than the record count when events
     differed only by project classification.
+
+    Per-source rows are keyed by the event *source label* (what actually gets
+    stored), and the role is derived from that label. ``raw_collected`` is the
+    collector status count, attached only on an exact name match — a single
+    collector can emit a differently-named source (e.g. "Cursor (agent)"), so
+    those rows report ``None`` rather than a misleading ``0``. The authoritative
+    raw total is summed directly from ``collector_status`` and is independent of
+    this name join.
     """
     days = max(int(days_in_range), 1)
     per_source: Dict[str, Dict[str, Any]] = {}
@@ -60,7 +68,7 @@ def measure_evidence_volume(
         bucket = per_source.setdefault(
             name,
             {
-                "raw_collected": int((collector_status.get(name) or {}).get("events", 0)),
+                "raw_collected": None,
                 "evidence_records": 0,
                 "source_role": rec.get("source_role", ""),
                 "_fingerprints": set(),
@@ -71,40 +79,41 @@ def measure_evidence_volume(
         bucket["_fingerprints"].add(rec.get("fingerprint"))
         bucket["_total_bytes"] += _record_bytes(rec)
 
-    # Include sources that collected events but contributed no included records.
-    for name, status in collector_status.items():
-        raw = int((status or {}).get("events", 0))
-        if raw and name not in per_source:
-            from core.sources import get_source_role
-
-            per_source[name] = {
-                "raw_collected": raw,
-                "evidence_records": 0,
-                "source_role": get_source_role(name),
-                "_fingerprints": set(),
-                "_total_bytes": 0,
-            }
-
     total_records = 0
     total_bytes = 0
     all_fingerprints = 0
-    raw_collected_total = 0
     for name, bucket in per_source.items():
         recs = bucket["evidence_records"]
         uniq = len(bucket.pop("_fingerprints"))
         tbytes = bucket.pop("_total_bytes")
+        status = collector_status.get(name)
+        if status and "events" in status:
+            bucket["raw_collected"] = int(status["events"])
         bucket["unique_fingerprints"] = uniq
         bucket["avg_record_bytes"] = round(tbytes / recs, 1) if recs else 0.0
         total_records += recs
         total_bytes += tbytes
         all_fingerprints += uniq
-        raw_collected_total += int(bucket["raw_collected"])
+
+    # Authoritative raw total: everything collectors reported, regardless of how
+    # the events are later labeled. Independent of the per-source name join.
+    raw_collected_total = sum(
+        int((status or {}).get("events", 0)) for status in collector_status.values()
+    )
+    # Collector status names that never matched an event source label, surfaced
+    # as a diagnostic instead of fabricating zero-record per-source rows.
+    unmatched = sorted(
+        name
+        for name, status in collector_status.items()
+        if name not in per_source and int((status or {}).get("events", 0))
+    )
 
     measured_avg = round(total_bytes / total_records, 1) if total_records else 0.0
     return {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "days_in_range": days,
         "per_source": dict(sorted(per_source.items())),
+        "collector_status_unmatched": unmatched,
         "totals": {
             "raw_collected": raw_collected_total,
             "evidence_records": total_records,

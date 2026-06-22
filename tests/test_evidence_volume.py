@@ -59,6 +59,25 @@ class TestMeasureVolume(unittest.TestCase):
         m = measure_evidence_volume(records, {"Cursor": {"events": 1}}, days_in_range=1)
         self.assertGreater(m["totals"]["measured_avg_record_bytes"], 0.0)
 
+    def test_raw_collected_none_when_status_name_differs(self):
+        # A collector can emit a differently-labeled source than its status key
+        # (e.g. the Cursor collector emits "Cursor (agent)" events). The row must
+        # not fabricate a 0/phantom raw count, the role must come from the event
+        # label, and the authoritative raw total still counts the collector.
+        records = _records(("Cursor (agent)", "2026-06-18T09:00:00+00:00", "turn", "Alpha"))
+        m = measure_evidence_volume(records, {"Cursor": {"events": 5}}, days_in_range=1)
+        self.assertIsNone(m["per_source"]["Cursor (agent)"]["raw_collected"])
+        self.assertEqual(m["per_source"]["Cursor (agent)"]["source_role"], "direct_work_evidence")
+        self.assertNotIn("Cursor", m["per_source"])  # produced no records -> no phantom row
+        self.assertIn("Cursor", m["collector_status_unmatched"])
+        self.assertEqual(m["totals"]["raw_collected"], 5)
+
+    def test_raw_collected_attached_on_exact_name_match(self):
+        records = _records(("Cursor", "2026-06-18T09:00:00+00:00", "a", "Alpha"))
+        m = measure_evidence_volume(records, {"Cursor": {"events": 3}}, days_in_range=1)
+        self.assertEqual(m["per_source"]["Cursor"]["raw_collected"], 3)
+        self.assertEqual(m["collector_status_unmatched"], [])
+
 
 class TestFootprintAndRecommendation(unittest.TestCase):
     def _measurement(self, records_per_day, avg_bytes):

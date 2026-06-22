@@ -206,6 +206,26 @@ Scenario: Report uses shadow evidence after upstream cleanup
 4. Engine-selection thresholds for item 2's decision gate (calibrate from the
    first measurement run).
 
+## Measured engine decision (2026-06-22)
+
+The spike was run on the maintainer's real workstation over a 6-month window
+(2025-12-22 → 2026-06-22). Result:
+
+- **5,505 evidence records** (raw 5,641; fingerprint dedup_ratio 0.976), avg
+  **~453 B/record**, ≈ **30 records/day**, ≈ **4.9 MB/year**.
+- Top sources: Claude Code CLI (47%) + Cursor (29%) = ~76%; then Claude Desktop,
+  GitHub, Cursor (agent), Lovable.
+- ~3,700× below the provisional 50 MB/day gate.
+
+**Decision: `JSONL-first` for durable capture.** Tiered Parquet + embedded
+DuckDB (and pg_duckdb) stay parked behind a hypothetical granular firehose layer
+(keystroke/edit/oplog) — the only thing that would move the gate. "Measure
+first" prevented over-engineering: real volume is ~30/day, not millions.
+
+This resolves open decision #4. The fingerprint dedup is most material for
+Claude Desktop (~19% collapsed) and Cursor (~16%) — useful input for retention
+design in a later slice.
+
 ## First PR
 
 Items 1 + 2 together (contract + measurement spike) — locks the foundation and
@@ -215,17 +235,38 @@ yields data to choose the engine, without establishing any durable store early.
 
 - story_id: `GH-151` (https://github.com/mbjorke/timelog-extract/issues/151)
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `in progress`
 - created_at: 2026-06-18
-- last_updated_at: 2026-06-18
-- implementation.pr: pending
+- last_updated_at: 2026-06-22
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/153
 - implementation.branch: claude/gitbutler-inspiration-4nkcrm
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: `tests/test_evidence_record.py`, `tests/test_evidence_volume.py`; full autotest suite 849 green; real 6-month spike on maintainer workstation (5,505 records, ~453 B/record, ~4.9 MB/yr) → decision `JSONL-first`; no `~/.gittan/evidence/` created
+- validation.decision: conditional GO
 - changelog:
   - 2026-06-18: Initial product-owner pass. Measure-first slice for the local
     evidence shadow log, prompted by GitButler architecture inspiration. Locked
     the engine-agnostic record contract, fingerprint-excludes-project decision,
     and JSONL-first-vs-tiered storage fork gated on a volume measurement spike.
   - 2026-06-18: Filed tracking issue GH-151; story_id set.
+  - 2026-06-18: Built items 1+2. `core/evidence_record.py` (contract +
+    project-independent fingerprint + content hash), evidence roles in
+    `core/sources.py`, `core/evidence_volume.py` (measured-bytes footprint +
+    engine recommendation), and read-only runner
+    `scripts/run_evidence_volume_spike.py`. Record sizes are measured, not
+    assumed; engine threshold is provisional pending calibration.
+  - 2026-06-22: Ran the spike on the real workstation (6 months): ~5,505
+    records, ~4.9 MB/yr → engine decision `JSONL-first` (resolves open decision
+    #4); tiered Parquet/DuckDB parked behind a firehose layer. Fixed a per-source
+    attribution artifact in `core/evidence_volume.py` (raw count vs event-label
+    name join; collectors emitting differently-named sources like "Cursor
+    (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
+    diagnostic instead of phantom rows). Separate from the Cursor hours
+    regression in PR #154.
+  - 2026-06-22: Addressed CodeRabbit review on PR #153 — `build_spike_report`
+    default `captured_at` now UTC-aware (was naive local); `_normalize_observed_at`
+    normalizes the RFC-3339 "Z" suffix so a string timestamp and the equivalent
+    datetime fingerprint identically (+ test); clarified `compute_content_hash`
+    docstring re: the mutable `project_at_capture` snapshot. Deferred: promoting
+    the bare-string role constants to an Enum/validated set — to be done when the
+    durable store wires roles in (open decision for a later slice).

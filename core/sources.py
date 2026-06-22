@@ -46,3 +46,48 @@ AI_SOURCES = {
     "GitHub Copilot CLI",
     WORKLOG_SOURCE,
 }
+
+# Evidence roles per docs/specs/source-evidence-policy.md. A source can be good
+# evidence for context without being strong evidence for worked time or invoice
+# approval. These roles travel with each evidence record (see
+# docs/specs/local-evidence-shadow-log.md) so the durable store keeps the
+# observed/classified/approved layers separable.
+PRIMARY_CLAIM = "primary_claim"
+DIRECT_WORK_EVIDENCE = "direct_work_evidence"
+DELIVERY_EVIDENCE = "delivery_evidence"
+PASSIVE_CONTEXT = "passive_context"
+SCHEDULED_CONTEXT = "scheduled_context"
+COVERAGE_COMPARATOR = "coverage_comparator"
+
+SOURCE_ROLES = {
+    WORKLOG_SOURCE: PRIMARY_CLAIM,
+    TOGGL_SOURCE: PRIMARY_CLAIM,
+    "Claude Code CLI": DIRECT_WORK_EVIDENCE,
+    "Claude Desktop": DIRECT_WORK_EVIDENCE,
+    "Claude Desktop (Code)": DIRECT_WORK_EVIDENCE,
+    "Claude.ai (web)": DIRECT_WORK_EVIDENCE,
+    "Gemini (web)": DIRECT_WORK_EVIDENCE,
+    "Gemini CLI": DIRECT_WORK_EVIDENCE,
+    "Cursor": DIRECT_WORK_EVIDENCE,
+    "Cursor (agent)": DIRECT_WORK_EVIDENCE,
+    CURSOR_CHECKPOINTS_SOURCE: DIRECT_WORK_EVIDENCE,
+    "Antigravity": DIRECT_WORK_EVIDENCE,
+    "Windsurf": DIRECT_WORK_EVIDENCE,
+    "Codex IDE": DIRECT_WORK_EVIDENCE,
+    "GitHub Copilot CLI": DIRECT_WORK_EVIDENCE,
+    GITHUB_SOURCE: DELIVERY_EVIDENCE,
+    GIT_COMMITS_SOURCE: DELIVERY_EVIDENCE,
+    JIRA_SOURCE: DELIVERY_EVIDENCE,
+    # Policy groups Chrome and Lovable-desktop history as passive context:
+    # good for project hints, noisy as duration proof on their own.
+    "Chrome": PASSIVE_CONTEXT,
+    "Lovable (desktop)": PASSIVE_CONTEXT,
+    "Apple Mail": PASSIVE_CONTEXT,
+    CALENDAR_SOURCE: SCHEDULED_CONTEXT,
+    "Screen Time": COVERAGE_COMPARATOR,
+}
+
+
+def get_source_role(source_name: str) -> str:
+    """Evidence role for a source name; unknown sources default to passive context."""
+    return SOURCE_ROLES.get(str(source_name or ""), PASSIVE_CONTEXT)

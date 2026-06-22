@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from core.evidence_record import evidence_record_from_event
+from core.evidence_record import compute_content_hash, evidence_record_from_event
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -156,3 +156,84 @@ def capture_if_enabled(
     except Exception as exc:  # capture must never break the report
         _LOGGER.warning("Shadow log capture failed: %s", exc)
         return {"enabled": True, "error": str(exc)}
+
+
+def read_records(events_directory: Path) -> Iterable[Tuple[str, Dict[str, Any]]]:
+    """Yield ``(month, record)`` for all stored records, in file + line order."""
+    if not events_directory.is_dir():
+        return
+    for path in sorted(events_directory.glob("*.jsonl")):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        yield path.stem, json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+        except OSError:
+            continue
+
+
+def _chain_breaks(by_month: Dict[str, List[Dict[str, Any]]]) -> List[str]:
+    """Return human-readable descriptions of any hash-chain integrity failures."""
+    breaks: List[str] = []
+    for month in sorted(by_month):
+        prev: Optional[str] = None
+        for idx, rec in enumerate(by_month[month]):
+            if rec.get("prev_hash") != prev:
+                breaks.append(f"{month}[{idx}]: prev_hash does not match previous record")
+            if rec.get("content_hash") != compute_content_hash(rec):
+                breaks.append(f"{month}[{idx}]: content_hash mismatch (record altered)")
+            prev = rec.get("content_hash")
+    return breaks
+
+
+def store_health(
+    *,
+    home: Optional[Path] = None,
+    base_dir: Optional[Path] = None,
+    today: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Read-only health snapshot of the durable evidence store.
+
+    Reports enabled state, totals, today's captures, last capture time, retention
+    span, per-source counts, and tamper-evident chain integrity. Never writes.
+    """
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    ev_dir = events_dir(base)
+    if not ev_dir.is_dir():
+        return {"enabled": False, "base_dir": str(base)}
+
+    today_str = today or datetime.now(timezone.utc).date().isoformat()
+    by_month: Dict[str, List[Dict[str, Any]]] = {}
+    per_source: Dict[str, int] = {}
+    total = 0
+    captured_today = 0
+    last_captured: Optional[str] = None
+    for month, rec in read_records(ev_dir):
+        by_month.setdefault(month, []).append(rec)
+        per_source[rec.get("source", "")] = per_source.get(rec.get("source", ""), 0) + 1
+        total += 1
+        cap = str(rec.get("captured_at", "") or "")
+        if cap and (last_captured is None or cap > last_captured):
+            last_captured = cap
+        if cap[:10] == today_str:
+            captured_today += 1
+
+    breaks = _chain_breaks(by_month)
+    months = sorted(by_month)
+    return {
+        "enabled": True,
+        "base_dir": str(base),
+        "total_records": total,
+        "records_captured_today": captured_today,
+        "last_captured_at": last_captured,
+        "months": months,
+        "retention_span": f"{months[0]}..{months[-1]}" if months else None,
+        "per_source": dict(sorted(per_source.items())),
+        "chain_ok": not breaks,
+        "chain_breaks": breaks,
+    }

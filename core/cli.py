@@ -17,6 +17,7 @@ from core.cli_options import (
 # Side effect: register commands on `app`
 from core import cli_calendar_suggest  # noqa: F401
 from core import cli_doctor_sources_projects  # noqa: F401
+from core import cli_evidence  # noqa: F401
 from core import cli_global_timelog_setup  # noqa: F401
 from core import cli_jira_sync  # noqa: F401
 from core import cli_projects  # noqa: F401

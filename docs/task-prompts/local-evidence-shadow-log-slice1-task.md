@@ -175,7 +175,12 @@ Scenario: Report uses shadow evidence after upstream cleanup
 
 ### 5. Health-monitor surface
 
-- **priority:** `next` (after item 3)
+- **priority:** `next` (after item 3) — ✅ **BUILT (2026-06-22).**
+  `gittan evidence` (read-only) reports enabled state, total records, captured
+  today, last capture time, retention span, per-source counts, and tamper-evident
+  hash-chain integrity via `core/evidence_store.store_health`. "Sources with live
+  evidence but no retention" is deferred (needs a live-report cross-check).
+  Tests: `tests/test_evidence_store.py`.
 - **behavior:** `doctor`/status shows: on/off, last capture, records today, chain
   integrity (OK/broken), sources with live evidence but no retention. No raw
   event details exposed. A tampered record (broken `prev_hash`) is flagged as a
@@ -269,6 +274,10 @@ yields data to choose the engine, without establishing any durable store early.
     (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
     diagnostic instead of phantom rows). Separate from the Cursor hours
     regression in PR #154.
+  - 2026-06-22: Built item 5 (health surface). `gittan evidence` +
+    `core/evidence_store.store_health` (totals, captured-today, last capture,
+    retention span, per-source, hash-chain integrity incl. tamper detection).
+    Bundled with item 3 in PR #156. Replay (item 4) remains.
   - 2026-06-22: Built item 3 (durable capture, slice 2). `core/evidence_store.py`
     (append-only JSONL, idempotent fingerprint dedup, per-month hash chain) +
     `capture_if_enabled`; opt-in `--shadow-log on` wired into `report` and

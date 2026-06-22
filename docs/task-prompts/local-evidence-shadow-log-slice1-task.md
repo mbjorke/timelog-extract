@@ -160,7 +160,13 @@ Scenario: Off by default
 
 ### 4. Replay from the shadow log for closed windows
 
-- **priority:** `next` (after item 3)
+- **priority:** `next` (after item 3) — ✅ **BUILT (2026-06-22).**
+  `--shadow-replay on` on `report`: for a closed (past) window, stored evidence
+  whose fingerprint is absent from live events is restored and merged before
+  aggregation, with a "restored N event(s)" note. Open windows (incl. today) are
+  skipped — live sources stay authoritative. `core/evidence_store.replay_into_events`
+  + `maybe_replay`; off by default; never raises into the report. Tests:
+  `tests/test_evidence_store.py`.
 - **behavior:** For closed windows, the report can read events from the shadow
   log and mark them "from shadow log", even after the source rotated. Ties to the
   truth-RFC "frozen inputs / deterministic replay" line.
@@ -275,6 +281,11 @@ yields data to choose the engine, without establishing any durable store early.
     (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
     diagnostic instead of phantom rows). Separate from the Cursor hours
     regression in PR #154.
+  - 2026-06-22: Built item 4 (replay). `--shadow-replay on` on `report` restores
+    stored evidence for a closed window when the upstream source has rotated
+    (`replay_into_events` + `maybe_replay`, fingerprint dedup vs live, open-window
+    skip, off by default). Verified live: seeded a past record, ran the closed
+    window → restored and shown; without the flag → "No events found".
   - 2026-06-22: Built item 5 (health surface). `gittan evidence` +
     `core/evidence_store.store_health` (totals, captured-today, last capture,
     retention span, per-source, hash-chain integrity incl. tamper detection).

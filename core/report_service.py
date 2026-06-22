@@ -322,6 +322,9 @@ def run_timelog_report(
         make_event_fn=_make_event,
     )
 
+    from core.evidence_store import maybe_replay
+    all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
+
     screen_time_days = collect_screen_time_status(
         args=args,
         dt_from=dt_from,

@@ -61,13 +61,16 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     html_path = getattr(args, "report_html", None)
     want_html = bool(html_path)
 
-    from core.cli_report_status_helpers import capture_shadow_log_line
+    from core.cli_report_status_helpers import capture_shadow_log_line, shadow_replay_line
 
     shadow_line = capture_shadow_log_line(
         getattr(args, "shadow_log", "off"), getattr(report, "all_events", [])
     )
     if shadow_line and _want_log(args) and not want_json:
         print(shadow_line)
+    replay_line = shadow_replay_line(getattr(report.args, "shadow_replay_restored", 0))
+    if replay_line and _want_log(args) and not want_json:
+        print(replay_line)
 
     payload: Optional[Dict[str, Any]] = None
     if want_json or want_html:

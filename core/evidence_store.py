@@ -27,7 +27,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from core.evidence_record import compute_content_hash, evidence_record_from_event
+from core.evidence_record import (
+    compute_content_hash,
+    compute_evidence_fingerprint,
+    evidence_record_from_event,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -237,3 +241,84 @@ def store_health(
         "chain_ok": not breaks,
         "chain_breaks": breaks,
     }
+
+
+def replay_into_events(
+    live_events: List[Dict[str, Any]],
+    dt_from: datetime,
+    dt_to: datetime,
+    *,
+    home: Optional[Path] = None,
+    base_dir: Optional[Path] = None,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """Merge stored evidence into ``live_events`` for the window ``[dt_from, dt_to]``.
+
+    Stored records whose fingerprint is not already present live are converted
+    back to event dicts (marked ``replayed``) and appended — restoring evidence
+    whose upstream source has since rotated. Returns ``(events, restored_count)``.
+    """
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    ev_dir = events_dir(base)
+    if not ev_dir.is_dir():
+        return list(live_events), 0
+
+    live_fps = {
+        compute_evidence_fingerprint(ev.get("source"), ev.get("timestamp"), ev.get("detail"))
+        for ev in live_events
+    }
+    window_from = dt_from.astimezone(timezone.utc)
+    window_to = dt_to.astimezone(timezone.utc)
+    restored: List[Dict[str, Any]] = []
+    for _month, rec in read_records(ev_dir):
+        fp = rec.get("fingerprint")
+        if not fp or fp in live_fps:
+            continue
+        try:
+            obs_dt = datetime.fromisoformat(str(rec.get("observed_at")))
+        except (TypeError, ValueError):
+            continue
+        if obs_dt.tzinfo is None:
+            obs_dt = obs_dt.replace(tzinfo=timezone.utc)
+        if not (window_from <= obs_dt <= window_to):
+            continue
+        live_fps.add(fp)
+        restored.append(
+            {
+                "source": rec.get("source", ""),
+                "timestamp": obs_dt,
+                "detail": rec.get("detail", ""),
+                "project": rec.get("project_at_capture", ""),
+                "replayed": True,
+            }
+        )
+    return list(live_events) + restored, len(restored)
+
+
+def maybe_replay(
+    live_events: List[Dict[str, Any]],
+    *,
+    args: Any,
+    dt_from: datetime,
+    dt_to: datetime,
+    home: Optional[Path] = None,
+    base_dir: Optional[Path] = None,
+    local_tz: Any = None,
+) -> List[Dict[str, Any]]:
+    """Opt-in replay for CLOSED windows; records the restored count on ``args``.
+
+    Open windows (those including today) return live events unchanged — live
+    sources are authoritative there. Never raises into the report.
+    """
+    setattr(args, "shadow_replay_restored", 0)
+    if str(getattr(args, "shadow_replay", "off") or "off").strip().lower() != "on":
+        return live_events
+    tz = local_tz or timezone.utc
+    if dt_to.astimezone(tz).date() >= datetime.now(tz).date():
+        return live_events  # open window: do not replay
+    try:
+        events, restored = replay_into_events(live_events, dt_from, dt_to, home=home, base_dir=base_dir)
+        setattr(args, "shadow_replay_restored", restored)
+        return events
+    except Exception as exc:  # replay must never break the report
+        _LOGGER.warning("Shadow log replay failed: %s", exc)
+        return live_events

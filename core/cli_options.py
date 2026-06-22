@@ -76,6 +76,9 @@ class TimelogRunOptions:
     # Opt-in durable evidence shadow log (docs/specs/local-evidence-shadow-log.md).
     # "off" by default: nothing is written unless explicitly enabled.
     shadow_log: str = "off"
+    # Opt-in replay of stored evidence for closed windows (restores events whose
+    # upstream source has rotated). "off" by default.
+    shadow_replay: str = "off"
 
 
 def split_comma_separated_list(value: Optional[str]) -> List[str]:

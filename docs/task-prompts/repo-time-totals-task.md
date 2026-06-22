@@ -1,43 +1,88 @@
-# Per-project totals in gittan status: Total observed + Git-only columns
+# Per-project totals in `gittan status`: historical columns (TIMELOG + Git)
 
-> **Status update (2026-06-15, product-owner pass):** Beta testing surfaced a
-> **catastrophic accuracy regression in the period `Hours` column** (entire days
-> collapsing into single ~24h sessions; a one-month report read 672h vs ~46.8h
-> Screen Time). Root cause was in `collectors/cursor_composer.py`, not in this
-> story — but it made the **Total observed** column look broken by comparison and
-> proved the report can be wildly wrong while CI is green. Decisions taken:
->
-> - **Total observed (P1) column: REMOVE for now.** It is the *least*-corrupted
->   column, but shipping it next to an inflated `Hours` column shows two
->   contradictory numbers and erodes trust. Defer re-introduction until the
->   accuracy guardrails (see *Critical dependency* below) land. The aggregation
->   code (`core/timelog_totals.py`) may stay; only the **column is withdrawn**.
-> - **Git-only (P2): keep**, reframed explicitly as a display-only comparison
->   signal that also rides on session math.
-> - This spec is now `draft` again pending the column-removal follow-up.
+> **Status update (2026-06-22, product-owner pass):** Maintainer intent clarified:
+> the valuable **bootstrap / all-time** signal is **Git observed** (commit-derived),
+> not a vague "total observed." **TIMELOG observed** (worklog all-time) is a
+> separate, optional corroboration column for users with global hook + worklog
+> discipline. Ship historical columns **behind `--history`** so default
+> `gittan status` stays a single period `Hours` column. Accuracy net (sanity
+> bounds + golden eval composer fixture) is ✅ — safe to reintroduce historical
+> columns once labeled correctly. See *Historical columns (revised plan)* below.
+
+> **Status update (2026-06-15):** Beta testing surfaced a catastrophic accuracy
+> regression in the period `Hours` column (composer day-collapse). The withdrawn
+> **Total observed** column was TIMELOG all-time but **misread** as "everything
+> Gittan saw." It was removed until the accuracy net landed (now complete).
 
 ## Problem
 
 `gittan status` and `gittan report` show hours for the **selected period only**.
-There is no quick way to see total accumulated time per project across all
-history, or to bootstrap a time estimate from git commit history for new users
-who have not yet built up a full Gittan event log.
+There is no quick way to see **historical magnitude** per project, or to bootstrap
+an estimate from local git history for new users who have not yet built up IDE/AI
+telemetry.
 
-A beta tester request surfaced two distinct needs:
+Two **distinct** historical signals were conflated under "Total observed":
 
-1. **Total observed** — how many hours Gittan has recorded for a project across
-   all time, not just the current window. Useful as a sanity check ("does this
-   project really have only 10 hours total?") and as an onboarding value:
-   TIMELOG.md history is available from day one.
+1. **TIMELOG observed** — sum of all `TIMELOG.md` entries per project (all-time).
+   Answers: *"How much have I **logged** about this project?"* Best when global
+   timelog hooks feed per-repo worklogs (`docs/runbooks/global-timelog-setup.md`).
 
-2. **Git-only** — a secondary column derived purely from `git log` timestamps,
-   surfaced transparently as a comparison signal. Accuracy varies by workflow
-   (Lovable/Claude Code auto-commit workflows can reach 70–90%); it is never
-   treated as a primary estimate. New users get immediate historical coverage
-   without waiting to accumulate IDE/AI event logs.
+2. **Git observed** — session estimate from `git log` timestamps on configured
+   `git_repo` paths. Answers: *"How much does **commit activity** suggest?"* Best
+   for onboarding (months of commits, sparse worklog) and Lovable/Claude Code
+   auto-commit workflows.
 
-**Out of scope for this story:** Total Invoiced (requires new billing log
-storage — own story).
+**Out of scope for this story:** Total Invoiced (requires new billing log storage).
+
+## Historical columns (revised plan)
+
+### Three period vs history concepts
+
+| Column (UX label) | Question it answers | Source | Time window | Default visible |
+|---|---|---|---|---|
+| **Hours** | How much this period? | All enabled collectors | Selected period | Yes |
+| **Git observed** | Commit-derived estimate? | `git log` on `git_repo` | **All-time** (primary); optional period slice later | No — `--history` |
+| **TIMELOG observed** | How much logged in worklog? | `TIMELOG.md` only | All-time | No — `--history` |
+
+**Not comparable:** period `Hours` (multi-source) vs either historical column.
+Historical columns are also not comparable with each other — TIMELOG = recorded
+work; Git = commit proxy. Showing both is **corroboration light** (alignment /
+gaps), not a merged truth.
+
+### Recommended rollout (product-owner)
+
+1. **`--history` first** — opt-in flag on `gittan status` (and later `report`)
+   that adds historical sub-columns without widening the default table.
+2. **Git observed (all-time) first** — matches maintainer intent; reuses
+   `core/git_totals.py` with no `dt_from`/`dt_to` (already supported). Rename
+   terminal header from "Git only" → **"Git (all-time)"** or **"Git estimate"**.
+3. **TIMELOG observed optional second** — restore `compute_timelog_project_totals`
+   under `--history` only; label **"TIMELOG (all-time)"**, never "Total observed".
+4. **Show a column only when data exists** — `—` when no `git_repo` / no worklog
+   rows; do not run `git log` unless `--history` or legacy `--git` (deprecate
+   `--git` toward `--history` in a follow-up).
+5. **Both columns display-only** — never affect period session math, billable
+   totals, or truth-payload hours.
+
+### When you need one vs both
+
+| Your workflow | Start with |
+|---|---|
+| Commits often, worklog sparse | Git observed only |
+| Global hook + reliable `TIMELOG.md` | TIMELOG observed; add Git for cross-check |
+| Both established | Both under `--history` when comparing log vs commit rhythm |
+
+### Decision test (for operators)
+
+After `gittan status --last-month`:
+
+1. *"Do period hours look sane?"* → **Hours** + sanity bounds / presence-estimated.
+2. *"How much have I ever touched this repo?"* → **Git observed (all-time)** if
+   `git_repo` is configured.
+3. *"How much is written in the worklog total?"* → **TIMELOG observed** if hooks
+   or manual logging are trusted.
+4. *"Do I log and commit in step?"* → **both** historical columns; interpret the
+   gap, do not sum them.
 
 ## Prerequisite
 
@@ -45,22 +90,24 @@ storage — own story).
 `core/repo_slug.py` provides cached path→`owner/repo` slug resolution that the
 git-only collector reuses for project attribution.
 
-## Proposed columns in gittan status
+## Proposed columns in `gittan status`
 
-| Column | Source | Always shown |
+| Column (label) | Source | Shown when |
 |---|---|---|
-| This period | Existing report engine | Yes |
-| Total observed | TIMELOG.md all-time sum | **Withdrawn (P1) — removed until accuracy net lands** |
-| Git only | `git log` per configured repo | No — requires `--git` flag (P2) |
+| Hours (period) | Existing report engine | Always |
+| Git observed | `git log` all-time on `git_repo` | `--history` (recommended); today `--git` shows **period** git only — migrate |
+| TIMELOG observed | `TIMELOG.md` all-time sum | `--history` only |
 
-**Semantics note (important):** "This period" `Hours` aggregates **all sources**
-for the window; "Total observed" sums **only TIMELOG.md, all-time**. These are not
-comparable magnitudes — a sparse manual worklog will read *lower* than a single
-month of all-source activity. The original spec did not state this, which is why
-the column was misread as "everything Gittan ever saw." Any re-introduction must
-ship with an explicit label/legend (see decision in status banner).
+**Deprecated naming:** do not ship **"Total observed"** — it implied "everything
+Gittan saw." Use explicit source labels in the terminal header and a one-line
+legend under the table when `--history` is on.
 
-## Critical dependency: session integrity (must land before re-introducing P1)
+**Semantics note:** period `Hours` aggregates **all sources** for the window.
+TIMELOG observed and Git observed are **independent historical estimates**;
+a sparse worklog reads lower than commit-heavy months — that is expected, not a
+bug.
+
+## Critical dependency: session integrity
 
 The period `Hours` column is only trustworthy if session computation is sound.
 Beta testing proved it was not: `collectors/cursor_composer.py` laid a 14-minute
@@ -81,94 +128,87 @@ following sibling backlog items (product-owner pass, 2026-06-15):
    `core/sanity_bounds.py` flags sessions > 16h, days attributing > 24h, and
    observed-vs-Screen-Time over-attribution > 1.5×; warnings render under the
    Review summary (`outputs/terminal.py`). Covered by `tests/test_sanity_bounds.py`.
-2. **Golden eval covers high-frequency telemetry** — ⏳ pending. Add a Cursor
-   composer `state.vscdb` fixture so this bug class is caught by `run_golden_eval.py`.
+2. **Golden eval covers high-frequency telemetry** — ✅ **LANDED (2026-06-16).**
+   `tests/fixtures/golden_cursor_composer_dataset.json`; PR #154.
 
-Until (2) also lands, do not show two project-hour magnitudes side by side.
+Accuracy net is complete. Next implementation slice: **`--history` + Git observed
+(all-time)**, then optional TIMELOG observed — not both on by default.
 
-## P1 — Total observed column (WITHDRAWN until accuracy net lands)
+## P1 — TIMELOG observed column (optional, `--history` only)
 
 ### Task
 
-~~Add a **Total observed** column to `gittan status` that sums all TIMELOG.md
-entries per project without date filtering, displayed next to the period hours.~~
-**Withdrawn — done (2026-06-15).** `core/report_service.py` no longer populates
-`timelog_project_totals` (set to `{}`), so the terminal column is dormant
-(`show_totals` is always False). The rendering scaffolding in `outputs/terminal.py`
-and the aggregation helper `core/timelog_totals.py` (+ `tests/test_timelog_totals.py`)
-are intentionally retained, so re-introduction is just restoring the compute call
-once the column returns with a corrected label.
+Restore the dormant **TIMELOG (all-time)** column under `--history` only. Do **not**
+use the label "Total observed."
+
+**Current state (2026-06-22):** `core/report_service.py` leaves
+`timelog_project_totals` empty; rendering in `outputs/terminal.py` and
+`core/timelog_totals.py` remain for re-introduction.
 
 ### Key files
 
-- `core/timelog_totals.py` — all-time TIMELOG.md aggregation (iterates all worklog paths)
-- `core/git_totals.py` — per-profile git log aggregation using passive session floor
-- `collectors/git_commits.py` — git log timestamp reader
-- `core/report_service.py` — orchestration; computes and passes totals to ReportPayload
-- `core/report_cli.py` — wires totals to terminal output
-- `outputs/terminal.py` — "Total observed" and "Git only" columns in breakdown table
+- `core/timelog_totals.py` — all-time TIMELOG.md aggregation
+- `core/report_service.py` — populate totals when `--history`
+- `outputs/terminal.py` — column header **"TIMELOG (all-time)"**
+- `core/cli_report_status.py` — add `--history` flag
 
 ### Non-goals (P1)
 
-- Do not include IDE/AI rolling-window events in the total — their retention
-  window is bounded; TIMELOG.md is the only source with reliable all-time history.
-- Do not change how period hours are calculated.
+- Do not include IDE/AI events in the total (bounded retention).
+- Do not change period hours or billable math.
+- Do not show this column without `--history`.
 
 ## Behavior Contract (P1)
 
 ```gherkin
-Feature: Total observed column in gittan status
-  Users see accumulated project hours across all TIMELOG.md history
-  alongside the current period, without changing report accuracy.
+Feature: TIMELOG observed column in gittan status
+  Users who opt in with --history see all-time worklog hours per project.
 
   Background:
-    Given TIMELOG.md contains entries across multiple months for Project Alpha
+    Given TIMELOG.md contains entries across multiple months for project-alpha
     And the user runs gittan for a one-week period
 
-  Scenario: Total observed shown alongside period hours
-    Given Project Alpha has 3h in this week and 47h in TIMELOG.md history
-    When the user runs "gittan status"
-    Then the status table shows "3h" under "This period" for Project Alpha
-    And shows "47h" under "Total observed" for Project Alpha
+  Scenario: TIMELOG observed shown only with --history
+    Given project-alpha has 3h in this week and 47h in TIMELOG.md history
+    When the user runs "gittan status --history"
+    Then the status table shows "3h" under "Hours" for project-alpha
+    And shows "47h" under "TIMELOG (all-time)" for project-alpha
 
-  Scenario: Project with no TIMELOG.md history
-    Given Project Beta has IDE events this week but no TIMELOG.md entries
-    When the user runs "gittan status"
-    Then "Total observed" shows "—" or "0h" for Project Beta
-    And no error is raised
+  Scenario: Default status hides historical columns
+    When the user runs "gittan status" without --history
+    Then no TIMELOG (all-time) column appears
 
-  Scenario: Total observed is read-only and never affects session math
-    Given TIMELOG.md has entries for Project Alpha
+  Scenario: TIMELOG observed is read-only
     When Gittan aggregates the period report
     Then session computation and billable hours are unchanged
-    And "Total observed" is a display-only sum, not part of the billing calculation
 ```
 
 ### Acceptance criteria (P1)
 
-- Total observed column appears in `gittan status` output.
-- Value is the sum of all TIMELOG.md-sourced hours for the project, no date
-  filter applied.
-- Projects with no TIMELOG.md history show `—` or `0h`; no crash or warning.
-- Period hours, session math, and billable total are unaffected.
-- Terminal output follows style guide: muted value color, aligned columns.
-- Full autotest suite green (`bash scripts/run_autotests.sh`).
-- No Python file exceeds 500 lines.
-
-### Validation (P1)
-
-| Scenario | Evidence |
-|---|---|
-| Total observed beside period hours | Unit test with TIMELOG fixture spanning multiple months |
-| Zero-history project shows `—` | Unit test with project having no TIMELOG entries |
-| Session math unchanged | Existing session tests still pass; no delta in golden eval |
-| Terminal output | `cli_impact_smoke.sh` + manual review of column alignment |
+- Column appears only with `--history`; header **"TIMELOG (all-time)"**.
+- Value sums all TIMELOG.md hours for the project; no date filter.
+- Projects without worklog history show `—`; no crash.
+- Period hours and billable totals unchanged.
+- Full autotest suite green.
 
 ---
 
-## P2 — Git-only column (opt-in via `--git`)
+## P2 — Git observed column (`--history`; extends shipped `--git`)
 
-### Task
+### Shipped today (period scope)
+
+`gittan status --git` adds a **period-scoped** git column via
+`compute_git_project_totals(..., dt_from, dt_to)`. Header: "Git only".
+
+### Next slice (product priority)
+
+**Git observed (all-time)** under `--history`:
+
+- Call `compute_git_project_totals` without period bounds (1970–2099).
+- Header: **"Git estimate (all-time)"** — commit timestamps, not verified work.
+- Still display-only; passive session floor; no overlap inflation of period Hours.
+
+### Task (original collector — built)
 
 Add a new `collectors/git_commits.py` that reads `git log` for repos configured
 in `timelog_projects.json` and produces events with `source="git"`. Wire it into
@@ -213,46 +253,31 @@ Multiple repos per project are supported as a list:
 ## Behavior Contract (P2)
 
 ```gherkin
-Feature: Git-only column in gittan status
-  Users with configured git repos see a transparent git-derived time estimate
-  alongside Gittan's activity-based numbers, as a comparison and bootstrap signal.
+Feature: Git observed column in gittan status
+  Users who opt in see a transparent git-derived estimate alongside period hours.
 
   Background:
-    Given timelog_projects.json has Project Alpha with git_repo pointing to a local clone
-    And the clone has commits from the user across multiple weeks
+    Given timelog_projects.json has project-alpha with git_repo pointing to a local clone
 
-  Scenario: Git-only column appears with --git flag
-    Given Project Alpha has 5h from IDE events this week
-    And git log shows commits spanning 3h of inferred sessions this week
-    When the user runs "gittan status --git"
-    Then the status table shows "5h" under "This period"
-    And shows "3h" under "Git only" for Project Alpha
-    And the column is labeled to indicate it is a git-derived estimate
+  Scenario: Git all-time appears with --history
+    Given the clone has commits spanning 40h of inferred sessions all-time
+    And project-alpha has 5h from IDE events this week
+    When the user runs "gittan status --last-week --history"
+    Then the status table shows period hours under "Hours"
+    And shows the all-time git estimate under "Git estimate (all-time)"
+    And the column legend states commit-timestamp derivation
 
-  Scenario: Git-only not shown without flag
-    When the user runs "gittan status" without --git
-    Then no "Git only" column appears
-    And no git log subprocess is run
+  Scenario: Historical columns hidden by default
+    When the user runs "gittan status" without --history
+    Then no git all-time column appears
+    And no git log subprocess runs unless --git legacy flag is passed
 
-  Scenario: No git_repo configured for project
-    Given Project Beta has no git_repo in timelog_projects.json
-    When the user runs "gittan status --git"
-    Then Project Beta shows "—" in the Git only column
-    And a note in --source-summary indicates which projects lack git config
-
-  Scenario: Git-only does not inflate hours when IDE events overlap
-    Given Project Alpha has IDE events 10:00–12:00 on a given day
-    And git commits exist in the same 10:00–12:00 window
-    When Gittan aggregates with --git
-    Then the git sessions are suppressed for that overlap window
-    And total hours for that day are not double-counted
-
-  Scenario: New user with no TIMELOG.md but git history
+  Scenario: New user with git history but no TIMELOG
     Given no TIMELOG.md entries exist
-    And git_repo is configured with 6 months of commits
-    When the user runs "gittan status --git"
-    Then "Git only" shows a non-zero estimate from historical commits
-    And the column is clearly labeled as a git-only estimate (not Gittan-verified)
+    And git_repo has six months of commits
+    When the user runs "gittan status --history"
+    Then Git estimate (all-time) is non-zero
+    And TIMELOG (all-time) shows "—"
 ```
 
 ### Acceptance criteria (P2)
@@ -279,10 +304,17 @@ Feature: Git-only column in gittan status
 
 ---
 
-## Implementation order
+## Implementation order (revised 2026-06-22)
 
-1. P1 (Total observed) — standalone, no new collector, lower risk.
-2. P2 (Git-only collector) — builds on P1 table layout; reuses `repo_slug.py`.
+1. **P2b — `--history` + Git observed (all-time)** — primary maintainer intent;
+   small delta on shipped P2 (`core/git_totals.py` already supports unbounded range).
+2. **P1 — TIMELOG observed under `--history`** — optional corroboration; restore
+   `compute_timelog_project_totals` call with new label.
+3. **Follow-up — deprecate `--git`** in favor of `--history` (or make `--git` an
+   alias that implies period git column only, documented as legacy).
+
+Original order (P1 before P2) is **superseded** — git bootstrap delivers more
+value to more users than worklog all-time alone.
 
 ## Branch
 
@@ -291,23 +323,23 @@ Feature: Git-only column in gittan status
 ## Traceability
 
 - story_id: GH-146
-- spec_status: draft (reopened 2026-06-15 after accuracy regression)
-- implementation_status: P2 shipped; P1 column withdrawn pending accuracy net
+- spec_status: draft (historical columns reframed 2026-06-22)
+- implementation_status: P2 period `--git` shipped; P2b `--history` git all-time
+  not built; P1 TIMELOG column dormant pending `--history` slice
 - created_at: 2026-06-12
-- last_updated_at: 2026-06-15
-- implementation.pr: #147 (P1 + P2)
-- implementation.branch: task/repo-time-totals
+- last_updated_at: 2026-06-22
+- implementation.pr: #147 (period columns); #154 (golden eval gate); pending for `--history`
+- implementation.branch: task/repo-time-totals (historical); new slice TBD
 - implementation.commits: []
-- validation.evidence: cursor composer burst-per-touch fix verified against live
-  data (672h → 108.9h, 0 day-collapse); `tests/test_cursor_composer.py` rewritten;
-  full suite 801 green
-- validation.decision: CONDITIONAL — P2 stands; P1 column withdrawn until
-  sanity-bound guardrails + high-frequency golden fixture land
+- validation.evidence: accuracy net + `tests/test_timelog_totals.py`,
+  `tests/test_git_totals.py` (if present), golden cursor dataset
+- validation.decision: GO for P2b after #154 merges; P1 optional same PR or follow-up
 - related:
-  - session-integrity fix in `collectors/cursor_composer.py` (burst-per-touch)
-  - follow-up backlog: accuracy guardrails, golden telemetry fixture, P1 column removal
+  - PR #154 golden eval composer guard
+  - `docs/runbooks/global-timelog-setup.md` (TIMELOG observed precondition)
 - changelog:
-  - 2026-06-12: Initial draft. Feature shaped from beta tester request and product-owner planning session. Prerequisite PR #144 (repo_slug.py) confirmed merged.
-  - 2026-06-15: Reopened after beta testing exposed period-`Hours` day-collapse
-    (composer heartbeat fill). Documented session-integrity dependency, withdrew
-    the Total observed column, added semantics note, recorded guardrail follow-ups.
+  - 2026-06-12: Initial draft.
+  - 2026-06-15: Withdrew "Total observed" after composer day-collapse; accuracy net gating.
+  - 2026-06-16: Golden eval composer fixture landed (see PR #154).
+  - 2026-06-22: Split TIMELOG observed vs Git observed; git-first under `--history`;
+    deprecated "Total observed" naming; revised implementation order.

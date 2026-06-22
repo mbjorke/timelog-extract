@@ -10,6 +10,7 @@ import typer
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
+from core.cli_report_status_helpers import capture_shadow_log_line
 from core.cli_status_history import (
     historical_project_names,
     history_table_cells,
@@ -66,6 +67,13 @@ def status(
             help="Show period-scoped Git column (legacy; prefer --history).",
         ),
     ] = False,
+    shadow_log: Annotated[
+        str,
+        typer.Option(
+            "--shadow-log",
+            help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.",
+        ),
+    ] = "off",
 ):
     """Quick hours snapshot with project totals and session counts.
 
@@ -127,6 +135,7 @@ def status(
         lovable_noise_profile=lovable_noise_profile,
         history_source=history_source,
         git_source=git_source,
+        shadow_log=shadow_log,
     )
 
     print_command_hero(console, "status")
@@ -134,6 +143,7 @@ def status(
 
     try:
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+        shadow_line = capture_shadow_log_line(shadow_log, report.all_events)
 
         show_history = bool(history_source)
         git_totals = report.git_project_totals or {}
@@ -151,6 +161,8 @@ def status(
                     f"[{STYLE_MUTED}]Tip: configure `git_repo` on project profiles for Git "
                     f"bootstrap via `--history`.[/{STYLE_MUTED}]"
                 )
+            if shadow_line:
+                console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
             return
 
         title_suffix = " — additive (primary project per session)" if additive else ""
@@ -300,6 +312,8 @@ def status(
             console.print(
                 f"[{STYLE_MUTED}]TIMELOG evidence projects in window: {', '.join(timelog_projects)}[/{STYLE_MUTED}]"
             )
+        if shadow_line:
+            console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")

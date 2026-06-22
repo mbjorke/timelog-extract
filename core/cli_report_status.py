@@ -121,7 +121,7 @@ def report(
         bool,
         typer.Option(
             "--history",
-            help="All available logs: observed totals + Git estimate (display-only; does not change period Hours).",
+            help="Add Total (observed) and Git estimate columns alongside period Hours.",
         ),
     ] = False,
     shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.")] = "off",

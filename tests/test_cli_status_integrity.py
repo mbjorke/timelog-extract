@@ -18,6 +18,7 @@ class _FakeReport:
         self.profiles = []
         self.git_project_totals = {}
         self.timelog_project_totals = {}
+        self.observed_project_totals = {}
         self.args = type("Args", (), {"min_session": 15, "min_session_passive": 5, "noise_profile": "strict"})()
 
 

@@ -44,16 +44,22 @@ class HistoryColumnsReportTests(unittest.TestCase):
                     "core.report_service.compute_report_historical_totals",
                     return_value=({}, fake_git, True),
                 ) as mock_hist:
-                    report = run_timelog_report(
-                        options.projects_config,
-                        options.date_from,
-                        options.date_to,
-                        options,
-                    )
+                    with patch(
+                        "core.report_service.compute_observed_all_time_totals",
+                        return_value={"project-alpha": 99.0},
+                    ) as mock_obs:
+                        report = run_timelog_report(
+                            options.projects_config,
+                            options.date_from,
+                            options.date_to,
+                            options,
+                        )
 
-        self.assertEqual(report.git_project_totals, fake_git)
-        self.assertEqual(report.timelog_project_totals, {})
-        mock_hist.assert_called_once()
+                self.assertEqual(report.git_project_totals, fake_git)
+                self.assertEqual(report.observed_project_totals, {"project-alpha": 99.0})
+                self.assertEqual(report.timelog_project_totals, {})
+                mock_hist.assert_called_once()
+                mock_obs.assert_called_once()
 
     def test_git_without_history_uses_period_bounds(self):
         from core.report_service import run_timelog_report

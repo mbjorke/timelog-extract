@@ -170,6 +170,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.config_path,
         report.timelog_project_totals or None,
         report.git_project_totals or None,
+        report.observed_project_totals or None,
         report.presence_estimated,
     )
     nudge = build_unexplained_gap_nudge(report)

@@ -66,7 +66,7 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
         self.assertEqual(mock_git.call_args.kwargs["dt_to"], dt_to)
 
     def test_history_git_cell_distinguishes_zero_from_missing(self):
-        from core.cli_status_history import history_git_cell
+        from core.cli_status_history import history_git_cell, history_observed_cell
 
         self.assertEqual(
             history_git_cell("project-alpha", show_history=True, git_totals={"project-alpha": 0.0}),
@@ -75,6 +75,10 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
         self.assertEqual(
             history_git_cell("project-alpha", show_history=True, git_totals={}),
             "—",
+        )
+        self.assertEqual(
+            history_observed_cell("project-alpha", show_history=True, observed_totals={"project-alpha": 12.3}),
+            "12.3h",
         )
 
 

@@ -38,6 +38,7 @@ from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
 from core.report_historical_totals import compute_report_historical_totals
+from core.report_observed_totals import compute_observed_all_time_totals
 from collectors.git_commits import git_commits_collector_status
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
@@ -90,6 +91,7 @@ class ReportPayload:
     source_strategy_effective: str
     timelog_project_totals: Dict[str, float] = field(default_factory=dict)
     git_project_totals: Dict[str, float] = field(default_factory=dict)
+    observed_project_totals: Dict[str, float] = field(default_factory=dict)
     presence_estimated: PresenceEstimatedResult = field(
         default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
     )
@@ -216,6 +218,7 @@ def _print_report(
     config_path: Optional[Path],
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
+    observed_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Optional[PresenceEstimatedResult] = None,
 ) -> None:
     terminal_output.print_report(
@@ -232,6 +235,7 @@ def _print_report(
         billable_total_hours_fn=_billable_total_hours,
         timelog_project_totals=timelog_project_totals,
         git_project_totals=git_project_totals,
+        observed_project_totals=observed_project_totals,
         presence_estimated=presence_estimated,
     )
 
@@ -369,6 +373,7 @@ def run_timelog_report(
         worklog_source=WORKLOG_SOURCE,
         ai_sources=AI_SOURCES,
     )
+    observed_totals = compute_observed_all_time_totals(config_path, options)
     collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(
         profiles,
         local_tz=LOCAL_TZ,
@@ -403,6 +408,7 @@ def run_timelog_report(
         source_strategy_effective=context.source_strategy_effective,
         timelog_project_totals=timelog_totals,
         git_project_totals=git_totals,
+        observed_project_totals=observed_totals,
         presence_estimated=presence_estimated,
     )
 

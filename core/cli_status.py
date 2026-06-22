@@ -10,7 +10,6 @@ import typer
 from core.cli_app import app
 from core.cli_date_range import (
     has_explicit_date_window,
-    resolve_all_available_window,
     resolve_date_window,
 )
 from core.cli_options import TimelogRunOptions
@@ -19,6 +18,7 @@ from core.cli_status_history import (
     HISTORY_LEGEND,
     historical_project_names,
     history_git_cell,
+    history_observed_cell,
     sorted_status_projects,
 )
 from core.config import default_projects_config_option
@@ -62,7 +62,7 @@ def status(
         bool,
         typer.Option(
             "--history",
-            help="All available logs: Total (observed) per project + Git estimate (no period prompt).",
+            help="Add Total (observed) and Git estimate columns alongside period Hours.",
         ),
     ] = False,
     git_source: Annotated[
@@ -85,7 +85,7 @@ def status(
     Common use cases:
     - Daily check: `gittan status --today --additive` (default noise is lenient)
     - Strict totals per project: use `--additive` (project rows sum exactly to Total)
-    - Historical totals: `gittan status --history` (all available logs + Git estimate)
+    - Historical comparison: `gittan status --last-month --history` (period Hours + all-logs observed + Git)
     """
     from collections import defaultdict
 
@@ -116,27 +116,20 @@ def status(
         last_14_days=last_14_days,
         last_month=last_month,
     )
-    if history_source and not explicit_period:
-        df_s, dt_s = resolve_all_available_window()
-        title_date = "All available logs"
-    else:
-        df_s, dt_s = resolve_date_window(
-            date_from=date_from,
-            date_to=date_to,
-            today=today,
-            yesterday=yesterday,
-            last_3_days=last_3_days,
-            last_week=last_week,
-            last_14_days=last_14_days,
-            last_month=last_month,
-            prompt_if_missing=not history_source
-            and not (
-                date_from or date_to or today or yesterday or last_3_days or last_week or last_14_days or last_month
-            ),
-        )
-        if df_s is None or dt_s is None:
-            raise typer.BadParameter("Could not resolve date range for status.")
-        title_date = f"{df_s} to {dt_s}" if df_s != dt_s else str(df_s)
+    df_s, dt_s = resolve_date_window(
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        prompt_if_missing=not explicit_period,
+    )
+    if df_s is None or dt_s is None:
+        raise typer.BadParameter("Could not resolve date range for status.")
+    title_date = f"{df_s} to {dt_s}" if df_s != dt_s else str(df_s)
 
     console = Console()
 
@@ -167,8 +160,8 @@ def status(
 
         show_history = bool(history_source)
         git_totals = report.git_project_totals or {}
+        observed_totals = report.observed_project_totals or {}
         historical_projects = historical_project_names(report, show_history=show_history)
-        hours_header = "Total (observed)" if show_history else "Hours"
 
         if not report.included_events and not historical_projects:
             console.print(f"[{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
@@ -190,15 +183,19 @@ def status(
         table.border_style = STYLE_BORDER
         table.header_style = f"bold {STYLE_LABEL}"
         table.add_column("Project", style=STYLE_LABEL)
-        table.add_column(hours_header, justify="right", style=CLR_VALUE_ORANGE)
-        table.add_column("Sessions", justify="right", style=STYLE_MUTED)
+        table.add_column("Hours", justify="right", style=CLR_VALUE_ORANGE)
         if show_history:
+            table.add_column("Total (observed)", justify="right", style=STYLE_MUTED)
             table.add_column("Git estimate", justify="right", style=STYLE_MUTED)
+        table.add_column("Sessions", justify="right", style=STYLE_MUTED)
 
-        def _git_cell(project_name: str) -> list[str]:
+        def _history_cells(project_name: str) -> list[str]:
             if not show_history:
                 return []
-            return [history_git_cell(project_name, show_history=True, git_totals=git_totals)]
+            return [
+                history_observed_cell(project_name, show_history=True, observed_totals=observed_totals),
+                history_git_cell(project_name, show_history=True, git_totals=git_totals),
+            ]
 
         shown_project_hours = 0.0
         shown_project_sessions = 0
@@ -242,8 +239,8 @@ def status(
                 table.add_row(
                     project_name,
                     f"{proj_hours:.1f}h",
+                    *_history_cells(project_name),
                     str(proj_sessions),
-                    *_git_cell(project_name),
                 )
         else:
             session_counts = count_project_sessions_from_overall_days(report.overall_days)
@@ -265,8 +262,8 @@ def status(
                     table.add_row(
                         project_name,
                         f"{proj_hours:.1f}h" if proj_hours else "—",
+                        *_history_cells(project_name),
                         str(proj_sessions) if proj_sessions else "—",
-                        *_git_cell(project_name),
                     )
 
         total_h = sum(d.get("hours", 0.0) for d in report.overall_days.values())
@@ -275,10 +272,10 @@ def status(
         total_row = [
             f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]",
             f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
-            f"[bold {STYLE_MUTED}]{total_sessions}[/bold {STYLE_MUTED}]",
         ]
         if show_history:
-            total_row.append("")
+            total_row.extend(["", ""])
+        total_row.append(f"[bold {STYLE_MUTED}]{total_sessions}[/bold {STYLE_MUTED}]")
         table.add_row(*total_row)
 
         console.print(table)

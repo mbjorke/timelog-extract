@@ -10,11 +10,23 @@ def historical_project_names(
     *,
     show_history: bool,
 ) -> Set[str]:
-    git_totals = report.git_project_totals or {}
     names: Set[str] = set()
     if show_history:
-        names |= set(git_totals)
+        names |= set(report.git_project_totals or {})
+        names |= set(report.observed_project_totals or {})
     return names
+
+
+def history_observed_cell(
+    project_name: str,
+    *,
+    show_history: bool,
+    observed_totals: Dict[str, float],
+) -> str:
+    if not show_history:
+        return ""
+    observed_h = observed_totals.get(project_name)
+    return f"{observed_h:.1f}h" if observed_h is not None else "—"
 
 
 def history_git_cell(project_name: str, *, show_history: bool, git_totals: Dict[str, float]) -> str:
@@ -37,6 +49,6 @@ def sorted_status_projects(
 
 
 HISTORY_LEGEND = (
-    "Total (observed) uses all logs Gittan can still read; Git estimate uses commits only. "
-    "Compare — do not add. Retention limits apply."
+    "Hours are for the selected period. Total (observed) uses all logs Gittan can still read; "
+    "Git estimate uses commits only. Compare — do not add. Retention limits apply."
 )

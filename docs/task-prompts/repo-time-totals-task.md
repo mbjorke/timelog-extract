@@ -1,10 +1,8 @@
-# GH-146: `gittan status --history` — all available logs + Git estimate
+# GH-146: `gittan status --history` — period Hours + comparison columns
 
-> **Status (2026-06-22, locked):** `gittan status --history` runs **without a period
-> prompt**, scans **all logs Gittan can still read** (wide window from 2020-01-01),
-> and shows **Total (observed)** | **Git estimate** | **Sessions**. No TIMELOG
-> column. Compare columns — do not add. Retention limits apply. Legacy `gittan
-> status --git` keeps a **period-scoped** git column ("Git only").
+> **Status (2026-06-22, locked):** `--history` adds **Total (observed)** and **Git
+> estimate** beside period **Hours**. Period selection is unchanged (prompt,
+> `--last-month`, `--from`/`--to`, etc.). No TIMELOG column. Compare — do not add.
 
 ## Problem
 
@@ -16,30 +14,31 @@ worklog sums as "everything Gittan saw."
 ## Target UX
 
 ```bash
-gittan status --history          # no period prompt; all available logs
-gittan status --last-week --history   # optional explicit window still supported
+gittan status --last-month --history
+gittan status --from 2026-06-01 --to 2026-06-15 --history
 ```
 
-| Column | Meaning | Source |
+| Column | Meaning | Window |
 |---|---|---|
-| **Total (observed)** | Hours from collectors over the report window | All enabled sources (IDE, AI, worklog, …) |
-| **Git estimate** | Commit-timestamp session estimate | `git log` on profile `git_repo` (all-time when `--history`) |
-| **Sessions** | Session count for observed total | Existing session math |
+| **Hours** | Period total from collectors | Selected period |
+| **Total (observed)** | Retained evidence magnitude | All available logs (2020-01-01 → today) |
+| **Git estimate** | Commit-timestamp sessions | All-time (`git_repo`) |
+| **Sessions** | Period session count | Selected period |
 
-**Not shown:** TIMELOG (all-time) column (withdrawn — confused operators).
+**Not shown:** TIMELOG (all-time) column.
 
-**Legend (under table):** *Total (observed) uses all logs Gittan can still read;
-Git estimate uses commits only. Compare — do not add. Retention limits apply.*
+**Legend:** Hours are for the selected period. Total (observed) and Git estimate are
+for comparison only — do not add them to Hours.
 
 ## Behavior contract
 
 ```gherkin
-Feature: status --history without period
-  Scenario: Default history uses all available logs
-    When the user runs "gittan status --history"
-    Then no interactive period prompt appears
-    And the title shows "All available logs"
-    And project rows show Total (observed) and Git estimate columns
+Feature: status --history with period
+  Scenario: History adds columns beside period Hours
+    When the user runs "gittan status --last-month --history"
+    Then the table shows Hours for the last month
+    And Total (observed) and Git estimate columns appear
+    And period selection was not skipped
 
   Scenario: Git estimate needs git_repo
     Given a project profile without git_repo
@@ -54,7 +53,7 @@ Feature: status --history without period
 
 ## Key files
 
-- `core/cli_date_range.py` — `resolve_all_available_window()`, `has_explicit_date_window()`
+- `core/report_observed_totals.py` — second collector pass for all-available observed totals
 - `core/cli_status.py` — period-less `--history`, column headers
 - `core/cli_status_history.py` — git cell + legend helpers
 - `core/report_historical_totals.py` — git all-time under `--history`; no TIMELOG totals

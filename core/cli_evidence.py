@@ -39,7 +39,11 @@ def evidence(
         console.print(f"Exported {result['records']} record(s) → {result['path']}")
         return
     if prune_older_than is not None:
-        result = evidence_store.prune_older_than(prune_older_than)
+        try:
+            result = evidence_store.prune_older_than(prune_older_than)
+        except ValueError as exc:
+            console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
         console.print(f"Pruned {result.get('removed', 0)} record(s); {result.get('kept', 0)} kept.")
         return
     if erase:

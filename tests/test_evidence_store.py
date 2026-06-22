@@ -157,6 +157,13 @@ class TestEvidenceDataControls(unittest.TestCase):
         lines = [l for l in dest.read_text(encoding="utf-8").splitlines() if l.strip()]
         self.assertEqual(len(lines), 3)
 
+    def test_export_empty_store(self):
+        dest = Path(self._tmp.name) / "out" / "empty.jsonl"
+        result = export_store(dest, base_dir=self.base)
+        self.assertEqual(result["records"], 0)
+        self.assertTrue(dest.exists())
+        self.assertEqual(dest.read_text(encoding="utf-8"), "")
+
     def test_erase_removes_store(self):
         self._seed()
         self.assertTrue(self.base.exists())
@@ -167,6 +174,12 @@ class TestEvidenceDataControls(unittest.TestCase):
     def test_erase_absent_store_is_noop(self):
         result = erase_store(base_dir=self.base)
         self.assertFalse(result["removed"])
+
+    def test_prune_rejects_non_positive_days(self):
+        with self.assertRaises(ValueError):
+            prune_older_than(0, base_dir=self.base)
+        with self.assertRaises(ValueError):
+            prune_older_than(-1, base_dir=self.base)
 
     def test_prune_drops_old_and_rechains(self):
         self._seed()

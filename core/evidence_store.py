@@ -163,23 +163,31 @@ def capture_if_enabled(
         return {"enabled": True, "error": str(exc)}
 
 
+def _read_month_records(path: Path) -> List[Dict[str, Any]]:
+    """Parse one monthly JSONL file; garbled lines are skipped."""
+    records: List[Dict[str, Any]] = []
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        pass
+    return records
+
+
 def read_records(events_directory: Path) -> Iterable[Tuple[str, Dict[str, Any]]]:
     """Yield ``(month, record)`` for all stored records, in file + line order."""
     if not events_directory.is_dir():
         return
     for path in sorted(events_directory.glob("*.jsonl")):
-        try:
-            with path.open(encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        yield path.stem, json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-        except OSError:
-            continue
+        for rec in _read_month_records(path):
+            yield path.stem, rec
 
 
 def _chain_breaks(by_month: Dict[str, List[Dict[str, Any]]]) -> List[str]:
@@ -333,7 +341,7 @@ def export_store(
     records = [rec for _month, rec in read_records(events_dir(base))]
     dest_path = Path(dest).expanduser()
     dest_path.parent.mkdir(parents=True, exist_ok=True)
-    body = "\n".join(json.dumps(r, ensure_ascii=False) for r in records)
+    body = "\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
     dest_path.write_text(body + ("\n" if records else ""), encoding="utf-8")
     return {"records": len(records), "path": str(dest_path)}
 
@@ -343,8 +351,9 @@ def erase_store(*, home: Optional[Path] = None, base_dir: Optional[Path] = None)
     base = base_dir if base_dir is not None else evidence_base_dir(home)
     existed = base.exists()
     if existed:
-        shutil.rmtree(base, ignore_errors=True)
-    return {"removed": existed, "path": str(base)}
+        shutil.rmtree(base)
+    removed = existed and not base.exists()
+    return {"removed": removed, "path": str(base)}
 
 
 def prune_older_than(
@@ -359,6 +368,8 @@ def prune_older_than(
     Retention/privacy control (not a storage need at observed volumes). Records
     with an unparseable ``observed_at`` are kept. Emptied month files are removed.
     """
+    if days <= 0:
+        raise ValueError("days must be positive")
     base = base_dir if base_dir is not None else evidence_base_dir(home)
     ev_dir = events_dir(base)
     if not ev_dir.is_dir():
@@ -367,7 +378,7 @@ def prune_older_than(
     removed = 0
     kept = 0
     for path in sorted(ev_dir.glob("*.jsonl")):
-        records = [rec for _stem, rec in read_records(path.parent) if _stem == path.stem]
+        records = _read_month_records(path)
         survivors: List[Dict[str, Any]] = []
         for rec in records:
             try:

@@ -9,10 +9,13 @@ from types import SimpleNamespace
 
 from core.evidence_store import (
     capture_events,
+    erase_store,
     evidence_base_dir,
     events_dir,
+    export_store,
     load_store_state,
     maybe_replay,
+    prune_older_than,
     replay_into_events,
     store_health,
 )
@@ -125,6 +128,57 @@ class TestEvidenceStore(unittest.TestCase):
         health = store_health(base_dir=self.base, today="2026-06-22")
         self.assertFalse(health["chain_ok"])
         self.assertTrue(health["chain_breaks"])
+
+
+class TestEvidenceDataControls(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name) / "evidence"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _seed(self):
+        capture_events(
+            [
+                _ev("Cursor", "2026-01-10T09:00:00+00:00", "old"),
+                _ev("Cursor", "2026-06-18T09:00:00+00:00", "recent-a"),
+                _ev("Cursor", "2026-06-18T09:05:00+00:00", "recent-b"),
+            ],
+            base_dir=self.base,
+            captured_at="2026-06-18T10:00:00+00:00",
+        )
+
+    def test_export_writes_all_records(self):
+        self._seed()
+        dest = Path(self._tmp.name) / "out" / "export.jsonl"
+        result = export_store(dest, base_dir=self.base)
+        self.assertEqual(result["records"], 3)
+        lines = [l for l in dest.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(lines), 3)
+
+    def test_erase_removes_store(self):
+        self._seed()
+        self.assertTrue(self.base.exists())
+        result = erase_store(base_dir=self.base)
+        self.assertTrue(result["removed"])
+        self.assertFalse(self.base.exists())
+
+    def test_erase_absent_store_is_noop(self):
+        result = erase_store(base_dir=self.base)
+        self.assertFalse(result["removed"])
+
+    def test_prune_drops_old_and_rechains(self):
+        self._seed()
+        # now=2026-06-20, keep 30 days -> 2026-01-10 dropped, June kept.
+        result = prune_older_than(30, base_dir=self.base, now=datetime(2026, 6, 20, tzinfo=timezone.utc))
+        self.assertEqual(result["removed"], 1)
+        self.assertEqual(result["kept"], 2)
+        # The emptied January file is gone; June survivors keep a valid chain.
+        self.assertFalse((events_dir(self.base) / "2026-01.jsonl").exists())
+        health = store_health(base_dir=self.base, today="2026-06-20")
+        self.assertTrue(health["chain_ok"])
+        self.assertEqual(health["total_records"], 2)
 
 
 class TestEvidenceReplay(unittest.TestCase):

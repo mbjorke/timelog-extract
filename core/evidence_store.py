@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+import shutil
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -322,3 +323,74 @@ def maybe_replay(
     except Exception as exc:  # replay must never break the report
         _LOGGER.warning("Shadow log replay failed: %s", exc)
         return live_events
+
+
+def export_store(
+    dest: Any, *, home: Optional[Path] = None, base_dir: Optional[Path] = None
+) -> Dict[str, Any]:
+    """Write all stored records to a single JSONL file (user data export)."""
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    records = [rec for _month, rec in read_records(events_dir(base))]
+    dest_path = Path(dest).expanduser()
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    body = "\n".join(json.dumps(r, ensure_ascii=False) for r in records)
+    dest_path.write_text(body + ("\n" if records else ""), encoding="utf-8")
+    return {"records": len(records), "path": str(dest_path)}
+
+
+def erase_store(*, home: Optional[Path] = None, base_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Delete the entire local evidence store (user-owned data erase)."""
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    existed = base.exists()
+    if existed:
+        shutil.rmtree(base, ignore_errors=True)
+    return {"removed": existed, "path": str(base)}
+
+
+def prune_older_than(
+    days: int,
+    *,
+    home: Optional[Path] = None,
+    base_dir: Optional[Path] = None,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Drop records older than ``days`` and re-link each month's hash chain.
+
+    Retention/privacy control (not a storage need at observed volumes). Records
+    with an unparseable ``observed_at`` are kept. Emptied month files are removed.
+    """
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    ev_dir = events_dir(base)
+    if not ev_dir.is_dir():
+        return {"enabled": False, "removed": 0, "kept": 0}
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=days)
+    removed = 0
+    kept = 0
+    for path in sorted(ev_dir.glob("*.jsonl")):
+        records = [rec for _stem, rec in read_records(path.parent) if _stem == path.stem]
+        survivors: List[Dict[str, Any]] = []
+        for rec in records:
+            try:
+                obs = datetime.fromisoformat(str(rec.get("observed_at")))
+            except (TypeError, ValueError):
+                survivors.append(rec)
+                continue
+            if obs.tzinfo is None:
+                obs = obs.replace(tzinfo=timezone.utc)
+            if obs < cutoff:
+                removed += 1
+            else:
+                survivors.append(rec)
+        kept += len(survivors)
+        if not survivors:
+            path.unlink()
+        elif len(survivors) != len(records):
+            prev: Optional[str] = None
+            for rec in survivors:
+                rec["prev_hash"] = prev
+                prev = rec.get("content_hash")
+            path.write_text(
+                "\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in survivors) + "\n",
+                encoding="utf-8",
+            )
+    return {"enabled": True, "removed": removed, "kept": kept}

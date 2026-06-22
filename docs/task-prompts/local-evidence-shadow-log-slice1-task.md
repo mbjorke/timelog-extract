@@ -196,11 +196,17 @@ Scenario: Report uses shadow evidence after upstream cleanup
 
 ### Later
 
-- Retention policy + compaction (`retention-policy.json`, window); slice 1 keeps
-  everything, no deletion.
+- ✅ **Export / deletion controls (BUILT 2026-06-22):** `gittan evidence --export PATH`,
+  `--erase [--yes]`, `--prune-older-than DAYS` (re-links the hash chain after
+  pruning). `export_store` / `erase_store` / `prune_older_than` in
+  `core/evidence_store.py`. Tests in `tests/test_evidence_store.py`.
+- Retention is now user-driven via `--prune-older-than`; automatic
+  compaction/`retention-policy.json` deferred (no storage need at observed
+  volumes — retention is a privacy/control lever, not a space lever).
 - Redaction by default (raw detail opt-in / recoverable from live source while
-  available) — required by the privacy baseline before broad rollout.
-- Export / deletion controls (user-owned data must be exportable and erasable).
+  available) — required by the privacy baseline before broad rollout. **Own
+  decision-bearing slice:** needs a sensitive-field policy + opt-out, and must
+  redact `detail` *after* fingerprint computation so replay dedup stays valid.
 - The non-chosen engine as a query layer (DuckDB can read JSONL/Parquet either
   way).
 
@@ -281,6 +287,10 @@ yields data to choose the engine, without establishing any durable store early.
     (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
     diagnostic instead of phantom rows). Separate from the Cursor hours
     regression in PR #154.
+  - 2026-06-22: Built data-control "later" items: `gittan evidence --export`,
+    `--erase [--yes]`, `--prune-older-than DAYS` (export_store / erase_store /
+    prune_older_than with chain re-link). Retention is now a user lever; auto
+    compaction deferred. Redaction-by-default split out as its own decision slice.
   - 2026-06-22: Built item 4 (replay). `--shadow-replay on` on `report` restores
     stored evidence for a closed window when the upstream source has rotated
     (`replay_into_events` + `maybe_replay`, fingerprint dedup vs live, open-window

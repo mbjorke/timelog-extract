@@ -163,8 +163,11 @@ def capture_if_enabled(
         return {"enabled": True, "error": str(exc)}
 
 
-def _read_month_records(path: Path) -> List[Dict[str, Any]]:
-    """Parse one monthly JSONL file; garbled lines are skipped."""
+def _read_month_records(path: Path) -> Optional[List[Dict[str, Any]]]:
+    """Parse one monthly JSONL file; garbled lines are skipped.
+
+    Returns ``None`` when the file cannot be read (prune must not delete it).
+    """
     records: List[Dict[str, Any]] = []
     try:
         with path.open(encoding="utf-8") as fh:
@@ -177,7 +180,7 @@ def _read_month_records(path: Path) -> List[Dict[str, Any]]:
                 except json.JSONDecodeError:
                     continue
     except OSError:
-        pass
+        return None
     return records
 
 
@@ -186,7 +189,10 @@ def read_records(events_directory: Path) -> Iterable[Tuple[str, Dict[str, Any]]]
     if not events_directory.is_dir():
         return
     for path in sorted(events_directory.glob("*.jsonl")):
-        for rec in _read_month_records(path):
+        records = _read_month_records(path)
+        if records is None:
+            continue
+        for rec in records:
             yield path.stem, rec
 
 
@@ -379,6 +385,8 @@ def prune_older_than(
     kept = 0
     for path in sorted(ev_dir.glob("*.jsonl")):
         records = _read_month_records(path)
+        if records is None:
+            continue
         survivors: List[Dict[str, Any]] = []
         for rec in records:
             try:

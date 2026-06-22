@@ -389,8 +389,9 @@ def print_report(
     if additive_summary:
         heading += " (additive: primary project per session)"
     console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
-    show_totals = bool(timelog_project_totals)
+    show_history = bool(getattr(args, "history_source", False))
     show_git = bool(git_project_totals)
+    show_totals = bool(timelog_project_totals) and not show_history
     breakdown_table = Table.grid(padding=(0, 2))
     breakdown_table.add_column(style=STYLE_BODY)
     breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
@@ -488,13 +489,10 @@ def print_report(
         breakdown_table.add_section()
 
     console.print(breakdown_table)
-    print_history_legend(console, args, show_totals=show_totals, show_git=show_git)
+    print_history_legend(console, args)
 
     # Footer legend: derive from canonical source order so new standalone sources
     # are automatically visible without manual output updates.
     legend = _build_dynamic_legend(source_order)
     console.print(legend)
-    console.print(
-        f"[{STYLE_META}]Nothing in this report is billable until explicitly approved.[/{STYLE_META}]"
-    )
-    console.print()
+    console.print(f"[{STYLE_META}]Nothing in this report is billable until explicitly approved.[/{STYLE_META}]\n")

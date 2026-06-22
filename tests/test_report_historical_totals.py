@@ -10,7 +10,7 @@ from core.cli_options import TimelogRunOptions
 
 
 class ReportHistoricalTotalsTests(unittest.TestCase):
-    def test_history_uses_all_time_git(self):
+    def test_history_uses_all_time_git_only(self):
         from core.report_historical_totals import compute_report_historical_totals
 
         args = TimelogRunOptions(history_source=True)
@@ -19,26 +19,22 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
             "core.report_historical_totals.compute_git_project_totals",
             return_value={"p": 1.0},
         ) as mock_git:
-            with patch(
-                "core.report_historical_totals.compute_timelog_project_totals",
-                return_value={"p": 2.0},
-            ):
-                wl, git, enabled = compute_report_historical_totals(
-                    args=args,
-                    profiles=[],
-                    worklog_paths=["/tmp/TIMELOG.md"],
-                    local_tz=timezone.utc,
-                    dt_from=dt,
-                    dt_to=dt,
-                    classify_project_fn=lambda t, p: "p",
-                    make_event_fn=lambda *a, **k: {},
-                    worklog_source="TIMELOG.md",
-                    ai_sources=set(),
-                )
+            wl, git, enabled = compute_report_historical_totals(
+                args=args,
+                profiles=[],
+                worklog_paths=["/tmp/TIMELOG.md"],
+                local_tz=timezone.utc,
+                dt_from=dt,
+                dt_to=dt,
+                classify_project_fn=lambda t, p: "p",
+                make_event_fn=lambda *a, **k: {},
+                worklog_source="TIMELOG.md",
+                ai_sources=set(),
+            )
 
         self.assertTrue(enabled)
         self.assertEqual(git, {"p": 1.0})
-        self.assertEqual(wl, {"p": 2.0})
+        self.assertEqual(wl, {})
         self.assertNotIn("dt_from", mock_git.call_args.kwargs)
 
     def test_legacy_git_uses_period_bounds(self):
@@ -51,7 +47,7 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
             "core.report_historical_totals.compute_git_project_totals",
             return_value={},
         ) as mock_git:
-            wl, git, enabled = compute_report_historical_totals(
+            wl, _git, enabled = compute_report_historical_totals(
                 args=args,
                 profiles=[],
                 worklog_paths=[],
@@ -69,16 +65,17 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
         self.assertEqual(mock_git.call_args.kwargs["dt_from"], dt_from)
         self.assertEqual(mock_git.call_args.kwargs["dt_to"], dt_to)
 
-    def test_history_table_cells_distinguishes_zero_from_missing(self):
-        from core.cli_status_history import history_table_cells
+    def test_history_git_cell_distinguishes_zero_from_missing(self):
+        from core.cli_status_history import history_git_cell
 
-        cells = history_table_cells(
-            "project-alpha",
-            show_history=True,
-            git_totals={"project-alpha": 0.0},
-            timelog_totals={},
+        self.assertEqual(
+            history_git_cell("project-alpha", show_history=True, git_totals={"project-alpha": 0.0}),
+            "0.0h",
         )
-        self.assertEqual(cells, ["0.0h", "—"])
+        self.assertEqual(
+            history_git_cell("project-alpha", show_history=True, git_totals={}),
+            "—",
+        )
 
 
 if __name__ == "__main__":

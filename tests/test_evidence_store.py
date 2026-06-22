@@ -193,6 +193,25 @@ class TestEvidenceDataControls(unittest.TestCase):
         self.assertTrue(health["chain_ok"])
         self.assertEqual(health["total_records"], 2)
 
+    def test_prune_skips_unreadable_month_file(self):
+        from unittest.mock import patch
+
+        from core import evidence_store
+
+        self._seed()
+        jan = events_dir(self.base) / "2026-01.jsonl"
+        self.assertTrue(jan.exists())
+        real_read = evidence_store._read_month_records
+
+        def patched_read(path):
+            if path.name == "2026-01.jsonl":
+                return None
+            return real_read(path)
+
+        with patch("core.evidence_store._read_month_records", side_effect=patched_read):
+            prune_older_than(30, base_dir=self.base, now=datetime(2026, 6, 20, tzinfo=timezone.utc))
+        self.assertTrue(jan.exists())
+
 
 class TestEvidenceReplay(unittest.TestCase):
     def setUp(self):

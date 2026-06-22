@@ -119,7 +119,13 @@ Scenario: Measurement spike recommends an engine without creating a durable stor
 
 ### 3. Durable capture — engine chosen by the measurement
 
-- **priority:** `next` (gated on item 2)
+- **priority:** `next` (gated on item 2) — ✅ **BUILT (2026-06-22).**
+  `core/evidence_store.py` appends observed events (`report.all_events`) to
+  `~/.gittan/evidence/events/YYYY-MM.jsonl` behind `--shadow-log on` on the
+  `report` and `status` commands. Off by default (no directory created),
+  idempotent on fingerprint, per-month hash chain (`prev_hash` ==
+  previous `content_hash`). Capture is a CLI side-effect (report stays pure);
+  engine is JSONL per the measured decision. Tests: `tests/test_evidence_store.py`.
 - **behavior:** Either opt-in JSONL append-only **or** tiered append →
   Parquet + DuckDB, depending on the spike. Behind an opt-in flag (proposed
   `--shadow-log on|off` + config key, mirroring `--calendar-source on`). Capture
@@ -263,6 +269,12 @@ yields data to choose the engine, without establishing any durable store early.
     (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
     diagnostic instead of phantom rows). Separate from the Cursor hours
     regression in PR #154.
+  - 2026-06-22: Built item 3 (durable capture, slice 2). `core/evidence_store.py`
+    (append-only JSONL, idempotent fingerprint dedup, per-month hash chain) +
+    `capture_if_enabled`; opt-in `--shadow-log on` wired into `report` and
+    `status` as a CLI side-effect (report_service stays pure). Off by default.
+    `tests/test_evidence_store.py` (7). Live: report --shadow-log on wrote 108
+    records, re-run idempotent (+0), chain + content_hash verified.
   - 2026-06-22: Addressed CodeRabbit review on PR #153 — `build_spike_report`
     default `captured_at` now UTC-aware (was naive local); `_normalize_observed_at`
     normalizes the RFC-3339 "Z" suffix so a string timestamp and the equivalent

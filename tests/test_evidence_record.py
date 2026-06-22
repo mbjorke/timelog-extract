@@ -45,6 +45,14 @@ class TestEvidenceFingerprint(unittest.TestCase):
             compute_evidence_fingerprint("Cursor", dt.isoformat(), "x"),
         )
 
+    def test_z_suffix_matches_plus00(self):
+        # RFC-3339 "Z" and "+00:00" must fingerprint identically, or a string
+        # from a JSON API would diverge from the equivalent datetime.
+        self.assertEqual(
+            compute_evidence_fingerprint("Cursor", "2026-06-18T09:00:00Z", "x"),
+            compute_evidence_fingerprint("Cursor", "2026-06-18T09:00:00+00:00", "x"),
+        )
+
 
 class TestEvidenceRecord(unittest.TestCase):
     def _event(self, project):

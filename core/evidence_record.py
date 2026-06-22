@@ -39,7 +39,12 @@ def _normalize_observed_at(observed_at: Any) -> str:
     if isinstance(observed_at, datetime):
         dt = observed_at if observed_at.tzinfo else observed_at.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc).isoformat()
-    return str(observed_at or "").strip()
+    s = str(observed_at or "").strip()
+    # Normalize the RFC-3339 "Z" suffix to "+00:00" so a string timestamp and the
+    # equivalent datetime yield the same fingerprint (the locked anti-corner rule).
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return s
 
 
 def compute_evidence_fingerprint(source: Any, observed_at: Any, detail: Any) -> str:
@@ -59,11 +64,13 @@ def compute_evidence_fingerprint(source: Any, observed_at: Any, detail: Any) -> 
 
 
 def compute_content_hash(record: Dict[str, Any]) -> str:
-    """Tamper-evidence hash over the record's stable content.
+    """Tamper-evidence hash over the record at capture time.
 
-    Excludes ``content_hash`` itself and the ``prev_hash`` chain pointer, so
-    chain linking is verified separately (prev_hash == previous content_hash)
-    while content integrity is verified by recomputing this digest.
+    Excludes ``content_hash`` itself and the ``prev_hash`` chain pointer;
+    everything else — including the mutable ``project_at_capture`` snapshot — is
+    covered, so any post-capture modification (including authorised
+    reclassification) is detectable and must refresh this hash. Chain linking is
+    verified separately (prev_hash == previous content_hash).
     """
     payload = {k: v for k, v in record.items() if k not in ("content_hash", "prev_hash")}
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

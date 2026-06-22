@@ -263,3 +263,10 @@ yields data to choose the engine, without establishing any durable store early.
     (agent)" now report `raw_collected: null` + a `collector_status_unmatched`
     diagnostic instead of phantom rows). Separate from the Cursor hours
     regression in PR #154.
+  - 2026-06-22: Addressed CodeRabbit review on PR #153 — `build_spike_report`
+    default `captured_at` now UTC-aware (was naive local); `_normalize_observed_at`
+    normalizes the RFC-3339 "Z" suffix so a string timestamp and the equivalent
+    datetime fingerprint identically (+ test); clarified `compute_content_hash`
+    docstring re: the mutable `project_at_capture` snapshot. Deferred: promoting
+    the bare-string role constants to an Enum/validated set — to be done when the
+    durable store wires roles in (open decision for a later slice).

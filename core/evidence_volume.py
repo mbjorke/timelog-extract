@@ -15,7 +15,7 @@ from real spike runs — see PROVISIONAL_ENGINE_THRESHOLD_DAILY_MB.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from core.evidence_record import EVIDENCE_SCHEMA_VERSION, evidence_record_from_event
@@ -213,7 +213,9 @@ def build_spike_report(
     Pure: derives everything from ``payload`` in memory and writes nothing. The
     caller (the scripts/ runner) is responsible for any output file.
     """
-    captured = captured_at if captured_at is not None else datetime.now()
+    # UTC so the report-level captured_at matches the per-record captured_at,
+    # which _normalize_observed_at promotes to UTC.
+    captured = captured_at if captured_at is not None else datetime.now(timezone.utc)
     events = _events_from_payload(payload)
     records = [evidence_record_from_event(ev, captured_at=captured) for ev in events]
     collector_status = payload.get("collector_status") or {}

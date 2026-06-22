@@ -61,6 +61,7 @@ class TimelogRunOptions:
     github_source: str = "auto"
     calendar_source: str = "off"
     git_source: bool = False
+    history_source: bool = False
     calendar_names: Optional[str] = None
     github_user: Optional[str] = None
     output_format: str = "terminal"

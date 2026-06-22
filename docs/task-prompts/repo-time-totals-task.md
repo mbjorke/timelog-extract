@@ -326,16 +326,14 @@ value to more users than worklog all-time alone.
 
 - story_id: GH-146
 - spec_status: draft (historical columns reframed 2026-06-22)
-- implementation_status: P2 period `--git` shipped; P2b `--history` git all-time
-  not built; P1 TIMELOG column dormant pending `--history` slice
+- implementation_status: built
 - created_at: 2026-06-12
 - last_updated_at: 2026-06-22
-- implementation.pr: #147 (period columns); #154 (golden eval gate); pending for `--history`
-- implementation.branch: task/repo-time-totals (historical); new slice TBD
+- implementation.pr: pending (`task/history-columns`)
+- implementation.branch: task/history-columns
 - implementation.commits: []
-- validation.evidence: accuracy net + `tests/test_timelog_totals.py`,
-  `tests/test_git_totals.py` (if present), golden cursor dataset
-- validation.decision: GO for P2b after #154 merges; P1 optional same PR or follow-up
+- validation.evidence: `tests/test_history_columns.py`, `tests/test_report_historical_totals.py`, `bash scripts/run_autotests.sh`
+- validation.decision: conditional GO (stacked on #155 spec; golden eval #154 optional)
 - related:
   - PR #154 golden eval composer guard
   - `docs/runbooks/global-timelog-setup.md` (TIMELOG observed precondition)
@@ -345,3 +343,4 @@ value to more users than worklog all-time alone.
   - 2026-06-16: Golden eval composer fixture landed (see PR #154).
   - 2026-06-22: Split TIMELOG observed vs Git observed; git-first under `--history`;
     deprecated "Total observed" naming; revised implementation order.
+  - 2026-06-22: `--history` implemented on `task/history-columns` (status + report).

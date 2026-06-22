@@ -37,7 +37,7 @@ from core.presence_estimated import PresenceEstimatedResult, compute_presence_es
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
-from core.git_totals import compute_git_project_totals
+from core.report_historical_totals import compute_report_historical_totals
 from collectors.git_commits import git_commits_collector_status
 from outputs import narrative as narrative_output
 from outputs import pdf as pdf_output
@@ -357,33 +357,27 @@ def run_timelog_report(
         dt_to=dt_to,
     )
 
-    # "Total observed" column withdrawn (GH-146) until the accuracy net is complete
-    # and the column returns with a corrected label. Aggregation lives in
-    # core.timelog_totals.compute_timelog_project_totals for easy re-introduction.
-    timelog_totals: Dict[str, float] = {}
-
-    git_totals: Dict[str, float] = {}
+    timelog_totals, git_totals, git_enabled = compute_report_historical_totals(
+        args=args,
+        profiles=profiles,
+        worklog_paths=context.worklog_paths,
+        local_tz=LOCAL_TZ,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        classify_project_fn=_classify_project,
+        make_event_fn=_make_event,
+        worklog_source=WORKLOG_SOURCE,
+        ai_sources=AI_SOURCES,
+    )
     collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(
         profiles,
         local_tz=LOCAL_TZ,
         dt_from=dt_from,
         dt_to=dt_to,
-        git_enabled=bool(getattr(args, "git_source", False)),
+        git_enabled=git_enabled,
         make_event_fn=_make_event,
         source_name=GIT_COMMITS_SOURCE,
     )
-    if getattr(args, "git_source", False):
-        git_totals = compute_git_project_totals(
-            profiles=profiles,
-            local_tz=LOCAL_TZ,
-            make_event_fn=_make_event,
-            ai_sources=AI_SOURCES,
-            dt_from=dt_from,
-            dt_to=dt_to,
-            gap_minutes=args.gap_minutes,
-            min_session_minutes=args.min_session,
-            min_session_passive_minutes=args.min_session_passive,
-        )
 
     presence_estimated = compute_presence_estimated(
         agg.overall_days,

@@ -16,6 +16,7 @@ from outputs.terminal_preview import (
     pick_session_preview_events,
     session_preview_omitted_summary,
 )
+from outputs.terminal_history import git_column_label, print_history_legend
 from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
@@ -401,9 +402,9 @@ def print_report(
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
     header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
     if show_totals:
-        header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
+        header_row.append(f"[{STYLE_META}]TIMELOG (all-time)[/{STYLE_META}]")
     if show_git:
-        header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")
+        header_row.append(f"[{STYLE_META}]{git_column_label(args)}[/{STYLE_META}]")
     header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]
     breakdown_table.add_row(*header_row)
 
@@ -487,6 +488,7 @@ def print_report(
         breakdown_table.add_section()
 
     console.print(breakdown_table)
+    print_history_legend(console, args, show_totals=show_totals, show_git=show_git)
 
     # Footer legend: derive from canonical source order so new standalone sources
     # are automatically visible without manual output updates.

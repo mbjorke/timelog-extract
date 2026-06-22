@@ -215,17 +215,23 @@ yields data to choose the engine, without establishing any durable store early.
 
 - story_id: `GH-151` (https://github.com/mbjorke/timelog-extract/issues/151)
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `in progress`
 - created_at: 2026-06-18
 - last_updated_at: 2026-06-18
 - implementation.pr: pending
 - implementation.branch: claude/gitbutler-inspiration-4nkcrm
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: `tests/test_evidence_record.py`, `tests/test_evidence_volume.py`; full autotest suite 847 green; live spike `python scripts/run_evidence_volume_spike.py --today` (17 records, measured ~453 B/record, recommended `jsonl`, no `~/.gittan/evidence/` created)
+- validation.decision: conditional GO
 - changelog:
   - 2026-06-18: Initial product-owner pass. Measure-first slice for the local
     evidence shadow log, prompted by GitButler architecture inspiration. Locked
     the engine-agnostic record contract, fingerprint-excludes-project decision,
     and JSONL-first-vs-tiered storage fork gated on a volume measurement spike.
   - 2026-06-18: Filed tracking issue GH-151; story_id set.
+  - 2026-06-18: Built items 1+2. `core/evidence_record.py` (contract +
+    project-independent fingerprint + content hash), evidence roles in
+    `core/sources.py`, `core/evidence_volume.py` (measured-bytes footprint +
+    engine recommendation), and read-only runner
+    `scripts/run_evidence_volume_spike.py`. Record sizes are measured, not
+    assumed; engine threshold is provisional pending calibration.

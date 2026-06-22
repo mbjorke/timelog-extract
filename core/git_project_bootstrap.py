@@ -209,6 +209,21 @@ def parse_github_origin(origin_url: str) -> tuple[str, str] | None:
     return None
 
 
+def _git_repo_config_value(repo_path: Path) -> str:
+    """Stable config string for ``git_repo`` (``~/…`` under home, else absolute)."""
+    resolved = repo_path.expanduser().resolve()
+    try:
+        home = Path.home().resolve()
+        if resolved.is_relative_to(home):
+            relative = resolved.relative_to(home)
+            if relative.parts:
+                return f"~/{relative.as_posix()}"
+            return "~"
+    except (OSError, ValueError):
+        pass
+    return str(resolved)
+
+
 def build_repo_project_seed(repo_path: Path) -> RepoProjectSeed | None:
     origin_url = _run_git(repo_path, "remote", "get-url", "origin")
     parsed = parse_github_origin(origin_url)
@@ -246,12 +261,14 @@ def merge_repo_project_seeds(existing_payload: dict, seeds: list[RepoProjectSeed
     skipped = 0
     for seed in seeds:
         idx = by_name.get(seed.name.lower())
+        git_repo_value = _git_repo_config_value(seed.repo_path)
         if idx is None:
             projects.append(
                 {
                     "name": seed.name,
                     "customer": seed.customer,
                     "match_terms": list(seed.match_terms),
+                    "git_repo": git_repo_value,
                     "tracked_urls": [],
                     "email": "",
                     "invoice_title": "",
@@ -276,6 +293,9 @@ def merge_repo_project_seeds(existing_payload: dict, seeds: list[RepoProjectSeed
                 seen_terms.add(term.lower())
         if merged_terms != existing_terms:
             project["match_terms"] = merged_terms
+            changed = True
+        if not str(project.get("git_repo", "")).strip():
+            project["git_repo"] = git_repo_value
             changed = True
         projects[idx] = project
         if changed:

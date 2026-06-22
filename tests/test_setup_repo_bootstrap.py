@@ -13,6 +13,7 @@ from rich.console import Console
 
 from core.git_project_bootstrap import (
     RepoProjectSeed,
+    _git_repo_config_value,
     build_repo_project_seed,
     discover_local_git_repos,
     merge_repo_project_seeds,
@@ -110,6 +111,90 @@ class SetupRepoBootstrapTests(unittest.TestCase):
             self.assertEqual(len(repos), 2)
             all_repos = discover_local_git_repos(root, max_depth=1, limit=None)
             self.assertEqual(len(all_repos), 5)
+
+    def test_git_repo_config_value_prefers_tilde_under_home(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
+            repo = Path(tmp) / "acme-tools"
+            repo.mkdir()
+            value = _git_repo_config_value(repo)
+            self.assertTrue(value.startswith("~/"))
+            self.assertIn("acme-tools", value)
+
+    def test_git_repo_config_value_uses_absolute_outside_home(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools"
+            repo.mkdir()
+            value = _git_repo_config_value(repo)
+            self.assertFalse(value.startswith("~/"))
+            self.assertEqual(value, str(repo.resolve()))
+
+    def test_merge_repo_project_seeds_sets_git_repo_on_add(self):
+        payload: dict = {"projects": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools"
+            repo.mkdir()
+            seed = RepoProjectSeed(
+                repo_path=repo,
+                name="acme-tools",
+                customer="example",
+                match_terms=["acme-tools"],
+                origin_url="https://github.com/example/acme-tools.git",
+            )
+            merged, summary = merge_repo_project_seeds(payload, [seed], root=Path(tmp))
+        self.assertEqual(summary.added, 1)
+        project = merged["projects"][0]
+        self.assertEqual(project["git_repo"], _git_repo_config_value(repo))
+
+    def test_merge_repo_project_seeds_fills_git_repo_when_missing_on_update(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools"
+            repo.mkdir()
+            payload = {
+                "projects": [
+                    {
+                        "name": "acme-tools",
+                        "customer": "example",
+                        "match_terms": ["acme-tools"],
+                    }
+                ],
+            }
+            seed = RepoProjectSeed(
+                repo_path=repo,
+                name="acme-tools",
+                customer="example",
+                match_terms=["acme-tools"],
+                origin_url="https://github.com/example/acme-tools.git",
+            )
+            merged, summary = merge_repo_project_seeds(payload, [seed], root=Path(tmp))
+        self.assertEqual(summary.updated, 1)
+        self.assertEqual(summary.skipped, 0)
+        self.assertEqual(merged["projects"][0]["git_repo"], _git_repo_config_value(repo))
+
+    def test_merge_repo_project_seeds_does_not_overwrite_existing_git_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "acme-tools"
+            repo.mkdir()
+            custom_repo = "/custom/path/acme-tools"
+            payload = {
+                "projects": [
+                    {
+                        "name": "acme-tools",
+                        "customer": "example",
+                        "match_terms": ["acme-tools"],
+                        "git_repo": custom_repo,
+                    }
+                ],
+            }
+            seed = RepoProjectSeed(
+                repo_path=repo,
+                name="acme-tools",
+                customer="example",
+                match_terms=["acme-tools"],
+                origin_url="https://github.com/example/acme-tools.git",
+            )
+            merged, summary = merge_repo_project_seeds(payload, [seed], root=Path(tmp))
+        self.assertEqual(summary.skipped, 1)
+        self.assertEqual(merged["projects"][0]["git_repo"], custom_repo)
 
     def test_merge_repo_project_seeds_updates_terms_without_overwrite(self):
         payload = {

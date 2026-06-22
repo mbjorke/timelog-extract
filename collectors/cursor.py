@@ -117,8 +117,6 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
     logs_dir = home / "Library" / "Application Support" / "Cursor" / "logs"
-    if not logs_dir.exists():
-        return []
 
     results = []
     ts_pattern = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
@@ -149,47 +147,48 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
             return parsed
         return None
 
-    # A log file last written before the window starts cannot contain in-window
-    # lines (logs are append-only), so skip it without reading — avoids scanning
-    # months of rotated Cursor logs on every report.
-    from_ts = dt_from.timestamp()
-    for log_file in logs_dir.glob("**/*.log"):
-        try:
-            if log_file.stat().st_mtime < from_ts:
+    if logs_dir.exists():
+        # A log file last written before the window starts cannot contain in-window
+        # lines (logs are append-only), so skip it without reading — avoids scanning
+        # months of rotated Cursor logs on every report.
+        from_ts = dt_from.timestamp()
+        for log_file in logs_dir.glob("**/*.log"):
+            try:
+                if log_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
                 continue
-        except OSError:
-            continue
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    ts = _parse_cursor_log_ts(line)
-                    if not ts or not (dt_from <= ts <= dt_to):
-                        continue
-                    if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
-                        continue
-                    workspace_path = None
-                    m_id = workspace_id_pattern.search(line)
-                    if m_id and workspace_map:
-                        workspace_id = m_id.group(1) or m_id.group(2)
-                        workspace_path = workspace_map.get(workspace_id)
-                    if not workspace_path:
-                        m_path = workspace_path_pattern.search(line)
-                        if m_path:
-                            workspace_path = m_path.group(1)
-                    if not workspace_path:
-                        continue
-                    project = classify_project(f"{workspace_path} {line}", profiles)
-                    leaf = Path(workspace_path).name
-                    detail = f"{leaf} — {line.strip()[:90]}"
-                    dir_leaf = leaf.strip().lower()
-                    results.append(
-                        make_event(
-                            "Cursor", ts, detail, project,
-                            anchors={"dir": dir_leaf} if dir_leaf else None,
+            try:
+                with open(log_file, encoding="utf-8", errors="replace") as fh:
+                    for line in fh:
+                        ts = _parse_cursor_log_ts(line)
+                        if not ts or not (dt_from <= ts <= dt_to):
+                            continue
+                        if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
+                            continue
+                        workspace_path = None
+                        m_id = workspace_id_pattern.search(line)
+                        if m_id and workspace_map:
+                            workspace_id = m_id.group(1) or m_id.group(2)
+                            workspace_path = workspace_map.get(workspace_id)
+                        if not workspace_path:
+                            m_path = workspace_path_pattern.search(line)
+                            if m_path:
+                                workspace_path = m_path.group(1)
+                        if not workspace_path:
+                            continue
+                        project = classify_project(f"{workspace_path} {line}", profiles)
+                        leaf = Path(workspace_path).name
+                        detail = f"{leaf} — {line.strip()[:90]}"
+                        dir_leaf = leaf.strip().lower()
+                        results.append(
+                            make_event(
+                                "Cursor", ts, detail, project,
+                                anchors={"dir": dir_leaf} if dir_leaf else None,
+                            )
                         )
-                    )
-        except OSError:
-            continue
+            except OSError:
+                continue
     agent_events, turn_composers = collect_cursor_agent_turns(
         profiles, dt_from, dt_to, home, local_tz, classify_project, make_event
     )

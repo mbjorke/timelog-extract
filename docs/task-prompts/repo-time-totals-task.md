@@ -81,10 +81,12 @@ following sibling backlog items (product-owner pass, 2026-06-15):
    `core/sanity_bounds.py` flags sessions > 16h, days attributing > 24h, and
    observed-vs-Screen-Time over-attribution > 1.5×; warnings render under the
    Review summary (`outputs/terminal.py`). Covered by `tests/test_sanity_bounds.py`.
-2. **Golden eval covers high-frequency telemetry** — ⏳ pending. Add a Cursor
-   composer `state.vscdb` fixture so this bug class is caught by `run_golden_eval.py`.
+2. **Golden eval covers high-frequency telemetry** — ✅ **LANDED (2026-06-16).**
+   `tests/fixtures/golden_cursor_composer_dataset.json` + `golden_cursor_composer_headers.json`;
+   `scripts/run_golden_eval.py` runs all `golden*dataset.json` files with optional
+   isolated HOME and invariant checks (`max_hours_any_day`, `max_period_total_hours`).
 
-Until (2) also lands, do not show two project-hour magnitudes side by side.
+Until both items above are verified in release, do not show two project-hour magnitudes side by side.
 
 ## P1 — Total observed column (WITHDRAWN until accuracy net lands)
 

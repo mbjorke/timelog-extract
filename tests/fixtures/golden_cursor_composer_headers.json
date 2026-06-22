@@ -1,0 +1,16 @@
+{
+  "description": "Long-lived composer thread (created day 1, lastUpdated day 30) with no intermediate touches. Regression guard: old heartbeat grid inflated whole months to ~24h/day.",
+  "allComposers": [
+    {
+      "composerId": "golden-long-lived-1",
+      "name": "Project alpha feature work",
+      "createdAt": 1704103200000,
+      "lastUpdatedAt": 1706630400000,
+      "workspaceIdentifier": {
+        "uri": {
+          "fsPath": "/Users/example/code/project-alpha"
+        }
+      }
+    }
+  ]
+}

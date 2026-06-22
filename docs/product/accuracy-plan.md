@@ -18,7 +18,7 @@ Be the most accurate local-first timereporting tool for technical work.
 
 ### Deliverables
 
-- Golden dataset JSON file under `tests/fixtures/golden_dataset.json`
+- Golden dataset JSON files under `tests/fixtures/golden*dataset.json` (worklog baseline + Cursor composer regression guard)
 - Eval script output at `docs/evals/latest.md`
 - Baseline KPI snapshot committed in docs
 

@@ -343,6 +343,52 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_collect_cursor_reads_composer_without_logs_dir(self):
+        import sqlite3
+
+        payload = {
+            "allComposers": [
+                {
+                    "composerId": "composer-only-1",
+                    "name": "Project alpha feature work",
+                    "createdAt": int(
+                        datetime(2026, 6, 11, 9, 0, tzinfo=timezone.utc).timestamp() * 1000
+                    ),
+                    "lastUpdatedAt": int(
+                        datetime(2026, 6, 11, 9, 0, tzinfo=timezone.utc).timestamp() * 1000
+                    ),
+                    "workspaceIdentifier": {
+                        "uri": {"fsPath": "/Users/example/code/project-alpha"}
+                    },
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            db_dir = home / "Library/Application Support/Cursor/User/globalStorage"
+            db_dir.mkdir(parents=True)
+            conn = sqlite3.connect(db_dir / "state.vscdb")
+            conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                ("composer.composerHeaders", json.dumps(payload)),
+            )
+            conn.commit()
+            conn.close()
+            out = collect_cursor(
+                profiles=[{"name": "project-alpha", "match_terms": ["project-alpha"]}],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda hay, profiles: (
+                    "project-alpha" if "project-alpha" in hay else "Uncategorized"
+                ),
+                make_event=make_test_event,
+            )
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["project"], "project-alpha")
+
 
 if __name__ == "__main__":
     unittest.main()

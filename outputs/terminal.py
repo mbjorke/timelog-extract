@@ -473,12 +473,12 @@ def print_report(
                 f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",
             ]
             if show_totals:
-                proj_total = (timelog_project_totals or {}).get(project_name, 0.0)
-                proj_total_text = f"{proj_total:.1f}h" if proj_total else "—"
+                proj_total = (timelog_project_totals or {}).get(project_name)
+                proj_total_text = f"{proj_total:.1f}h" if proj_total is not None else "—"
                 proj_row.append(f"[{STYLE_META}]{proj_total_text}[/{STYLE_META}]")
             if show_git:
-                proj_git = (git_project_totals or {}).get(project_name, 0.0)
-                proj_git_text = f"{proj_git:.1f}h" if proj_git else "—"
+                proj_git = (git_project_totals or {}).get(project_name)
+                proj_git_text = f"{proj_git:.1f}h" if proj_git is not None else "—"
                 proj_row.append(f"[{STYLE_META}]{proj_git_text}[/{STYLE_META}]")
             proj_row += [
                 f"[{STYLE_BODY}]{proj_b_text}[/{STYLE_BODY}]",

@@ -28,11 +28,11 @@ def history_table_cells(
 ) -> list[str]:
     if not show_history:
         return []
-    git_h = git_totals.get(project_name, 0.0)
-    wl_h = timelog_totals.get(project_name, 0.0)
+    git_h = git_totals.get(project_name)
+    wl_h = timelog_totals.get(project_name)
     return [
-        f"{git_h:.1f}h" if git_h else "—",
-        f"{wl_h:.1f}h" if wl_h else "—",
+        f"{git_h:.1f}h" if git_h is not None else "—",
+        f"{wl_h:.1f}h" if wl_h is not None else "—",
     ]
 
 

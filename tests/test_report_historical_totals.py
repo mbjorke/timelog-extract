@@ -69,6 +69,17 @@ class ReportHistoricalTotalsTests(unittest.TestCase):
         self.assertEqual(mock_git.call_args.kwargs["dt_from"], dt_from)
         self.assertEqual(mock_git.call_args.kwargs["dt_to"], dt_to)
 
+    def test_history_table_cells_distinguishes_zero_from_missing(self):
+        from core.cli_status_history import history_table_cells
+
+        cells = history_table_cells(
+            "project-alpha",
+            show_history=True,
+            git_totals={"project-alpha": 0.0},
+            timelog_totals={},
+        )
+        self.assertEqual(cells, ["0.0h", "—"])
+
 
 if __name__ == "__main__":
     unittest.main()

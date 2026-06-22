@@ -29,6 +29,17 @@ def capture_shadow_log_line(shadow_log: object, events: object) -> Optional[str]
     return shadow_log_status_line(capture_if_enabled(shadow_log, events))
 
 
+def shadow_replay_line(restored: object) -> Optional[str]:
+    """One-line note when stored evidence was replayed for a closed window."""
+    try:
+        count = int(restored or 0)
+    except (TypeError, ValueError):
+        return None
+    if count <= 0:
+        return None
+    return f"Shadow-log replay: restored {count} event(s) from local evidence (upstream source rotated)."
+
+
 def timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[
     Optional[str], Optional[str], bool, bool, bool, bool, bool, bool
 ]:

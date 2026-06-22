@@ -115,6 +115,7 @@ def report(
     ] = None,
     git_source: Annotated[bool, typer.Option("--git", help="Show Git-only column (requires git_repo in project config).")] = False,
     shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.")] = "off",
+    shadow_replay: Annotated[str, typer.Option("--shadow-replay", help="on/off (opt-in): for a closed (past) window, restore stored evidence whose upstream source has since rotated.")] = "off",
 ):
     """Build detailed local evidence reports for a selected timeframe.
 
@@ -179,6 +180,7 @@ def report(
             "map_prompt": map_prompt,
             "git_source": git_source,
             "shadow_log": shadow_log,
+            "shadow_replay": shadow_replay,
         },
     )
     run_timelog_cli(options)

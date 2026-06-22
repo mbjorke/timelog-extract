@@ -73,6 +73,9 @@ class TimelogRunOptions:
     lovable_noise_profile: str = DEFAULT_LOVABLE_NOISE_PROFILE
     invoice_mode: str = "baseline"
     invoice_ground_truth: Optional[str] = None
+    # Opt-in durable evidence shadow log (docs/specs/local-evidence-shadow-log.md).
+    # "off" by default: nothing is written unless explicitly enabled.
+    shadow_log: str = "off"
 
 
 def split_comma_separated_list(value: Optional[str]) -> List[str]:

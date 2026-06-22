@@ -61,6 +61,14 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     html_path = getattr(args, "report_html", None)
     want_html = bool(html_path)
 
+    from core.cli_report_status_helpers import capture_shadow_log_line
+
+    shadow_line = capture_shadow_log_line(
+        getattr(args, "shadow_log", "off"), getattr(report, "all_events", [])
+    )
+    if shadow_line and _want_log(args) and not want_json:
+        print(shadow_line)
+
     payload: Optional[Dict[str, Any]] = None
     if want_json or want_html:
         payload = _build_truth_payload_dict(report)

@@ -10,6 +10,25 @@ from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 
 
+def shadow_log_status_line(status: Optional[Mapping[str, object]]) -> Optional[str]:
+    """One-line summary of an opt-in shadow-log capture, or None when inactive."""
+    if not status:
+        return None
+    if status.get("error"):
+        return f"Shadow log: capture failed ({status['error']})."
+    return (
+        f"Shadow log: +{status.get('appended', 0)} new evidence records "
+        f"({status.get('skipped', 0)} already stored) → {status.get('base_dir', '')}"
+    )
+
+
+def capture_shadow_log_line(shadow_log: object, events: object) -> Optional[str]:
+    """Run the opt-in capture and return its one-line summary (or None when off)."""
+    from core.evidence_store import capture_if_enabled
+
+    return shadow_log_status_line(capture_if_enabled(shadow_log, events))
+
+
 def timeframe_from_prompt(picked: Mapping[str, object]) -> tuple[
     Optional[str], Optional[str], bool, bool, bool, bool, bool, bool
 ]:

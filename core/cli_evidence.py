@@ -13,7 +13,7 @@ def evidence() -> None:
 
     Reports whether the opt-in store exists, how many records it holds, today's
     captures, the retention span, and tamper-evident hash-chain integrity.
-    Enable capture with `gittan report --shadow-log on`.
+    Enable capture with `gittan report --shadow-log on` or `gittan status --shadow-log on`.
     """
     from rich.console import Console
 
@@ -30,7 +30,7 @@ def evidence() -> None:
     if not health.get("enabled"):
         console.print(
             f"[{STYLE_MUTED}]Shadow log: off — no store at {health['base_dir']}. "
-            f"Enable with `gittan report --shadow-log on`.[/{STYLE_MUTED}]"
+            f"Enable with `gittan report --shadow-log on` or `gittan status --shadow-log on`.[/{STYLE_MUTED}]"
         )
         return
 

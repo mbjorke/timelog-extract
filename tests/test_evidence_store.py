@@ -28,7 +28,7 @@ class TestEvidenceStore(unittest.TestCase):
 
     def _lines(self, month):
         path = events_dir(self.base) / f"{month}.jsonl"
-        return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     def test_appends_and_is_idempotent(self):
         events = [

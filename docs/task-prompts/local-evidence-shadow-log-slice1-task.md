@@ -121,8 +121,9 @@ Scenario: Measurement spike recommends an engine without creating a durable stor
 
 - **priority:** `next` (gated on item 2) — ✅ **BUILT (2026-06-22).**
   `core/evidence_store.py` appends observed events (`report.all_events`) to
-  `~/.gittan/evidence/events/YYYY-MM.jsonl` behind `--shadow-log on` on the
-  `report` and `status` commands. Off by default (no directory created),
+  per-month append-only JSONL files (`<gittan-home>/evidence/events/YYYY-MM.jsonl`)
+  behind `--shadow-log on` on the `report` and `status` commands. Off by default
+  (no directory created),
   idempotent on fingerprint, per-month hash chain (`prev_hash` ==
   previous `content_hash`). Capture is a CLI side-effect (report stays pure);
   engine is JSONL per the measured decision. Tests: `tests/test_evidence_store.py`.

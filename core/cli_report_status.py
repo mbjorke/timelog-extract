@@ -291,13 +291,7 @@ def status(
         str,
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
-    anchor_nudge: Annotated[
-        bool,
-        typer.Option(
-            "--anchor-nudge/--no-anchor-nudge",
-            help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).",
-        ),
-    ] = True,
+    anchor_nudge: Annotated[bool, typer.Option("--anchor-nudge/--no-anchor-nudge", help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).")] = True,
     shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.")] = "off",
 ):
     """Quick hours snapshot with project totals and session counts.
@@ -364,6 +358,9 @@ def status(
 
     try:
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+        # Capture before the empty-result early return so --shadow-log on still
+        # records observed evidence even when nothing is categorized this period.
+        shadow_line = _capture_shadow_log_line(shadow_log, report.all_events)
 
         if not report.included_events:
             console.print(f"[{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
@@ -371,6 +368,8 @@ def status(
                 f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
                 f"`gittan report --today --source-summary` to inspect collection.[/{STYLE_MUTED}]"
             )
+            if shadow_line:
+                console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
             return
 
         title_suffix = " — additive (primary project per session)" if additive else ""
@@ -488,7 +487,6 @@ def status(
             console.print(
                 f"[{STYLE_MUTED}]TIMELOG evidence projects in window: {', '.join(timelog_projects)}[/{STYLE_MUTED}]"
             )
-        shadow_line = _capture_shadow_log_line(shadow_log, report.all_events)
         if shadow_line:
             console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
         console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")

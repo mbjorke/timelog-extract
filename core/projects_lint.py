@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from core.config import load_projects_config_payload
+from core.tracked_url_policy import is_over_broad_tracked_url
 
 
 HIGH_RISK_TERMS = {
@@ -55,6 +56,20 @@ def lint_projects_payload(payload: dict[str, Any]) -> list[LintWarning]:
                     LintWarning(
                         code="broad-term",
                         message=f"Project '{name}' uses high-risk broad term '{clean}'.",
+                    )
+                )
+        for raw_url in project.get("tracked_urls", []) or []:
+            url = str(raw_url).strip()
+            if not url:
+                continue
+            if is_over_broad_tracked_url(url):
+                warnings.append(
+                    LintWarning(
+                        code="broad-tracked-url",
+                        message=(
+                            f"Project '{name}' uses over-broad tracked_urls entry '{url}'. "
+                            "Remove it or narrow to a specific chat/session URL."
+                        ),
                     )
                 )
 

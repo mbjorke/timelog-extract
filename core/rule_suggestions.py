@@ -11,6 +11,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 
 from core.domain import classify_project
+from core.tracked_url_policy import is_multi_tenant_tracked_url_host, is_over_broad_tracked_url
 from core.uncategorized_review import UncategorizedCluster
 
 COMMON_DOMAINS = frozenset(
@@ -275,6 +276,8 @@ def split_ab_suggestions(
 
         if cluster.rule_type == "tracked_urls":
             if _ambiguous_value("tracked_urls", rv, others):
+                continue
+            if is_multi_tenant_tracked_url_host(rv) or is_over_broad_tracked_url(cluster.rule_value):
                 continue
             common = _domain_is_common(rv)
             if cluster.count >= 2 or (cluster.count >= 1 and not common):

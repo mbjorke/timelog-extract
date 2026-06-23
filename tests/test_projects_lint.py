@@ -88,6 +88,50 @@ class ProjectsLintHelperTests(unittest.TestCase):
         self.assertIn("A", msgs)
         self.assertIn("B", msgs)
 
+    def test_broad_tracked_url_warns_for_multi_tenant_host_only(self):
+        payload = {
+            "projects": [
+                {
+                    "name": "Project Alpha",
+                    "enabled": True,
+                    "match_terms": ["project-alpha"],
+                    "tracked_urls": ["gemini.google.com"],
+                }
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        broad = [w for w in warnings if w.code == "broad-tracked-url"]
+        self.assertEqual(len(broad), 1)
+        self.assertIn("gemini.google.com", broad[0].message)
+
+    def test_broad_tracked_url_warns_for_generic_app_prefix(self):
+        payload = {
+            "projects": [
+                {
+                    "name": "Project Alpha",
+                    "enabled": True,
+                    "match_terms": ["project-alpha"],
+                    "tracked_urls": ["gemini.google.com/app"],
+                }
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        self.assertTrue(any(w.code == "broad-tracked-url" for w in warnings))
+
+    def test_specific_chat_tracked_url_does_not_warn(self):
+        payload = {
+            "projects": [
+                {
+                    "name": "Project Alpha",
+                    "enabled": True,
+                    "match_terms": ["project-alpha"],
+                    "tracked_urls": ["gemini.google.com/app/abc123", "github.com/org/repo"],
+                }
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        self.assertFalse(any(w.code == "broad-tracked-url" for w in warnings))
+
 
 class ProjectsLintCliTests(unittest.TestCase):
     def setUp(self):

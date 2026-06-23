@@ -126,6 +126,37 @@ class RuleSuggestionsABSplitTests(unittest.TestCase):
         self.assertEqual(opt_a, [])
         self.assertEqual(opt_b, [])
 
+    def test_rejects_multi_tenant_tracked_url_hosts_from_suggestions(self):
+        clusters = [
+            UncategorizedCluster(
+                key="u:gemini.google.com:Gemini (web)",
+                rule_type="tracked_urls",
+                rule_value="gemini.google.com",
+                source="Gemini (web)",
+                count=2,
+                samples=[
+                    "gemini/app/abc123… — Project chat",
+                    "gemini/app/def456… — Another chat",
+                ],
+            ),
+            UncategorizedCluster(
+                key="u:claude.ai:Claude.ai (web)",
+                rule_type="tracked_urls",
+                rule_value="claude.ai",
+                source="Claude.ai (web)",
+                count=1,
+                samples=["chat/abc123… — Claude chat"],
+            ),
+        ]
+        profiles = [_prof("Target", ["target"])]
+        opt_a, opt_b = split_ab_suggestions(clusters, profiles, "Target")
+        keys_a = {(r.rule_type, r.rule_value) for r in opt_a}
+        keys_b = {(r.rule_type, r.rule_value) for r in opt_b}
+        self.assertNotIn(("tracked_urls", "gemini.google.com"), keys_a)
+        self.assertNotIn(("tracked_urls", "gemini.google.com"), keys_b)
+        self.assertNotIn(("tracked_urls", "claude.ai"), keys_a)
+        self.assertNotIn(("tracked_urls", "claude.ai"), keys_b)
+
 
 class RuleSuggestionsPreviewTests(unittest.TestCase):
     def test_preview_counts_events_and_hours(self):

@@ -124,6 +124,28 @@ class JiraCollectorUrlEncodingTests(unittest.TestCase):
         self.assertTrue(captured[0].endswith("/worklog"), f"URL did not end with /worklog: {captured[0]}")
 
 
+class JiraSiteLabelTests(unittest.TestCase):
+    def test_hostname_strips_embedded_credentials(self):
+        from collectors.jira import jira_site_label
+
+        self.assertEqual(
+            jira_site_label("https://user:secret@example.atlassian.net"),
+            "example.atlassian.net",
+        )
+
+    def test_schemeless_url_does_not_leak_userinfo(self):
+        from collectors.jira import jira_site_label
+
+        label = jira_site_label("user:secret@example.atlassian.net")
+        self.assertEqual(label, "example.atlassian.net")
+        self.assertNotIn("secret", label)
+
+    def test_unparseable_url_returns_empty_label(self):
+        from collectors.jira import jira_site_label
+
+        self.assertEqual(jira_site_label("user:secret"), "")
+
+
 class GitCommitFieldRenameTests(unittest.TestCase):
     """Tests for GitCommit.authored_at -> committed_at rename in core/jira_sync.py (PR change)."""
 

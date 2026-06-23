@@ -28,8 +28,17 @@ def jira_site_label(base_url: str) -> str:
     """Return hostname for display; never userinfo from a misconfigured URL."""
     from urllib.parse import urlparse
 
-    host = (urlparse(base_url).hostname or "").strip()
-    return host or base_url.strip()
+    raw = (base_url or "").strip()
+    if not raw:
+        return ""
+    host = (urlparse(raw).hostname or "").strip()
+    if host:
+        return host
+    # Scheme-less or malformed URLs may embed userinfo; never echo the raw value.
+    tail = raw.rsplit("@", 1)[-1].strip()
+    if tail and tail != raw:
+        return tail.split("/", 1)[0]
+    return ""
 
 
 def resolve_jira_credentials(args: Any) -> Optional[JiraCredentials]:

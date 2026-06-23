@@ -3,6 +3,8 @@
 ## Unreleased
 
 - CI: remove unused GitHub Pages deploy workflow (`static.yml`); fix `main` CI file-length gate by extracting doctor table checks.
+- CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate ([#167](https://github.com/mbjorke/timelog-extract/pull/167)).
+- Accuracy: treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.
 ## 0.2.20 - 2026-06-22
 
 - Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.

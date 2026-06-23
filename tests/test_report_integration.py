@@ -55,11 +55,11 @@ class ReportIntegrationTests(unittest.TestCase):
         day = base.astimezone(LOCAL_TZ).date().isoformat()
         self.assertIn(day, overall_days)
         self.assertEqual(len(overall_days[day]["sessions"]), 2)
-        self.assertAlmostEqual(overall_days[day]["hours"], (15 + 5) / 60, places=6)
+        self.assertAlmostEqual(overall_days[day]["hours"], 15 / 60, places=6)
 
         self.assertEqual(sorted(project_reports.keys()), ["Project A", "Project B"])
         self.assertAlmostEqual(project_reports["Project A"][day]["hours"], 15 / 60, places=6)
-        self.assertAlmostEqual(project_reports["Project B"][day]["hours"], 5 / 60, places=6)
+        self.assertAlmostEqual(project_reports["Project B"][day]["hours"], 0.0, places=6)
 
 
 if __name__ == "__main__":

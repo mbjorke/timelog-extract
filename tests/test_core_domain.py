@@ -52,9 +52,9 @@ class CoreDomainTests(unittest.TestCase):
         self.assertAlmostEqual(h, 0.25)
 
     def test_session_duration_uses_passive_minimum(self):
-        """Uses the passive minimum when no AI sources are present."""
+        """Passive-only sessions (Chrome) do not inflate duration with a floor."""
         start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
-        end = start + timedelta(minutes=1)
+        end = start
         events = [{"source": "Chrome"}]
         h = domain.session_duration_hours(
             events,
@@ -64,7 +64,35 @@ class CoreDomainTests(unittest.TestCase):
             min_session_passive_minutes=5,
             ai_sources={"Claude Code CLI"},
         )
-        self.assertAlmostEqual(h, 5 / 60)
+        self.assertAlmostEqual(h, 0.0)
+
+    def test_session_duration_passive_web_chat_has_no_floor(self):
+        start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        end = start
+        events = [{"source": "Claude.ai (web)"}]
+        h = domain.session_duration_hours(
+            events,
+            start,
+            end,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            ai_sources={"Claude Code CLI", "Cursor"},
+        )
+        self.assertAlmostEqual(h, 0.0)
+
+    def test_session_duration_mixed_cursor_and_passive_web_uses_ai_floor(self):
+        start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        end = start + timedelta(minutes=1)
+        events = [{"source": "Cursor"}, {"source": "Claude.ai (web)"}]
+        h = domain.session_duration_hours(
+            events,
+            start,
+            end,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            ai_sources={"Cursor"},
+        )
+        self.assertAlmostEqual(h, 0.25)
 
     def test_session_duration_uses_actual_when_longer_than_minimum(self):
         """Returns the actual duration when it exceeds the minimum."""

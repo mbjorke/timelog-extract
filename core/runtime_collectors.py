@@ -74,6 +74,14 @@ class RuntimeCollectors:
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 
+    def _web_visit_collapse_minutes(self) -> int:
+        collapse = 12
+        if self.cli_args is not None:
+            value = getattr(self.cli_args, "chrome_collapse_minutes", None)
+            if value is not None:
+                collapse = int(value)
+        return self.chrome.web_visit_collapse_minutes(collapse)
+
     def collect_claude_ai_urls(self, profiles, dt_from, dt_to):
         return self.chrome.collect_claude_ai_urls(
             profiles,
@@ -83,6 +91,7 @@ class RuntimeCollectors:
             self.chrome_epoch_delta_us,
             self.uncategorized,
             self.make_event,
+            collapse_minutes=self._web_visit_collapse_minutes(),
         )
 
     def collect_gemini_web_urls(self, profiles, dt_from, dt_to):
@@ -94,6 +103,7 @@ class RuntimeCollectors:
             self.chrome_epoch_delta_us,
             self.uncategorized,
             self.make_event,
+            collapse_minutes=self._web_visit_collapse_minutes(),
         )
 
     def collect_chrome(self, profiles, dt_from, dt_to, collapse_minutes=0):

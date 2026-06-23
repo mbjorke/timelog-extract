@@ -218,7 +218,44 @@ def run_interactive_mapping_flow(
     return batch_result
 
 
-def maybe_run_mapping_assistant_after_report(console, report) -> bool:
+def prepare_mapping_review_after_report(report, *, fast_post_report: bool = False):
+    """Build mapping review for the post-report gate; no prompts or console output."""
+    from core.mapping_review import build_mapping_review
+
+    events = list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or [])
+    dt_from = getattr(report, "dt_from", None)
+    dt_to = getattr(report, "dt_to", None)
+    local_tz = getattr(dt_from, "tzinfo", None) if dt_from else None
+
+    if fast_post_report:
+        return build_mapping_review(
+            events,
+            report.profiles,
+            dt_from=dt_from,
+            dt_to=dt_to,
+            local_tz=local_tz,
+            slug_bindings={},
+            gh_discovery=False,
+        )
+
+    signals = collect_actionable_mapping_signals(report, include_workspace_repos=True)
+    return build_mapping_review(
+        events,
+        report.profiles,
+        extra_signals=signals,
+        dt_from=dt_from,
+        dt_to=dt_to,
+        local_tz=local_tz,
+    )
+
+
+def maybe_run_mapping_assistant_after_report(
+    console,
+    report,
+    *,
+    fast_post_report: bool = False,
+    review=None,
+) -> bool:
     """One gate question on a TTY; then git-local mapping review."""
     if not should_prompt():
         return False
@@ -228,17 +265,8 @@ def maybe_run_mapping_assistant_after_report(console, report) -> bool:
         return False
 
     events = list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or [])
-    signals = collect_actionable_mapping_signals(report, include_workspace_repos=True)
-    from core.mapping_review import build_mapping_review
-
-    review = build_mapping_review(
-        events,
-        report.profiles,
-        extra_signals=signals,
-        dt_from=getattr(report, "dt_from", None),
-        dt_to=getattr(report, "dt_to", None),
-        local_tz=getattr(report, "dt_from", None).tzinfo if getattr(report, "dt_from", None) else None,
-    )
+    if review is None:
+        review = prepare_mapping_review_after_report(report, fast_post_report=fast_post_report)
     if review.change_count() == 0:
         return False
 
@@ -255,6 +283,9 @@ def maybe_run_mapping_assistant_after_report(console, report) -> bool:
         return False
 
     config = str(getattr(report, "config_path", None) or getattr(report.args, "projects_config", ""))
+    signals: list[dict[str, Any]] = []
+    if not fast_post_report:
+        signals = collect_actionable_mapping_signals(report, include_workspace_repos=True)
     run_interactive_mapping_flow(
         console,
         signals,
@@ -263,6 +294,7 @@ def maybe_run_mapping_assistant_after_report(console, report) -> bool:
         events=events,
         dt_from=getattr(report, "dt_from", None),
         dt_to=getattr(report, "dt_to", None),
+        review=review,
     )
     console.print("[dim]Re-run the same report to see updated project hours.[/dim]")
     return True

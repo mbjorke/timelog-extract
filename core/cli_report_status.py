@@ -466,11 +466,9 @@ def status(
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         if anchor_nudge:
-            from core.anchor_nudge import status_anchor_line
-            from core.report_nudges import unanchored_anchors_for_report
+            from core.report_postamble import status_anchor_warn_line
 
-            unmapped_anchors = unanchored_anchors_for_report(report)
-            warn_line = status_anchor_line(unmapped_anchors)
+            warn_line = status_anchor_warn_line(report, console=console)
             if warn_line:
                 # Interactive mapping lives in `gittan map`; status stays a read-only snapshot.
                 console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")

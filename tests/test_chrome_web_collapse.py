@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import collect_claude_ai_urls
+from collectors.chrome import WEB_VISIT_COLLAPSE_MINUTES, collect_claude_ai_urls, dedupe_web_visit_rows
 
 from chrome_test_support import EPOCH_DELTA_US, insert_visit, make_chrome_db, make_event
 
@@ -15,6 +15,16 @@ _NEUTRAL_TITLE = "project-alpha chat"
 
 
 class WebVisitCollapseTests(unittest.TestCase):
+    def test_dedupe_web_visit_rows_respects_zero_collapse_minutes(self):
+        ts = datetime(2026, 4, 10, 4, 28, tzinfo=timezone.utc)
+        ts_cu = int(ts.timestamp() * 1_000_000) + EPOCH_DELTA_US
+        rows = [
+            (ts_cu, "https://claude.ai/chat/abc123", _NEUTRAL_TITLE),
+            (ts_cu + 60_000_000, "https://claude.ai/chat/abc123", _NEUTRAL_TITLE),
+        ]
+        self.assertEqual(len(dedupe_web_visit_rows(rows, 0, EPOCH_DELTA_US)), 2)
+        self.assertEqual(len(dedupe_web_visit_rows(rows, WEB_VISIT_COLLAPSE_MINUTES, EPOCH_DELTA_US)), 1)
+
     def test_claude_ai_daily_collapse_keeps_one_visit_per_url_per_day(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)

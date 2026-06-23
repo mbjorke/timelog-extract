@@ -170,8 +170,7 @@ def thin_chrome_visit_rows_by_day(rows, epoch_delta_us):
 
 def dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us):
     """Collapse tracked web visits to one event per normalized URL per UTC calendar day."""
-    _ = collapse_minutes
-    if not rows:
+    if collapse_minutes <= 0 or not rows:
         return rows
     return thin_chrome_visit_rows_by_day(rows, epoch_delta_us)
 

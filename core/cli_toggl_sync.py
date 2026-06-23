@@ -111,7 +111,13 @@ def toggl_sync(
         try:
             existing = existing_marker_tags(creds, start_date, end_date)
         except Exception as exc:
-            typer.echo(f"Warning: could not list existing Toggl entries for dedup: {exc}")
+            # Fail closed: without the dedup list we can't tell what already
+            # exists, so abort rather than risk double-posting.
+            raise typer.BadParameter(
+                f"Could not list existing Toggl entries for dedup ({exc}); "
+                "aborting to avoid duplicate posts. Re-run once Toggl is reachable, "
+                "or use --dry-run to preview."
+            )
 
     for candidate in candidates:
         typer.echo(

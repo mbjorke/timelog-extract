@@ -205,7 +205,9 @@ def post_toggl_time_entry(
         f"/api/v9/workspaces/{creds.workspace_id}/time_entries",
         payload,
     )
-    entry_id = str((parsed or {}).get("id") or "").strip()
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Toggl returned an unexpected (non-object) response for time entry create")
+    entry_id = str(parsed.get("id") or "").strip()
     if not entry_id:
         raise RuntimeError("Toggl response missing time entry id")
     return entry_id

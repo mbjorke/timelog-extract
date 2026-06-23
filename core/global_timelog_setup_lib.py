@@ -235,7 +235,7 @@ def run_setup_wizard(
     next_steps.extend(github_env_steps)
     for label, configure, doctor_flag in (
         ("Jira", configure_jira_env_for_setup, "--jira-sync auto"),
-        ("Toggl", configure_toggl_env_for_setup, "--toggl-source auto"),
+        ("Toggl", configure_toggl_env_for_setup, ""),
     ):
         try:
             status, note, steps = configure(console, yes=yes, dry_run=dry_run)
@@ -243,7 +243,8 @@ def run_setup_wizard(
             console.print(f"[yellow]{label} env bootstrap could not complete:[/yellow] {exc}")
             status = "ACTION_REQUIRED"
             note = f"{label} env bootstrap failed: {exc}"
-            steps = [f"Set {label} credentials manually, then rerun `gittan doctor {doctor_flag}`."]
+            doctor_cmd = f"gittan doctor {doctor_flag}".rstrip()
+            steps = [f"Set {label} credentials manually, then rerun `{doctor_cmd}`."]
         summary_rows.append((f"{label} env bootstrap", status, note))
         next_steps.extend(steps)
     if fast:

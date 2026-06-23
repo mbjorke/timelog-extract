@@ -209,6 +209,9 @@ def normalize_profile(raw):
         profile["worklog"] = worklog
     toggl_project_id = raw.get("toggl_project_id")
     if toggl_project_id not in (None, ""):
+        # bool is an int subclass; reject it so True/False can't silently map to 1/0.
+        if isinstance(toggl_project_id, bool):
+            raise ValueError("toggl_project_id must be an integer, not a boolean")
         try:
             profile["toggl_project_id"] = int(toggl_project_id)
         except (TypeError, ValueError):

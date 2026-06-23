@@ -216,5 +216,7 @@ def add_remote_api_doctor_rows(
     add_gh_cli_doctor_row(table)
     add_github_doctor_row(table, gh_mode, github_user)
     add_toggl_doctor_row(table, toggl_source)
-    add_toggl_sync_doctor_row(table, toggl_source)
+    # Sync readiness is about credentials, not the read-source toggle, so it is
+    # evaluated in "auto" mode independently of --toggl-source.
+    add_toggl_sync_doctor_row(table, "auto")
     add_jira_doctor_row(table, jira_sync)

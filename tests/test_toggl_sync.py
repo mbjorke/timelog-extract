@@ -152,6 +152,17 @@ class PostClientTests(unittest.TestCase):
                 project_id=123,
             )
 
+    def test_non_object_response_raises(self):
+        from datetime import timezone as tz
+
+        creds = TogglCredentials(api_token=TEST_TOKEN, workspace_id=1)
+        start = datetime(2026, 6, 23, 10, 0, tzinfo=tz.utc)
+        with patch("collectors.toggl._toggl_request", return_value=["unexpected"]):
+            with self.assertRaises(RuntimeError):
+                post_toggl_time_entry(
+                    creds=creds, start=start, duration_seconds=60, description="x", project_id=123
+                )
+
 
 class CliTests(unittest.TestCase):
     def _creds(self):
@@ -199,6 +210,20 @@ class CliTests(unittest.TestCase):
         self.assertEqual(start_date, "2026-06-23")
         self.assertEqual(end_date, "2026-06-24")
         self.assertIn("posted=0, skipped=1", result.output)
+
+    def test_dedup_preflight_failure_aborts_without_posting(self):
+        runner = CliRunner()
+        with patch("core.report_service.run_timelog_report", return_value=SimpleNamespace(profiles=[], dt_from=datetime(2026, 6, 23), dt_to=datetime(2026, 6, 23))), patch(
+            "core.cli_toggl_sync.toggl_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_toggl_sync.resolve_toggl_credentials", return_value=self._creds()), patch(
+            "core.cli_toggl_sync.build_toggl_entry_candidates", return_value=([self._candidate()], 0)
+        ), patch(
+            "core.cli_toggl_sync.existing_marker_tags", side_effect=RuntimeError("Toggl down")
+        ), patch("core.cli_toggl_sync.post_candidate") as post:
+            result = runner.invoke(app, ["toggl-sync", "--today", "--toggl-sync", "on"])
+        # Fail closed: no post attempted, non-zero exit.
+        post.assert_not_called()
+        self.assertNotEqual(result.exit_code, 0)
 
     def test_confirm_decline_skips(self):
         runner = CliRunner()

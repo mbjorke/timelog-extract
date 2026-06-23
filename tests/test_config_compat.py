@@ -81,6 +81,10 @@ class ConfigCompatibilityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_profile({"name": "Demo", "toggl_project_id": "not-a-number"})
 
+    def test_normalize_profile_rejects_boolean_toggl_project_id(self):
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "toggl_project_id": True})
+
     def test_normalize_profile_omits_toggl_project_id_when_absent(self):
         profile = normalize_profile({"name": "Demo"})
         self.assertNotIn("toggl_project_id", profile)

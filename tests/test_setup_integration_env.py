@@ -36,6 +36,20 @@ class AlreadySetTests(unittest.TestCase):
         self.assertTrue(any("TOGGL_API_TOKEN" in s for s in steps))
 
 
+class NonInteractiveTests(unittest.TestCase):
+    def test_eoferror_on_confirm_is_treated_as_skip(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            sie.questionary, "confirm"
+        ) as q_confirm:
+            q_confirm.return_value.ask.side_effect = EOFError()
+            status, _note, steps = sie.configure_jira_env_for_setup(
+                console, yes=False, dry_run=True
+            )
+        self.assertEqual(status, "SKIPPED")
+        self.assertTrue(any("jira-sync" in s for s in steps))
+
+
 class InteractiveTests(unittest.TestCase):
     def test_declined_confirm_skips(self):
         console = Console(record=True)
@@ -70,7 +84,7 @@ class InteractiveTests(unittest.TestCase):
         self.assertEqual(upsert.call_count, 2)
         # Plaintext warning shown for the secret.
         self.assertIn("plaintext", console.export_text())
-        self.assertTrue(any("gittan doctor --toggl-source auto" in s for s in steps))
+        self.assertTrue(any("gittan doctor" in s for s in steps))
 
     def test_partial_input_is_action_required(self):
         console = Console(record=True)

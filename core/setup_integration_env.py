@@ -28,9 +28,20 @@ class CredField:
 
 
 def _prompt_value(field: CredField) -> str:
-    if field.secret:
-        return (questionary.password(f"Paste {field.env_key} (input hidden):").ask() or "").strip()
-    return (questionary.text(f"{field.prompt}:").ask() or "").strip()
+    try:
+        if field.secret:
+            return (questionary.password(f"Paste {field.env_key} (input hidden):").ask() or "").strip()
+        return (questionary.text(f"{field.prompt}:").ask() or "").strip()
+    except EOFError:
+        # Non-interactive stdin (piped/CI): treat as no input.
+        return ""
+
+
+def _confirm(prompt: str, *, default: bool) -> bool:
+    try:
+        return bool(questionary.confirm(prompt, default=default).ask())
+    except EOFError:
+        return False
 
 
 def configure_env_credentials(
@@ -60,7 +71,7 @@ def configure_env_credentials(
         # Non-interactive: cannot prompt for secrets; surface the manual hint.
         return "SKIPPED", f"{label} credentials not set (skipped in --yes mode).", [enable_hint]
 
-    if not questionary.confirm(f"Configure {label} credentials now?", default=default_enable).ask():
+    if not _confirm(f"Configure {label} credentials now?", default=default_enable):
         return "SKIPPED", f"User skipped {label} credential bootstrap.", [enable_hint]
 
     profile = shell_profile_path()
@@ -148,7 +159,7 @@ def configure_toggl_env_for_setup(
             "Optional: set TOGGL_API_TOKEN and TOGGL_WORKSPACE_ID to enable "
             "`gittan toggl-sync`."
         ),
-        verify_cmd="gittan doctor --toggl-source auto",
+        verify_cmd="gittan doctor",
         yes=yes,
         dry_run=dry_run,
         default_enable=default_enable,

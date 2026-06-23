@@ -26,6 +26,7 @@ from core.config import (
     projects_config_resolution_warnings,
     resolve_worklog_path,
 )
+from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
 from core.git_project_bootstrap import assess_config_git_coverage
 from core.sqlite_backup import sqlite_db_check_detail
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
@@ -174,6 +175,12 @@ def doctor(
                 WARN_ICON,
                 f"[{STYLE_MUTED}]{warning}[/{STYLE_MUTED}]",
             )
+        add_broad_tracked_url_lint_rows(
+            table,
+            projects_cfg,
+            warn_icon=WARN_ICON,
+            style_muted=STYLE_MUTED,
+        )
         using_single_worklog = bool(worklog) or bool(workspace_worklog)
         if using_single_worklog:
             worklog_ok = check_file(worklog_path, "Worklog (Local)")

@@ -11,6 +11,7 @@ from core.triage_noise import (
     is_uncategorized_noise_detail,
     is_uncategorized_noise_term,
 )
+from core.tracked_url_policy import is_multi_tenant_tracked_url_host
 
 
 _URL_RE = re.compile(r"https?://[^\s)>\"]+")
@@ -97,7 +98,13 @@ def _is_noise_rule_value(rule_type: str, rule_value: str) -> bool:
             return True
     if rule_type == "tracked_urls":
         host = rule_value.lower().split("/", 1)[0]
-        if host in _NOISE_TRACKED_URL_VALUES or host in TRIAGE_NOISE_DOMAINS:
+        if host.startswith("www."):
+            host = host[4:]
+        if (
+            host in _NOISE_TRACKED_URL_VALUES
+            or host in TRIAGE_NOISE_DOMAINS
+            or is_multi_tenant_tracked_url_host(rule_value)
+        ):
             return True
     return False
 

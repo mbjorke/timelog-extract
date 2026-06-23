@@ -205,6 +205,31 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         self.assertNotIn(("tracked_urls", "lovable.dev"), cluster_keys)
         self.assertIn(("tracked_urls", "github.com"), cluster_keys)
 
+    def test_build_clusters_excludes_multi_tenant_ai_chat_hosts(self):
+        events = [
+            {
+                "source": "Gemini (web)",
+                "detail": "gemini/app/abc123… — Project planning chat",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Claude.ai (web)",
+                "detail": "Visited https://claude.ai/chat/xyz789 for review",
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Cursor",
+                "detail": "Implemented acme-feature review flow",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("tracked_urls", "gemini.google.com"), cluster_keys)
+        self.assertNotIn(("tracked_urls", "claude.ai"), cluster_keys)
+        self.assertIn(("match_terms", "acme-feature"), cluster_keys)
+
 
 class UncategorizedReviewConfigTests(unittest.TestCase):
     def test_apply_rule_to_project_writes_without_duplicates(self):

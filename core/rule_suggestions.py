@@ -11,6 +11,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 
 from core.domain import classify_project
+from core.tracked_url_policy import is_over_broad_tracked_url
 from core.uncategorized_review import UncategorizedCluster
 
 COMMON_DOMAINS = frozenset(
@@ -213,6 +214,13 @@ def _sanitize_tracked_url_value(value: str) -> str:
     raw = _strip_control_chars(value.strip().lower())
     if not raw:
         return ""
+    from core.tracked_url_policy import is_over_broad_tracked_url, tracked_url_host_and_segments
+
+    host, segments = tracked_url_host_and_segments(raw)
+    if host and segments:
+        normalized = f"{host}/{'/'.join(segments)}"
+        if not is_over_broad_tracked_url(normalized):
+            return normalized
     parsed = urlparse(raw if "://" in raw else f"https://{raw}")
     candidate = parsed.netloc or parsed.path
     candidate = _strip_control_chars(candidate).strip()
@@ -222,6 +230,8 @@ def _sanitize_tracked_url_value(value: str) -> str:
     match = DOMAIN_RE.search(raw)
     if match:
         return match.group(1)
+    if host and not is_over_broad_tracked_url(host):
+        return host
     return candidate
 
 
@@ -275,6 +285,8 @@ def split_ab_suggestions(
 
         if cluster.rule_type == "tracked_urls":
             if _ambiguous_value("tracked_urls", rv, others):
+                continue
+            if is_over_broad_tracked_url(rv):
                 continue
             common = _domain_is_common(rv)
             if cluster.count >= 2 or (cluster.count >= 1 and not common):

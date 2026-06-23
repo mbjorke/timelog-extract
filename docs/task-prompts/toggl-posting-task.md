@@ -171,36 +171,39 @@ Scenario: Non-interactive run does not prompt for secrets
   `tests/test_setup_github_env.py` regression green.
 - dependencies: none; uses the GitHub bootstrap as the reference pattern.
 
-### Invoice-friendly Toggl description
+### AI-generated invoice-friendly description (separate paid service)
 
-- priority: **next**
-- problem: the time-entry description is currently just `"{project_name}
-  ({day})"`, which is fine for sync but not customer-facing in Toggl reports.
-- user value: Toggl entries read like billable line items without a separate
-  invoice step.
-- decision: source the description from the profile's existing `invoice_title` /
-  `invoice_description` fields (already preserved by `normalize_profile`), not
-  from raw event traces. `/gittan-invoice` stays the separate deliverable
-  (email + Briox line + Excel) — it does not write to Toggl.
-- non-goals: AI/auto-generated "what was done" summaries from event details
-  (raw-trace exposure; own `later` item).
+- priority: **later** (own track / likely a paid add-on)
+- problem: the time-entry description is currently `"{project_name} ({day})"`,
+  fine for sync but not customer-facing. Billable text must describe *what was
+  actually done that day* — so it has to vary per period, not be a fixed string.
+- user value: Toggl entries (and downstream invoices) read like real billable
+  line items without manual writing.
+- **decision (maintainer, 2026-06-24):** do **not** source this from static
+  config fields (`invoice_title` / `invoice_description`) — a constant string is
+  the wrong model because the work differs each day. Instead, generate the text
+  per project+day from the actual activity, the same way the personal
+  `/gittan-invoice` skill produces customer text. This belongs in a **separate
+  AI service that may be metered/paid**, kept personal/local, not in the free
+  sync MVP.
+- non-goals: hard-coding descriptions in config; bundling the AI generator into
+  `toggl-sync`'s core path (the generator is a pluggable, opt-in producer).
 - behavior:
 
 ```gherkin
-Scenario: Description uses invoice_title when set
-  Given a project has invoice_title "Blueberry — fintech advisory"
-  When toggl-sync builds the entry for that project+day
-  Then the Toggl description reads "Blueberry — fintech advisory (2026-06-18)"
-
-Scenario: Falls back to project name
-  Given a project has no invoice_title
-  Then the description reads "{project_name} (2026-06-18)" as today
+Scenario: Opt-in AI description producer
+  Given the user has enabled the (paid) description generator
+  When toggl-sync builds an entry for a project+day
+  Then the description is generated from that day's activity summary
+  And without the generator enabled the description stays "{project_name} (day)"
 ```
 
-- acceptance: description = `invoice_title` (or `project_name`) plus optional
-  `invoice_description`, plus the day; dedup marker tag unchanged; covered by a
-  unit test for both with/without invoice fields.
-- dependencies: `now` Toggl push MVP.
+- acceptance: `toggl-sync` exposes a pluggable description producer; default
+  stays the current simple string; the AI/skill producer is opt-in and isolated
+  so the free path needs no network/LLM. Privacy: send summaries, not raw traces
+  (`source-evidence-policy.md`).
+- dependencies: `now` Toggl push MVP; alignment with `/gittan-invoice` and the
+  personal-skill/monetization direction.
 
 ### Local operation log + regret recovery
 

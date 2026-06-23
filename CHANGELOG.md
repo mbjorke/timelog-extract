@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.20 - 2026-06-22
+
+- Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.
+
 ## 0.2.19 - 2026-06-15
 
 - Report trust (GH-146): **Cursor agent-turn** evidence from structured logs; **presence-estimated** hours band (Screen Time–capped, display-only); **evidence-check** coverage ratio and codec visibility in report footer; **sanity bounds** for implausible sessions; **project-hour remainder** allocation so CLI-heavy sessions do not drop unattributed hours ([#147](https://github.com/mbjorke/timelog-extract/pull/147)).

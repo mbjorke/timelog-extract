@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "timelog-extract"
-version = "0.2.19"
+version = "0.2.20"
 description = "Aggregate local work activity from Gemini, Claude, Cursor, OpenAI Codex IDE, Chrome, Mail, worklog, optional GitHub public activity, and optional Screen Time."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -24,14 +24,15 @@ dependencies = [
   # hard click dependency, so we must declare it ourselves or CLI imports fail.
   "click>=8.0",
   "rich",
-  "questionary"
+  "questionary",
+  # Chromium cache-backed sources (Claude Desktop Code=zstd, Lovable=brotli).
+  "zstandard>=0.21",
+  "brotli>=1.1",
 ]
 
 [project.optional-dependencies]
-# Codecs for Electron/Chromium cache-backed sources (Claude Desktop Code=zstd,
-# Lovable Desktop=brotli). Without them those collectors silently yield nothing
-# and `gittan doctor` explains what to install.
-cache-evidence = ["zstandard>=0.21", "brotli>=1.1"]
+# Backward compat: codecs ship as default deps since 0.2.20.
+cache-evidence = []
 
 [project.urls]
 Homepage = "https://gittan.sh"

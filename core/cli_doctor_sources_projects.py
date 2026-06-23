@@ -31,7 +31,7 @@ from core.git_project_bootstrap import assess_config_git_coverage
 from core.sqlite_backup import sqlite_db_check_detail
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
-from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_toggl_doctor_row
+from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
 from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
     lovable_desktop_history_candidates,
@@ -77,6 +77,13 @@ def doctor(
             help="Toggl source mode: auto, on, or off (doctor visibility only).",
         ),
     ] = "auto",
+    jira_sync: Annotated[
+        str,
+        typer.Option(
+            "--jira-sync",
+            help="Jira sync mode: auto, on, or off (doctor visibility only).",
+        ),
+    ] = "auto",
 ):
     """
     Check source access and local integration health, then print a diagnostic table.
@@ -86,15 +93,15 @@ def doctor(
         github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
         github_user (Optional[str]): GitHub username(s), comma-separated for multiple, used when evaluating public event checks (visibility only).
         toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).
+        jira_sync (str): Jira sync mode: "auto", "on", or "off" (controls visibility of Jira worklog sync checks in the diagnostic output).
     """
     from rich.console import Console
     from rich.table import Table
     from rich import box
 
     console = Console()
-    gh_mode = (github_source or "auto").strip().lower()
-    if gh_mode not in {"auto", "on", "off"}:
-        raise typer.BadParameter("Expected one of: auto, on, off", param_hint="--github-source")
+    gh_mode = normalize_doctor_tri_state_mode(github_source, "--github-source")
+    jira_mode = normalize_doctor_tri_state_mode(jira_sync, "--jira-sync")
     print_command_hero(console, "doctor")
     console.print("")
     home = Path.home()
@@ -358,9 +365,13 @@ def doctor(
             style_muted=STYLE_MUTED,
         )
 
-        add_gh_cli_doctor_row(table)
-        add_github_doctor_row(table, gh_mode, github_user)
-        add_toggl_doctor_row(table, toggl_source)
+        add_remote_api_doctor_rows(
+            table,
+            gh_mode=gh_mode,
+            github_user=github_user,
+            toggl_source=toggl_source,
+            jira_sync=jira_mode,
+        )
     console.print(table)
     if codec_blocked:
         console.print(

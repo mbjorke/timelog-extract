@@ -24,6 +24,23 @@ def _normalize_base_url(value: str) -> str:
     return value.rstrip("/")
 
 
+def jira_site_label(base_url: str) -> str:
+    """Return hostname for display; never userinfo from a misconfigured URL."""
+    from urllib.parse import urlparse
+
+    raw = (base_url or "").strip()
+    if not raw:
+        return ""
+    host = (urlparse(raw).hostname or "").strip()
+    if host:
+        return host
+    # Scheme-less or malformed URLs may embed userinfo; never echo the raw value.
+    tail = raw.rsplit("@", 1)[-1].strip()
+    if tail and tail != raw:
+        return tail.split("/", 1)[0]
+    return ""
+
+
 def resolve_jira_credentials(args: Any) -> Optional[JiraCredentials]:
     base_url = (
         (getattr(args, "jira_base_url", None) or os.environ.get("JIRA_BASE_URL") or "")

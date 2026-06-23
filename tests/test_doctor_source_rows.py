@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 
 from rich.table import Table
 
-from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_toggl_doctor_row
+from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_jira_doctor_row, add_toggl_doctor_row
 from core.setup_github_env import GhCliAuthStatus
 from outputs.terminal_theme import NA_ICON, OK_ICON, WARN_ICON
 
@@ -243,6 +243,92 @@ class AddTogglDoctorRowTests(unittest.TestCase):
         self.assertEqual(icon, OK_ICON)
         # With token in env it shows 'token present'
         self.assertIn("token present", msg)
+
+
+class AddJiraDoctorRowTests(unittest.TestCase):
+    def test_jira_auto_without_credentials_shows_not_configured(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {"JIRA_BASE_URL": "", "JIRA_EMAIL": "", "JIRA_API_TOKEN": ""},
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "auto")
+        label, icon, msg = rows[0]
+        self.assertEqual(label, "Jira Sync")
+        self.assertEqual(icon, NA_ICON)
+        self.assertIn("Not configured", msg)
+        self.assertIn("JIRA_BASE_URL", msg)
+
+    def test_jira_auto_with_credentials_shows_enabled(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {
+                "JIRA_BASE_URL": "https://example.atlassian.net",
+                "JIRA_EMAIL": "user@example.com",
+                "JIRA_API_TOKEN": "secret",
+            },
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "auto")
+        label, icon, msg = rows[0]
+        self.assertEqual(label, "Jira Sync")
+        self.assertEqual(icon, OK_ICON)
+        self.assertIn("example.atlassian.net", msg)
+        self.assertNotIn("secret", msg)
+        self.assertNotIn("user@example.com", msg)
+
+    def test_jira_auto_with_credentials_in_url_shows_hostname_only(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {
+                "JIRA_BASE_URL": "https://user:secret@example.atlassian.net",
+                "JIRA_EMAIL": "user@example.com",
+                "JIRA_API_TOKEN": "secret",
+            },
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "auto")
+        _, _, msg = rows[0]
+        self.assertIn("example.atlassian.net", msg)
+        self.assertNotIn("secret", msg)
+        self.assertNotIn("user:secret", msg)
+
+    def test_jira_schemeless_url_in_env_does_not_leak_userinfo(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {
+                "JIRA_BASE_URL": "user:secret@example.atlassian.net",
+                "JIRA_EMAIL": "user@example.com",
+                "JIRA_API_TOKEN": "secret",
+            },
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "auto")
+        _, _, msg = rows[0]
+        self.assertIn("example.atlassian.net", msg)
+        self.assertNotIn("secret", msg)
+        self.assertNotIn("user:secret", msg)
+
+    def test_jira_off_shows_not_configured(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {
+                "JIRA_BASE_URL": "https://example.atlassian.net",
+                "JIRA_EMAIL": "user@example.com",
+                "JIRA_API_TOKEN": "secret",
+            },
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "off")
+        label, icon, msg = rows[0]
+        self.assertEqual(label, "Jira Sync")
+        self.assertEqual(icon, NA_ICON)
+        self.assertIn("off", msg)
 
 
 if __name__ == "__main__":

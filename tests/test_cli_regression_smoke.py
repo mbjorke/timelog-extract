@@ -79,10 +79,15 @@ class CliRegressionSmokeTests(unittest.TestCase):
         """
         env = dict(os.environ)
         env.pop("TOGGL_API_TOKEN", None)
+        env.pop("JIRA_BASE_URL", None)
+        env.pop("JIRA_EMAIL", None)
+        env.pop("JIRA_API_TOKEN", None)
         completed = self._run_doctor([], env=env)
         self.assertIn("Next steps", completed.stdout)
         self.assertIn("Toggl Source", completed.stdout)
         self.assertIn("Not configured (auto)", completed.stdout)
+        self.assertIn("Jira Sync", completed.stdout)
+        self.assertIn("JIRA_BASE_URL", completed.stdout)
 
     def test_doctor_github_source_off_row_is_shown(self):
         completed = self._run_doctor(["--github-source", "off", "--github-user", "example-user"])

@@ -3,54 +3,19 @@
 from __future__ import annotations
 
 import os
-import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import questionary
 
+# Re-exported under the historical private names for backward compatibility
+# (tests and callers import these from this module).
+from core.setup_shell_profile import shell_profile_path as _shell_profile_path
+from core.setup_shell_profile import upsert_export as _upsert_export
+
 _GH_TIMEOUT_SECONDS = 10
-
-
-def _shell_profile_path() -> Path:
-    shell = (os.environ.get("SHELL") or "").lower()
-    home = Path.home()
-    if "zsh" in shell:
-        return home / ".zshrc"
-    if "bash" in shell:
-        return home / ".bashrc"
-    return home / ".profile"
-
-
-def _upsert_export(path: Path, key: str, value: str, *, dry_run: bool) -> bool:
-    line = f"export {key}={shlex.quote(value)}"
-    if dry_run:
-        return True
-    existing = path.read_text(encoding="utf-8") if path.exists() else ""
-    rows = existing.splitlines()
-    prefix = f"export {key}="
-    changed = False
-    found = False
-    out: list[str] = []
-    for row in rows:
-        if row.strip().startswith(prefix):
-            out.append(line)
-            found = True
-            changed = True
-        else:
-            out.append(row)
-    if not found:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line)
-        changed = True
-    if changed:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
-    return changed
 
 
 def _gh_read_token() -> str:

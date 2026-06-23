@@ -12,7 +12,11 @@ from rich.table import Table
 
 from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
 from collectors.jira import jira_site_label, jira_sync_enabled, resolve_jira_credentials
-from collectors.toggl import toggl_source_enabled
+from collectors.toggl import (
+    resolve_toggl_workspace_id,
+    toggl_source_enabled,
+    toggl_sync_enabled,
+)
 from core.setup_github_env import probe_gh_cli_auth
 from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED, WARN_ICON
 
@@ -149,6 +153,31 @@ def add_toggl_doctor_row(table: Table, toggl_source: str) -> None:
         )
 
 
+def add_toggl_sync_doctor_row(table: Table, toggl_sync: str) -> None:
+    """
+    Append a Toggl time-entry posting (sync) readiness row.
+
+    Posting needs both an API token and a workspace id; this row reports whether
+    `gittan toggl-sync` is ready to post, separate from the read-source row.
+    """
+    args = argparse.Namespace(toggl_sync=toggl_sync)
+    enabled, reason = toggl_sync_enabled(args)
+    if enabled:
+        workspace_id = resolve_toggl_workspace_id(args)
+        table.add_row(
+            "Toggl Sync",
+            OK_ICON,
+            f"[{STYLE_MUTED}]Enabled ({toggl_sync}) — token + workspace {workspace_id}[/{STYLE_MUTED}]",
+        )
+    else:
+        escaped_reason = markup.escape(reason or "")
+        table.add_row(
+            "Toggl Sync",
+            NA_ICON,
+            f"[{STYLE_MUTED}]Not configured ({toggl_sync}); {escaped_reason}[/{STYLE_MUTED}]",
+        )
+
+
 def add_jira_doctor_row(table: Table, jira_sync: str) -> None:
     """
     Append a Jira worklog sync status row to the provided doctor health-check table.
@@ -187,4 +216,5 @@ def add_remote_api_doctor_rows(
     add_gh_cli_doctor_row(table)
     add_github_doctor_row(table, gh_mode, github_user)
     add_toggl_doctor_row(table, toggl_source)
+    add_toggl_sync_doctor_row(table, toggl_source)
     add_jira_doctor_row(table, jira_sync)

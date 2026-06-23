@@ -207,6 +207,12 @@ def normalize_profile(raw):
     worklog = str(raw.get("worklog", "")).strip()
     if worklog:
         profile["worklog"] = worklog
+    toggl_project_id = raw.get("toggl_project_id")
+    if toggl_project_id not in (None, ""):
+        try:
+            profile["toggl_project_id"] = int(toggl_project_id)
+        except (TypeError, ValueError):
+            raise ValueError("toggl_project_id must be an integer (Toggl numeric project id)")
     return profile
 
 

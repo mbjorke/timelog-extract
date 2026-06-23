@@ -19,6 +19,8 @@ _DOCTOR_SQL_TABLES = frozenset({"urls", "ZOBJECT"})
 
 @dataclass(frozen=True)
 class DoctorCheckStyle:
+    """Rich icon/style tokens for doctor file and SQLite check rows."""
+
     ok_icon: str
     warn_icon: str
     fail_icon: str
@@ -26,6 +28,7 @@ class DoctorCheckStyle:
 
 
 def doctor_check_file(table: Table, path: Path, label: str, style: DoctorCheckStyle) -> bool:
+    """Append a file accessibility row to the doctor table; return True when readable."""
     if not path.exists():
         table.add_row(label, style.fail_icon, f"[{style.style_muted}]Not found: {path}[/{style.style_muted}]")
         return False
@@ -41,6 +44,7 @@ def doctor_check_file(table: Table, path: Path, label: str, style: DoctorCheckSt
 
 
 def doctor_check_db(table: Table, path: Path, label: str, table_name: str, style: DoctorCheckStyle) -> bool:
+    """Probe a SQLite DB via temp copy and append a status row; return True on success."""
     if table_name not in _DOCTOR_SQL_TABLES:
         raise ValueError(f"unsupported doctor table name: {table_name!r}")
     if not path.exists():
@@ -57,8 +61,8 @@ def doctor_check_db(table: Table, path: Path, label: str, table_name: str, style
         detail = sqlite_db_check_detail(path)
         table.add_row(label, style.ok_icon, f"[{style.style_muted}]{detail}[/{style.style_muted}]")
         return True
-    except sqlite3.OperationalError as e:
-        if "database is locked" in str(e):
+    except sqlite3.Error as e:
+        if isinstance(e, sqlite3.OperationalError) and "database is locked" in str(e):
             table.add_row(
                 label,
                 style.warn_icon,

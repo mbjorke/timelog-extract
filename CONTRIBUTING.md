@@ -43,10 +43,10 @@ Naming notes:
 
   ```bash
   python3 -m venv .venv
-  .venv/bin/python -m pip install -e ".[cache-evidence]"
+  .venv/bin/python -m pip install -e .
   ```
 
-  The **`cache-evidence`** extra (`zstandard`, `brotli`) enables Claude Desktop (Code) and Lovable cache collectors. Without it, reports still run but show a codec warning and those sources stay empty.
+  **`zstandard`** and **`brotli`** ship as default dependencies (Chromium cache-backed Claude Desktop (Code) and Lovable collectors). A broken install may still show a codec warning in `gittan doctor`; reinstall with `pipx install --force timelog-extract` or `pip install --upgrade timelog-extract`.
 
   Use **`.venv/bin/python timelog_extract.py`** (or `gittan` after `pip install -e .`) — not bare system `python3`.
 

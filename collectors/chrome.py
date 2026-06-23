@@ -105,12 +105,12 @@ def chrome_ts(visit_time_cu, epoch_delta_us):
     )
 
 
-# Long-lived tabs re-emit Chrome visits; web chat collectors dedupe at least daily.
+# Tracked web collectors dedupe by UTC calendar day when collapse is enabled.
 WEB_VISIT_COLLAPSE_MINUTES = 24 * 60
 
 
 def web_visit_collapse_minutes(chrome_collapse_minutes: int) -> int:
-    """Return dedupe window for tracked web URLs (never shorter than one day)."""
+    """Return non-zero when tracked web URL dedupe is enabled (calendar-day collapse)."""
     return max(int(chrome_collapse_minutes or 0), WEB_VISIT_COLLAPSE_MINUTES)
 
 
@@ -147,6 +147,33 @@ def thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us):
     return out
 
 
+def thin_chrome_visit_rows_by_day(rows, epoch_delta_us):
+    """Keep the first visit per normalized URL per UTC calendar day."""
+    if not rows:
+        return rows
+    out = []
+    seen = set()
+    for visit_time_cu, url, title in rows:
+        norm = normalize_chrome_url(url)
+        if not norm:
+            out.append((visit_time_cu, url, title))
+            continue
+        day_key = chrome_ts(visit_time_cu, epoch_delta_us).date()
+        key = (norm, day_key)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((visit_time_cu, url, title))
+    return out
+
+
+def dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us):
+    """Collapse tracked web visits; ``collapse_minutes <= 0`` disables dedupe."""
+    if collapse_minutes <= 0 or not rows:
+        return rows
+    return thin_chrome_visit_rows_by_day(rows, epoch_delta_us)
+
+
 def collect_claude_ai_urls(
     profiles,
     dt_from,
@@ -171,7 +198,7 @@ def collect_claude_ai_urls(
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
-    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
+    rows = dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -210,7 +237,7 @@ def collect_gemini_web_urls(
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
-    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
+    rows = dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us)
 
     results = []
     for visit_time_cu, url, title in rows:

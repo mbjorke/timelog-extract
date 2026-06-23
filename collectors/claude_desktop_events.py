@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
-from core.chromium_cache import codec_available, iter_cache_entries
+from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
 from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
@@ -52,7 +52,7 @@ def claude_events_cache_status(home: Path) -> tuple[bool, str]:
     if not claude_events_cache_dir(home).is_dir():
         return False, "No Claude Desktop cache yet (open Claude Desktop to create one)"
     if not codec_available()["zstd"]:
-        return False, "zstandard codec missing (pip install 'timelog-extract[cache-evidence]')"
+        return False, f"zstandard codec missing ({CODEC_REINSTALL_HINT})"
     return True, "Events cache readable"
 
 

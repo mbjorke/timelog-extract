@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+## Unreleased
+
 - CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate (`gittan map` / setup unchanged).
+- Accuracy (GH-164): treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.
+
+## 0.2.20 - 2026-06-22
+
+- Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.
 
 ## 0.2.19 - 2026-06-15
 

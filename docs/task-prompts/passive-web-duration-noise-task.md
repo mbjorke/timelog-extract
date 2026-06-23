@@ -14,15 +14,15 @@ hours YTD from tab noise alone.
 
 - Reclassify `Claude.ai (web)` and `Gemini (web)` as `passive_context`; remove
   from `AI_SOURCES`.
-- Apply daily dedupe (`thin_chrome_visit_rows`, min 24 h window) to web URL
-  collectors.
+- Apply calendar-day dedupe (`thin_chrome_visit_rows_by_day`: one visit per
+  normalized URL per UTC day) to Claude.ai (web) and Gemini (web) collectors.
 - Sessions where **all** sources are `passive_context`: duration floor **0**
   (still visible for classification/review).
 
 ## Non-goals (later)
 
 - Corroboration gate (web duration only when IDE/worklog nearby).
-- Separate `--web-collapse-minutes` CLI flag (uses `max(chrome_collapse, 1440)`).
+- Separate `--web-collapse-minutes` CLI flag (web dedupe toggle vs Chrome rolling window).
 - Re-run full-year before/after report in CI.
 
 ## Acceptance
@@ -39,6 +39,11 @@ Feature: Passive web visits do not inflate observed hours
     Given two Claude.ai visits to the same normalized URL on the same calendar day
     When Claude.ai (web) is collected with default collapse
     Then only one event should be emitted for that URL that day
+
+  Scenario: Same chat URL revisits on different UTC days stay separate
+    Given two Claude.ai visits to the same normalized URL ten minutes apart across UTC midnight
+    When Claude.ai (web) is collected with default collapse
+    Then one event should be emitted for each UTC calendar day
 
   Scenario: Mixed Cursor and Claude.ai session keeps AI floor
     Given a session with Cursor and Claude.ai (web) events
@@ -59,4 +64,5 @@ Feature: Passive web visits do not inflate observed hours
 - validation.evidence: tests/test_core_domain.py, tests/test_chrome_web_collapse.py
 - validation.decision: conditional GO
 - changelog:
+  - 2026-06-23: Calendar-day web dedupe (CodeRabbit #166); midnight boundary test.
   - 2026-06-23: Slice 1 implemented after YTD Chrome noise analysis in maintainer session.

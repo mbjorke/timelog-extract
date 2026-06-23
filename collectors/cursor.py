@@ -118,9 +118,14 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
     return False
 
 
+def cursor_base_dir(home: Path) -> Path:
+    """Return the Cursor application-support directory for ``home``."""
+    return home / "Library" / "Application Support" / "Cursor"
+
+
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
-    logs_dir = home / "Library" / "Application Support" / "Cursor" / "logs"
+    logs_dir = cursor_base_dir(home) / "logs"
 
     results = []
     ts_pattern = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")

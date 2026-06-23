@@ -13,7 +13,7 @@ def codec_missing_reason(reason: str) -> bool:
 
 
 def codec_blocked_sources(home: Path) -> List[tuple[str, str]]:
-    """Sources that would silently under-count without cache-evidence codecs."""
+    """Sources that would silently under-count when a cache codec is missing."""
     from collectors.claude_desktop_events import claude_events_cache_status
     from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 
@@ -31,8 +31,9 @@ def codec_blocked_sources(home: Path) -> List[tuple[str, str]]:
 def codec_warning_lines(blocked: List[tuple[str, str]]) -> List[str]:
     if not blocked:
         return []
+    from core.chromium_cache import CODEC_REINSTALL_HINT
+
     names = ", ".join(source for source, _reason in blocked)
     return [
-        f"Cache-evidence codec missing for: {names}. "
-        "Install with: pip install 'timelog-extract[cache-evidence]'"
+        f"Cache codec missing for: {names}. Reinstall: {CODEC_REINSTALL_HINT}"
     ]

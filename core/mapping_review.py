@@ -274,6 +274,7 @@ def build_mapping_review(
     dt_from: Any = None,
     dt_to: Any = None,
     local_tz: Any = None,
+    gh_discovery: bool = True,
 ) -> MappingReview:
     del extra_signals  # git-local review only; callers may still pass legacy signals.
     activity = {
@@ -291,13 +292,16 @@ def build_mapping_review(
         bindings = slug_bindings
     create_times = _github_create_times(events)
     github_sourced = github_sourced_slugs_from_events(events)
-    gh_create_times, gh_pushed_epochs = collect_gh_repo_list_data(
-        dt_from,
-        dt_to,
-        profiles=profiles,
-        extra_slugs=set(bindings),
-        local_tz=local_tz,
-    )
+    if gh_discovery:
+        gh_create_times, gh_pushed_epochs = collect_gh_repo_list_data(
+            dt_from,
+            dt_to,
+            profiles=profiles,
+            extra_slugs=set(bindings),
+            local_tz=local_tz,
+        )
+    else:
+        gh_create_times, gh_pushed_epochs = {}, {}
     for slug, stamp in gh_create_times.items():
         create_times.setdefault(slug, stamp)
     bindings = enrich_bindings_with_remote_activity(

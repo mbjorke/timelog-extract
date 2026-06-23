@@ -13,6 +13,7 @@ from core.mapping_assistant import (
     apply_mapping_changes,
     collect_actionable_mapping_signals,
     maybe_run_mapping_assistant_after_report,
+    prepare_mapping_review_after_report,
     run_interactive_mapping_flow,
     run_setup_evidence_mapping,
 )
@@ -59,6 +60,62 @@ class MappingAssistantTests(unittest.TestCase):
             included_events=[],
         )
         self.assertFalse(maybe_run_mapping_assistant_after_report(MagicMock(), report))
+
+    @patch("core.mapping_assistant.should_prompt", return_value=True)
+    @patch("core.mapping_review.build_mapping_review")
+    def test_maybe_run_skips_workspace_git_signal_scan(self, review_mock, _tty_mock):
+        review_mock.return_value = SimpleNamespace(change_count=lambda: 0)
+        report = SimpleNamespace(
+            args=SimpleNamespace(map_prompt=True, output_format="terminal"),
+            profiles=[],
+            all_events=[],
+            included_events=[],
+            dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            dt_to=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        with patch("core.mapping_assistant.collect_actionable_mapping_signals") as collect_mock:
+            self.assertFalse(
+                maybe_run_mapping_assistant_after_report(MagicMock(), report, fast_post_report=True)
+            )
+        collect_mock.assert_not_called()
+        review_mock.assert_called_once()
+        self.assertFalse(review_mock.call_args.kwargs.get("gh_discovery", True))
+        self.assertEqual(review_mock.call_args.kwargs.get("slug_bindings"), {})
+
+    def test_prepare_fast_mode_skips_local_and_gh_discovery(self):
+        report = SimpleNamespace(
+            profiles=[],
+            all_events=[{"source": "GitHub", "detail": "org/example"}],
+            included_events=[],
+            dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            dt_to=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        with patch("core.mapping_assistant.collect_actionable_mapping_signals") as collect_mock:
+            with patch("core.mapping_review.index_local_slug_bindings") as index_mock:
+                with patch("core.mapping_review.collect_gh_repo_list_data") as gh_mock:
+                    prepare_mapping_review_after_report(report, fast_post_report=True)
+        collect_mock.assert_not_called()
+        index_mock.assert_not_called()
+        gh_mock.assert_not_called()
+
+    @patch("core.mapping_review.build_mapping_review")
+    def test_prepare_default_mode_uses_full_discovery(self, review_mock):
+        review_mock.return_value = SimpleNamespace(change_count=lambda: 0)
+        report = SimpleNamespace(
+            profiles=[],
+            all_events=[],
+            included_events=[],
+            dt_from=None,
+            dt_to=None,
+        )
+        with patch(
+            "core.mapping_assistant.collect_actionable_mapping_signals",
+            return_value=[{"kind": "git_slug", "value": "org/example", "hits": 1}],
+        ) as collect_mock:
+            prepare_mapping_review_after_report(report, fast_post_report=False)
+        collect_mock.assert_called_once_with(report, include_workspace_repos=True)
+        review_mock.assert_called_once()
+        self.assertNotIn("gh_discovery", review_mock.call_args.kwargs)
 
     @patch("core.mapping_assistant.should_prompt", return_value=True)
     @patch("core.mapping_review.build_mapping_review")

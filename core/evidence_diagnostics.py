@@ -31,18 +31,25 @@ def screen_time_incomplete_warnings(
     if not screen_time_days:
         return []
 
-    days_with_data = sum(1 for raw in screen_time_days.values() if _day_screen_hours(raw) > 0)
-    period_days = len(overall_days) or len(screen_time_days)
+    workdays: List[str] = []
     missing: List[str] = []
     for day, payload in sorted(overall_days.items()):
         observed = float(payload.get("hours", 0) or 0)
         if observed < min_observed_hours:
             continue
+        workdays.append(day)
         if _day_screen_hours(float(screen_time_days.get(day, 0) or 0)) <= 0:
             missing.append(day)
 
     if not missing:
         return []
+
+    days_with_data = sum(
+        1
+        for day in workdays
+        if _day_screen_hours(float(screen_time_days.get(day, 0) or 0)) > 0
+    )
+    period_days = len(workdays)
 
     return [
         "Screen Time reference incomplete "

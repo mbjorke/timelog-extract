@@ -277,7 +277,7 @@ def print_report(
                 console.print(
                     f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {observed_delta:+.1f}h)[/{STYLE_META}]"
                 )
-        elif screen_time_days is not None and float(day_payload.get("hours", 0) or 0) >= 0.25:
+        elif screen_time_days and float(day_payload.get("hours", 0) or 0) >= 0.25:
             console.print(f"    [{STYLE_META}]Screen Time: no macOS usage data for this day[/{STYLE_META}]")
         console.print()
 

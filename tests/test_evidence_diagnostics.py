@@ -163,7 +163,7 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
             },
         )
         self.assertEqual(len(warnings), 1)
-        self.assertIn("3/3 days", warnings[0])
+        self.assertIn("1/3 days", warnings[0])
         self.assertIn("2026-06-19", warnings[0])
         self.assertIn("2026-06-23", warnings[0])
 

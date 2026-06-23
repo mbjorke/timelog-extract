@@ -13,6 +13,9 @@ from rich.table import Table
 
 from core.sqlite_backup import sqlite_db_check_detail
 
+# Doctor probes only fixed Chrome/Screen Time tables; identifiers are not parameterized in SQLite.
+_DOCTOR_SQL_TABLES = frozenset({"urls", "ZOBJECT"})
+
 
 @dataclass(frozen=True)
 class DoctorCheckStyle:
@@ -38,19 +41,19 @@ def doctor_check_file(table: Table, path: Path, label: str, style: DoctorCheckSt
 
 
 def doctor_check_db(table: Table, path: Path, label: str, table_name: str, style: DoctorCheckStyle) -> bool:
+    if table_name not in _DOCTOR_SQL_TABLES:
+        raise ValueError(f"unsupported doctor table name: {table_name!r}")
     if not path.exists():
         table.add_row(label, style.fail_icon, f"[{style.style_muted}]DB not found[/{style.style_muted}]")
         return False
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
+    tmp_path = tmp.name
     try:
-        shutil.copy2(path, tmp.name)
-        conn = sqlite3.connect(tmp.name)
-        c = conn.cursor()
-        c.execute(f"SELECT count(*) FROM {table_name} LIMIT 1")
-        c.fetchone()
-        conn.close()
+        shutil.copy2(path, tmp_path)
+        with sqlite3.connect(tmp_path) as conn:
+            conn.execute(f"SELECT count(*) FROM {table_name} LIMIT 1").fetchone()
         detail = sqlite_db_check_detail(path)
         table.add_row(label, style.ok_icon, f"[{style.style_muted}]{detail}[/{style.style_muted}]")
         return True
@@ -72,5 +75,5 @@ def doctor_check_db(table: Table, path: Path, label: str, table_name: str, style
         )
         return False
     finally:
-        if os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)

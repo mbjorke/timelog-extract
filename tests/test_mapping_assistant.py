@@ -62,6 +62,22 @@ class MappingAssistantTests(unittest.TestCase):
 
     @patch("core.mapping_assistant.should_prompt", return_value=True)
     @patch("core.mapping_review.build_mapping_review")
+    def test_maybe_run_skips_workspace_git_signal_scan(self, review_mock, _tty_mock):
+        review_mock.return_value = SimpleNamespace(change_count=lambda: 0)
+        report = SimpleNamespace(
+            args=SimpleNamespace(map_prompt=True, output_format="terminal"),
+            profiles=[],
+            all_events=[],
+            included_events=[],
+            dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            dt_to=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        with patch("core.mapping_assistant.collect_actionable_mapping_signals") as collect_mock:
+            self.assertFalse(maybe_run_mapping_assistant_after_report(MagicMock(), report))
+        collect_mock.assert_not_called()
+
+    @patch("core.mapping_assistant.should_prompt", return_value=True)
+    @patch("core.mapping_review.build_mapping_review")
     @patch("questionary.confirm")
     def test_gate_confirm_defaults_yes(self, confirm_mock, review_mock, _tty_mock):
         review_mock.return_value = SimpleNamespace(change_count=lambda: 1)

@@ -228,13 +228,11 @@ def maybe_run_mapping_assistant_after_report(console, report) -> bool:
         return False
 
     events = list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or [])
-    signals = collect_actionable_mapping_signals(report, include_workspace_repos=True)
     from core.mapping_review import build_mapping_review
 
     review = build_mapping_review(
         events,
         report.profiles,
-        extra_signals=signals,
         dt_from=getattr(report, "dt_from", None),
         dt_to=getattr(report, "dt_to", None),
         local_tz=getattr(report, "dt_from", None).tzinfo if getattr(report, "dt_from", None) else None,
@@ -257,7 +255,7 @@ def maybe_run_mapping_assistant_after_report(console, report) -> bool:
     config = str(getattr(report, "config_path", None) or getattr(report.args, "projects_config", ""))
     run_interactive_mapping_flow(
         console,
-        signals,
+        [],
         report.profiles,
         config,
         events=events,

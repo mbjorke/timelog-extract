@@ -4,7 +4,7 @@
 
 ## 0.2.20 - 2026-06-22
 
-- Packaging: **`zstandard`** and **`brotli`** are default dependencies (removed optional `cache-evidence` extra). `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.
+- Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.
 
 ## 0.2.19 - 2026-06-15
 

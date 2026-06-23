@@ -72,6 +72,9 @@ _BASE_NOISE_MARKERS = (
         "[cursor-agent-worker]",
         # Git remote discovery poller — same idle-heartbeat shape as git_status.
         "[repositorytracker]",
+        # MCP browser-tool action failures (cursor-ide-browser write errors on idle days).
+        "browser_click.json",
+        "error writing serv",
     )
 _STRICT_NOISE_MARKERS = (
     # Reserved: ambiguous signals to drop under strict but keep under lenient.

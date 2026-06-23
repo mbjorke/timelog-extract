@@ -287,6 +287,35 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_skips_mcp_browser_click_error_lines(self):
+        """cursor-ide-browser MCP write failures are IDE plumbing, not user work."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "4" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/customer-faq")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-06-19 05:58:00 [error] customer-faq browser_click.json — [error] "
+                        '{"key":"mcp","message":"Error writing server response"} '
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 6, 19, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 19, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "customer-faq",
+                make_event=make_test_event,
+                noise_profile="lenient",
+            )
+            self.assertEqual(out, [])
+
     def test_skips_cursor_agent_worker_and_repository_tracker_heartbeats(self):
         """Agent-worker and RepositoryTracker poll on timers while Cursor is open."""
         with tempfile.TemporaryDirectory() as tmp:

@@ -33,6 +33,8 @@ UNCATEGORIZED_NOISE_DETAIL_MARKERS = TRIAGE_NOISE_TITLE_MARKERS + (
     "opened repository",
     "bootstrapping repository index",
     "cursor_agent_exec.startup",
+    "browser_click.json",
+    "error writing serv",
 )
 
 # Precompiled alternation: one regex search per line instead of scanning every

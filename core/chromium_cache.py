@@ -42,7 +42,10 @@ _DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 # Decompression-bomb guard for the decoded body.
 _MAX_DECODED_BYTES = 64 * 1024 * 1024
 
-CODEC_REINSTALL_HINT = "pipx install --force timelog-extract"
+CODEC_REINSTALL_HINT = (
+    "pipx install --force timelog-extract"
+    "  or: pip install --upgrade timelog-extract"
+)
 
 
 @dataclass(frozen=True)

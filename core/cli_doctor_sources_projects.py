@@ -360,8 +360,7 @@ def doctor(
             f"are silently under-counted."
         )
         console.print(
-            f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT} "
-            f"(or pip install --upgrade timelog-extract)[/{STYLE_MUTED}]"
+            f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT}[/{STYLE_MUTED}]"
         )
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "

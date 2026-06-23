@@ -10,13 +10,14 @@ from __future__ import annotations
 import unittest
 
 from core.cache_evidence_health import codec_missing_reason
+from core.chromium_cache import CODEC_REINSTALL_HINT
 
 
 class CodecMissingReasonTests(unittest.TestCase):
     def test_zstandard_missing_is_flagged(self):
         self.assertTrue(
             codec_missing_reason(
-                "zstandard codec missing (pipx install --force timelog-extract)"
+                f"zstandard codec missing ({CODEC_REINSTALL_HINT})"
             )
         )
 

@@ -146,8 +146,10 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
             "screen_time_hours": 8.0,
             "codec_blocked": [],
         }
+        from core.chromium_cache import CODEC_REINSTALL_HINT
+
         warnings = build_evidence_warnings(snapshot, home=Path.cwd())
-        self.assertTrue(any("timelog-extract" in msg for msg in warnings))
+        self.assertTrue(any(CODEC_REINSTALL_HINT in msg for msg in warnings))
 
     def test_screen_time_incomplete_warns_on_work_days_without_usage(self):
         warnings = screen_time_incomplete_warnings(

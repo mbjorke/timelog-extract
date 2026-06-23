@@ -20,6 +20,12 @@ class SetupCancelFlowTests(unittest.TestCase):
             "core.global_timelog_setup_lib.configure_github_env_for_setup",
             return_value=("PASS", "ok", []),
         ), patch(
+            "core.global_timelog_setup_lib.configure_jira_env_for_setup",
+            return_value=("SKIPPED", "skipped", []),
+        ), patch(
+            "core.global_timelog_setup_lib.configure_toggl_env_for_setup",
+            return_value=("SKIPPED", "skipped", []),
+        ), patch(
             "core.global_timelog_setup_lib._ensure_minimal_projects_config",
             return_value=("PASS", "ok", []),
         ), patch(
@@ -55,6 +61,12 @@ class SetupCancelFlowTests(unittest.TestCase):
         ), patch(
             "core.global_timelog_setup_lib.configure_github_env_for_setup",
             return_value=("PASS", "ok", []),
+        ), patch(
+            "core.global_timelog_setup_lib.configure_jira_env_for_setup",
+            return_value=("SKIPPED", "skipped", []),
+        ), patch(
+            "core.global_timelog_setup_lib.configure_toggl_env_for_setup",
+            return_value=("SKIPPED", "skipped", []),
         ), patch(
             "core.global_timelog_setup_lib._ensure_minimal_projects_config",
             return_value=("PASS", "ok", []),

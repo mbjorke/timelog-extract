@@ -1,4 +1,4 @@
-"""Doctor source checking rows for GitHub and Toggl (extracted from cli_doctor_sources_projects.py)."""
+"""Doctor source checking rows for GitHub, Toggl, and Jira (extracted from cli_doctor_sources_projects.py)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,10 @@ from types import SimpleNamespace
 from rich import markup
 from rich.table import Table
 
+from urllib.parse import urlparse
+
 from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
+from collectors.jira import jira_sync_enabled, resolve_jira_credentials
 from collectors.toggl import toggl_source_enabled
 from core.setup_github_env import probe_gh_cli_auth
 from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED, WARN_ICON
@@ -137,3 +140,49 @@ def add_toggl_doctor_row(table: Table, toggl_source: str) -> None:
             NA_ICON,
             f"[{STYLE_MUTED}]Not configured ({toggl_source}); {escaped_reason}[/{STYLE_MUTED}]",
         )
+
+
+def _jira_site_label(base_url: str) -> str:
+    host = urlparse(base_url).netloc.strip()
+    return host or base_url
+
+
+def add_jira_doctor_row(table: Table, jira_sync: str) -> None:
+    """
+    Append a Jira worklog sync status row to the provided doctor health-check table.
+
+    Uses `jira_sync_enabled` for mode/credential gating and shows the configured site
+    host when credentials are present (never the email or API token).
+    """
+    args = argparse.Namespace(jira_sync=jira_sync)
+    jira_enabled, jira_reason = jira_sync_enabled(args)
+    if jira_enabled:
+        creds = resolve_jira_credentials(args)
+        site = _jira_site_label(creds.base_url) if creds else "configured"
+        table.add_row(
+            "Jira Sync",
+            OK_ICON,
+            f"[{STYLE_MUTED}]Enabled ({jira_sync}) — credentials present ({site})[/{STYLE_MUTED}]",
+        )
+    else:
+        escaped_reason = markup.escape(jira_reason or "")
+        table.add_row(
+            "Jira Sync",
+            NA_ICON,
+            f"[{STYLE_MUTED}]Not configured ({jira_sync}); {escaped_reason}[/{STYLE_MUTED}]",
+        )
+
+
+def add_remote_api_doctor_rows(
+    table: Table,
+    *,
+    gh_mode: str,
+    github_user: str | None,
+    toggl_source: str,
+    jira_sync: str,
+) -> None:
+    """Append GitHub, Toggl, and Jira API integration rows."""
+    add_gh_cli_doctor_row(table)
+    add_github_doctor_row(table, gh_mode, github_user)
+    add_toggl_doctor_row(table, toggl_source)
+    add_jira_doctor_row(table, jira_sync)

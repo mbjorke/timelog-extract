@@ -353,11 +353,27 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
     # Toggl
     try:
         from collectors.toggl import toggl_source_enabled
-        if toggl_source_enabled():
+        if toggl_source_enabled(argparse.Namespace(toggl_source="auto"))[0]:
             ok("Toggl Source", "Configured")
         else:
             warn("Toggl Source", "Not configured (auto); set TOGGL_API_TOKEN to enable")
     except Exception:
         warn("Toggl Source", "Could not check Toggl configuration")
+
+    # Jira worklog sync
+    try:
+        from collectors.jira import jira_sync_enabled, resolve_jira_credentials
+
+        jira_enabled, jira_reason = jira_sync_enabled(argparse.Namespace(jira_sync="auto"))
+        if jira_enabled:
+            creds = resolve_jira_credentials(argparse.Namespace())
+            from urllib.parse import urlparse
+
+            host = urlparse(creds.base_url).netloc if creds else ""
+            ok("Jira Sync", f"Configured ({host or 'credentials present'})")
+        else:
+            warn("Jira Sync", f"Not configured (auto); {jira_reason or 'set JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN'}")
+    except Exception:
+        warn("Jira Sync", "Could not check Jira configuration")
 
     return rows

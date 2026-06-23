@@ -468,7 +468,7 @@ def status(
         if anchor_nudge:
             from core.report_postamble import status_anchor_warn_line
 
-            warn_line = status_anchor_warn_line(report, console=console)
+            warn_line = status_anchor_warn_line(report, console=console, ignore_quiet=True)
             if warn_line:
                 # Interactive mapping lives in `gittan map`; status stays a read-only snapshot.
                 console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")

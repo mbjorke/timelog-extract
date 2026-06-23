@@ -15,12 +15,16 @@ from core.report_service import ReportPayload
 from rich.console import Console
 
 
-def _wants_status(report: ReportPayload) -> bool:
-    if getattr(report.args, "quiet", False):
+def _wants_interactive_status(report: ReportPayload, *, ignore_quiet: bool = False) -> bool:
+    if not ignore_quiet and getattr(report.args, "quiet", False):
         return False
     if str(getattr(report.args, "output_format", "terminal") or "terminal") != "terminal":
         return False
     return should_prompt()
+
+
+def _wants_status(report: ReportPayload) -> bool:
+    return _wants_interactive_status(report)
 
 
 def _wants_mapping_prompt(report: ReportPayload) -> bool:
@@ -42,7 +46,7 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
     """Print nudges and optional mapping review after the main report table."""
     gap_nudge = build_unexplained_gap_nudge(report)
     if gap_nudge:
-        print(gap_nudge)
+        console.print(gap_nudge)
 
     mapped_interactively = False
     if _wants_mapping_prompt(report):
@@ -69,19 +73,23 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
         ):
             anchors_nudge = build_unanchored_anchors_nudge(report)
         if anchors_nudge:
-            print(anchors_nudge)
+            console.print(anchors_nudge)
 
 
-def status_anchor_warn_line(report: ReportPayload, *, console: Console) -> str | None:
+def status_anchor_warn_line(
+    report: ReportPayload,
+    *,
+    console: Console,
+    ignore_quiet: bool = False,
+) -> str | None:
     """Return status one-liner for unmapped anchors; show spinner on interactive TTY."""
     from core.anchor_nudge import status_anchor_line
     from core.report_nudges import unanchored_anchors_for_report
 
-    unmapped_anchors = None
-    with _status(
-        console,
-        report,
-        "[bold blue]Checking unmapped activity anchors…[/]",
-    ):
+    message = "[bold blue]Checking unmapped activity anchors…[/]"
+    if _wants_interactive_status(report, ignore_quiet=ignore_quiet):
+        with console.status(message, spinner="dots"):
+            unmapped_anchors = unanchored_anchors_for_report(report)
+    else:
         unmapped_anchors = unanchored_anchors_for_report(report)
     return status_anchor_line(unmapped_anchors)

@@ -287,6 +287,38 @@ class CursorNoiseFilterTests(unittest.TestCase):
             )
             self.assertEqual(out, [])
 
+    def test_skips_cursor_agent_worker_and_repository_tracker_heartbeats(self):
+        """Agent-worker and RepositoryTracker poll on timers while Cursor is open."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "3" * 32
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-06-23 00:11:23.299 [info] [cursor-agent-worker] Workspace roots: "
+                        "/Users/me/Workspace/Project/timelog-extract workspaceStorage/" + wid
+                    ),
+                    (
+                        "2026-06-22 11:01:10.417 [info] [RepositoryTracker] Stored "
+                        "repository path: github.com/ax-f /Users/me/ax-finans workspaceStorage/" + wid
+                    ),
+                ],
+            )
+            out = collect_cursor(
+                profiles=[],
+                dt_from=datetime(2026, 6, 22, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 23, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                local_tz=timezone.utc,
+                classify_project=lambda _hay, _profiles: "timelog-extract",
+                make_event=make_test_event,
+                noise_profile="lenient",
+            )
+            self.assertEqual(out, [])
+
     def test_skips_gittan_sync_artifact_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

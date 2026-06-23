@@ -84,6 +84,32 @@ class SanityBoundsTests(unittest.TestCase):
             min_session_passive_minutes=5,
         )
         self.assertTrue(any("over-attribution" in w for w in warnings))
+        self.assertTrue(any("observed (evidenced)" in w for w in warnings))
+
+    def test_plausibility_warnings_flags_inflated_observed_week(self):
+        warnings = plausibility_warnings(
+            overall_days=_day(9, 11.5),
+            project_reports={"Alpha": {"2026-05-29": {"hours": 2.5}}},
+            observed_hours=30.3,
+            screen_time_hours=10.0,
+            session_duration_hours_fn=_span_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertTrue(any("observed (evidenced) 30.3h" in w for w in warnings))
+
+    def test_plausibility_warnings_silent_when_observed_near_screen_time(self):
+        """After worker-noise fix, 14.6h vs 10h Screen Time stays below 1.5× threshold."""
+        warnings = plausibility_warnings(
+            overall_days=_day(9, 11.5),
+            project_reports={"Alpha": {"2026-05-29": {"hours": 2.5}}},
+            observed_hours=14.6,
+            screen_time_hours=10.0,
+            session_duration_hours_fn=_span_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertFalse(any("over-attribution" in w for w in warnings))
 
     def test_plausibility_warnings_clean_report_is_silent(self):
         warnings = plausibility_warnings(

@@ -121,11 +121,11 @@ def plausibility_warnings(
             f"({worst_h:.1f}h on {worst_day}) — double-counting bug, do not invoice"
         )
 
-    if screen_time_hours is not None:
+    if screen_time_hours is not None and screen_time_hours > 0:
         ratio = over_attribution_ratio(observed_hours, screen_time_hours)
         if ratio is not None and ratio > ratio_threshold:
             warnings.append(
-                f"estimate {observed_hours:.1f}h is {ratio:.1f}× Screen Time "
+                f"observed (evidenced) {observed_hours:.1f}h is {ratio:.1f}× Screen Time "
                 f"{screen_time_hours:.1f}h — possible over-attribution, review before invoicing"
             )
 

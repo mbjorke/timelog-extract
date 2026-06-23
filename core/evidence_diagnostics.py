@@ -13,12 +13,58 @@ from core.sources import AI_SOURCES
 LOW_COVERAGE_RATIO = 0.5
 
 
+def _day_screen_hours(raw: float) -> float:
+    value = float(raw or 0.0)
+    if value <= 0:
+        return 0.0
+    # Match _screen_time_hours: values >> 48 are seconds/day.
+    return value / 3600.0 if value > 48.0 else value
+
+
+def screen_time_incomplete_warnings(
+    screen_time_days: Optional[Dict[str, Any]],
+    overall_days: Dict[str, Any],
+    *,
+    min_observed_hours: float = 0.25,
+) -> List[str]:
+    """Warn when macOS usage is missing for days that still have evidenced work."""
+    if not screen_time_days:
+        return []
+
+    workdays: List[str] = []
+    missing: List[str] = []
+    for day, payload in sorted(overall_days.items()):
+        observed = float(payload.get("hours", 0) or 0)
+        if observed < min_observed_hours:
+            continue
+        workdays.append(day)
+        if _day_screen_hours(float(screen_time_days.get(day, 0) or 0)) <= 0:
+            missing.append(day)
+
+    if not missing:
+        return []
+
+    days_with_data = sum(
+        1
+        for day in workdays
+        if _day_screen_hours(float(screen_time_days.get(day, 0) or 0)) > 0
+    )
+    period_days = len(workdays)
+
+    return [
+        "Screen Time reference incomplete "
+        f"({days_with_data}/{period_days} days with macOS usage; no Screen Time for "
+        f"{', '.join(missing)} despite evidenced work) — presence estimate and Screen "
+        "Time totals understate this period; check System Settings → Screen Time"
+    ]
+
+
 def _screen_time_hours(screen_time_days: Dict[str, Any]) -> float:
     screen_values = [float(v or 0.0) for v in (screen_time_days or {}).values()]
     if not screen_values:
         return 0.0
     # Screen Time may be seconds/day (large integers) or hours/day (small floats).
-    return float(sum((v / 3600.0) if v > 48.0 else v for v in screen_values))
+    return float(sum(_day_screen_hours(v) for v in screen_values))
 
 
 def _has_mappable_unattributed(snapshot: Dict[str, Any]) -> bool:

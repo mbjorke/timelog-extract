@@ -68,6 +68,10 @@ _BASE_NOISE_MARKERS = (
         "using tsserver from",
         "using askpass script",
         "canvas sdk mirror",
+        # Periodic agent-worker heartbeat (~10 min per open workspace, even when idle).
+        "[cursor-agent-worker]",
+        # Git remote discovery poller — same idle-heartbeat shape as git_status.
+        "[repositorytracker]",
     )
 _STRICT_NOISE_MARKERS = (
     # Reserved: ambiguous signals to drop under strict but keep under lenient.

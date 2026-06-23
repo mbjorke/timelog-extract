@@ -9,6 +9,7 @@ from core.evidence_diagnostics import (
     LOW_COVERAGE_RATIO,
     build_evidence_snapshot,
     build_evidence_warnings,
+    screen_time_incomplete_warnings,
 )
 
 
@@ -147,6 +148,24 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
         }
         warnings = build_evidence_warnings(snapshot, home=Path.cwd())
         self.assertTrue(any("cache-evidence" in msg for msg in warnings))
+
+    def test_screen_time_incomplete_warns_on_work_days_without_usage(self):
+        warnings = screen_time_incomplete_warnings(
+            {
+                "2026-06-17": 10330.0,
+                "2026-06-18": 2653.0,
+                "2026-06-22": 23185.0,
+            },
+            {
+                "2026-06-17": {"hours": 2.8},
+                "2026-06-19": {"hours": 0.5},
+                "2026-06-23": {"hours": 13.6},
+            },
+        )
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("3/3 days", warnings[0])
+        self.assertIn("2026-06-19", warnings[0])
+        self.assertIn("2026-06-23", warnings[0])
 
 
 if __name__ == "__main__":

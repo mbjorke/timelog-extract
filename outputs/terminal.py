@@ -277,9 +277,10 @@ def print_report(
                 console.print(
                     f"    [{STYLE_META}]Screen Time: {screen_h:.1f}h (delta {observed_delta:+.1f}h)[/{STYLE_META}]"
                 )
+        elif screen_time_days is not None and float(day_payload.get("hours", 0) or 0) >= 0.25:
+            console.print(f"    [{STYLE_META}]Screen Time: no macOS usage data for this day[/{STYLE_META}]")
         console.print()
 
-    # Review summary dashboard
     console.print(f"[{STYLE_HEADING}]Review summary[/{STYLE_HEADING}]")
     summary_table = Table.grid(padding=(0, 2))
     summary_table.add_column(style=f"bold {STYLE_BODY}", no_wrap=True)
@@ -343,6 +344,7 @@ def print_report(
         project_reports=project_reports,
         observed_hours=total_h,
         screen_time_hours=screen_total_h,
+        screen_time_days=screen_time_days,
         session_duration_hours_fn=session_duration_hours_fn,
         args=args,
     )

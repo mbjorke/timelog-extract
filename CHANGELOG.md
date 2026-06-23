@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: remove unused GitHub Pages deploy workflow (`static.yml`); fix `main` CI file-length gate by extracting doctor table checks.
 ## 0.2.20 - 2026-06-22
 
 - Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.

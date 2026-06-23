@@ -162,7 +162,7 @@ class RuleSuggestionsPreviewTests(unittest.TestCase):
             exclude_keywords=[],
         )
         self.assertEqual(me, 2)
-        self.assertGreater(hours, 0.0)
+        self.assertEqual(hours, 0.0)
         self.assertEqual(delta, -2)
 
 

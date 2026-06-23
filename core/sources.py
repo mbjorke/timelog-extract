@@ -37,8 +37,6 @@ AI_SOURCES = {
     "Claude Desktop",
     "Claude Desktop (Code)",
     "Gemini CLI",
-    "Claude.ai (web)",
-    "Gemini (web)",
     "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Codex IDE",
@@ -65,8 +63,8 @@ SOURCE_ROLES = {
     "Claude Code CLI": DIRECT_WORK_EVIDENCE,
     "Claude Desktop": DIRECT_WORK_EVIDENCE,
     "Claude Desktop (Code)": DIRECT_WORK_EVIDENCE,
-    "Claude.ai (web)": DIRECT_WORK_EVIDENCE,
-    "Gemini (web)": DIRECT_WORK_EVIDENCE,
+    "Claude.ai (web)": PASSIVE_CONTEXT,
+    "Gemini (web)": PASSIVE_CONTEXT,
     "Gemini CLI": DIRECT_WORK_EVIDENCE,
     "Cursor": DIRECT_WORK_EVIDENCE,
     "Cursor (agent)": DIRECT_WORK_EVIDENCE,
@@ -91,3 +89,8 @@ SOURCE_ROLES = {
 def get_source_role(source_name: str) -> str:
     """Evidence role for a source name; unknown sources default to passive context."""
     return SOURCE_ROLES.get(str(source_name or ""), PASSIVE_CONTEXT)
+
+
+PASSIVE_DURATION_SOURCES = frozenset(
+    name for name, role in SOURCE_ROLES.items() if role == PASSIVE_CONTEXT
+)

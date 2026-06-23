@@ -125,10 +125,18 @@ def session_duration_hours(
     min_session_passive_minutes,
     ai_sources,
 ):
+    from core.sources import PASSIVE_CONTEXT, get_source_role
+
     min_h = min_session_minutes / 60
     min_passive_h = min_session_passive_minutes / 60
     sources = {event["source"] for event in session_events}
-    minimum = min_h if sources & ai_sources else min_passive_h
+    roles = {get_source_role(source) for source in sources}
+    if roles and roles <= {PASSIVE_CONTEXT}:
+        minimum = 0.0
+    elif sources & ai_sources:
+        minimum = min_h
+    else:
+        minimum = min_passive_h
     return max((end_ts - start_ts).total_seconds() / 3600, minimum)
 
 

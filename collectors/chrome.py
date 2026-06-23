@@ -105,6 +105,15 @@ def chrome_ts(visit_time_cu, epoch_delta_us):
     )
 
 
+# Long-lived tabs re-emit Chrome visits; web chat collectors dedupe at least daily.
+WEB_VISIT_COLLAPSE_MINUTES = 24 * 60
+
+
+def web_visit_collapse_minutes(chrome_collapse_minutes: int) -> int:
+    """Return dedupe window for tracked web URLs (never shorter than one day)."""
+    return max(int(chrome_collapse_minutes or 0), WEB_VISIT_COLLAPSE_MINUTES)
+
+
 def normalize_chrome_url(url):
     if not url:
         return ""
@@ -146,6 +155,8 @@ def collect_claude_ai_urls(
     epoch_delta_us,
     uncategorized,
     make_event: Callable,
+    *,
+    collapse_minutes: int = WEB_VISIT_COLLAPSE_MINUTES,
 ):
     url_map: Dict[str, str] = {}
     for profile in profiles:
@@ -160,6 +171,7 @@ def collect_claude_ai_urls(
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
+    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
 
     results = []
     for visit_time_cu, url, title in rows:
@@ -182,6 +194,8 @@ def collect_gemini_web_urls(
     epoch_delta_us,
     uncategorized,
     make_event: Callable,
+    *,
+    collapse_minutes: int = WEB_VISIT_COLLAPSE_MINUTES,
 ):
     url_map: Dict[str, str] = {}
     for profile in profiles:
@@ -196,6 +210,7 @@ def collect_gemini_web_urls(
     clause_params = tuple(f"%{_like_escape(url)}%" for url in url_map)
     dt_from_cu, dt_to_cu = chrome_time_range(dt_from, dt_to, epoch_delta_us)
     rows = query_chrome_across_profiles(home, clauses, dt_from_cu, dt_to_cu, clause_params)
+    rows = thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us)
 
     results = []
     for visit_time_cu, url, title in rows:

@@ -53,6 +53,7 @@ class CollectClaudeAiUrlsTests(unittest.TestCase):
             epoch_delta_us=EPOCH_DELTA_US,
             uncategorized="Uncategorized",
             make_event=make_event,
+            collapse_minutes=0,
         )
 
     def test_no_claude_urls_in_profiles_returns_empty(self):
@@ -162,6 +163,7 @@ class CollectGeminiWebUrlsTests(unittest.TestCase):
             epoch_delta_us=EPOCH_DELTA_US,
             uncategorized="Uncategorized",
             make_event=make_event,
+            collapse_minutes=0,
         )
 
     def test_no_gemini_urls_returns_empty(self):
@@ -419,6 +421,7 @@ class LikeEscapeIntegrationTests(unittest.TestCase):
                 epoch_delta_us=EPOCH_DELTA_US,
                 uncategorized="Uncategorized",
                 make_event=make_event,
+                collapse_minutes=0,
             )
             self.assertEqual(len(results), 1)
             self.assertIn("50%done", results[0]["detail"])

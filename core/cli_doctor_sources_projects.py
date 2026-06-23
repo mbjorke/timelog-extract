@@ -5,11 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import shutil
-import site
-import sqlite3
 import sys
-import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -28,10 +24,10 @@ from core.config import (
 )
 from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
 from core.git_project_bootstrap import assess_config_git_coverage
-from core.sqlite_backup import sqlite_db_check_detail
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
+from core.doctor_table_checks import DoctorCheckStyle, doctor_check_db, doctor_check_file
 from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
     lovable_desktop_history_candidates,
@@ -133,49 +129,16 @@ def doctor(
     table.add_column("Status", justify="center")
     table.add_column("Details", style=STYLE_MUTED)
 
-    def check_file(path: Path, label: str):
-        if not path.exists():
-            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Not found: {path}[/{STYLE_MUTED}]")
-            return False
-        if not os.access(path, os.R_OK):
-            table.add_row(label, WARN_ICON, f"[{STYLE_MUTED}]No read permission: {path}[/{STYLE_MUTED}]")
-            return False
-        table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
-        return True
-
-    def check_db(path: Path, label: str, table_name: str):
-        if not path.exists():
-            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]DB not found[/{STYLE_MUTED}]")
-            return False
-
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        try:
-            shutil.copy2(path, tmp.name)
-            conn = sqlite3.connect(tmp.name)
-            c = conn.cursor()
-            c.execute(f"SELECT count(*) FROM {table_name} LIMIT 1")
-            c.fetchone()
-            conn.close()
-            detail = sqlite_db_check_detail(path)
-            table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]{detail}[/{STYLE_MUTED}]")
-            return True
-        except sqlite3.OperationalError as e:
-            if "database is locked" in str(e):
-                table.add_row(label, WARN_ICON, f"[{STYLE_MUTED}]DB locked (try closing app)[/{STYLE_MUTED}]")
-            else:
-                table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Query failed: {e}[/{STYLE_MUTED}]")
-            return False
-        except PermissionError:
-            table.add_row(label, FAIL_ICON, f"[{STYLE_MUTED}]Full Disk Access required[/{STYLE_MUTED}]")
-            return False
-        finally:
-            if os.path.exists(tmp.name):
-                os.unlink(tmp.name)
+    check_style = DoctorCheckStyle(
+        ok_icon=OK_ICON,
+        warn_icon=WARN_ICON,
+        fail_icon=FAIL_ICON,
+        style_muted=STYLE_MUTED,
+    )
 
     with console.status(f"[bold {STYLE_LABEL}]Running diagnostics..."):
         cli_on_path = add_cli_path_rows(table, home=home)
-        project_config_ok = check_file(projects_cfg, "Project Config")
+        project_config_ok = doctor_check_file(table, projects_cfg, "Project Config", check_style)
         for warning in projects_config_resolution_warnings(projects_cfg, profiles=_profiles):
             table.add_row(
                 "Projects config",
@@ -190,7 +153,7 @@ def doctor(
         )
         using_single_worklog = bool(worklog) or bool(workspace_worklog)
         if using_single_worklog:
-            worklog_ok = check_file(worklog_path, "Worklog (Local)")
+            worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
         elif profile_worklogs:
             accessible = [path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)]
             total = len(profile_worklogs)
@@ -217,7 +180,7 @@ def doctor(
                 )
                 worklog_ok = False
         else:
-            worklog_ok = check_file(worklog_path, "Worklog (Local)")
+            worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
         coverage = assess_config_git_coverage(_profiles)
         coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
         coverage_detail = coverage.detail
@@ -250,13 +213,13 @@ def doctor(
                 )
 
         chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-        check_db(chrome_path, "Chrome History", "urls")
+        doctor_check_db(table, chrome_path, "Chrome History", "urls", check_style)
         # Cache sources silently produce zero events when their codec is missing.
         # That under-counts AI-heavy days with no obvious cause, so a present-cache-
         # but-missing-codec state must read as a fixable failure, not a benign N/A.
         lh = lovable_desktop_history_candidates(home)
         if lh:
-            check_db(lh[0], "Lovable Desktop History", "urls")
+            doctor_check_db(table, lh[0], "Lovable Desktop History", "urls", check_style)
         elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
             cache_ok, cache_reason = lovable_cache_status(home)
             cache_codec_missing = codec_missing_reason(cache_reason)
@@ -312,7 +275,7 @@ def doctor(
         cursor_log_path = (
             home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
         )
-        check_file(cursor_log_path, "Cursor Storage")
+        doctor_check_file(table, cursor_log_path, "Cursor Storage", check_style)
 
         cursor_checkpoints = (
             home / "Library/Application Support/Cursor/User/globalStorage/anysphere.cursor-commits/checkpoints"
@@ -348,7 +311,7 @@ def doctor(
         st_path = home / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db"
         if not st_path.exists():
             st_path = home / "Library" / "Application Support" / "KnowledgeC" / "knowledgeC.db"
-        check_db(st_path, "Screen Time DB", "ZOBJECT")
+        doctor_check_db(table, st_path, "Screen Time DB", "ZOBJECT", check_style)
 
         claude_path = home / ".claude" / "projects"
         if claude_path.exists():

@@ -286,7 +286,7 @@ def split_ab_suggestions(
         if cluster.rule_type == "tracked_urls":
             if _ambiguous_value("tracked_urls", rv, others):
                 continue
-            if is_over_broad_tracked_url(cluster.rule_value):
+            if is_over_broad_tracked_url(rv):
                 continue
             common = _domain_is_common(rv)
             if cluster.count >= 2 or (cluster.count >= 1 and not common):

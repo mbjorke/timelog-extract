@@ -12,11 +12,14 @@ time-window filter, workspace→project attribution, and event construction.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, Dict, Optional, Sequence
 from urllib.parse import unquote, urlparse
+
+logger = logging.getLogger(__name__)
 
 _TS_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 _TS_ISO_BRACKET_PATTERN = re.compile(
@@ -50,6 +53,50 @@ SHARED_BASE_NOISE = (
     "user config path:",
     "canvas sdk mirror",
 )
+
+
+def read_ide_version(base_dir: Path) -> Optional[str]:
+    """Read the installed IDE version from ``<base_dir>/product.json``.
+
+    Returns ``None`` when the file is missing, unreadable, or has no version field.
+    """
+    product_json = base_dir / "product.json"
+    try:
+        data = json.loads(product_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.debug("Could not read IDE version from %s: %s", product_json, exc)
+        return None
+    version = data.get("version")
+    if version is None:
+        logger.debug("No version field in %s", product_json)
+        return None
+    text = str(version).strip()
+    return text or None
+
+
+def enrich_ide_collector_versions(
+    collector_status: Dict[str, Dict[str, object]],
+    home: Path,
+) -> None:
+    """Attach local install version metadata to IDE collector_status entries."""
+    from collectors.antigravity import antigravity_base_dir
+    from collectors.cursor import cursor_base_dir
+    from collectors.windsurf import windsurf_base_dirs
+
+    ide_base_dirs = {
+        "Cursor": [cursor_base_dir(home)],
+        "Windsurf": windsurf_base_dirs(home),
+        "Antigravity": [antigravity_base_dir(home)],
+    }
+    for name, base_dirs in ide_base_dirs.items():
+        status = collector_status.get(name)
+        if status is None:
+            continue
+        for base_dir in base_dirs:
+            version = read_ide_version(base_dir)
+            if version:
+                status["version"] = version
+                break
 
 
 def parse_fork_log_ts(line: str, local_tz):

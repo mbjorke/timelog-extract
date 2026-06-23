@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
 from collectors.lovable_desktop import lovable_desktop_has_storage_signals, lovable_desktop_history_candidates
+from collectors.vscode_fork import enrich_ide_collector_versions
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 def collect_all_events(
@@ -101,6 +102,7 @@ def collect_all_events(
                     "reason": f"collector error: {exc}",
                     "events": 0,
                 }
+        enrich_ide_collector_versions(collector_status, home)
         return all_events, collector_status
 
     with Progress(
@@ -144,5 +146,6 @@ def collect_all_events(
                 }
             
             progress.advance(task)
-            
+
+    enrich_ide_collector_versions(collector_status, home)
     return all_events, collector_status

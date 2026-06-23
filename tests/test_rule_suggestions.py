@@ -157,6 +157,25 @@ class RuleSuggestionsABSplitTests(unittest.TestCase):
         self.assertNotIn(("tracked_urls", "claude.ai"), keys_a)
         self.assertNotIn(("tracked_urls", "claude.ai"), keys_b)
 
+    def test_allows_specific_multi_tenant_tracked_urls(self):
+        clusters = [
+            UncategorizedCluster(
+                key="u:claude.ai/chat/project-alpha:Claude.ai (web)",
+                rule_type="tracked_urls",
+                rule_value="claude.ai/chat/project-alpha",
+                source="Claude.ai (web)",
+                count=2,
+                samples=[
+                    "chat/project-alpha… — Project chat",
+                    "chat/project-alpha… — Follow-up",
+                ],
+            ),
+        ]
+        profiles = [_prof("Target", ["target"])]
+        opt_a, opt_b = split_ab_suggestions(clusters, profiles, "Target")
+        keys = {(r.rule_type, r.rule_value) for r in opt_a + opt_b}
+        self.assertIn(("tracked_urls", "claude.ai/chat/project-alpha"), keys)
+
 
 class RuleSuggestionsPreviewTests(unittest.TestCase):
     def test_preview_counts_events_and_hours(self):

@@ -30,6 +30,8 @@ def tracked_url_host_and_segments(raw: str) -> tuple[str, list[str]]:
         path = parsed.path.strip("/")
     else:
         host, _, path = cleaned.partition("/")
+        host = host.split("?", 1)[0].split("#", 1)[0]
+        path = path.split("?", 1)[0].split("#", 1)[0]
     if host.startswith("www."):
         host = host[4:]
     segments = [segment for segment in path.split("/") if segment]

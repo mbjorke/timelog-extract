@@ -25,6 +25,10 @@ class TrackedUrlPolicyTests(unittest.TestCase):
         self.assertFalse(is_over_broad_tracked_url("claude.ai/project_name"))
         self.assertFalse(is_over_broad_tracked_url("github.com/org/repo"))
 
+    def test_schemeless_query_does_not_bypass_over_broad_check(self):
+        self.assertTrue(is_over_broad_tracked_url("gemini.google.com/app?utm=1"))
+        self.assertFalse(is_over_broad_tracked_url("gemini.google.com/app/abc123?utm=1"))
+
 
 if __name__ == "__main__":
     unittest.main()

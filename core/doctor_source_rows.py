@@ -10,13 +10,20 @@ from types import SimpleNamespace
 from rich import markup
 from rich.table import Table
 
-from urllib.parse import urlparse
-
 from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
-from collectors.jira import jira_sync_enabled, resolve_jira_credentials
+from collectors.jira import jira_site_label, jira_sync_enabled, resolve_jira_credentials
 from collectors.toggl import toggl_source_enabled
 from core.setup_github_env import probe_gh_cli_auth
 from outputs.terminal_theme import NA_ICON, OK_ICON, STYLE_MUTED, WARN_ICON
+
+
+def normalize_doctor_tri_state_mode(value: str, param_hint: str) -> str:
+    import typer
+
+    mode = (value or "auto").strip().lower()
+    if mode not in {"auto", "on", "off"}:
+        raise typer.BadParameter("Expected one of: auto, on, off", param_hint=param_hint)
+    return mode
 
 
 def _format_github_users(users: list[str]) -> str:
@@ -142,11 +149,6 @@ def add_toggl_doctor_row(table: Table, toggl_source: str) -> None:
         )
 
 
-def _jira_site_label(base_url: str) -> str:
-    host = urlparse(base_url).netloc.strip()
-    return host or base_url
-
-
 def add_jira_doctor_row(table: Table, jira_sync: str) -> None:
     """
     Append a Jira worklog sync status row to the provided doctor health-check table.
@@ -158,7 +160,7 @@ def add_jira_doctor_row(table: Table, jira_sync: str) -> None:
     jira_enabled, jira_reason = jira_sync_enabled(args)
     if jira_enabled:
         creds = resolve_jira_credentials(args)
-        site = _jira_site_label(creds.base_url) if creds else "configured"
+        site = jira_site_label(creds.base_url) if creds else "configured"
         table.add_row(
             "Jira Sync",
             OK_ICON,

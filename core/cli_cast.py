@@ -362,14 +362,12 @@ def _collect_doctor_rows() -> list[dict[str, str]]:
 
     # Jira worklog sync
     try:
-        from collectors.jira import jira_sync_enabled, resolve_jira_credentials
+        from collectors.jira import jira_site_label, jira_sync_enabled, resolve_jira_credentials
 
         jira_enabled, jira_reason = jira_sync_enabled(argparse.Namespace(jira_sync="auto"))
         if jira_enabled:
             creds = resolve_jira_credentials(argparse.Namespace())
-            from urllib.parse import urlparse
-
-            host = urlparse(creds.base_url).netloc if creds else ""
+            host = jira_site_label(creds.base_url) if creds else ""
             ok("Jira Sync", f"Configured ({host or 'credentials present'})")
         else:
             warn("Jira Sync", f"Not configured (auto); {jira_reason or 'set JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN'}")

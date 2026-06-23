@@ -279,6 +279,23 @@ class AddJiraDoctorRowTests(unittest.TestCase):
         self.assertNotIn("secret", msg)
         self.assertNotIn("user@example.com", msg)
 
+    def test_jira_auto_with_credentials_in_url_shows_hostname_only(self):
+        table, rows = _make_table()
+        with patch.dict(
+            "os.environ",
+            {
+                "JIRA_BASE_URL": "https://user:secret@example.atlassian.net",
+                "JIRA_EMAIL": "user@example.com",
+                "JIRA_API_TOKEN": "secret",
+            },
+            clear=False,
+        ):
+            add_jira_doctor_row(table, "auto")
+        _, _, msg = rows[0]
+        self.assertIn("example.atlassian.net", msg)
+        self.assertNotIn("secret", msg)
+        self.assertNotIn("user:secret", msg)
+
     def test_jira_off_shows_not_configured(self):
         table, rows = _make_table()
         with patch.dict(

@@ -29,7 +29,7 @@ from core.config import (
 from core.git_project_bootstrap import assess_config_git_coverage
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
-from core.doctor_source_rows import add_remote_api_doctor_rows
+from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
 from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
     lovable_desktop_history_candidates,
@@ -98,9 +98,8 @@ def doctor(
     from rich import box
 
     console = Console()
-    gh_mode = (github_source or "auto").strip().lower()
-    if gh_mode not in {"auto", "on", "off"}:
-        raise typer.BadParameter("Expected one of: auto, on, off", param_hint="--github-source")
+    gh_mode = normalize_doctor_tri_state_mode(github_source, "--github-source")
+    jira_mode = normalize_doctor_tri_state_mode(jira_sync, "--jira-sync")
     print_command_hero(console, "doctor")
     console.print("")
     home = Path.home()
@@ -362,7 +361,7 @@ def doctor(
             gh_mode=gh_mode,
             github_user=github_user,
             toggl_source=toggl_source,
-            jira_sync=jira_sync,
+            jira_sync=jira_mode,
         )
     console.print(table)
     if codec_blocked:

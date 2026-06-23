@@ -110,8 +110,9 @@ WEB_VISIT_COLLAPSE_MINUTES = 24 * 60
 
 
 def web_visit_collapse_minutes(chrome_collapse_minutes: int) -> int:
-    """Return non-zero when tracked web URL dedupe is enabled (calendar-day collapse)."""
-    return max(int(chrome_collapse_minutes or 0), WEB_VISIT_COLLAPSE_MINUTES)
+    """Tracked web URL collectors always use calendar-day dedupe (non-zero sentinel)."""
+    _ = chrome_collapse_minutes
+    return WEB_VISIT_COLLAPSE_MINUTES
 
 
 def normalize_chrome_url(url):
@@ -168,8 +169,9 @@ def thin_chrome_visit_rows_by_day(rows, epoch_delta_us):
 
 
 def dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us):
-    """Collapse tracked web visits; ``collapse_minutes <= 0`` disables dedupe."""
-    if collapse_minutes <= 0 or not rows:
+    """Collapse tracked web visits to one event per normalized URL per UTC calendar day."""
+    _ = collapse_minutes
+    if not rows:
         return rows
     return thin_chrome_visit_rows_by_day(rows, epoch_delta_us)
 

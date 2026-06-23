@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-## Unreleased
-
 - CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate (`gittan map` / setup unchanged).
 - Accuracy (GH-164): treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.
 

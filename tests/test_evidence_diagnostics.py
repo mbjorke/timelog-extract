@@ -147,7 +147,7 @@ class EvidenceDiagnosticsTests(unittest.TestCase):
             "codec_blocked": [],
         }
         warnings = build_evidence_warnings(snapshot, home=Path.cwd())
-        self.assertTrue(any("cache-evidence" in msg for msg in warnings))
+        self.assertTrue(any("timelog-extract" in msg for msg in warnings))
 
     def test_screen_time_incomplete_warns_on_work_days_without_usage(self):
         warnings = screen_time_incomplete_warnings(

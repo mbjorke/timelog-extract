@@ -36,6 +36,7 @@ from collectors.lovable_desktop import (
 )
 from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 from core.cache_evidence_health import codec_missing_reason
+from core.chromium_cache import CODEC_REINSTALL_HINT
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
@@ -359,8 +360,8 @@ def doctor(
             f"are silently under-counted."
         )
         console.print(
-            f"  [{STYLE_MUTED}]Fix: pipx inject timelog-extract zstandard brotli   "
-            f"(or: pip install 'timelog-extract[cache-evidence]')[/{STYLE_MUTED}]"
+            f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT} "
+            f"(or pip install --upgrade timelog-extract)[/{STYLE_MUTED}]"
         )
     console.print(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "

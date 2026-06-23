@@ -18,7 +18,7 @@ from collectors.lovable_desktop import (
     _synthetic_lovable_project_url,
     lovable_desktop_root,
 )
-from core.chromium_cache import codec_available, iter_cache_entries
+from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
 
 _PROJECTS_SEARCH_MARKER = "projects/search"
 _CACHE_MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -60,8 +60,7 @@ def lovable_cache_status(home: Path) -> tuple[bool, str]:
         return False, "No cache entries yet"
     if not codec_available()["brotli"]:
         return True, (
-            "Cache present; brotli missing — project titles limited "
-            "(pip install 'timelog-extract[cache-evidence]')"
+            f"Cache present; brotli missing — project titles limited ({CODEC_REINSTALL_HINT})"
         )
     titles = load_lovable_project_titles(home)
     if titles:

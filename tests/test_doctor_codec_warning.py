@@ -16,7 +16,7 @@ class CodecMissingReasonTests(unittest.TestCase):
     def test_zstandard_missing_is_flagged(self):
         self.assertTrue(
             codec_missing_reason(
-                "zstandard codec missing (pip install 'timelog-extract[cache-evidence]')"
+                "zstandard codec missing (pipx install --force timelog-extract)"
             )
         )
 

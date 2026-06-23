@@ -11,8 +11,8 @@ Scope: this is a *last-resort* source for apps with no first-class local log.
 IDE forks (Cursor/Windsurf/Antigravity/Codex) and CLIs (Claude Code/Gemini/
 Codex) write structured logs and must never be cache-scraped.
 
-Codecs are **optional**: ``brotli`` / ``zstandard`` are binary wheels. If a
-needed codec is not importable, the affected entry is skipped (no crash), and
+``brotli`` / ``zstandard`` ship as default package dependencies. If a broken
+install leaves a codec missing, the affected entry is skipped (no crash), and
 ``codec_available()`` lets callers surface a ``gittan doctor`` hint.
 """
 
@@ -41,6 +41,8 @@ _GZIP_MAGIC = b"\x1f\x8b\x08"
 _DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 # Decompression-bomb guard for the decoded body.
 _MAX_DECODED_BYTES = 64 * 1024 * 1024
+
+CODEC_REINSTALL_HINT = "pipx install --force timelog-extract"
 
 
 @dataclass(frozen=True)
@@ -71,7 +73,7 @@ def _import_brotli():
 
 
 def codec_available() -> dict[str, bool]:
-    """Which optional decompression codecs are importable right now."""
+    """Which Chromium cache decompression codecs are importable right now."""
     return {"zstd": _import_zstd() is not None, "brotli": _import_brotli() is not None}
 
 

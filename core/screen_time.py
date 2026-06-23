@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
-import shutil
 import sqlite3
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+
+from core.sqlite_backup import backup_sqlite_db
 
 
 def split_duration_by_local_day(start_ts, end_ts, local_tz):
@@ -41,7 +42,7 @@ def collect_screen_time(dt_from, dt_to, *, candidates, apple_epoch, local_tz):
 
     daily_seconds = defaultdict(float)
     try:
-        shutil.copy2(db_path, tmp.name)
+        backup_sqlite_db(db_path, tmp.name)
         with sqlite3.connect(tmp.name) as conn:
             cursor = conn.cursor()
             cursor.execute("""

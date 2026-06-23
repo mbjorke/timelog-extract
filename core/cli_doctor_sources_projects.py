@@ -27,6 +27,7 @@ from core.config import (
     resolve_worklog_path,
 )
 from core.git_project_bootstrap import assess_config_git_coverage
+from core.sqlite_backup import sqlite_db_check_detail
 from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_toggl_doctor_row
@@ -148,7 +149,8 @@ def doctor(
             c.execute(f"SELECT count(*) FROM {table_name} LIMIT 1")
             c.fetchone()
             conn.close()
-            table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]DB query successful[/{STYLE_MUTED}]")
+            detail = sqlite_db_check_detail(path)
+            table.add_row(label, OK_ICON, f"[{STYLE_MUTED}]{detail}[/{STYLE_MUTED}]")
             return True
         except sqlite3.OperationalError as e:
             if "database is locked" in str(e):

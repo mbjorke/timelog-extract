@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from outputs.terminal_preview import format_event_detail as _format_event_detail
+from outputs.terminal_preview import event_detail_parts, format_event_detail as _format_event_detail
 
 
 class TerminalAnchorDisplayTests(unittest.TestCase):
@@ -14,6 +14,20 @@ class TerminalAnchorDisplayTests(unittest.TestCase):
         text = _format_event_detail(event)
         self.assertIn("freelance bridge dashboard development", text)
         self.assertIn("timelog-extract", text)
+        self.assertIn(": ", text)
+
+    def test_event_detail_parts_splits_label_and_detail(self):
+        event = {
+            "detail": "fix export regression",
+            "anchors": {"label": "toggle integration progress"},
+        }
+        label, detail = event_detail_parts(event)
+        self.assertEqual(label, "toggle integration progress")
+        self.assertEqual(detail, "fix export regression")
+        self.assertEqual(
+            _format_event_detail(event),
+            "toggle integration progress: fix export regression",
+        )
 
     def test_format_event_detail_skips_duplicate_label(self):
         event = {

@@ -35,3 +35,14 @@ OK_ICON = f"[{CLR_GREEN}]✓[/{CLR_GREEN}]"
 WARN_ICON = f"[{CLR_VALUE_ORANGE}]![/{CLR_VALUE_ORANGE}]"
 FAIL_ICON = "[#e26d85]![/#e26d85]"
 NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"
+
+
+def display_source_label(source: str) -> str:
+    """Render neutral source labels without changing underlying source keys."""
+    if source == "TIMELOG.md":
+        return "Worklog (TIMELOG.md)"
+    return source
+
+
+def get_source_color(source: str) -> str:
+    return CLR_SOURCE_BLUE

@@ -117,6 +117,54 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
         self.assertIsNone(_meaningful_leaf(""))
         self.assertIsNone(_meaningful_leaf(None))
 
+    def test_session_title_propagates_label_from_desktop_metadata(self) -> None:
+        cli_id = "ae47de83-d335-4f7d-9252-3a817f7d91b9"
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            proj_dir = home / ".claude" / "projects" / "-Users-someone-timelog-extract"
+            proj_dir.mkdir(parents=True, exist_ok=True)
+            entry = {
+                "timestamp": "2026-06-11T09:00:00Z",
+                "message": {"content": "merge onboarding verify PR"},
+                "type": "user",
+            }
+            (proj_dir / f"{cli_id}.jsonl").write_text(json.dumps(entry) + "\n", encoding="utf-8")
+            meta_dir = (
+                home
+                / "Library"
+                / "Application Support"
+                / "Claude"
+                / "claude-code-sessions"
+                / "parent"
+                / "child"
+            )
+            meta_dir.mkdir(parents=True, exist_ok=True)
+            meta = {
+                "sessionId": "local_4244714f-74a8-4623-a118-59b9b7f81b28",
+                "cliSessionId": cli_id,
+                "title": "Toggle integration progress",
+                "cwd": "/home/user/timelog-extract",
+            }
+            (meta_dir / "local_4244714f.json").write_text(json.dumps(meta), encoding="utf-8")
+
+            def classify(text, profiles):
+                if "timelog-extract" in text or "toggle" in text.lower():
+                    return "timelog-extract"
+                return "Uncategorized"
+
+            events = collect_claude_code(
+                profiles=[],
+                dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
+                home=home,
+                classify_project=classify,
+                make_event=make_test_event,
+            )
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["anchors"]["label"], "toggle integration progress")
+            self.assertEqual(events[0]["project"], "timelog-extract")
+            self.assertEqual(events[0]["detail"], "merge onboarding verify PR")
+
     def test_skips_pr_link_and_bare_log_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

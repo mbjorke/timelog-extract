@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Sequence
 
+from rich.text import Text
+
 from core.events import event_anchors
 
 _CURSOR_PREVIEW_NOISE_MARKERS = (
@@ -27,17 +29,57 @@ _CURSOR_PREVIEW_NOISE_MARKERS = (
 )
 
 
-def format_event_detail(event: dict) -> str:
-    """Prefer session title over IDE log tails; composer rows show title only."""
+def event_detail_parts(event: dict) -> tuple[str, str]:
+    """Return (label_prefix, detail) for styled terminal rows."""
     detail = str(event.get("detail") or "")
     label = str(event_anchors(event).get("label") or "").strip()
     if not label:
-        return detail
+        return "", detail
     if detail.lower().strip() == label:
-        return detail
+        return "", detail
     if label in detail.lower():
+        return "", detail
+    return label, detail if detail else label
+
+
+def format_event_detail(event: dict) -> str:
+    """Prefer session title over IDE log tails; composer rows show title only."""
+    label, detail = event_detail_parts(event)
+    if not label:
         return detail
-    return f"{label} — {detail}" if detail else label
+    return f"{label}: {detail}" if detail else label
+
+
+def assemble_timeline_event_detail(
+    event: dict,
+    *,
+    label_style: str,
+    detail_style: str,
+) -> Text:
+    label, detail = event_detail_parts(event)
+    if label:
+        return Text.assemble((f"{label}: ", label_style), (detail, detail_style))
+    return Text(format_event_detail(event), style=detail_style)
+
+
+def assemble_timeline_event_line(
+    event: dict,
+    *,
+    source_label: str,
+    source_style: str,
+    time_style: str,
+    project_style: str,
+    label_style: str,
+    detail_style: str,
+) -> Text:
+    return Text.assemble(
+        (f"{event['local_ts'].strftime('%H:%M')} ", time_style),
+        (f"{source_label} ", source_style),
+        (f"{event['project']} ", project_style),
+        assemble_timeline_event_detail(
+            event, label_style=label_style, detail_style=detail_style
+        ),
+    )
 
 
 def _is_high_signal_preview_event(event: Dict[str, Any]) -> bool:

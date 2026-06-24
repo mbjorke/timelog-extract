@@ -1,7 +1,7 @@
 """Tests for versioned JSON truth payload."""
 
-from datetime import datetime, timedelta, timezone
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from core.presence_estimated import compute_presence_estimated
 from core.truth_payload import TRUTH_PAYLOAD_VERSION, build_truth_payload

@@ -7,9 +7,13 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import WEB_VISIT_COLLAPSE_MINUTES, collect_claude_ai_urls, dedupe_web_visit_rows
-
 from chrome_test_support import EPOCH_DELTA_US, insert_visit, make_chrome_db, make_event
+
+from collectors.chrome import (
+    WEB_VISIT_COLLAPSE_MINUTES,
+    collect_claude_ai_urls,
+    dedupe_web_visit_rows,
+)
 
 _NEUTRAL_TITLE = "project-alpha chat"
 

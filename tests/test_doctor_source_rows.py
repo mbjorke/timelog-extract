@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from rich.table import Table
 
-from core.doctor_source_rows import add_gh_cli_doctor_row, add_github_doctor_row, add_jira_doctor_row, add_toggl_doctor_row
+from core.doctor_source_rows import (
+    add_gh_cli_doctor_row,
+    add_github_doctor_row,
+    add_jira_doctor_row,
+    add_toggl_doctor_row,
+)
 from core.setup_github_env import GhCliAuthStatus
 from outputs.terminal_theme import NA_ICON, OK_ICON, WARN_ICON
-
 
 
 def _make_table() -> tuple[Table, list[tuple]]:

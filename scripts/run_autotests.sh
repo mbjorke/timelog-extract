@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 echo "Running Python unit tests..."
 python3 scripts/check_file_lengths.py --max-lines 500
+bash scripts/run_lint.sh
 python3 -m unittest discover -s tests -p "test_*.py"
 
 echo "Autotests completed successfully."

@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
+from rich.console import Console
+
 from core.anchor_nudge import should_prompt
 from core.mapping_assistant import (
     maybe_run_mapping_assistant_after_report,
@@ -12,7 +14,6 @@ from core.mapping_assistant import (
 )
 from core.report_nudges import build_unanchored_anchors_nudge, build_unexplained_gap_nudge
 from core.report_service import ReportPayload
-from rich.console import Console
 
 
 def _wants_interactive_status(report: ReportPayload, *, ignore_quiet: bool = False) -> bool:

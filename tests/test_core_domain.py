@@ -1,7 +1,7 @@
 """Unit tests for core domain time and classification helpers."""
 
-from datetime import datetime, timedelta, timezone
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from core import domain
 

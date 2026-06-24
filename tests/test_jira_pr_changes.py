@@ -160,8 +160,9 @@ class GitCommitFieldRenameTests(unittest.TestCase):
 
     def test_git_commit_field_is_committed_at_not_authored_at(self):
         """The renamed field must be accessible as committed_at."""
-        from core.jira_sync import GitCommit
         import dataclasses
+
+        from core.jira_sync import GitCommit
 
         field_names = {f.name for f in dataclasses.fields(GitCommit)}
         self.assertIn("committed_at", field_names)
@@ -178,6 +179,7 @@ class GitCommitFieldRenameTests(unittest.TestCase):
     def test_issue_key_resolution_uses_committed_at(self):
         """_issue_key_for_session must compare against committed_at (regression guard)."""
         from types import SimpleNamespace
+
         from core.jira_sync import _issue_key_for_session
 
         start = datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc)

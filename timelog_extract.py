@@ -2,6 +2,7 @@
 """CLI entrypoint and backward-compatible exports for timelog extract."""
 
 from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -10,15 +11,15 @@ root = Path(__file__).parent.resolve()
 if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
-from core.cli import TimelogRunOptions, app, as_run_options, main
-from core.config import normalize_profile
-from core.report_service import (
+from core.cli import TimelogRunOptions, app, as_run_options, main  # noqa: F401
+from core.config import normalize_profile  # noqa: F401
+from core.report_service import (  # noqa: F401
     LOCAL_TZ,
     UNCATEGORIZED,
     estimate_hours_by_day,
     group_by_day,
 )
-from core.report_service import _classify_project as classify_project
+from core.report_service import _classify_project as classify_project  # noqa: F401
 
 if __name__ == "__main__":
     main()

@@ -69,8 +69,9 @@ class ChromiumCacheTests(unittest.TestCase):
 
     @unittest.skipUnless(codec_available()["zstd"], "zstandard not installed")
     def test_decoded_size_over_cap_is_rejected(self) -> None:
-        import zstandard
         from unittest import mock
+
+        import zstandard
 
         import core.chromium_cache as cc
 

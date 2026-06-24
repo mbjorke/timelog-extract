@@ -304,14 +304,14 @@ def status(
     """
     from collections import defaultdict
 
-    from core.domain import session_duration_hours
-    from core.project_hours import count_project_sessions_from_overall_days
-    from core.report_service import AI_SOURCES, run_timelog_report
-    from outputs.cli_heroes import print_command_hero
     from rich import box
     from rich.console import Console
     from rich.table import Table
 
+    from core.domain import session_duration_hours
+    from core.project_hours import count_project_sessions_from_overall_days
+    from core.report_service import AI_SOURCES, run_timelog_report
+    from outputs.cli_heroes import print_command_hero
     from outputs.terminal_theme import (
         CLR_GREEN,
         CLR_TEXT_SOFT,

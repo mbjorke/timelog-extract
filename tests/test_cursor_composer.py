@@ -6,13 +6,12 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
 
-from core.domain import classify_project
 from collectors.cursor_composer import (
     _composer_activity_span_ms,
     collect_cursor_composer_sessions,
 )
+from core.domain import classify_project
 
 
 class CursorComposerTests(unittest.TestCase):

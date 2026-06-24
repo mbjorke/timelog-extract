@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-
 DEFAULT_DEST_ROOT = Path.home() / ".gittan" / "worklogs"
 
 

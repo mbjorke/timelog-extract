@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Optional
+
 import questionary
 import typer
 from questionary import Choice
@@ -14,7 +15,11 @@ from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_triage import build_triage_plan_dict
 from core.cli_triage_apply import apply_triage_decisions_payload
-from core.config import default_projects_config_option, load_projects_config_payload, normalize_profile
+from core.config import (
+    default_projects_config_option,
+    load_projects_config_payload,
+    normalize_profile,
+)
 from core.triage_domain_signals import (
     canonical_domain_key,
     is_generic_triage_domain,

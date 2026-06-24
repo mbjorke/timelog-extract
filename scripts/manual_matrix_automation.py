@@ -21,7 +21,6 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENTRY = REPO_ROOT / "timelog_extract.py"
 

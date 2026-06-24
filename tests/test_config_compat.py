@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from timelog_extract import UNCATEGORIZED, classify_project, normalize_profile
 from core.config import (
     ENV_GITTAN_HOME,
     ENV_PROJECTS_CONFIG,
@@ -13,15 +12,16 @@ from core.config import (
     SOURCE_GITTAN_HOME,
     SOURCE_PROFILE_HOME,
     apply_rule_to_project,
-    remove_rule_from_project,
     canonical_projects_config_path,
     default_projects_config_option,
     find_ignored_projects_config_paths,
     load_projects_config_payload,
     projects_config_resolution_warnings,
+    remove_rule_from_project,
     resolve_projects_config_path,
     resolve_projects_config_path_and_source,
 )
+from timelog_extract import UNCATEGORIZED, classify_project, normalize_profile
 
 
 class ConfigCompatibilityTests(unittest.TestCase):

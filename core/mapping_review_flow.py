@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from core.mapping_review import (
+    _CANCEL,
+    _STATUS_CANONICAL,
     MappingReview,
     NewProjectProposal,
     ProjectChangeProposal,
-    _CANCEL,
-    _STATUS_CANONICAL,
     _merge_additions_for_change,
     _merge_removals_for_change,
 )

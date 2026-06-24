@@ -5,9 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
-from collectors.lovable_desktop import lovable_desktop_has_storage_signals, lovable_desktop_history_candidates
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
+
+from collectors.lovable_desktop import (
+    lovable_desktop_has_storage_signals,
+    lovable_desktop_history_candidates,
+)
 from collectors.vscode_fork import enrich_ide_collector_versions
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+
 
 def collect_all_events(
     profiles,

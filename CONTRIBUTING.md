@@ -118,7 +118,7 @@ These setup scenarios:
   bash scripts/run_lint.sh fix      # auto-fix safe issues + format
   ```
 
-  Config lives in `pyproject.toml` (`[tool.ruff]`). **Not enforced in CI yet** — the repo still has a format/lint baseline to clean up before turning this on in `run_autotests.sh`. Run Ruff on touched files before push when you can; extension TypeScript has no ESLint/Prettier setup (extension not in active use).
+  Config lives in `pyproject.toml` (`[tool.ruff]`). **`bash scripts/run_lint.sh`** (Ruff check) runs in **`scripts/run_autotests.sh`** / CI. **`run_lint.sh format`** (format check) is optional locally until Typer-heavy modules near the 500-line cap are split. Run Ruff on touched files before push when you can; extension TypeScript has no ESLint/Prettier setup (extension not in active use).
 - If a file approaches the line limit, **split by responsibility** rather than raising the limit (see `README.md` “File Size Policy”).
 - Do **not** commit local timelog files (`TIMELOG.md` is gitignored by policy).
 - Do **not** commit local backup/config artifacts (for example `timelog_projects*.json` generated during local experimentation).

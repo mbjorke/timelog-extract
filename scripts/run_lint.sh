@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional local lint/format gate (Ruff). Not in CI yet — see CONTRIBUTING.md.
+# Optional local lint/format gate (Ruff). Required in CI via run_autotests.sh (check only).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,9 +31,16 @@ case "$MODE" in
     ;;
   fix)
     echo "Running ruff check --fix..."
+    set +e
     "$RUFF" check --fix .
+    check_status=$?
+    set -e
     echo "Running ruff format..."
     "$RUFF" format .
+    if [[ "$check_status" -ne 0 ]]; then
+      echo "Ruff check reported remaining issues after --fix (exit $check_status)." >&2
+      exit "$check_status"
+    fi
     echo "Auto-fix and format completed."
     ;;
   *)

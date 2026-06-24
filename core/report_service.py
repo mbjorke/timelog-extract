@@ -11,12 +11,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Union
 
+from collectors.git_commits import git_commits_collector_status
 from core import domain as core_domain
 from core.analytics import (
     estimate_hours_by_day as core_estimate_hours_by_day,
     get_date_range as core_get_date_range,
     group_by_day as core_group_by_day,
 )
+from core.calibration.reconciliation import evaluate_reconciliation
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli import TimelogRunOptions, as_run_options
 from core.config import load_profiles, resolve_worklog_path as core_resolve_worklog_path
@@ -26,22 +28,14 @@ from core.events import (
     filter_included_events,
     make_event as core_make_event,
 )
-from core.report_runtime import (
-    build_run_context,
-    collect_runtime_events,
-    collect_screen_time_status,
-)
-from core.workspace_root import runtime_workspace_root
-from core.report_aggregate import AggregationResult, aggregate_report
+from core.git_totals import compute_git_project_totals
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
+from core.report_aggregate import AggregationResult, aggregate_report
+from core.report_runtime import build_run_context, collect_runtime_events, collect_screen_time_status
 from core.screen_time import collect_screen_time as core_collect_screen_time
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
-from core.calibration.reconciliation import evaluate_reconciliation
-from core.git_totals import compute_git_project_totals
-from collectors.git_commits import git_commits_collector_status
-from outputs import narrative as narrative_output
-from outputs import pdf as pdf_output
-from outputs import terminal as terminal_output
+from core.workspace_root import runtime_workspace_root
+from outputs import narrative as narrative_output, pdf as pdf_output, terminal as terminal_output
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOME = Path.home()

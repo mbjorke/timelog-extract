@@ -18,8 +18,8 @@ import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated
 
 import typer
@@ -171,13 +171,13 @@ def _record_doctor(w: CastWriter) -> None:
 
 def _collect_doctor_rows() -> list[dict[str, str]]:
     """Run all doctor checks and return structured rows — no Rich output."""
-    from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
-    from core.git_project_bootstrap import assess_config_git_coverage
+    from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
     from collectors.lovable_desktop import (
         lovable_desktop_has_storage_signals,
         lovable_desktop_history_candidates,
     )
-    from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
+    from core.config import load_profiles, resolve_projects_config_path, resolve_worklog_path
+    from core.git_project_bootstrap import assess_config_git_coverage
 
     home = Path.home()
     rows: list[dict[str, str]] = []

@@ -4,26 +4,26 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Annotated, Any, Optional
 
 import questionary
 import typer
 
 from collectors.chrome import chrome_ts
+from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_app import app
-from core.cli_deprecation import warn_deprecated_triage_command
 from core.cli_date_range import resolve_date_window
+from core.cli_deprecation import warn_deprecated_triage_command
 from core.cli_options import TimelogRunOptions
-from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
-from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from core.cli_prompts import prompt_for_timeframe
+from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
 from core.guided_project_config import build_guided_config_plan
-from core.triage_noise import extract_domain, filter_triage_noise_rows, is_triage_noise_row
 from core.triage_code_repos import build_code_repo_candidates
 from core.triage_domain_signals import domain_project_counts_from_events, github_repo_hint
+from core.triage_noise import extract_domain, filter_triage_noise_rows, is_triage_noise_row
 from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 from scripts.calibration.gap_day_triage import (
     apply_domain_mappings,
@@ -378,6 +378,7 @@ def triage(
 ):
     """Guided loop: confirm/correct project mapping on top unexplained days."""
     from rich.console import Console
+
     from core.report_service import run_timelog_report
 
     warn_deprecated_triage_command("gittan triage", extra="Use `gittan review --json` for URL candidates.")
@@ -447,7 +448,6 @@ def triage(
             if str(profile.get("name", "")).strip()
         }
     )
-    projects_payload = load_projects_config_payload(Path(projects_config))
     applied_total = 0
     for row in days:
         day = str(row.get("day"))
@@ -492,8 +492,6 @@ def triage(
         )
         applied_total += applied
         console.print(f"[green]Applied[/green] {applied} mapping(s) for {day} -> {target}")
-        profiles = load_triage_profiles(projects_config)
-        projects_payload = load_projects_config_payload(Path(projects_config))
     console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
     console.print(_render_triage_next_steps(projects_config))
 

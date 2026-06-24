@@ -2,8 +2,8 @@
 
 from core.live_terminal.contract import (
     DEMO_SANDBOX_DENIED_MESSAGE,
-    normalize_demo_command_line,
     is_allowlisted_demo_command,
+    normalize_demo_command_line,
     validate_demo_command,
 )
 

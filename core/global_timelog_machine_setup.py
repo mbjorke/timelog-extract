@@ -9,8 +9,8 @@ from pathlib import Path
 
 import questionary
 import typer
-from rich.console import Console
 from rich import box
+from rich.console import Console
 from rich.table import Table
 
 from core.git_project_bootstrap import discover_local_git_repos

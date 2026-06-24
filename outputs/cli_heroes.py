@@ -16,7 +16,6 @@ from outputs.terminal_theme import (
     STYLE_MUTED,
 )
 
-
 _HEROES: dict[str, tuple[list[str], str]] = {
     "status": (
         [

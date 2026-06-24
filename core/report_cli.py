@@ -7,6 +7,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from rich.console import Console
+
+from core.report_postamble import run_post_report_followups
 from core.report_service import (
     ReportPayload,
     _build_invoice_pdf,
@@ -20,10 +23,8 @@ from core.report_service import (
     generate_invoice_pdf,
     run_timelog_report,
 )
-from core.report_postamble import run_post_report_followups
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
-from rich.console import Console
 
 
 def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:

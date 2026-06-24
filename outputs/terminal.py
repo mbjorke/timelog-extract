@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Sequence, Optional
+from typing import Any, Dict, List, Optional, Sequence
+
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -20,12 +21,11 @@ from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
     CLR_GREEN,
+    CLR_MUTED,
     CLR_SOURCE_BLUE,
     CLR_TEXT_SOFT,
     CLR_VALUE_ORANGE,
-    CLR_MUTED,
     STYLE_BORDER,
-    WARN_ICON,
 )
 from outputs.terminal_warnings import print_report_warnings
 

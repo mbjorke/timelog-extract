@@ -232,3 +232,24 @@ def list_toggl_time_entries(creds: TogglCredentials, start_date: str, end_date: 
     if not isinstance(parsed, list):
         return []
     return [entry for entry in parsed if isinstance(entry, dict)]
+
+
+def verify_toggl_credentials(creds: TogglCredentials) -> tuple[bool, str, str]:
+    """
+    Check Toggl credentials live via ``GET /api/v9/me``.
+
+    Returns ``(ok, detail, suspect)``. ``detail`` names the authenticated account
+    on success or the failure reason. ``suspect`` is ``"credentials"`` when the
+    token is rejected, else ``""``. Never raises.
+    """
+    try:
+        data = _toggl_request(creds, "GET", "/api/v9/me")
+    except RuntimeError as exc:
+        msg = str(exc)
+        if "401" in msg or "403" in msg:
+            return False, "API token rejected", "credentials"
+        return False, msg, ""
+    if not isinstance(data, dict):
+        return False, "Toggl returned an unexpected response", ""
+    who = data.get("fullname") or data.get("email") or "the account"
+    return True, f"authenticated as {who}", ""

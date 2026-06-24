@@ -68,13 +68,12 @@ class InteractiveTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True), patch.object(
             sie.questionary, "confirm"
         ) as q_confirm, patch.object(
-            sie.questionary, "password"
-        ) as q_pwd, patch.object(
             sie.questionary, "text"
-        ) as q_text, patch.object(sie, "upsert_export") as upsert:
+        ) as q_text, patch.object(sie, "upsert_export") as upsert, patch.object(
+            sie, "_verify_toggl", return_value=(True, [], "authenticated as test")
+        ):
             q_confirm.return_value.ask.return_value = True
-            q_pwd.return_value.ask.return_value = "secret-token"
-            q_text.return_value.ask.return_value = "123456"
+            q_text.return_value.ask.side_effect = ["secret-token", "123456"]
             status, note, steps = sie.configure_toggl_env_for_setup(
                 console, yes=False, dry_run=True
             )
@@ -86,18 +85,62 @@ class InteractiveTests(unittest.TestCase):
         self.assertIn("plaintext", console.export_text())
         self.assertTrue(any("gittan doctor" in s for s in steps))
 
+    def test_verification_failure_then_cancel_writes_nothing(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            sie.questionary, "confirm"
+        ) as q_confirm, patch.object(
+            sie.questionary, "text"
+        ) as q_text, patch.object(sie, "upsert_export") as upsert, patch.object(
+            sie, "_verify_toggl", return_value=(False, ["TOGGL_API_TOKEN"], "API token rejected")
+        ):
+            q_confirm.return_value.ask.return_value = True
+            # token, workspace, then blank when re-prompted for the suspect token → cancel
+            q_text.return_value.ask.side_effect = ["bad-token", "123456", ""]
+            status, note, _steps = sie.configure_toggl_env_for_setup(
+                console, yes=False, dry_run=False
+            )
+        self.assertEqual(status, "ACTION_REQUIRED")
+        upsert.assert_not_called()
+        self.assertIn("verification failed", note)
+        self.assertIn("API token rejected", console.export_text())
+
+    def test_verification_failure_then_correct_field_succeeds(self):
+        console = Console(record=True)
+        with patch.dict("os.environ", {}, clear=True), patch.object(
+            sie.questionary, "confirm"
+        ) as q_confirm, patch.object(
+            sie.questionary, "text"
+        ) as q_text, patch.object(sie, "upsert_export") as upsert, patch.object(
+            sie,
+            "_verify_toggl",
+            side_effect=[(False, ["TOGGL_API_TOKEN"], "API token rejected"), (True, [], "ok")],
+        ):
+            q_confirm.return_value.ask.return_value = True
+            # bad token, workspace, then a corrected token that verifies
+            q_text.return_value.ask.side_effect = ["bad-token", "123456", "good-token"]
+            status, _note, _steps = sie.configure_toggl_env_for_setup(
+                console, yes=False, dry_run=True
+            )
+        self.assertEqual(status, "PASS")
+        # both fields written after the corrected re-verification
+        self.assertEqual(upsert.call_count, 2)
+        self.assertIn("Re-enter TOGGL_API_TOKEN", console.export_text())
+        # The untouched workspace id survives the token-only re-entry; the
+        # corrected token is what gets written.
+        written = {c.args[1]: c.args[2] for c in upsert.call_args_list}
+        self.assertEqual(written.get("TOGGL_WORKSPACE_ID"), "123456")
+        self.assertEqual(written.get("TOGGL_API_TOKEN"), "good-token")
+
     def test_partial_input_is_action_required(self):
         console = Console(record=True)
         with patch.dict("os.environ", {}, clear=True), patch.object(
             sie.questionary, "confirm"
         ) as q_confirm, patch.object(
-            sie.questionary, "password"
-        ) as q_pwd, patch.object(
             sie.questionary, "text"
         ) as q_text, patch.object(sie, "upsert_export"):
             q_confirm.return_value.ask.return_value = True
-            q_pwd.return_value.ask.return_value = "secret-token"
-            q_text.return_value.ask.return_value = ""  # workspace id left blank
+            q_text.return_value.ask.side_effect = ["secret-token", ""]  # workspace blank
             status, _note, steps = sie.configure_toggl_env_for_setup(
                 console, yes=False, dry_run=True
             )

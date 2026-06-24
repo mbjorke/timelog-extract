@@ -173,7 +173,10 @@ Scenario: Non-interactive run does not prompt for secrets
 
 ### Onboarding: verify-before-save + masked confirmation
 
-- priority: **next**
+- priority: **built** (task/onboarding-verify) — masked secret confirmation +
+  live API verification (`verify_jira_credentials` /myself,
+  `verify_toggl_credentials` /me) before any shell-profile write; failed
+  verification persists nothing.
 - problem: `gittan setup` credential entry hides the secret (questionary
   password) and writes it straight to the shell profile with no verification.
   This session proved the failure modes: a 236-char value pasted into
@@ -210,6 +213,40 @@ Scenario: Masked confirmation catches a paste error
   failure writes nothing and surfaces a clear reason; covered by tests (API
   mocked: 200 → write, 401 → no write).
 - dependencies: `now` unified onboarding; reuses the Jira/Toggl auth clients.
+
+### OS-keychain secret storage
+
+- priority: **next**
+- problem: credentials are written to the shell profile as plaintext (same model
+  as the GitHub bootstrap). Anything running as the user can read them; the real
+  leak vectors are dotfiles committed to git or synced to the cloud.
+- user value: secrets stored encrypted-at-rest instead of plaintext in `~/.zshrc`.
+- decision: store secrets in the OS keychain (macOS Keychain via `security`, or
+  the `keyring` library) when available; the shell-profile path stays as the
+  cross-platform fallback. Resolution order at read time: env var → keychain →
+  (no auto-read of the profile beyond the shell sourcing it).
+- non-goals: replacing env-var resolution; mandatory keychain (must degrade to
+  the profile on Linux/unsupported setups).
+- acceptance: `gittan setup` offers keychain storage when available; secrets put
+  there are not written to the shell profile; doctor shows where each secret is
+  sourced from; cheap hardening meanwhile — `chmod 600` the profile when we write
+  a secret to it.
+- dependencies: `now` onboarding; the verify-before-save flow.
+
+### Real login (OAuth) for Jira/Toggl
+
+- priority: **do not build yet** (revisit when gittan is hosted/multi-user)
+- problem: API-token paste is manual; OAuth ("sign in with your account") is a
+  nicer flow.
+- why not now: OAuth for a CLI needs a registered app per provider, a
+  localhost-callback/PKCE browser flow, short-lived access tokens with refresh
+  logic, and (Atlassian) cloud-id resolution — a large jump in exactly the
+  "auth/scope/token-management complexity" that `simple-invoicing-model.md` says
+  to minimise. A distributed CLI also can't keep a real `client_secret`. Toggl is
+  API-token-centric and its third-party OAuth support is unverified.
+  The wins OAuth offers (no paste, no long-lived secret) are cheaper to get via
+  the verify-before-save flow + keychain. OAuth fits once a hosted server exists
+  to hold the client secret and token store.
 
 ### AI-generated invoice-friendly description (separate paid service)
 
@@ -328,15 +365,19 @@ Scenario: Rollback a regretted push
 ## Traceability
 
 - story_id: GH-175 (tracked by PR #175)
-- spec_status: draft
-- implementation_status: in progress (`now` item)
+- spec_status: draft (partially shipped)
+- implementation_status: `now` items shipped — Toggl push + unified onboarding
+  (PR #175, merged), Jira idempotency (PR #178, merged); onboarding
+  verify-before-save (PR #179, in review). `next`/`later` items not built.
 - created_at: 2026-06-23
-- last_updated_at: 2026-06-23
-- implementation.pr: pending
-- implementation.branch: task/toggl-posting
+- last_updated_at: 2026-06-24
+- implementation.pr: #175 (merged), #178 (merged), #179 (open)
+- implementation.branch: task/toggl-posting, task/onboarding-verify
 - implementation.commits: []
-- validation.evidence: `tests/test_toggl_sync.py` (15 tests green); full suite run pending
-- validation.decision: NO-GO (until `now` acceptance complete + suite green)
+- validation.evidence: full suite green (970); Toggl/Jira/onboarding all
+  live-verified against real APIs (toggl-sync post+dedup; jira-sync post+dedup;
+  credential verification accepts good / rejects bad creds)
+- validation.decision: GO for shipped `now` items; `next`/`later` pending
 - related:
   - mirrors `gittan jira-sync` (`core/jira_sync.py`, `core/cli_jira_sync.py`)
   - product model: [`simple-invoicing-model.md`](../ideas/simple-invoicing-model.md)
@@ -350,3 +391,9 @@ Scenario: Rollback a regretted push
   - 2026-06-24: Added `now` item — unified credential onboarding in `gittan
     setup` for Jira + Toggl (model A, shell profile). Built: `setup_shell_profile.py`,
     `setup_integration_env.py`, wizard wiring, `tests/test_setup_integration_env.py`.
+  - 2026-06-24: Jira idempotency shipped (PR #178). Onboarding verify-before-save
+    built (PR #179) — visible input + live API verification + field-level
+    correction; reframed from the earlier masked-confirmation approach per
+    maintainer UX feedback (don't ask humans to eyeball/count a token).
+  - 2026-06-24: Backlogged OS-keychain storage (`next`) and real OAuth login
+    (`do not build yet`, until hosted).

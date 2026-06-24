@@ -128,8 +128,7 @@ One virtual branch → one PR when scopes are independent.
 | **Cursor** | Read `.cursor/rules/gitbutler-multi-editor-workflow.mdc`; run tests in session; use `gh` for PR threads. |
 | **Both on same branch** | Same handoff checklist; never assume the other tool ran `but pull`. |
 
-Personal GitButler CLI skill: `~/.agents/skills/gitbutler/` (operational detail).
-Do not duplicate that skill in repo docs — link here for **policy** only.
+Personal GitButler CLI skill (install locally; operational `but` command detail) lives outside this repo — see upstream GitButler docs and your editor’s skill path. Do not duplicate that skill here; this doc is **policy** only.
 
 ## When to choose worktrees instead
 

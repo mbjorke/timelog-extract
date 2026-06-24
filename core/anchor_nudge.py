@@ -108,3 +108,51 @@ def run_interactive_anchor_flow(
     summary = ", ".join(f"{value}→{name}" for name, value in additions)
     console.print(f"[green]Mapped {len(additions)} anchor(s): {summary}[/green]")
     return len(additions)
+
+
+def maybe_run_interactive_anchor_mapping(
+    console,
+    report,
+    *,
+    projects_config: str | None = None,
+) -> bool:
+    """Offer to map unanchored dirs/branches/session titles when on a TTY."""
+    from core.report_nudges import unanchored_anchors_for_report
+
+    if not should_prompt():
+        return False
+    anchors = unanchored_anchors_for_report(report)
+    if not anchors:
+        return False
+
+    import questionary
+
+    line = status_anchor_line(anchors)
+    if line:
+        console.print(line)
+    if not questionary.confirm(
+        "Map activity anchors (working dirs, branches, session titles) to projects?",
+        default=True,
+    ).ask():
+        console.print("[dim]Skipped — run `gittan map` anytime to map anchors.[/dim]")
+        return False
+
+    config = str(
+        projects_config
+        or getattr(report, "config_path", None)
+        or getattr(getattr(report, "args", None), "projects_config", "")
+        or ""
+    ).strip()
+    if not config:
+        console.print("[dim]No projects config path — cannot save anchor mappings.[/dim]")
+        return False
+
+    applied = run_interactive_anchor_flow(
+        console,
+        anchors,
+        list(getattr(report, "profiles", []) or []),
+        config,
+    )
+    if applied:
+        console.print("[dim]Re-run the same report to see updated project hours.[/dim]")
+    return applied > 0

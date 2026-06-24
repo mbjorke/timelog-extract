@@ -37,14 +37,24 @@ class JiraWorklogCandidate:
         return self.seconds / 3600.0
 
     @property
+    def marker(self) -> str:
+        """Stable idempotency token embedded in the worklog comment.
+
+        Jira worklogs do not support tags, so re-run detection relies on this
+        deterministic per-issue/per-day token appearing in an existing comment.
+        """
+        return f"[gittan:{self.issue_key}:{self.day}]"
+
+    @property
     def comment(self) -> str:
         projects = ", ".join(sorted(self.projects))
-        return f"Gittan sync ({self.day}) project(s): {projects}"
+        return f"Gittan sync ({self.day}) project(s): {projects} {self.marker}"
 
 
 @dataclass
 class JiraSyncSummary:
     posted: int = 0
+    already: int = 0
     skipped: int = 0
     unresolved: int = 0
     failed: int = 0
@@ -207,6 +217,27 @@ def build_jira_worklog_candidates(
 
     candidates = sorted(buckets.values(), key=lambda item: (item.day, item.issue_key))
     return candidates, unresolved_sessions
+
+
+def candidate_already_posted(
+    candidate: JiraWorklogCandidate,
+    existing_worklogs: Iterable[dict],
+) -> bool:
+    """Return True if an existing worklog already carries this candidate's marker.
+
+    Worklog comments are ADF docs (or, defensively, strings/None); the plain text
+    is extracted and matched against the candidate's deterministic marker so
+    re-running `gittan jira-sync` skips already-posted issue/day buckets.
+    """
+    from collectors.jira import adf_comment_text
+
+    marker = candidate.marker
+    for worklog in existing_worklogs:
+        if not isinstance(worklog, dict):
+            continue
+        if marker in adf_comment_text(worklog.get("comment")):
+            return True
+    return False
 
 
 def post_candidate(creds: JiraCredentials, candidate: JiraWorklogCandidate) -> str:

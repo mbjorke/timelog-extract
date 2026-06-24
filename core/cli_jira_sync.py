@@ -9,11 +9,20 @@ from typing import Annotated, Optional
 
 import typer
 
-from collectors.jira import jira_sync_enabled, resolve_jira_credentials
+from collectors.jira import (
+    jira_sync_enabled,
+    list_jira_worklogs,
+    resolve_jira_credentials,
+)
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import default_projects_config_option
-from core.jira_sync import JiraSyncSummary, build_jira_worklog_candidates, post_candidate
+from core.jira_sync import (
+    JiraSyncSummary,
+    build_jira_worklog_candidates,
+    candidate_already_posted,
+    post_candidate,
+)
 
 
 def _next_step_hint(summary: JiraSyncSummary) -> str:
@@ -24,6 +33,8 @@ def _next_step_hint(summary: JiraSyncSummary) -> str:
         return "Next: add Jira issue keys in commit subjects or branch name."
     if summary.posted > 0:
         return "Next: verify worklogs in Jira for the posted issue(s)."
+    if summary.already > 0:
+        return "Next: nothing new — those issue/day worklogs were already synced (re-runs are safe)."
     if summary.skipped > 0:
         return "Next: rerun with confirmation and post the candidates you want to keep."
     return "Next: nothing to post — sync complete."
@@ -112,6 +123,7 @@ def jira_sync(
 
     summary = JiraSyncSummary(unresolved=unresolved)
     days_with_commit_candidates = {candidate.day for candidate in candidates if candidate.source == "commit"}
+    worklog_cache: dict[str, list] = {}
     for candidate in candidates:
         # If commit-derived keys exist for the day, hide branch fallback candidates to reduce noise.
         if candidate.source == "branch" and candidate.day in days_with_commit_candidates:
@@ -124,6 +136,22 @@ def jira_sync(
         )
         if dry_run:
             summary.skipped += 1
+            continue
+        # Idempotency: skip if a prior run already posted this issue/day worklog.
+        if candidate.issue_key not in worklog_cache:
+            try:
+                worklog_cache[candidate.issue_key] = list_jira_worklogs(creds, candidate.issue_key)
+            except Exception as exc:
+                # Fail closed: without the existing worklogs we can't tell what is
+                # already synced, so abort rather than risk a duplicate post.
+                raise typer.BadParameter(
+                    f"Could not list existing worklogs for {candidate.issue_key} ({exc}); "
+                    "aborting to avoid duplicate worklogs. Re-run once Jira is reachable, "
+                    "or use --dry-run to preview."
+                )
+        if candidate_already_posted(candidate, worklog_cache[candidate.issue_key]):
+            summary.already += 1
+            typer.echo(f"Already synced {candidate.issue_key} ({candidate.day}); skipping.")
             continue
         if require_confirm:
             ok = typer.confirm("Post this worklog to Jira?", default=False)
@@ -143,7 +171,7 @@ def jira_sync(
 
     typer.echo(
         "Jira sync summary: "
-        f"posted={summary.posted}, skipped={summary.skipped}, "
+        f"posted={summary.posted}, already={summary.already}, skipped={summary.skipped}, "
         f"unresolved={summary.unresolved}, failed={summary.failed}"
     )
     typer.echo(_next_step_hint(summary))

@@ -7,7 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -80,6 +80,79 @@ def jira_sync_enabled(args: Any) -> tuple[bool, Optional[str]]:
 def _jira_auth_header(email: str, api_token: str) -> str:
     raw = f"{email}:{api_token}".encode("utf-8")
     return "Basic " + base64.b64encode(raw).decode("ascii")
+
+
+def adf_comment_text(comment: Any) -> str:
+    """
+    Extract plain text from a Jira worklog comment for marker matching.
+
+    Jira worklog comments are normally Atlassian Document Format (ADF) docs, but
+    older/edge responses may hand back a plain string, ``None``, or unexpected
+    shapes. This walks any nested ``content``/``text`` structure defensively and
+    returns the concatenated plain text; anything it cannot interpret yields
+    ``""`` rather than raising.
+    """
+    if comment is None:
+        return ""
+    if isinstance(comment, str):
+        return comment
+    parts: List[str] = []
+
+    def _walk(node: Any) -> None:
+        if isinstance(node, dict):
+            text = node.get("text")
+            if isinstance(text, str):
+                parts.append(text)
+            _walk(node.get("content"))
+        elif isinstance(node, list):
+            for child in node:
+                _walk(child)
+
+    _walk(comment)
+    return " ".join(parts)
+
+
+def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
+    """
+    Fetch all existing worklogs for an issue, following pagination.
+
+    ``GET /rest/api/3/issue/{key}/worklog`` returns one page
+    (``startAt``/``maxResults``/``total``); this follows subsequent pages so a
+    marker on a later page is never missed during dedup.
+
+    Raises:
+        RuntimeError: If an HTTP request fails or Jira returns a non-JSON response.
+    """
+    base = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
+    collected: List[dict] = []
+    start_at = 0
+    while True:
+        url = f"{base}?startAt={start_at}"
+        req = Request(url, method="GET")
+        req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
+        req.add_header("Accept", "application/json")
+        try:
+            with urlopen(req, timeout=20) as response:
+                body = response.read().decode("utf-8")
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Jira HTTP {exc.code}: {detail}") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Jira network error: {exc.reason}") from exc
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Jira returned non-JSON response for worklog list") from exc
+        worklogs = parsed.get("worklogs")
+        page = list(worklogs) if isinstance(worklogs, list) else []
+        collected.extend(page)
+        total = parsed.get("total")
+        # Stop when we've seen everything, or when a page returns nothing (guard
+        # against a missing/short total looping forever).
+        if not page or not isinstance(total, int) or len(collected) >= total:
+            break
+        start_at = len(collected)
+    return collected
 
 
 def post_jira_worklog(

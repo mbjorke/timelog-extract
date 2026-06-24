@@ -1,0 +1,49 @@
+---
+description: GitButler + Claude/Cursor handoff on task branches; when to use but vs plain git
+alwaysApply: true
+---
+
+# GitButler and multi-editor handoff
+
+Full policy: [`docs/decisions/gitbutler-multi-editor-workflow.md`](../../docs/decisions/gitbutler-multi-editor-workflow.md).
+
+Maintainer often **starts in Claude Code** and **continues in Cursor** on the same
+`task/*` branch when context runs out. Treat branch + PR state as truth, not the
+prior chat.
+
+## Start of session (always)
+
+1. `git branch --show-current` and `git status -sb`
+2. If on `gitbutler/workspace`: `but status -fv` (GitButler mode — use `but` for writes)
+3. Check for existing PR: `gh pr view --head $(git branch --show-current)` or `gh pr list --head …`
+4. Do not recreate branches or run `but setup` without reading current state
+
+## Plain git vs GitButler (one mode per clone per work period)
+
+| Mode | Writes |
+| --- | --- |
+| Normal branch (`task/*`, `main`) | `git` / `gh` per `AGENTS.md` |
+| `gitbutler/workspace` | **`but` only** — no `git commit`, `git checkout`, `git merge`, `git push` |
+
+After GitHub merges to `main`: in But mode run `but pull --check` then `but pull`.
+When But work is done for a while: `but teardown --checkout-to main`.
+
+## GitButler hygiene (But mode)
+
+- Max **1–2** applied virtual branches with open work; unapply merged/stale stacks
+- Before commit on shared files (`pyproject.toml`, `CHANGELOG.md`, `CONTRIBUTING.md`):
+  `but unapply` other branches → commit → re-apply only if needed
+- One virtual branch ≈ one future PR; do not bundle unrelated scope
+- Use `but diff` → `but commit <branch> -m "…" --changes <ids>`; do not chain `but` mutations with `&&`
+- Push: `but push <branch-name>` then PR (`but pr new` or `gh pr create`)
+
+## Handoff to next editor (Claude ↔ Cursor)
+
+Before ending: **commit everything**; note branch, HEAD SHA, open PR URL, remaining checklist.
+
+Incoming editor: verify branch/PR; run smallest relevant tests; do not assume the other tool ran `but pull`.
+
+## Worktrees
+
+Use a separate worktree when two agents need isolation or the same hot files concurrently.
+Primary clone: prefer either But **or** plain git for a given session — not mixed writes.

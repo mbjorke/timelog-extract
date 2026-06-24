@@ -2,6 +2,12 @@
 
 ## Branch flow
 
+## Multi-agent / GitButler (optional — delete section if N/A)
+
+- [ ] Handoff or GitButler: one `task/*` scope only; unrelated local work is a **separate PR**
+- **Excluded from this PR (if any):** …
+- Details: [`docs/decisions/gitbutler-multi-editor-workflow.md`](../docs/decisions/gitbutler-multi-editor-workflow.md)
+
 ## Test plan
 
 ## Review close-out checklist
@@ -27,6 +33,7 @@ When responding to automated review comments (CodeRabbit, CI):
 ## See also (optional)
 
 - [`AGENTS.md`](AGENTS.md) — test gate, branches, review cadence
+- [`docs/decisions/gitbutler-multi-editor-workflow.md`](../docs/decisions/gitbutler-multi-editor-workflow.md) — Claude/Cursor handoff, GitButler vs plain git
 - [`docs/decisions/agent-review-contract.md`](docs/decisions/agent-review-contract.md) — severity → who fixes what
 - [`docs/brand/values.md`](docs/brand/values.md) · [`docs/brand/identity.md`](docs/brand/identity.md) — values and visual voice when copy or UX touches users
 - [`docs/ideas/team-lexicon.md`](docs/ideas/team-lexicon.md) — shorthand and TIL for human ↔ agent chat

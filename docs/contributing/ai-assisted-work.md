@@ -20,7 +20,7 @@ Keep these **short**: duplicate only orientation, not policy.
 | Tool / context | Practical entry |
 | -------------- | ---------------- |
 | **Claude Code** | [`CLAUDE.md`](../../CLAUDE.md) → points at `AGENTS.md`. |
-| **Cursor** | [`.cursor/rules/`](../../.cursor/rules/) for workspace rules; still read `AGENTS.md`. Optional slash command [`.cursor/commands/gittan-triage-review.md`](../../.cursor/commands/gittan-triage-review.md) (`/gittan-triage-review`) for triage/CLI agent reviews (see [`../runbooks/gittan-triage-agents.md`](../runbooks/gittan-triage-agents.md)). |
+| **Cursor** | [`.cursor/rules/`](../../.cursor/rules/) for workspace rules; still read `AGENTS.md`. Optional slash command [`.cursor/commands/gittan-triage-review.md`](../../.cursor/commands/gittan-triage-review.md) (`/gittan-triage-review`) for triage/CLI agent reviews (see [`../runbooks/gittan-triage-agents.md`](../runbooks/gittan-triage-agents.md)). GitButler + Claude→Cursor handoff: [`../decisions/gitbutler-multi-editor-workflow.md`](../decisions/gitbutler-multi-editor-workflow.md). |
 | **Codex / ChatGPT / other chat UIs** | Paste or attach **`AGENTS.md`** (and `CONTRIBUTING.md` for first PR). No separate file required unless we add a one-line stub later. |
 | **VS Code / Zed (no agent)** | Open `AGENTS.md` + `CONTRIBUTING.md` in editor; same content. |
 | **SlayZone** | Point project/task context at **`AGENTS.md`**. Ecosystem notes: [`../inspiration/slay-zone.md`](../inspiration/slay-zone.md). |
@@ -30,7 +30,7 @@ Adding a new vendor-specific file (e.g. `GEMINI.md`) is OK **only** if it is a s
 
 ## Skills vs rules vs long docs
 
-- **Cursor Rules** (`.cursor/rules/*.mdc`): good for **always-on** repo constraints (e.g. pre-push gate). Checked into git; all contributors get them in Cursor.
+- **Cursor Rules** (`.cursor/rules/*.mdc`): good for **always-on** repo constraints (e.g. pre-push gate, GitButler/handoff). Checked into git; all contributors get them in Cursor.
 - **Canonical repo skills** (`docs/skills/`): small, **vendor-neutral** procedural playbooks for repeated repo work (e.g. `gittan-product-owner`, `gittan-source-collector`). They **point back** to `AGENTS.md` and the specs — never a second policy layer. Committed precisely because they stay thin. Index: [`../skills/README.md`](../skills/README.md); rationale in [`../specs/repo-agent-skills.md`](../specs/repo-agent-skills.md).
 - **Thin tool wrappers** for those skills are committed too, and may only point back to the canonical `docs/skills/*` doc: Cursor slash commands (`.cursor/commands/`) and Claude project skills (`.claude/skills/<name>/SKILL.md`, tracked via a `.gitignore` carve-out). No wrapper restates policy.
 - **Personal / heavy skills** (tone, formatting, your own invoicing or `~/.gittan` workflow — anything user-specific): keep **local / user-level**, do **not** commit. Document optional patterns in [`../runbooks/optional-caveman-agent-setup.md`](../runbooks/optional-caveman-agent-setup.md) instead of mandating one.

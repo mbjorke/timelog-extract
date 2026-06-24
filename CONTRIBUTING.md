@@ -18,6 +18,7 @@ Experience reports, setup confusion, and product questions belong in **[GitHub D
 - **Write the PR title and PR description in English.** That is required for reviewers and tools (e.g. CodeRabbit). See [`AGENTS.md`](AGENTS.md).
 - Prefer **Draft** PRs while iterating; mark **Ready for review** when CI is green and the scope is stable.
 - Keep changes focused. Split unrelated work into separate PRs or branches when possible.
+- **Claude Code → Cursor (or two agents, same repo):** commit on one `task/*` branch; the next editor continues that branch — see [`docs/decisions/gitbutler-multi-editor-workflow.md`](docs/decisions/gitbutler-multi-editor-workflow.md). Using **GitButler** (`gitbutler/workspace`)? Same rule: one branch ≈ one PR; use the optional PR section below when scope was split on purpose.
 
 ## Branch and naming conventions
 

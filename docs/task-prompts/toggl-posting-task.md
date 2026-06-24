@@ -214,6 +214,40 @@ Scenario: Masked confirmation catches a paste error
   mocked: 200 → write, 401 → no write).
 - dependencies: `now` unified onboarding; reuses the Jira/Toggl auth clients.
 
+### OS-keychain secret storage
+
+- priority: **next**
+- problem: credentials are written to the shell profile as plaintext (same model
+  as the GitHub bootstrap). Anything running as the user can read them; the real
+  leak vectors are dotfiles committed to git or synced to the cloud.
+- user value: secrets stored encrypted-at-rest instead of plaintext in `~/.zshrc`.
+- decision: store secrets in the OS keychain (macOS Keychain via `security`, or
+  the `keyring` library) when available; the shell-profile path stays as the
+  cross-platform fallback. Resolution order at read time: env var → keychain →
+  (no auto-read of the profile beyond the shell sourcing it).
+- non-goals: replacing env-var resolution; mandatory keychain (must degrade to
+  the profile on Linux/unsupported setups).
+- acceptance: `gittan setup` offers keychain storage when available; secrets put
+  there are not written to the shell profile; doctor shows where each secret is
+  sourced from; cheap hardening meanwhile — `chmod 600` the profile when we write
+  a secret to it.
+- dependencies: `now` onboarding; the verify-before-save flow.
+
+### Real login (OAuth) for Jira/Toggl
+
+- priority: **do not build yet** (revisit when gittan is hosted/multi-user)
+- problem: API-token paste is manual; OAuth ("sign in with your account") is a
+  nicer flow.
+- why not now: OAuth for a CLI needs a registered app per provider, a
+  localhost-callback/PKCE browser flow, short-lived access tokens with refresh
+  logic, and (Atlassian) cloud-id resolution — a large jump in exactly the
+  "auth/scope/token-management complexity" that `simple-invoicing-model.md` says
+  to minimise. A distributed CLI also can't keep a real `client_secret`. Toggl is
+  API-token-centric and its third-party OAuth support is unverified.
+  The wins OAuth offers (no paste, no long-lived secret) are cheaper to get via
+  the verify-before-save flow + keychain. OAuth fits once a hosted server exists
+  to hold the client secret and token store.
+
 ### AI-generated invoice-friendly description (separate paid service)
 
 - priority: **later** (own track / likely a paid add-on)

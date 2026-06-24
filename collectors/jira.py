@@ -7,7 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -80,6 +80,65 @@ def jira_sync_enabled(args: Any) -> tuple[bool, Optional[str]]:
 def _jira_auth_header(email: str, api_token: str) -> str:
     raw = f"{email}:{api_token}".encode("utf-8")
     return "Basic " + base64.b64encode(raw).decode("ascii")
+
+
+def adf_comment_text(comment: Any) -> str:
+    """
+    Extract plain text from a Jira worklog comment for marker matching.
+
+    Jira worklog comments are normally Atlassian Document Format (ADF) docs, but
+    older/edge responses may hand back a plain string, ``None``, or unexpected
+    shapes. This walks any nested ``content``/``text`` structure defensively and
+    returns the concatenated plain text; anything it cannot interpret yields
+    ``""`` rather than raising.
+    """
+    if comment is None:
+        return ""
+    if isinstance(comment, str):
+        return comment
+    parts: List[str] = []
+
+    def _walk(node: Any) -> None:
+        if isinstance(node, dict):
+            text = node.get("text")
+            if isinstance(text, str):
+                parts.append(text)
+            _walk(node.get("content"))
+        elif isinstance(node, list):
+            for child in node:
+                _walk(child)
+
+    _walk(comment)
+    return " ".join(parts)
+
+
+def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
+    """
+    Fetch existing worklogs for an issue.
+
+    Returns the list of worklog objects from ``GET /rest/api/3/issue/{key}/worklog``.
+
+    Raises:
+        RuntimeError: If the HTTP request fails or Jira returns a non-JSON response.
+    """
+    url = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
+    req = Request(url, method="GET")
+    req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
+    req.add_header("Accept", "application/json")
+    try:
+        with urlopen(req, timeout=20) as response:
+            body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Jira HTTP {exc.code}: {detail}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"Jira network error: {exc.reason}") from exc
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError:
+        raise RuntimeError("Jira returned non-JSON response for worklog list")
+    worklogs = parsed.get("worklogs")
+    return list(worklogs) if isinstance(worklogs, list) else []
 
 
 def post_jira_worklog(

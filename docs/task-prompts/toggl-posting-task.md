@@ -173,7 +173,10 @@ Scenario: Non-interactive run does not prompt for secrets
 
 ### Onboarding: verify-before-save + masked confirmation
 
-- priority: **next**
+- priority: **built** (task/onboarding-verify) — masked secret confirmation +
+  live API verification (`verify_jira_credentials` /myself,
+  `verify_toggl_credentials` /me) before any shell-profile write; failed
+  verification persists nothing.
 - problem: `gittan setup` credential entry hides the secret (questionary
   password) and writes it straight to the shell profile with no verification.
   This session proved the failure modes: a 236-char value pasted into

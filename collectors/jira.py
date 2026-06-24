@@ -82,6 +82,41 @@ def _jira_auth_header(email: str, api_token: str) -> str:
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
+def verify_jira_credentials(creds: JiraCredentials) -> tuple[bool, str, str]:
+    """
+    Check Jira credentials live via ``GET /rest/api/3/myself``.
+
+    Returns ``(ok, detail, suspect)``. ``detail`` names the authenticated account
+    on success or the failure reason. ``suspect`` classifies which input is most
+    likely wrong so the caller can re-prompt just that: ``"url"`` (bad/unreachable
+    base URL), ``"credentials"`` (email/token rejected), or ``""`` (ok/unknown).
+    Never raises.
+    """
+    if not creds.base_url.lower().startswith(("http://", "https://")):
+        return False, "base URL should start with https://", "url"
+    url = f"{creds.base_url}/rest/api/3/myself"
+    req = Request(url, method="GET")
+    req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
+    req.add_header("Accept", "application/json")
+    try:
+        with urlopen(req, timeout=20) as response:
+            body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        if exc.code in (401, 403):
+            return False, f"email/token rejected (HTTP {exc.code})", "credentials"
+        if exc.code == 404:
+            return False, "no Jira API at this URL (HTTP 404)", "url"
+        return False, f"Jira HTTP {exc.code}", ""
+    except URLError as exc:
+        return False, f"could not reach Jira ({exc.reason})", "url"
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        return False, "Jira returned a non-JSON response", "url"
+    who = data.get("emailAddress") or data.get("displayName") or "the account"
+    return True, f"authenticated as {who}", ""
+
+
 def adf_comment_text(comment: Any) -> str:
     """
     Extract plain text from a Jira worklog comment for marker matching.

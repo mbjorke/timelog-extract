@@ -10,6 +10,24 @@ from collectors import toggl as tg
 from core.collector_registry import build_collector_specs
 
 
+class TogglVerifyTests(unittest.TestCase):
+    def _creds(self):
+        return tg.TogglCredentials(api_token="t", workspace_id=1)
+
+    def test_verify_ok_names_account(self):
+        with patch.object(tg, "_toggl_request", return_value={"email": "marcus@x.se"}):
+            ok, detail, suspect = tg.verify_toggl_credentials(self._creds())
+        self.assertTrue(ok)
+        self.assertIn("marcus@x.se", detail)
+        self.assertEqual(suspect, "")
+
+    def test_verify_failure_flags_credentials(self):
+        with patch.object(tg, "_toggl_request", side_effect=RuntimeError("Toggl HTTP 403")):
+            ok, detail, suspect = tg.verify_toggl_credentials(self._creds())
+        self.assertFalse(ok)
+        self.assertEqual(suspect, "credentials")
+
+
 class TogglSourceTests(unittest.TestCase):
     def test_toggl_source_auto_without_token_is_disabled(self):
         class Args:

@@ -6,6 +6,8 @@ If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of tru
 
 **Maintainer preference:** minimize copy-paste command blocks for the human; run `git` / `gh` / tests in the agent session and summarize results. See `AGENTS.md` → *Maintainer workflow preferences (low copy-paste)*.
 
+**Claude → Cursor handoff:** large work often starts here and continues in Cursor on the same `task/*` branch. Before ending a session, commit; read `docs/decisions/gitbutler-multi-editor-workflow.md` for handoff checklist and GitButler vs plain-git mode.
+
 ## Project overview
 
 **Gittan** (`timelog-extract` on PyPI) is a local-first CLI tool that aggregates IDE, browser, mail, and worklog activity into project-hour reports and optional invoice PDFs. The CLI command is `gittan`; the package is installed via `pip install timelog-extract`. Python 3.9+ required.

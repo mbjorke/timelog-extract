@@ -142,9 +142,13 @@ def jira_sync(
             try:
                 worklog_cache[candidate.issue_key] = list_jira_worklogs(creds, candidate.issue_key)
             except Exception as exc:
-                import logging
-                worklog_cache[candidate.issue_key] = []
-                logging.warning(f"Could not list existing worklogs for {candidate.issue_key}: {exc}")
+                # Fail closed: without the existing worklogs we can't tell what is
+                # already synced, so abort rather than risk a duplicate post.
+                raise typer.BadParameter(
+                    f"Could not list existing worklogs for {candidate.issue_key} ({exc}); "
+                    "aborting to avoid duplicate worklogs. Re-run once Jira is reachable, "
+                    "or use --dry-run to preview."
+                )
         if candidate_already_posted(candidate, worklog_cache[candidate.issue_key]):
             summary.already += 1
             typer.echo(f"Already synced {candidate.issue_key} ({candidate.day}); skipping.")

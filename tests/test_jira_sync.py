@@ -206,6 +206,33 @@ class JiraSyncTests(unittest.TestCase):
         self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
         self.assertIn("Next: verify worklogs in Jira for the posted issue(s).", result.output)
 
+    def test_cli_jira_sync_aborts_when_worklog_list_fails(self):
+        runner = CliRunner()
+        candidate = JiraWorklogCandidate(
+            issue_key="ABC-1",
+            day="2026-04-20",
+            started=datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc),
+            seconds=7200,
+            projects=["Demo"],
+            source="commit",
+        )
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=SimpleNamespace()), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates", return_value=([candidate], 0)
+        ), patch(
+            "core.cli_jira_sync.list_jira_worklogs", side_effect=RuntimeError("Jira down")
+        ), patch("core.cli_jira_sync.post_candidate") as post:
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
+        # Fail closed: no post attempted, non-zero exit.
+        post.assert_not_called()
+        self.assertNotEqual(result.exit_code, 0)
+
     def test_cli_jira_sync_summary_counts_failure_hint(self):
         runner = CliRunner()
         candidate = JiraWorklogCandidate(

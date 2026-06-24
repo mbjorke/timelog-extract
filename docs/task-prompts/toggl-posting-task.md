@@ -171,6 +171,46 @@ Scenario: Non-interactive run does not prompt for secrets
   `tests/test_setup_github_env.py` regression green.
 - dependencies: none; uses the GitHub bootstrap as the reference pattern.
 
+### Onboarding: verify-before-save + masked confirmation
+
+- priority: **next**
+- problem: `gittan setup` credential entry hides the secret (questionary
+  password) and writes it straight to the shell profile with no verification.
+  This session proved the failure modes: a 236-char value pasted into
+  JIRA_EMAIL, an empty token, and a wrong email-for-token — none caught until a
+  manual `curl` round. A typo silently persists a broken credential.
+- user value: you can't onboard a wrong/expired credential; mistakes are caught
+  at entry, not on first failed sync.
+- decision: do **not** echo secrets in cleartext by default. Instead:
+  (1) after secret entry, show a **masked confirmation** (`ATATT…xz39, 192 chars
+  — correct? [y/N]`); (2) **verify the credential live before persisting** —
+  Jira `GET /rest/api/3/myself`, Toggl `GET /api/v9/me` — and only write the
+  shell profile on success; on failure, report it and re-prompt/skip without
+  writing. Mirrors the solo-first "dry-run shows exactly what will happen" rule.
+- non-goals: cleartext secret echo by default; storing secrets anywhere but the
+  shell profile (that decision stands — `[[invoice-text-ai-not-config]]` is a
+  different concern).
+- behavior:
+
+```gherkin
+Scenario: Wrong credential is rejected before writing
+  Given the user enters a Toggl token that the API rejects
+  When onboarding verifies it against /api/v9/me
+  Then nothing is written to the shell profile
+  And the user is told the credential failed and re-prompted
+
+Scenario: Masked confirmation catches a paste error
+  When the user pastes a value into a secret field
+  Then a masked preview (prefix…suffix + length) is shown for confirmation
+  And only a confirmed value proceeds to verification
+```
+
+- acceptance: secret entry is followed by a masked confirm; credentials are
+  verified against the provider API before any shell-profile write; verification
+  failure writes nothing and surfaces a clear reason; covered by tests (API
+  mocked: 200 → write, 401 → no write).
+- dependencies: `now` unified onboarding; reuses the Jira/Toggl auth clients.
+
 ### AI-generated invoice-friendly description (separate paid service)
 
 - priority: **later** (own track / likely a paid add-on)

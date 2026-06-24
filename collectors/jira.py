@@ -114,31 +114,45 @@ def adf_comment_text(comment: Any) -> str:
 
 def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
     """
-    Fetch existing worklogs for an issue.
+    Fetch all existing worklogs for an issue, following pagination.
 
-    Returns the list of worklog objects from ``GET /rest/api/3/issue/{key}/worklog``.
+    ``GET /rest/api/3/issue/{key}/worklog`` returns one page
+    (``startAt``/``maxResults``/``total``); this follows subsequent pages so a
+    marker on a later page is never missed during dedup.
 
     Raises:
-        RuntimeError: If the HTTP request fails or Jira returns a non-JSON response.
+        RuntimeError: If an HTTP request fails or Jira returns a non-JSON response.
     """
-    url = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
-    req = Request(url, method="GET")
-    req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
-    req.add_header("Accept", "application/json")
-    try:
-        with urlopen(req, timeout=20) as response:
-            body = response.read().decode("utf-8")
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Jira HTTP {exc.code}: {detail}") from exc
-    except URLError as exc:
-        raise RuntimeError(f"Jira network error: {exc.reason}") from exc
-    try:
-        parsed = json.loads(body)
-    except json.JSONDecodeError:
-        raise RuntimeError("Jira returned non-JSON response for worklog list")
-    worklogs = parsed.get("worklogs")
-    return list(worklogs) if isinstance(worklogs, list) else []
+    base = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
+    collected: List[dict] = []
+    start_at = 0
+    while True:
+        url = f"{base}?startAt={start_at}"
+        req = Request(url, method="GET")
+        req.add_header("Authorization", _jira_auth_header(creds.email, creds.api_token))
+        req.add_header("Accept", "application/json")
+        try:
+            with urlopen(req, timeout=20) as response:
+                body = response.read().decode("utf-8")
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Jira HTTP {exc.code}: {detail}") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Jira network error: {exc.reason}") from exc
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Jira returned non-JSON response for worklog list") from exc
+        worklogs = parsed.get("worklogs")
+        page = list(worklogs) if isinstance(worklogs, list) else []
+        collected.extend(page)
+        total = parsed.get("total")
+        # Stop when we've seen everything, or when a page returns nothing (guard
+        # against a missing/short total looping forever).
+        if not page or not isinstance(total, int) or len(collected) >= total:
+            break
+        start_at = len(collected)
+    return collected
 
 
 def post_jira_worklog(

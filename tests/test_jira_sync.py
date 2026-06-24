@@ -206,6 +206,46 @@ class JiraSyncTests(unittest.TestCase):
         self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
         self.assertIn("Next: verify worklogs in Jira for the posted issue(s).", result.output)
 
+    def test_list_jira_worklogs_follows_pagination(self):
+        import json as _json
+
+        from collectors.jira import list_jira_worklogs
+
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        pages = [
+            _json.dumps({"startAt": 0, "maxResults": 2, "total": 3, "worklogs": [{"id": "1"}, {"id": "2"}]}).encode(),
+            _json.dumps({"startAt": 2, "maxResults": 2, "total": 3, "worklogs": [{"id": "3"}]}).encode(),
+        ]
+
+        class _FakeResp:
+            def __init__(self, data):
+                self.data = data
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return self.data
+
+        calls = []
+
+        def _fake_urlopen(req, timeout=None):
+            calls.append(req.full_url)
+            return _FakeResp(pages[len(calls) - 1])
+
+        with patch("collectors.jira.urlopen", side_effect=_fake_urlopen):
+            result = list_jira_worklogs(creds, "KAN-1")
+        self.assertEqual([w["id"] for w in result], ["1", "2", "3"])
+        self.assertEqual(len(calls), 2)
+        self.assertIn("startAt=2", calls[1])
+
     def test_cli_jira_sync_aborts_when_worklog_list_fails(self):
         runner = CliRunner()
         candidate = JiraWorklogCandidate(

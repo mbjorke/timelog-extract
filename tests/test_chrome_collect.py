@@ -11,6 +11,7 @@ from collectors.chrome import (
     collect_chrome,
     collect_claude_ai_urls,
     collect_gemini_web_urls,
+    split_chrome_tab_title,
 )
 
 from chrome_test_support import (
@@ -287,6 +288,27 @@ class CollectChromeTests(unittest.TestCase):
         results = self._call(profiles)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["source"], "Chrome")
+
+    def test_github_tab_title_splits_label_and_repo_tail(self):
+        ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
+        insert_visit(
+            self.db_path,
+            "https://github.com/owner-a/project-alpha/pulls",
+            "Pull requests · owner-a/project-alpha",
+            ts,
+        )
+        profiles = [{"name": "Proj", "match_terms": ["project-alpha"]}]
+        results = self._call(profiles)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["anchors"]["label"], "Pull requests")
+        self.assertEqual(results[0]["detail"], "owner-a/project-alpha")
+
+    def test_split_chrome_tab_title_helper(self):
+        self.assertEqual(
+            split_chrome_tab_title("Pull requests · owner-a/project-alpha"),
+            ("Pull requests", "owner-a/project-alpha"),
+        )
+        self.assertEqual(split_chrome_tab_title("Standalone tab"), (None, "Standalone tab"))
 
     def test_keyword_with_percent_sign_does_not_error(self):
         """A keyword containing % is safely escaped and does not raise."""

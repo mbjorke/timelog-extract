@@ -199,7 +199,7 @@ def collect_cursor_agent_turns(
             cluster_turns = len(cluster)
             cluster_detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
             if branch and branch.lower() not in (name or label or "").lower():
-                cluster_detail += f" · @{branch}"
+                cluster_detail += f" (@{branch})"
             for ts in _thin(cluster):
                 results.append(
                     make_event(

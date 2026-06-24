@@ -66,6 +66,22 @@ class TerminalAnchorDisplayTests(unittest.TestCase):
         }
         self.assertEqual(_format_event_detail(event), event["detail"])
 
+    def test_mail_subject_label_and_recipient_detail(self):
+        event = {
+            "source": "Apple Mail",
+            "detail": "customer-a@customer-a.test",
+            "anchors": {"label": "Re: invoice Q2"},
+        }
+        self.assertEqual(_format_event_detail(event), "Re: invoice Q2: customer-a@customer-a.test")
+
+    def test_calendar_title_label_and_calendar_hours_detail(self):
+        event = {
+            "source": "Calendar",
+            "detail": "[Work] 1.00h",
+            "anchors": {"label": "Standup with team"},
+        }
+        self.assertEqual(_format_event_detail(event), "Standup with team: [Work] 1.00h")
+
 
 if __name__ == "__main__":
     unittest.main()

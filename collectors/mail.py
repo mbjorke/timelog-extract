@@ -7,6 +7,19 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Callable, List, Sequence, Tuple
 
+from collectors.ai_logs import _anchors
+
+
+def mail_event_parts(subject: str, to_display: str) -> tuple[str | None, str]:
+    """Split sent-mail rows into session-style label (subject) and detail (recipient)."""
+    subj = (subject or "").strip()
+    recipient = (to_display or "").strip()[:80]
+    if subj:
+        return subj[:80], recipient
+    if recipient:
+        return "(no subject)", recipient
+    return None, ""
+
 
 def detect_mail_root(home: Path) -> Tuple[Path | None, str]:
     mail_base = home / "Library" / "Mail"
@@ -47,8 +60,14 @@ def collect_apple_mail(
 
     emlx_files = []
     try:
+        seen_paths: set[Path] = set()
         for pat in sent_patterns:
-            emlx_files.extend(mail_dir.glob(pat))
+            for path in mail_dir.glob(pat):
+                resolved = path.resolve()
+                if resolved in seen_paths:
+                    continue
+                seen_paths.add(resolved)
+                emlx_files.append(path)
     except PermissionError:
         print("  [Warning] Access denied to Mail folders.")
         return results
@@ -64,9 +83,9 @@ def collect_apple_mail(
                 parts.append(raw)
         return "".join(parts)
 
-    senders = {p["email"].lower() for p in profiles if p["email"]}
+    senders: set[str] = set()
     if default_email:
-        senders.add(default_email.lower())
+        senders.add(default_email.strip().lower())
 
     for emlx_path in emlx_files:
         try:
@@ -87,7 +106,8 @@ def collect_apple_mail(
             if not (dt_from <= ts <= dt_to):
                 continue
 
-            from_addr = (msg.get("From", "") or "").lower()
+            from_addr = _decode_header(msg.get("From", "") or "").lower()
+            # Sent-folder reads are outbound-only; restrict by From only when --email is set.
             if senders and not any(sender in from_addr for sender in senders):
                 continue
 
@@ -95,11 +115,10 @@ def collect_apple_mail(
             subject_raw = msg.get("Subject", "") or ""
             subject = _decode_header(subject_raw)
             project = classify_project(f"{to_addr} {subject}", profiles)
-            if project == uncategorized:
-                continue
 
-            detail = f"-> {msg.get('To', '')[:35]}  \"{subject[:45]}\""
-            results.append(make_event("Apple Mail", ts, detail, project))
+            page_label, detail = mail_event_parts(subject, msg.get("To", "") or "")
+            anchors = _anchors(label=page_label) if page_label else None
+            results.append(make_event("Apple Mail", ts, detail, project, anchors=anchors))
         except PermissionError:
             print("  [Warning] Cannot read individual message — check Full Disk Access.")
             break

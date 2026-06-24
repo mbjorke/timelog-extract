@@ -43,5 +43,8 @@ def insert_visit(db_path: Path, url: str, title: str, ts: datetime) -> None:
     conn.close()
 
 
-def make_event(source, ts, detail, project):
-    return {"source": source, "ts": ts, "detail": detail, "project": project}
+def make_event(source, ts, detail, project, anchors=None):
+    event = {"source": source, "ts": ts, "detail": detail, "project": project}
+    if anchors:
+        event["anchors"] = anchors
+    return event

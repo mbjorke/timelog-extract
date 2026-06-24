@@ -55,10 +55,13 @@ class JiraVerifyTests(unittest.TestCase):
         creds = JiraCredentials(
             base_url="http://insecure.example.com", email="e@x.com", api_token=TEST_API_PLACEHOLDER
         )
-        ok, detail, suspect = verify_jira_credentials(creds)
+        with patch.object(jira_mod, "urlopen") as urlopen:
+            ok, detail, suspect = verify_jira_credentials(creds)
         self.assertFalse(ok)
         self.assertEqual(suspect, "url")
         self.assertIn("https", detail)
+        # The token must never go out over plain http: reject before any request.
+        urlopen.assert_not_called()
 
 
 if __name__ == "__main__":

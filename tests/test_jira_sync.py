@@ -8,13 +8,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 
-from collectors.jira import JiraCredentials, post_jira_worklog
+from collectors.jira import JiraCredentials, adf_comment_text, post_jira_worklog
 from core.cli import app
 from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
     JiraWorklogCandidate,
     JiraSyncSummary,
     build_jira_worklog_candidates,
+    candidate_already_posted,
     extract_issue_key,
 )
 from core.report_service import ReportPayload
@@ -154,7 +155,7 @@ class JiraSyncTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertNotIn("XYZ-123", result.output)
         self.assertIn("ABC-1", result.output)
-        self.assertIn("Jira sync summary: posted=0, skipped=2, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=0, skipped=2, unresolved=0, failed=0", result.output)
         self.assertIn("Next: rerun with confirmation", result.output)
 
     def test_cli_jira_sync_no_candidates_no_unresolved_shows_hint(self):
@@ -198,11 +199,11 @@ class JiraSyncTests(unittest.TestCase):
             "core.cli_jira_sync.build_jira_worklog_candidates",
             return_value=([candidate], 0),
         ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
-            "core.cli_jira_sync.post_candidate", return_value="10001"
-        ):
+            "core.cli_jira_sync.list_jira_worklogs", return_value=[]
+        ), patch("core.cli_jira_sync.post_candidate", return_value="10001"):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Jira sync summary: posted=1, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
         self.assertIn("Next: verify worklogs in Jira for the posted issue(s).", result.output)
 
     def test_cli_jira_sync_summary_counts_failure_hint(self):
@@ -227,12 +228,107 @@ class JiraSyncTests(unittest.TestCase):
             "core.cli_jira_sync.build_jira_worklog_candidates",
             return_value=([candidate], 0),
         ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
-            "core.cli_jira_sync.post_candidate", side_effect=RuntimeError("Jira HTTP 404")
-        ):
+            "core.cli_jira_sync.list_jira_worklogs", return_value=[]
+        ), patch("core.cli_jira_sync.post_candidate", side_effect=RuntimeError("Jira HTTP 404")):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Jira sync summary: posted=0, skipped=0, unresolved=0, failed=1", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=0, skipped=0, unresolved=0, failed=1", result.output)
         self.assertIn("Next: verify Jira credentials and issue visibility", result.output)
+
+
+def _adf(text: str) -> dict:
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+    }
+
+
+def _candidate() -> JiraWorklogCandidate:
+    return JiraWorklogCandidate(
+        issue_key="KAN-1",
+        day="2026-06-18",
+        started=datetime(2026, 6, 18, 14, 9, 49, tzinfo=timezone.utc),
+        seconds=3600,
+        projects=["Demo"],
+        source="branch",
+    )
+
+
+class JiraDedupTests(unittest.TestCase):
+    def test_marker_is_embedded_in_comment(self):
+        candidate = _candidate()
+        self.assertEqual(candidate.marker, "[gittan:KAN-1:2026-06-18]")
+        self.assertIn(candidate.marker, candidate.comment)
+
+    def test_adf_comment_text_handles_shapes(self):
+        self.assertEqual(adf_comment_text(None), "")
+        self.assertEqual(adf_comment_text("plain string [gittan:KAN-1:2026-06-18]"),
+                         "plain string [gittan:KAN-1:2026-06-18]")
+        self.assertIn("hello", adf_comment_text(_adf("hello world")))
+        # Defensive: unexpected shapes never raise.
+        self.assertEqual(adf_comment_text(12345), "")
+        self.assertEqual(adf_comment_text({"type": "doc"}), "")
+
+    def test_candidate_already_posted_detects_marker(self):
+        candidate = _candidate()
+        existing = [{"comment": _adf(f"Gittan sync (2026-06-18) project(s): Demo {candidate.marker}")}]
+        self.assertTrue(candidate_already_posted(candidate, existing))
+
+    def test_candidate_not_posted_when_no_marker(self):
+        candidate = _candidate()
+        existing = [
+            {"comment": _adf("some unrelated manual worklog")},
+            {"comment": None},
+            {"comment": "string with [gittan:OTHER-9:2026-06-18]"},
+            "garbage-not-a-dict",
+        ]
+        self.assertFalse(candidate_already_posted(candidate, existing))
+
+    def test_cli_skips_existing_marker(self):
+        runner = CliRunner()
+        candidate = _candidate()
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        existing = [{"comment": _adf(f"Gittan sync ({candidate.day}) project(s): Demo {candidate.marker}")}]
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates", return_value=([candidate], 0)
+        ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
+            "core.cli_jira_sync.list_jira_worklogs", return_value=existing
+        ), patch("core.cli_jira_sync.post_candidate", return_value="10001") as post_mock:
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        post_mock.assert_not_called()
+        self.assertIn("Already synced KAN-1", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=1, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("already synced", result.output)
+
+    def test_cli_posts_when_no_existing_marker(self):
+        runner = CliRunner()
+        candidate = _candidate()
+        fake_report = SimpleNamespace()
+        creds = JiraCredentials(
+            base_url="https://example.atlassian.net",
+            email="fake@example.com",
+            api_token=TEST_API_PLACEHOLDER,
+        )
+        with patch("core.report_service.run_timelog_report", return_value=fake_report), patch(
+            "core.cli_jira_sync.jira_sync_enabled", return_value=(True, "")
+        ), patch("core.cli_jira_sync.resolve_jira_credentials", return_value=creds), patch(
+            "core.cli_jira_sync.build_jira_worklog_candidates", return_value=([candidate], 0)
+        ), patch("core.cli_jira_sync.typer.confirm", return_value=True), patch(
+            "core.cli_jira_sync.list_jira_worklogs", return_value=[{"comment": _adf("unrelated")}]
+        ), patch("core.cli_jira_sync.post_candidate", return_value="10001") as post_mock:
+            result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        post_mock.assert_called_once()
+        self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
 
 
 class NextStepHintTests(unittest.TestCase):
@@ -263,6 +359,16 @@ class NextStepHintTests(unittest.TestCase):
         hint = _next_step_hint(summary)
         self.assertIsNotNone(hint)
         self.assertIn("rerun with confirmation", hint)
+
+    def test_hint_for_already(self):
+        summary = JiraSyncSummary(posted=0, already=2, skipped=0, unresolved=0, failed=0)
+        hint = _next_step_hint(summary)
+        self.assertIn("already synced", hint)
+
+    def test_hint_already_takes_priority_over_skipped(self):
+        summary = JiraSyncSummary(posted=0, already=1, skipped=1, unresolved=0, failed=0)
+        hint = _next_step_hint(summary)
+        self.assertIn("already synced", hint)
 
     def test_hint_failed_takes_priority_over_unresolved(self):
         """Failed check happens before unresolved check."""

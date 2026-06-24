@@ -67,6 +67,28 @@ class ConfigCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(profile.get("worklog"), "clients/demo/TIMELOG.md")
 
+    def test_normalize_profile_preserves_toggl_project_id_as_int(self):
+        profile = normalize_profile(
+            {
+                "name": "Demo",
+                "toggl_project_id": "219507172",
+            }
+        )
+        self.assertEqual(profile.get("toggl_project_id"), 219507172)
+        self.assertIsInstance(profile["toggl_project_id"], int)
+
+    def test_normalize_profile_rejects_non_integer_toggl_project_id(self):
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "toggl_project_id": "not-a-number"})
+
+    def test_normalize_profile_rejects_boolean_toggl_project_id(self):
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "toggl_project_id": True})
+
+    def test_normalize_profile_omits_toggl_project_id_when_absent(self):
+        profile = normalize_profile({"name": "Demo"})
+        self.assertNotIn("toggl_project_id", profile)
+
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(
             {

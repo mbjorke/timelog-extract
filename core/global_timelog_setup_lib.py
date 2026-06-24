@@ -21,6 +21,10 @@ from core.global_timelog_machine_setup import run_global_timelog_setup
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
 from core.config import resolve_projects_config_path
 from core.setup_github_env import configure_github_env_for_setup
+from core.setup_integration_env import (
+    configure_jira_env_for_setup,
+    configure_toggl_env_for_setup,
+)
 from core.setup_projects_config_bootstrap import ensure_projects_config
 from core.setup_project_identity_wizard import run_project_identity_wizard
 from outputs.cli_heroes import print_command_hero
@@ -229,6 +233,20 @@ def run_setup_wizard(
         ]
     summary_rows.append(("GitHub env bootstrap", github_env_status, github_env_note))
     next_steps.extend(github_env_steps)
+    for label, configure, doctor_flag in (
+        ("Jira", configure_jira_env_for_setup, "--jira-sync auto"),
+        ("Toggl", configure_toggl_env_for_setup, ""),
+    ):
+        try:
+            status, note, steps = configure(console, yes=yes, dry_run=dry_run)
+        except OSError as exc:
+            console.print(f"[yellow]{label} env bootstrap could not complete:[/yellow] {exc}")
+            status = "ACTION_REQUIRED"
+            note = f"{label} env bootstrap failed: {exc}"
+            doctor_cmd = f"gittan doctor {doctor_flag}".rstrip()
+            steps = [f"Set {label} credentials manually, then rerun `{doctor_cmd}`."]
+        summary_rows.append((f"{label} env bootstrap", status, note))
+        next_steps.extend(steps)
     if fast:
         summary_rows.append(("Step 1: Global Timelog Setup", "SKIPPED", "Skipped in --fast mode for quicker onboarding."))
     else:

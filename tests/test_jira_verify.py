@@ -51,6 +51,15 @@ class JiraVerifyTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(suspect, "url")
 
+    def test_verify_rejects_plain_http(self):
+        creds = JiraCredentials(
+            base_url="http://insecure.example.com", email="e@x.com", api_token=TEST_API_PLACEHOLDER
+        )
+        ok, detail, suspect = verify_jira_credentials(creds)
+        self.assertFalse(ok)
+        self.assertEqual(suspect, "url")
+        self.assertIn("https", detail)
+
 
 if __name__ == "__main__":
     unittest.main()

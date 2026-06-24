@@ -92,7 +92,10 @@ def verify_jira_credentials(creds: JiraCredentials) -> tuple[bool, str, str]:
     base URL), ``"credentials"`` (email/token rejected), or ``""`` (ok/unknown).
     Never raises.
     """
-    if not creds.base_url.lower().startswith(("http://", "https://")):
+    low = creds.base_url.lower()
+    if low.startswith("http://"):
+        return False, "base URL must use https:// (a token over plain http is insecure)", "url"
+    if not low.startswith("https://"):
         return False, "base URL should start with https://", "url"
     url = f"{creds.base_url}/rest/api/3/myself"
     req = Request(url, method="GET")

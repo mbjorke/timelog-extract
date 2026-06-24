@@ -126,6 +126,11 @@ class InteractiveTests(unittest.TestCase):
         # both fields written after the corrected re-verification
         self.assertEqual(upsert.call_count, 2)
         self.assertIn("Re-enter TOGGL_API_TOKEN", console.export_text())
+        # The untouched workspace id survives the token-only re-entry; the
+        # corrected token is what gets written.
+        written = {c.args[1]: c.args[2] for c in upsert.call_args_list}
+        self.assertEqual(written.get("TOGGL_WORKSPACE_ID"), "123456")
+        self.assertEqual(written.get("TOGGL_API_TOKEN"), "good-token")
 
     def test_partial_input_is_action_required(self):
         console = Console(record=True)

@@ -33,6 +33,34 @@ dependencies = [
 [project.optional-dependencies]
 # Backward compat: codecs ship as default deps since 0.2.20.
 cache-evidence = []
+dev = [
+  "ruff>=0.9",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = [
+  "build",
+  "dist",
+  "cursor-extension",
+]
+
+[tool.ruff.lint]
+select = [
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "I",
+]
+ignore = [
+  # Scripts and tests often adjust sys.path before imports.
+  "E402",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["collectors", "core", "outputs"]
 
 [project.urls]
 Homepage = "https://gittan.sh"

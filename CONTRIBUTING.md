@@ -108,6 +108,16 @@ These setup scenarios:
 ## Code style and structure
 
 - Match existing patterns in the touched modules (imports, typing, error handling).
+- **Optional lint/format (Python):** install dev deps and run Ruff locally:
+
+  ```bash
+  .venv/bin/python -m pip install -e ".[dev]"
+  bash scripts/run_lint.sh          # ruff check (default)
+  bash scripts/run_lint.sh format   # check + format --check
+  bash scripts/run_lint.sh fix      # auto-fix safe issues + format
+  ```
+
+  Config lives in `pyproject.toml` (`[tool.ruff]`). **Not enforced in CI yet** — the repo still has a format/lint baseline to clean up before turning this on in `run_autotests.sh`. Run Ruff on touched files before push when you can; extension TypeScript has no ESLint/Prettier setup (extension not in active use).
 - If a file approaches the line limit, **split by responsibility** rather than raising the limit (see `README.md` “File Size Policy”).
 - Do **not** commit local timelog files (`TIMELOG.md` is gitignored by policy).
 - Do **not** commit local backup/config artifacts (for example `timelog_projects*.json` generated during local experimentation).

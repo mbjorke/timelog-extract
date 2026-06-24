@@ -287,7 +287,7 @@ Scenario: Rollback a regretted push
 
 ## Traceability
 
-- story_id: GH-TBD (Toggl posting)
+- story_id: GH-175 (tracked by PR #175)
 - spec_status: draft
 - implementation_status: in progress (`now` item)
 - created_at: 2026-06-23

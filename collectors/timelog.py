@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from core.worklog_enrich import normalize_worklog_detail
+
 
 def _collect_worklog_md(worklog_path, dt_from, dt_to, profiles, local_tz, classify_project, make_event, source_name):
     results = []
@@ -41,7 +43,7 @@ def _collect_worklog_md(worklog_path, dt_from, dt_to, profiles, local_tz, classi
                 continue
 
             start = match.end()
-            snippet = text[start:start + 220].strip().split("\n")[0][:120]
+            snippet = normalize_worklog_detail(text[start:start + 220].strip().split("\n")[0][:120])
             project = classify_project(snippet, profiles)
             if project == "Uncategorized":
                 # Guarded fallback: only enrich with worklog path context when primary

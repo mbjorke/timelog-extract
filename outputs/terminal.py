@@ -236,7 +236,7 @@ def print_report(
                 session_node.add(
                     assemble_timeline_event_line(
                         event,
-                        source_label=display_source_label(event["source"]),
+                        source_label=display_source_label(event["source"], event),
                         source_style=f"italic {get_source_color(event['source'])}",
                         time_style=STYLE_POSITIVE,
                         project_style=STYLE_LABEL,

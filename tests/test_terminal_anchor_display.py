@@ -38,6 +38,17 @@ class TerminalAnchorDisplayTests(unittest.TestCase):
         self.assertEqual(label, "Configuration issues with Toggl and Jira")
         self.assertEqual(detail, "14 turns · timelog-extract")
 
+    def test_event_detail_parts_worklog_uses_comma_separator(self):
+        event = {
+            "source": "TIMELOG.md",
+            "detail": "Commit: Unify session title display",
+            "anchors": {"label": "Toggle integration progress"},
+        }
+        self.assertEqual(
+            _format_event_detail(event),
+            "Toggle integration progress, Commit: Unify session title display",
+        )
+
     def test_event_detail_parts_title_only_shows_label_without_colon(self):
         event = {
             "detail": "Freelance bridge dashboard development",

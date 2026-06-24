@@ -7,6 +7,8 @@ muted cool neutrals for the local-first shell surface.
 
 from __future__ import annotations
 
+from core.sources import GITHUB_SOURCE, WORKLOG_SOURCE
+
 # --- Core text (cool neutrals on dark shell) ---
 CLR_BERRY = "#3c83f6"
 CLR_BERRY_BRIGHT = "#67a8ff"
@@ -37,10 +39,14 @@ FAIL_ICON = "[#e26d85]![/#e26d85]"
 NA_ICON = f"[{STYLE_MUTED}]•[/{STYLE_MUTED}]"
 
 
-def display_source_label(source: str) -> str:
+def display_source_label(source: str, event: dict | None = None) -> str:
     """Render neutral source labels without changing underlying source keys."""
-    if source == "TIMELOG.md":
-        return "Worklog (TIMELOG.md)"
+    if source == WORKLOG_SOURCE:
+        return "Worklog"
+    if source == GITHUB_SOURCE and event:
+        user = str(event.get("_github_user") or "").strip()
+        if user:
+            return f"GitHub ({user})"
     return source
 
 

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Sequence
 
 from rich.text import Text
 
+from core.sources import WORKLOG_SOURCE
 from core.events import event_anchors
 
 _CURSOR_PREVIEW_NOISE_MARKERS = (
@@ -71,7 +72,8 @@ def format_event_detail(event: dict) -> str:
     label, detail = event_detail_parts(event)
     if not label:
         return detail
-    return f"{label}: {detail}" if detail else label
+    sep = ", " if str(event.get("source") or "") == WORKLOG_SOURCE else ": "
+    return f"{label}{sep}{detail}" if detail else label
 
 
 def assemble_timeline_event_detail(
@@ -83,7 +85,8 @@ def assemble_timeline_event_detail(
     label, detail = event_detail_parts(event)
     if label:
         if detail:
-            return Text.assemble((f"{label}: ", label_style), (detail, detail_style))
+            sep = ", " if str(event.get("source") or "") == WORKLOG_SOURCE else ": "
+            return Text.assemble((f"{label}{sep}", label_style), (detail, detail_style))
         return Text(label, style=label_style)
     return Text(format_event_detail(event), style=detail_style)
 

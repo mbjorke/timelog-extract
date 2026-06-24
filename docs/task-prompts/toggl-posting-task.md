@@ -365,15 +365,19 @@ Scenario: Rollback a regretted push
 ## Traceability
 
 - story_id: GH-175 (tracked by PR #175)
-- spec_status: draft
-- implementation_status: in progress (`now` item)
+- spec_status: draft (partially shipped)
+- implementation_status: `now` items shipped — Toggl push + unified onboarding
+  (PR #175, merged), Jira idempotency (PR #178, merged); onboarding
+  verify-before-save (PR #179, in review). `next`/`later` items not built.
 - created_at: 2026-06-23
-- last_updated_at: 2026-06-23
-- implementation.pr: pending
-- implementation.branch: task/toggl-posting
+- last_updated_at: 2026-06-24
+- implementation.pr: #175 (merged), #178 (merged), #179 (open)
+- implementation.branch: task/toggl-posting, task/onboarding-verify
 - implementation.commits: []
-- validation.evidence: `tests/test_toggl_sync.py` (15 tests green); full suite run pending
-- validation.decision: NO-GO (until `now` acceptance complete + suite green)
+- validation.evidence: full suite green (970); Toggl/Jira/onboarding all
+  live-verified against real APIs (toggl-sync post+dedup; jira-sync post+dedup;
+  credential verification accepts good / rejects bad creds)
+- validation.decision: GO for shipped `now` items; `next`/`later` pending
 - related:
   - mirrors `gittan jira-sync` (`core/jira_sync.py`, `core/cli_jira_sync.py`)
   - product model: [`simple-invoicing-model.md`](../ideas/simple-invoicing-model.md)
@@ -387,3 +391,9 @@ Scenario: Rollback a regretted push
   - 2026-06-24: Added `now` item — unified credential onboarding in `gittan
     setup` for Jira + Toggl (model A, shell profile). Built: `setup_shell_profile.py`,
     `setup_integration_env.py`, wizard wiring, `tests/test_setup_integration_env.py`.
+  - 2026-06-24: Jira idempotency shipped (PR #178). Onboarding verify-before-save
+    built (PR #179) — visible input + live API verification + field-level
+    correction; reframed from the earlier masked-confirmation approach per
+    maintainer UX feedback (don't ask humans to eyeball/count a token).
+  - 2026-06-24: Backlogged OS-keychain storage (`next`) and real OAuth login
+    (`do not build yet`, until hosted).

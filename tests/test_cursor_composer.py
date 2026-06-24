@@ -62,8 +62,11 @@ class CursorComposerTests(unittest.TestCase):
                 },
             )
         self.assertEqual(len(events), 1)
-        self.assertIn("freelance bridge", events[0]["anchors"].get("label", ""))
-        self.assertIn("Freelance bridge", events[0]["detail"])
+        self.assertEqual(
+            events[0]["anchors"].get("label"),
+            "Freelance bridge dashboard development",
+        )
+        self.assertEqual(events[0]["detail"], "")
 
     def test_collect_cursor_composer_sessions_grids_dense_touches(self):
         # Dense consecutive touches (createdAt + staggered branch interactions

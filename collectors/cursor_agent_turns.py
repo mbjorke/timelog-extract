@@ -197,11 +197,9 @@ def collect_cursor_agent_turns(
         emitted = False
         for cluster in _clusters(stamps):
             cluster_turns = len(cluster)
-            base = name[:70] if name else (label[:70] if label else "agent chat")
-            cluster_detail = f"{base} · {cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
-            if dir_leaf and dir_leaf.lower() not in cluster_detail.lower():
-                cluster_detail += f" · {dir_leaf}"
-            cluster_detail = cluster_detail[:100]
+            cluster_detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
+            if branch and branch.lower() not in (name or label or "").lower():
+                cluster_detail += f" · @{branch}"
             for ts in _thin(cluster):
                 results.append(
                     make_event(

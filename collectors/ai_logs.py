@@ -61,8 +61,8 @@ _GENERIC_LABELS = {"session", "untitled", "new session", "new chat", "conversati
 
 def _meaningful_label(name) -> str | None:
     """Session title usable as an anchor, or None for generic placeholders."""
-    label = str(name or "").strip().lower()
-    if not label or label in _GENERIC_LABELS:
+    label = str(name or "").strip()
+    if not label or label.lower() in _GENERIC_LABELS:
         return None
     return label[:80]
 

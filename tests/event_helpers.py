@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from core.events import _normalize_anchor_value
+
 
 def make_test_event(
     source: str,
@@ -20,11 +22,13 @@ def make_test_event(
         "detail": detail,
         "project": project,
     }
-    clean = {
-        str(kind): str(value).strip().lower()
-        for kind, value in (anchors or {}).items()
-        if kind and value and str(value).strip()
-    }
+    clean = {}
+    for kind, value in (anchors or {}).items():
+        if not kind:
+            continue
+        normalized = _normalize_anchor_value(str(kind), value)
+        if normalized:
+            clean[str(kind)] = normalized
     if clean:
         event["anchors"] = clean
     return event

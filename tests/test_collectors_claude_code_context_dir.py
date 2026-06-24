@@ -96,8 +96,9 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
         self.assertIsNone(_branch_leaf({}))
 
     def test_meaningful_label_helper(self) -> None:
-        self.assertEqual(_meaningful_label("Project Beta home redesign"), "project beta home redesign")
+        self.assertEqual(_meaningful_label("Project Beta home redesign"), "Project Beta home redesign")
         self.assertIsNone(_meaningful_label("session"))
+        self.assertIsNone(_meaningful_label("Session"))
         self.assertIsNone(_meaningful_label(""))
         self.assertIsNone(_meaningful_label(None))
 
@@ -161,7 +162,7 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
                 make_event=make_test_event,
             )
             self.assertEqual(len(events), 1)
-            self.assertEqual(events[0]["anchors"]["label"], "toggle integration progress")
+            self.assertEqual(events[0]["anchors"]["label"], "Toggle integration progress")
             self.assertEqual(events[0]["project"], "timelog-extract")
             self.assertEqual(events[0]["detail"], "merge onboarding verify PR")
 

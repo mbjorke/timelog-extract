@@ -240,7 +240,7 @@ def print_report(
                         source_style=f"italic {get_source_color(event['source'])}",
                         time_style=STYLE_POSITIVE,
                         project_style=STYLE_LABEL,
-                        label_style=f"bold {CLR_VALUE_ORANGE}",
+                        label_style=CLR_VALUE_ORANGE,
                         detail_style=STYLE_META,
                     )
                 )

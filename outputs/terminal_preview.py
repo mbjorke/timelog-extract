@@ -29,17 +29,41 @@ _CURSOR_PREVIEW_NOISE_MARKERS = (
 )
 
 
+def _strip_label_from_detail(label: str, detail: str) -> str:
+    """Drop collector echoes of the session title from the detail tail."""
+    text = (detail or "").strip()
+    if not text or not label:
+        return text
+    low_label = label.casefold()
+    low_text = text.casefold()
+    if low_text == low_label:
+        return ""
+    if low_text.startswith("code session:"):
+        body = text.split(":", 1)[1].strip()
+        if body.casefold().startswith(low_label):
+            body = body[len(label) :].lstrip()
+            if body.startswith(("—", "·", "-")):
+                body = body[1:].lstrip()
+            return body
+    if low_text.startswith(low_label):
+        rest = text[len(label) :].lstrip()
+        if rest.startswith(("·", "—", "-", ":")):
+            rest = rest[1:].lstrip()
+        return rest
+    parts = [part.strip() for part in text.split("·")]
+    if parts and parts[0].casefold() == low_label:
+        return " · ".join(parts[1:]).strip()
+    return text
+
+
 def event_detail_parts(event: dict) -> tuple[str, str]:
     """Return (label_prefix, detail) for styled terminal rows."""
     detail = str(event.get("detail") or "")
     label = str(event_anchors(event).get("label") or "").strip()
     if not label:
         return "", detail
-    if detail.lower().strip() == label:
-        return "", detail
-    if label in detail.lower():
-        return "", detail
-    return label, detail if detail else label
+    remainder = _strip_label_from_detail(label, detail)
+    return label, remainder
 
 
 def format_event_detail(event: dict) -> str:
@@ -58,7 +82,9 @@ def assemble_timeline_event_detail(
 ) -> Text:
     label, detail = event_detail_parts(event)
     if label:
-        return Text.assemble((f"{label}: ", label_style), (detail, detail_style))
+        if detail:
+            return Text.assemble((f"{label}: ", label_style), (detail, detail_style))
+        return Text(label, style=label_style)
     return Text(format_event_detail(event), style=detail_style)
 
 

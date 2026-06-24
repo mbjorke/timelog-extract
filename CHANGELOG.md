@@ -5,6 +5,7 @@
 - UX: Claude Code CLI turns from Desktop inherit session titles via `cliSessionId` (label on each row; no orphan `Claude Desktop` title line).
 - UX: session titles keep original app casing, render in orange (not bold), and drop redundant title/project echoes in Cursor/Claude detail tails.
 - UX: GitHub timeline rows show `GitHub (login)`; worklog commit rows inherit the nearest prior AI session title (`Worklog` source label, comma-separated detail).
+- UX: GitHub delivery rows also inherit the nearest prior AI session title (same 2h/project window as worklog commits).
 - CI: remove unused GitHub Pages deploy workflow (`static.yml`); fix `main` CI file-length gate by extracting doctor table checks.
 - CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate ([#167](https://github.com/mbjorke/timelog-extract/pull/167)).
 - Accuracy: treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.

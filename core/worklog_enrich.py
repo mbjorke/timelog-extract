@@ -1,4 +1,4 @@
-"""Enrich worklog commit rows with nearby AI session titles."""
+"""Enrich delivery/worklog rows with nearby AI session titles."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from core.events import event_anchors
-from core.sources import WORKLOG_SOURCE
+from core.sources import GITHUB_SOURCE, WORKLOG_SOURCE
 
 _COMMIT_DETAIL_RE = re.compile(r"^Commit:\s*", re.IGNORECASE)
 
@@ -65,6 +65,38 @@ def enrich_worklog_session_labels(
         event["anchors"] = anchors
         if detail != event.get("detail"):
             event["detail"] = detail
+
+
+def enrich_github_session_labels(
+    events: list[dict[str, Any]],
+    *,
+    lookback_seconds: int = _DEFAULT_LOOKBACK_SECONDS,
+) -> None:
+    """Attach the nearest prior AI session title to GitHub activity rows (in-place)."""
+    ordered = sorted(events, key=lambda e: e["timestamp"])
+    for idx, event in enumerate(ordered):
+        if str(event.get("source") or "") != GITHUB_SOURCE:
+            continue
+        if str(event_anchors(event).get("label") or "").strip():
+            continue
+        project = str(event.get("project") or "")
+        ts = event["timestamp"]
+        label = _nearest_session_label(ordered, idx, project=project, before_ts=ts, lookback_seconds=lookback_seconds)
+        if not label:
+            continue
+        anchors = dict(event_anchors(event))
+        anchors["label"] = label
+        event["anchors"] = anchors
+
+
+def enrich_delivery_session_labels(
+    events: list[dict[str, Any]],
+    *,
+    lookback_seconds: int = _DEFAULT_LOOKBACK_SECONDS,
+) -> None:
+    """Worklog commits and GitHub rows inherit the nearest prior chat session title."""
+    enrich_worklog_session_labels(events, lookback_seconds=lookback_seconds)
+    enrich_github_session_labels(events, lookback_seconds=lookback_seconds)
 
 
 def _nearest_session_label(

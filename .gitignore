@@ -43,3 +43,6 @@ out/
 
 # Extension dependencies
 cursor-extension/node_modules/
+
+# Local Briox credentials (never commit)
+.env.briox

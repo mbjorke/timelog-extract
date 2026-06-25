@@ -9,7 +9,11 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
-from core.config import load_projects_config_payload, remove_rule_from_project, save_projects_config_payload
+from core.config import (
+    load_projects_config_payload,
+    remove_rule_from_project,
+    save_projects_config_payload,
+)
 from core.projects_audit import (
     AUDIT_SCHEMA_VERSION,
     build_anchor_plan_from_audit,

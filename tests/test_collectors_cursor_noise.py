@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.cursor import collect_cursor
-
 from tests.event_helpers import make_test_event
 
 

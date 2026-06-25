@@ -48,8 +48,8 @@ class LiveTerminalDemoContractWrapperTests(unittest.TestCase):
 
     def test_wrapper_is_same_object_as_canonical(self):
         """The wrapper must re-export the exact same objects, not copies."""
-        from core.live_terminal_demo_contract import DEMO_SANDBOX_DENIED_MESSAGE as compat_msg
         from core.live_terminal.contract import DEMO_SANDBOX_DENIED_MESSAGE as canonical_msg
+        from core.live_terminal_demo_contract import DEMO_SANDBOX_DENIED_MESSAGE as compat_msg
         self.assertIs(compat_msg, canonical_msg)
 
 
@@ -69,8 +69,8 @@ class LiveTerminalDemoHttpWrapperTests(unittest.TestCase):
         self.assertEqual(set(mod.__all__), {"make_demo_handler", "serve_demo"})
 
     def test_wrapper_is_same_object_as_canonical(self):
-        from core.live_terminal_demo_http import make_demo_handler as compat_fn
         from core.live_terminal.http import make_demo_handler as canonical_fn
+        from core.live_terminal_demo_http import make_demo_handler as compat_fn
         self.assertIs(compat_fn, canonical_fn)
 
 
@@ -90,13 +90,13 @@ class ScreenTimeGapAnalysisWrapperTests(unittest.TestCase):
         self.assertEqual(set(mod.__all__), {"DayGap", "analyze_screen_time_gaps"})
 
     def test_wrapper_is_same_object_as_canonical(self):
-        from core.screen_time_gap_analysis import analyze_screen_time_gaps as compat_fn
         from core.calibration.screen_time_gap import analyze_screen_time_gaps as canonical_fn
+        from core.screen_time_gap_analysis import analyze_screen_time_gaps as compat_fn
         self.assertIs(compat_fn, canonical_fn)
 
     def test_day_gap_is_same_class_as_canonical(self):
-        from core.screen_time_gap_analysis import DayGap as compat_cls
         from core.calibration.screen_time_gap import DayGap as canonical_cls
+        from core.screen_time_gap_analysis import DayGap as compat_cls
         self.assertIs(compat_cls, canonical_cls)
 
 

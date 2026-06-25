@@ -3,7 +3,11 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from core.worklog_enrich import enrich_worklog_session_labels, is_commit_worklog_detail, normalize_worklog_detail
+from core.worklog_enrich import (
+    enrich_worklog_session_labels,
+    is_commit_worklog_detail,
+    normalize_worklog_detail,
+)
 from tests.event_helpers import make_test_event
 
 

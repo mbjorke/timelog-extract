@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlparse
-import sys
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
@@ -21,14 +21,14 @@ from collectors.chrome import (
     chrome_time_range,
     query_chrome,
 )
-from core.config import load_profiles
+from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
+    load_profiles,
     load_projects_config_payload,
     save_projects_config_payload,
 )
-from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 
 
@@ -147,12 +147,10 @@ def render_report(
             reasons = f" | why: {', '.join(reason_bits)}" if reason_bits else ""
             lines.append(f"- {canonical} (signal score: {score}){alias_suffix}{reasons}")
         top = project_suggestions[0]
-        target = top.canonical
         ticket_policy = top.ticket_mode
         default_client = top.default_client
     else:
         lines.append("- No strong match from current profile rules")
-        target = "<project-name>"
         ticket_policy = "optional"
         default_client = "<client>"
     lines.extend(

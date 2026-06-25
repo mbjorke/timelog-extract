@@ -9,8 +9,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
-from core.config import apply_rule_to_project, load_projects_config_payload, save_projects_config_payload
-from core.config import backup_projects_config_if_exists
+from core.config import (
+    apply_rule_to_project,
+    backup_projects_config_if_exists,
+    load_projects_config_payload,
+    save_projects_config_payload,
+)
 from core.rule_suggestions import (
     ab_suggestions_state_path,
     preview_suggestion_impact,

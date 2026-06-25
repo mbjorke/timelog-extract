@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import json
 import unittest
 from argparse import Namespace
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from types import SimpleNamespace
 

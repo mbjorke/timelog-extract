@@ -9,7 +9,6 @@ from pathlib import Path
 
 from core.config import as_list
 
-
 _SKIP_DIRS = {
     ".git",
     ".hg",

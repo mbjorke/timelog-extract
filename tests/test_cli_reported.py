@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from core.cli import app
 from core import reported_time as rt
+from core.cli import app
 from core.reported_sync import build_reported_proposals
 
 

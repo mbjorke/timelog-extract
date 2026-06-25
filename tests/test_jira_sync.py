@@ -2,24 +2,25 @@
 
 from __future__ import annotations
 
+import unittest
 from argparse import Namespace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
-import unittest
 
-from collectors.jira import JiraApiError, JiraCredentials, adf_comment_text, post_jira_worklog
+from typer.testing import CliRunner
+
+from collectors.jira import JiraCredentials, adf_comment_text, post_jira_worklog
 from core.cli import app
 from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
-    JiraWorklogCandidate,
     JiraSyncSummary,
+    JiraWorklogCandidate,
     build_jira_worklog_candidates,
     candidate_already_posted,
     extract_issue_key,
 )
 from core.report_service import ReportPayload
-from typer.testing import CliRunner
 
 TEST_API_PLACEHOLDER = "fake-token"
 

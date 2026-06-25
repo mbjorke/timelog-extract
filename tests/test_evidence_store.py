@@ -10,8 +10,8 @@ from types import SimpleNamespace
 from core.evidence_store import (
     capture_events,
     erase_store,
-    evidence_base_dir,
     events_dir,
+    evidence_base_dir,
     export_store,
     load_store_state,
     maybe_replay,
@@ -154,7 +154,7 @@ class TestEvidenceDataControls(unittest.TestCase):
         dest = Path(self._tmp.name) / "out" / "export.jsonl"
         result = export_store(dest, base_dir=self.base)
         self.assertEqual(result["records"], 3)
-        lines = [l for l in dest.read_text(encoding="utf-8").splitlines() if l.strip()]
+        lines = [ln for ln in dest.read_text(encoding="utf-8").splitlines() if ln.strip()]
         self.assertEqual(len(lines), 3)
 
     def test_export_empty_store(self):

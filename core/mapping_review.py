@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
+from core.gh_repo_discovery import collect_gh_repo_list_data
 from core.github_slug_match import (
     cluster_repo_families,
     collect_slug_activity_from_events,
@@ -27,14 +27,13 @@ from core.mapping_repo_status import (
     binding_activity_epoch,
     binding_for_slug,
     binding_has_local_clone,
-    git_activity_score,
     enrich_bindings_with_remote_activity,
+    git_activity_score,
     index_local_slug_bindings,
     pick_active_slug_by_git,
     slug_has_git_evidence,
     slug_to_remote_url,
 )
-from core.gh_repo_discovery import collect_gh_repo_list_data
 from core.setup_project_identity_candidates import _normalize_github_slug_hint
 
 _STATUS_CANONICAL = "Canonical billing repo"
@@ -491,9 +490,10 @@ def _merge_removals_for_change(
     return removals
 
 
-from core.mapping_review_flow import (  # noqa: E402  re-export for callers
+from core.mapping_review_flow import (  # noqa: F401  re-export for callers
     print_mapping_review,
     print_mapping_review_summary,
     prompt_new_project_fields,
     run_batch_mapping_review,
 )
+

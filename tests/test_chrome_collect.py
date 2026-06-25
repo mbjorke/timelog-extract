@@ -7,18 +7,18 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import (
-    collect_chrome,
-    collect_claude_ai_urls,
-    collect_gemini_web_urls,
-    split_chrome_tab_title,
-)
-
 from chrome_test_support import (
     EPOCH_DELTA_US,
     insert_visit,
     make_chrome_db,
     make_event,
+)
+
+from collectors.chrome import (
+    collect_chrome,
+    collect_claude_ai_urls,
+    collect_gemini_web_urls,
+    split_chrome_tab_title,
 )
 
 

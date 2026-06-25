@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.windsurf import collect_windsurf
-
 from tests.event_helpers import make_test_event
 
 

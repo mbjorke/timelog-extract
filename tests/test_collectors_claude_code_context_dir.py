@@ -18,7 +18,6 @@ from collectors.ai_logs import (
     _meaningful_leaf,
     collect_claude_code,
 )
-
 from tests.event_helpers import make_test_event
 
 

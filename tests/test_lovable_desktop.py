@@ -7,9 +7,9 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from collectors.lovable_desktop import (
-    _merge_storage_events,
     _extract_lovable_urls,
     _filter_lovable_storage_urls,
+    _merge_storage_events,
     _pick_storage_urls_from_blob,
     _trim_lovable_url_blob_suffix,
     collect_lovable_desktop,

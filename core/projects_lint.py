@@ -9,7 +9,6 @@ from typing import Any
 from core.config import load_projects_config_payload
 from core.tracked_url_policy import is_over_broad_tracked_url
 
-
 HIGH_RISK_TERMS = {
     "koden",
     "formulär",

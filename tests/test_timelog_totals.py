@@ -24,8 +24,8 @@ def _classify(text, profiles, fallback="Uncategorized"):
 
 class TestComputeTimelogProjectTotals(unittest.TestCase):
     def _run(self, md_content, profiles):
-        from core.timelog_totals import compute_timelog_project_totals
         from core.sources import AI_SOURCES
+        from core.timelog_totals import compute_timelog_project_totals
 
         with NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(md_content)

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 from types import SimpleNamespace
 
 from rich import markup
 from rich.table import Table
 
-from collectors.github import DEFAULT_GITHUB_API_BASE, resolve_github_api_base, resolve_github_usernames
+from collectors.github import (
+    DEFAULT_GITHUB_API_BASE,
+    resolve_github_api_base,
+    resolve_github_usernames,
+)
 from collectors.jira import jira_site_label, jira_sync_enabled, resolve_jira_credentials
 from collectors.toggl import (
     resolve_toggl_workspace_id,

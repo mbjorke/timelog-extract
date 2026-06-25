@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.antigravity import collect_antigravity
-
 from tests.event_helpers import make_test_event
 
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import typer
-
 from core.cli_app import app
 from outputs.cli_heroes import hero_commands, print_command_hero
 

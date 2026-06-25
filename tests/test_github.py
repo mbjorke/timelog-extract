@@ -1,9 +1,9 @@
 """Tests for GitHub collector helpers and public-events parsing."""
 
-from datetime import datetime, timezone
 import json
 import os
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from collectors import github as gh

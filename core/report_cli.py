@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from rich.console import Console
-
 from core.report_postamble import run_post_report_followups
 from core.report_service import (
     ReportPayload,
@@ -25,6 +23,7 @@ from core.report_service import (
 )
 from core.truth_payload import build_truth_payload
 from outputs import html_timeline as html_timeline_output
+from outputs.terminal import console as report_console
 
 
 def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
@@ -172,7 +171,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.git_project_totals or None,
         report.presence_estimated,
     )
-    run_post_report_followups(Console(), report)
+    run_post_report_followups(report_console, report)
     if getattr(report.args, "weekly", False):
         _print_weekly(report.project_reports)
     if report.args.narrative:

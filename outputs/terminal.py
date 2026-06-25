@@ -17,6 +17,12 @@ from outputs.terminal_preview import (
     pick_session_preview_events,
     session_preview_omitted_summary,
 )
+from outputs.terminal_report_sections import (
+    period_label,
+    print_project_hour_review_section,
+    print_review_summary_section,
+    report_section_spinner,
+)
 from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
@@ -28,7 +34,6 @@ from outputs.terminal_theme import (
     display_source_label,
     get_source_color,
 )
-from outputs.terminal_warnings import print_report_warnings
 
 console = Console()
 
@@ -192,6 +197,9 @@ def print_report(
         "Projects:",
         ", ".join(p["name"] for p in profiles),
     )
+    period = period_label(args)
+    if period:
+        header_table.add_row("Period:", period)
     console.print(header_table)
     console.print()
 
@@ -274,73 +282,23 @@ def print_report(
             console.print(f"    [{STYLE_META}]Screen Time: no macOS usage data for this day[/{STYLE_META}]")
         console.print()
 
-    console.print(f"[{STYLE_HEADING}]Review summary[/{STYLE_HEADING}]")
-    summary_table = Table.grid(padding=(0, 2))
-    summary_table.add_column(style=f"bold {STYLE_BODY}", no_wrap=True)
-    summary_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
-
-    summary_table.add_row(
-        "Observed timeline hours",
-        f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
-    )
-
-    if presence_estimated is not None and getattr(presence_estimated, "available", False):
-        est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
-        summary_table.add_row(
-            "Est. (presence)",
-            f"[italic {STYLE_META}]{est_total:.1f}h[/italic {STYLE_META}]",
-        )
-
-    if args.billable_unit and args.billable_unit > 0:
-        grand_billable = sum(
-            billable_total_hours_fn(
-                sum(day_payload["hours"] for day_payload in project_reports[pn].values()),
-                args.billable_unit,
-            )
-            for pn in project_reports
-        )
-        summary_table.add_row(
-            f"Billable Total (up to {args.billable_unit:g}h)",
-            f"[bold {CLR_VALUE_ORANGE}]{grand_billable:.2f}h[/bold {CLR_VALUE_ORANGE}]",
-        )
-
-    screen_total_h: Optional[float] = None
-    if screen_time_days:
-        screen_total_h = sum(screen_time_days.values()) / 3600
-        summary_table.add_row("Screen Time Comparison", f"{screen_total_h:.1f}h")
-        observed_delta = total_h - screen_total_h
-        if presence_estimated is not None and getattr(presence_estimated, "available", False):
-            est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
-            est_delta = est_total - screen_total_h
-            summary_table.add_row(
-                "Delta (est.)",
-                f"[bold {CLR_VALUE_ORANGE}]{est_delta:+.1f}h[/bold {CLR_VALUE_ORANGE}]",
-            )
-            summary_table.add_row(
-                "Delta (evidenced)",
-                f"[italic {STYLE_META}]{observed_delta:+.1f}h[/italic {STYLE_META}]",
-            )
-        else:
-            summary_table.add_row("Delta", f"{observed_delta:+.1f}h")
-
-    console.print(summary_table)
-    if presence_estimated is not None and getattr(presence_estimated, "available", False):
-        console.print(
-            f"[{STYLE_META}]Est. (presence): soft-work fill between evidenced events, "
-            f"capped by Screen Time — not billable. Delta (est.) compares estimate to "
-            f"Screen Time; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
-        )
-
-    print_report_warnings(
+    day_count = len(overall_days)
+    with report_section_spinner(
         console,
-        overall_days=overall_days,
-        project_reports=project_reports,
-        observed_hours=total_h,
-        screen_time_hours=screen_total_h,
-        screen_time_days=screen_time_days,
-        session_duration_hours_fn=session_duration_hours_fn,
-        args=args,
-    )
+        "[bold blue]Preparing review summary…[/]",
+        day_count=day_count,
+    ):
+        print_review_summary_section(
+            console,
+            args=args,
+            total_h=total_h,
+            project_reports=project_reports,
+            screen_time_days=screen_time_days,
+            presence_estimated=presence_estimated,
+            overall_days=overall_days,
+            session_duration_hours_fn=session_duration_hours_fn,
+            billable_total_hours_fn=billable_total_hours_fn,
+        )
 
     console.print()
     if getattr(args, "only_project", None):
@@ -354,134 +312,22 @@ def print_report(
             source_order=source_order,
         )
 
-    additive_summary = bool(getattr(args, "additive_summary", False))
-    additive_project_hours: Dict[str, float] = {}
-    additive_project_days: Dict[str, set[str]] = {}
-    if additive_summary:
-        per_project_hours = defaultdict(float)
-        per_project_days = defaultdict(set)
-        for day, day_payload in overall_days.items():
-            for start_ts, end_ts, session_events in day_payload["sessions"]:
-                counts = defaultdict(int)
-                for event in session_events:
-                    project_name = str(event.get("project", "")).strip()
-                    if project_name:
-                        counts[project_name] += 1
-                if not counts:
-                    continue
-                primary_project = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
-                raw_dur = session_duration_hours_fn(
-                    session_events, start_ts, end_ts, args.min_session, args.min_session_passive
-                )
-                per_project_hours[primary_project] += raw_dur
-                per_project_days[primary_project].add(day)
-        additive_project_hours = dict(per_project_hours)
-        additive_project_days = dict(per_project_days)
-
-    # Customer/project review breakdown
-    heading = "Project-hour review"
-    if additive_summary:
-        heading += " (additive: primary project per session)"
-    console.print(f"[{STYLE_HEADING}]{heading}[/{STYLE_HEADING}]")
-    show_totals = bool(timelog_project_totals)
-    show_git = bool(git_project_totals)
-    breakdown_table = Table.grid(padding=(0, 2))
-    breakdown_table.add_column(style=STYLE_BODY)
-    breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
-    if show_totals:
-        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
-    if show_git:
-        breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
-    breakdown_table.add_column(justify="right", style=STYLE_BODY, no_wrap=True)
-    breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
-    header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
-    if show_totals:
-        header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
-    if show_git:
-        header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")
-    header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]
-    breakdown_table.add_row(*header_row)
-
-    profile_by_name = {p["name"]: p for p in profiles}
-    projects_by_customer = defaultdict(list)
-    project_names = sorted(project_reports)
-    if additive_summary:
-        project_names = sorted(additive_project_hours)
-    for project_name in project_names:
-        customer = str(profile_by_name.get(project_name, {}).get("customer") or project_name)
-        projects_by_customer[customer].append(project_name)
-
-    for customer_name in sorted(projects_by_customer, key=lambda name: name.lower()):
-        customer_projects = projects_by_customer[customer_name]
-        customer_hours = sum(
-            (additive_project_hours[p] if additive_summary else sum(day_payload["hours"] for day_payload in project_reports[p].values()))
-            for p in customer_projects
+    with report_section_spinner(
+        console,
+        "[bold blue]Preparing project-hour review…[/]",
+        day_count=day_count,
+    ):
+        print_project_hour_review_section(
+            console,
+            args=args,
+            overall_days=overall_days,
+            project_reports=project_reports,
+            profiles=profiles,
+            timelog_project_totals=timelog_project_totals,
+            git_project_totals=git_project_totals,
+            session_duration_hours_fn=session_duration_hours_fn,
+            billable_total_hours_fn=billable_total_hours_fn,
         )
-
-        cust_b_text = "-"
-        if args.billable_unit and args.billable_unit > 0:
-            cust_b = sum(
-                billable_total_hours_fn(
-                    additive_project_hours[p]
-                    if additive_summary
-                    else sum(day_payload["hours"] for day_payload in project_reports[p].values()),
-                    args.billable_unit,
-                )
-                for p in customer_projects
-            )
-            cust_b_text = f"{cust_b:.2f}h"
-
-        cust_row = [
-            f"[bold {STYLE_BODY}]{customer_name}[/bold {STYLE_BODY}]",
-            f"[bold {CLR_VALUE_ORANGE}]{customer_hours:.1f}h[/bold {CLR_VALUE_ORANGE}]",
-        ]
-        if show_totals:
-            cust_total = sum((timelog_project_totals or {}).get(p, 0.0) for p in customer_projects)
-            cust_total_text = f"{cust_total:.1f}h" if cust_total else "—"
-            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_total_text}[/bold {CLR_VALUE_ORANGE}]")
-        if show_git:
-            cust_git = sum((git_project_totals or {}).get(p, 0.0) for p in customer_projects)
-            cust_git_text = f"{cust_git:.1f}h" if cust_git else "—"
-            cust_row.append(f"[bold {CLR_VALUE_ORANGE}]{cust_git_text}[/bold {CLR_VALUE_ORANGE}]")
-        cust_row += [f"[bold {CLR_VALUE_ORANGE}]{cust_b_text}[/bold {CLR_VALUE_ORANGE}]", ""]
-        breakdown_table.add_row(*cust_row)
-
-        for project_name in customer_projects:
-            hours = (
-                additive_project_hours[project_name]
-                if additive_summary
-                else sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
-            )
-            days = (
-                len(additive_project_days.get(project_name, set()))
-                if additive_summary
-                else len(project_reports[project_name])
-            )
-            proj_b_text = "-"
-            if args.billable_unit and args.billable_unit > 0:
-                proj_b = billable_total_hours_fn(hours, args.billable_unit)
-                proj_b_text = f"{proj_b:.2f}h"
-
-            proj_row = [
-                f"[{STYLE_META}]  · {project_name}[/{STYLE_META}]",
-                f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",
-            ]
-            if show_totals:
-                proj_total = (timelog_project_totals or {}).get(project_name, 0.0)
-                proj_total_text = f"{proj_total:.1f}h" if proj_total else "—"
-                proj_row.append(f"[{STYLE_META}]{proj_total_text}[/{STYLE_META}]")
-            if show_git:
-                proj_git = (git_project_totals or {}).get(project_name, 0.0)
-                proj_git_text = f"{proj_git:.1f}h" if proj_git else "—"
-                proj_row.append(f"[{STYLE_META}]{proj_git_text}[/{STYLE_META}]")
-            proj_row += [
-                f"[{STYLE_BODY}]{proj_b_text}[/{STYLE_BODY}]",
-                f"[{STYLE_META}]{days}[/{STYLE_META}]",
-            ]
-            breakdown_table.add_row(*proj_row)
-        breakdown_table.add_section()
-
-    console.print(breakdown_table)
 
     # Footer legend: derive from canonical source order so new standalone sources
     # are automatically visible without manual output updates.

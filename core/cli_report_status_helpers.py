@@ -118,3 +118,59 @@ def build_report_options(
     if overrides:
         payload.update(overrides)
     return TimelogRunOptions(**payload)
+
+
+def run_status_timelog_report(
+    console: object,
+    *,
+    projects_config: str,
+    date_from: str,
+    date_to: str,
+    options: TimelogRunOptions,
+    title_date: str,
+) -> object:
+    """Collect report payload for `gittan status`, with a TTY spinner when interactive."""
+    from core.anchor_nudge import should_prompt
+    from core.report_service import run_timelog_report
+
+    if should_prompt():
+        with console.status(  # type: ignore[attr-defined]
+            f"[bold blue]Collecting activity for status ({title_date})…[/]",
+            spinner="dots",
+        ):
+            return run_timelog_report(projects_config, date_from, date_to, options)
+    return run_timelog_report(projects_config, date_from, date_to, options)
+
+
+def print_status_anchor_nudge(console: object, report: object, *, anchor_nudge: bool) -> None:
+    """Scan anchors under spinner when needed; prompt or warn on a TTY."""
+    if not anchor_nudge:
+        return
+    from core.anchor_nudge import (
+        maybe_run_interactive_anchor_mapping,
+        should_prompt,
+        status_anchor_line,
+    )
+    from core.report_postamble import scan_unmapped_anchors_with_status
+    from outputs.terminal_theme import CLR_VALUE_ORANGE, STYLE_MUTED
+
+    config_path = str(getattr(getattr(report, "args", None), "projects_config", "") or "")
+    console.print()  # type: ignore[attr-defined]
+    unmapped_anchors = scan_unmapped_anchors_with_status(console, report, ignore_quiet=True)
+    if unmapped_anchors and should_prompt():
+        maybe_run_interactive_anchor_mapping(
+            console,
+            report,
+            projects_config=config_path,
+            anchors=unmapped_anchors,
+        )
+        return
+    if not unmapped_anchors:
+        return
+    warn_line = status_anchor_line(unmapped_anchors)
+    if not warn_line:
+        return
+    console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")  # type: ignore[attr-defined]
+    console.print(  # type: ignore[attr-defined]
+        f"[{STYLE_MUTED}]Run `gittan map` to review and apply project mappings.[/{STYLE_MUTED}]"
+    )

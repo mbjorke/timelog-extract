@@ -115,13 +115,15 @@ def maybe_run_interactive_anchor_mapping(
     report,
     *,
     projects_config: str | None = None,
+    anchors: list[dict] | None = None,
 ) -> bool:
     """Offer to map unanchored dirs/branches/session titles when on a TTY."""
     from core.report_nudges import unanchored_anchors_for_report
 
     if not should_prompt():
         return False
-    anchors = unanchored_anchors_for_report(report)
+    if anchors is None:
+        anchors = unanchored_anchors_for_report(report)
     if not anchors:
         return False
 

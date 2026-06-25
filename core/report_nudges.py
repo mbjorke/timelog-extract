@@ -26,7 +26,11 @@ _TRIAGE_NOISE_TITLE_MARKERS = (
 
 
 def uncategorized_hours_by_day(report) -> dict[str, float]:
-    uncategorized = report.project_reports.get("Uncategorized", {}) if hasattr(report, "project_reports") else {}
+    uncategorized = (
+        report.project_reports.get("Uncategorized", {})
+        if hasattr(report, "project_reports")
+        else {}
+    )
     return {
         str(day): float((day_data or {}).get("hours", 0.0) or 0.0)
         for day, day_data in uncategorized.items()
@@ -83,7 +87,9 @@ def _uncategorized_noise_ratio_for_day(report, *, day: str) -> float:
     return float(noise) / float(total)
 
 
-def uncategorized_nudge_candidate(report, *, threshold_hours: float, threshold_ratio: float) -> dict[str, float | str] | None:
+def uncategorized_nudge_candidate(
+    report, *, threshold_hours: float, threshold_ratio: float
+) -> dict[str, float | str] | None:
     uncategorized_by_day = uncategorized_hours_by_day(report)
     if not uncategorized_by_day:
         return None
@@ -94,7 +100,9 @@ def uncategorized_nudge_candidate(report, *, threshold_hours: float, threshold_r
         ratio = (uncategorized_h / total_h) if total_h > 0 else 0.0
         if uncategorized_h < float(threshold_hours) or ratio < float(threshold_ratio):
             continue
-        if _uncategorized_noise_ratio_for_day(report, day=day) >= float(UNCATEGORIZED_NOISE_SUPPRESSION_RATIO):
+        if _uncategorized_noise_ratio_for_day(report, day=day) >= float(
+            UNCATEGORIZED_NOISE_SUPPRESSION_RATIO
+        ):
             continue
         if best is None or uncategorized_h > float(best.get("uncategorized_hours", 0.0)):
             best = {
@@ -106,7 +114,9 @@ def uncategorized_nudge_candidate(report, *, threshold_hours: float, threshold_r
     return best
 
 
-def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_GAP_NUDGE_THRESHOLD_HOURS) -> str | None:
+def build_unexplained_gap_nudge(
+    report, *, threshold_hours: float = UNEXPLAINED_GAP_NUDGE_THRESHOLD_HOURS
+) -> str | None:
     required_attrs = ("screen_time_days", "overall_days", "project_reports")
     if not all(hasattr(report, attr) for attr in required_attrs):
         return None
@@ -150,7 +160,9 @@ def build_unexplained_gap_nudge(report, *, threshold_hours: float = UNEXPLAINED_
     return None
 
 
-def unanchored_anchors_for_report(report, *, min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS) -> list[dict]:
+def unanchored_anchors_for_report(
+    report, *, min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS
+) -> list[dict]:
     """Unmapped activity anchors (dir/branch/label) above min_hits for this report."""
     events = list(getattr(report, "all_events", []) or [])
     profiles = list(getattr(report, "profiles", []) or [])
@@ -159,9 +171,15 @@ def unanchored_anchors_for_report(report, *, min_hits: int = UNANCHORED_ANCHOR_N
     return unanchored_top_anchors(events, profiles, min_hits=min_hits)
 
 
-def build_unanchored_anchors_nudge(report, *, min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS) -> str | None:
+def build_unanchored_anchors_nudge(
+    report,
+    *,
+    min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS,
+    anchors: list[dict] | None = None,
+) -> str | None:
     """Multi-line nudge listing unmapped activity anchors (report surface)."""
-    anchors = unanchored_anchors_for_report(report, min_hits=min_hits)
+    if anchors is None:
+        anchors = unanchored_anchors_for_report(report, min_hits=min_hits)
     if not anchors:
         return None
     listed = ", ".join(

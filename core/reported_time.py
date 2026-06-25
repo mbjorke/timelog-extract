@@ -82,13 +82,15 @@ class ReportedTimeRecord:
             raise ValueError(f"invalid reported_time state '{self.state}'")
         if self.source not in VALID_SOURCES:
             raise ValueError(f"invalid reported_time source '{self.source}'")
-        if not str(self.date):
+        if self.date is None or not str(self.date):
             raise ValueError("reported_time requires a date")
-        if not str(self.project):
+        if self.project is None or not str(self.project):
             raise ValueError("reported_time requires a project")
         if self.source == "manual":
             if not str(self.note).strip():
                 raise ValueError("manual reported_time requires a note (no silent net-new time)")
+            if self.origin_ref:
+                raise ValueError("manual reported_time must not have origin_ref (manual has no origin)")
         elif not self.origin_ref:
             raise ValueError(f"{self.source} reported_time requires origin_ref (provenance)")
         if not self.captured_at:

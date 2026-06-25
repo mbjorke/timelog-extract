@@ -22,6 +22,11 @@ class RecordValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ReportedTimeRecord(date="2026-06-18", project="P", hours=3.0, source="manual", state="confirmed")
 
+    def test_manual_rejects_origin_ref(self):
+        with self.assertRaises(ValueError):
+            ReportedTimeRecord(date="2026-06-18", project="P", hours=3.0, source="manual", state="confirmed",
+                               note="SFTP work", origin_ref=["s1"])
+
     def test_non_manual_requires_origin_ref(self):
         with self.assertRaises(ValueError):
             ReportedTimeRecord(date="2026-06-18", project="P", hours=1.0, source="session", state="proposed")

@@ -18,11 +18,17 @@ Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns 
 
 ---
 
+
 ## Install
 
-You need **Python 3.9+**. If `pip` is awkward on your machine, prefer **`python3 -m pip`** (common on macOS).
+You need **Python 3.9+**. The fastest path is the one-line installer — it uses [pipx](https://pypa.github.io/pipx/) under the hood (falling back to `pip install --user` if pipx is missing) so `gittan` lands on your PATH:
 
-**Fast path:** install the CLI with **[pipx](https://pypa.github.io/pipx/)** so `gittan` is on your PATH. Install `pipx` with your normal Python tooling, or with Homebrew if that is already how you manage developer tools:
+```bash
+curl -fsSL https://gittan.sh/install | bash
+gittan -V
+```
+
+Prefer the manual steps? Install with **pipx** directly:
 
 ```bash
 python3 -m pip install --user pipx
@@ -31,8 +37,6 @@ python3 -m pipx ensurepath
 pipx install timelog-extract
 gittan -V
 ```
-
-There is no supported Homebrew install for `gittan` yet. Maintainer notes for a future tap live in [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md), but PyPI/pipx is the current public install path.
 
 <details>
 <summary><b>Other install paths</b></summary>
@@ -58,6 +62,8 @@ cd timelog-extract
 python3 -m pip install -e .
 gittan -V
 ```
+
+A Homebrew tap (`brew install gittan`) is planned; until then use the installer or pipx above. Maintainer notes: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md).
 
 Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md).
 

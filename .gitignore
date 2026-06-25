@@ -41,5 +41,8 @@ output/
 out/
 *.cast
 
+# Briox API secrets (see .env.briox.example)
+.env.briox
+
 # Extension dependencies
 cursor-extension/node_modules/

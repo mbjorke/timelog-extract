@@ -211,15 +211,19 @@ Feature: Scheduled to reported time bridge
 
 ## Delivery phases
 
-This spec is phase 0 (design). Downstream work, each its own task:
+This spec is phase 0 (design). The build is tracked in
+[`../task-prompts/reported-time-layer-task.md`](../task-prompts/reported-time-layer-task.md)
+(phased backlog + traceability). Status:
 
-1. **Bridge spec (this doc).** Root dependency.
-2. **Calendar collector MVP** — `scheduled_context`, Meetings column, all-day
-   excluded, recurring = documented v1 limit; proposes (never sets) reported
-   time. Built via the `gittan-source-collector` skill.
-3. **Reconcile + edit** — overlap loop writes `reported_time`.
-4. **Toggl/Jira posting from `reported_time`** — Calendar-confirmed time can post
-   through existing sync; Calendar becomes a `primary_claim` contributor.
+1. **Bridge spec (this doc).** Root dependency. — done
+2. **`reported_time` record + local store** — **built** (PR #186).
+3. **Reconcile / confirm / add CLI** (`gittan reported`) — **in review** (PR #187).
+   Adds net-new manual time (the invoice-undercount amendment).
+4. **Sync reads `confirmed`** (Toggl/Jira post from reported_time, not observed) —
+   not built.
+5. **Invoice + Lovable feed read the same layer**; **Calendar collector** (this
+   spec's original phase 2, `scheduled_context`/meetings) feeds in parallel via
+   the `gittan-source-collector` skill — not built.
 
 ## Open questions
 

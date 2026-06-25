@@ -10,6 +10,7 @@ from typing import Annotated, Optional
 import typer
 
 from collectors.jira import (
+    JiraApiError,
     jira_sync_enabled,
     list_jira_worklogs,
     resolve_jira_credentials,
@@ -29,6 +30,8 @@ def _next_step_hint(summary: JiraSyncSummary) -> str:
     """One concise line after the summary for every outcome (demo + ops clarity)."""
     if summary.failed > 0:
         return "Next: verify Jira credentials and issue visibility, then rerun `gittan jira-sync --dry-run`."
+    if summary.not_found > 0:
+        return "Next: some keys aren't Jira issues (e.g. GitHub refs like GH-123) — they were skipped; narrow the git history or configure Jira project keys."
     if summary.unresolved > 0:
         return "Next: add Jira issue keys in commit subjects or branch name."
     if summary.posted > 0:
@@ -123,7 +126,9 @@ def jira_sync(
 
     summary = JiraSyncSummary(unresolved=unresolved)
     days_with_commit_candidates = {candidate.day for candidate in candidates if candidate.source == "commit"}
-    worklog_cache: dict[str, list] = {}
+    worklog_cache: dict[str, object] = {}
+    # Sentinel: this key is not a postable Jira issue (404/403 — absent or no access).
+    NOT_FOUND = object()
     for candidate in candidates:
         # If commit-derived keys exist for the day, hide branch fallback candidates to reduce noise.
         if candidate.source == "branch" and candidate.day in days_with_commit_candidates:
@@ -141,14 +146,30 @@ def jira_sync(
         if candidate.issue_key not in worklog_cache:
             try:
                 worklog_cache[candidate.issue_key] = list_jira_worklogs(creds, candidate.issue_key)
+            except JiraApiError as exc:
+                if exc.status in (404, 403):
+                    # Issue is absent or not visible — not a postable Jira issue
+                    # (e.g. a GitHub ref like GH-143 mis-read as a Jira key).
+                    # Skip this key and keep going; don't abort the whole run.
+                    worklog_cache[candidate.issue_key] = NOT_FOUND
+                else:
+                    # Network/5xx/parse: we can't tell what's already synced, so
+                    # fail closed to avoid a duplicate post.
+                    raise typer.BadParameter(
+                        f"Could not list existing worklogs for {candidate.issue_key} ({exc}); "
+                        "aborting to avoid duplicate worklogs. Re-run once Jira is reachable, "
+                        "or use --dry-run to preview."
+                    )
             except Exception as exc:
-                # Fail closed: without the existing worklogs we can't tell what is
-                # already synced, so abort rather than risk a duplicate post.
                 raise typer.BadParameter(
                     f"Could not list existing worklogs for {candidate.issue_key} ({exc}); "
                     "aborting to avoid duplicate worklogs. Re-run once Jira is reachable, "
                     "or use --dry-run to preview."
                 )
+        if worklog_cache[candidate.issue_key] is NOT_FOUND:
+            summary.not_found += 1
+            typer.echo(f"Skipped {candidate.issue_key} ({candidate.day}): not a Jira issue / no access.")
+            continue
         if candidate_already_posted(candidate, worklog_cache[candidate.issue_key]):
             summary.already += 1
             typer.echo(f"Already synced {candidate.issue_key} ({candidate.day}); skipping.")
@@ -171,7 +192,7 @@ def jira_sync(
 
     typer.echo(
         "Jira sync summary: "
-        f"posted={summary.posted}, already={summary.already}, skipped={summary.skipped}, "
-        f"unresolved={summary.unresolved}, failed={summary.failed}"
+        f"posted={summary.posted}, already={summary.already}, not_found={summary.not_found}, "
+        f"skipped={summary.skipped}, unresolved={summary.unresolved}, failed={summary.failed}"
     )
     typer.echo(_next_step_hint(summary))

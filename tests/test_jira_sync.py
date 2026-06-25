@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 
-from collectors.jira import JiraCredentials, adf_comment_text, post_jira_worklog
+from collectors.jira import JiraApiError, JiraCredentials, adf_comment_text, post_jira_worklog
 from core.cli import app
 from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
@@ -155,7 +155,7 @@ class JiraSyncTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertNotIn("XYZ-123", result.output)
         self.assertIn("ABC-1", result.output)
-        self.assertIn("Jira sync summary: posted=0, already=0, skipped=2, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=0, not_found=0, skipped=2, unresolved=0, failed=0", result.output)
         self.assertIn("Next: rerun with confirmation", result.output)
 
     def test_cli_jira_sync_no_candidates_no_unresolved_shows_hint(self):
@@ -203,7 +203,7 @@ class JiraSyncTests(unittest.TestCase):
         ), patch("core.cli_jira_sync.post_candidate", return_value="10001"):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=1, already=0, not_found=0, skipped=0, unresolved=0, failed=0", result.output)
         self.assertIn("Next: verify worklogs in Jira for the posted issue(s).", result.output)
 
     def test_list_jira_worklogs_follows_pagination(self):
@@ -299,7 +299,7 @@ class JiraSyncTests(unittest.TestCase):
         ), patch("core.cli_jira_sync.post_candidate", side_effect=RuntimeError("Jira HTTP 404")):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Jira sync summary: posted=0, already=0, skipped=0, unresolved=0, failed=1", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=0, not_found=0, skipped=0, unresolved=0, failed=1", result.output)
         self.assertIn("Next: verify Jira credentials and issue visibility", result.output)
 
 
@@ -373,7 +373,7 @@ class JiraDedupTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         post_mock.assert_not_called()
         self.assertIn("Already synced KAN-1", result.output)
-        self.assertIn("Jira sync summary: posted=0, already=1, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=0, already=1, not_found=0, skipped=0, unresolved=0, failed=0", result.output)
         self.assertIn("already synced", result.output)
 
     def test_cli_posts_when_no_existing_marker(self):
@@ -395,7 +395,7 @@ class JiraDedupTests(unittest.TestCase):
             result = runner.invoke(app, ["jira-sync", "--today", "--jira-sync", "on"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         post_mock.assert_called_once()
-        self.assertIn("Jira sync summary: posted=1, already=0, skipped=0, unresolved=0, failed=0", result.output)
+        self.assertIn("Jira sync summary: posted=1, already=0, not_found=0, skipped=0, unresolved=0, failed=0", result.output)
 
 
 class NextStepHintTests(unittest.TestCase):

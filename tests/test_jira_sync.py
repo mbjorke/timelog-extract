@@ -409,6 +409,11 @@ class NextStepHintTests(unittest.TestCase):
         summary = JiraSyncSummary(posted=3, skipped=0, unresolved=0, failed=0)
         self.assertIn("verify worklogs in Jira", _next_step_hint(summary))
 
+    def test_hint_posted_takes_priority_over_not_found(self):
+        # A run that both posts and skips a non-Jira key shows the posted message.
+        summary = JiraSyncSummary(posted=1, not_found=2)
+        self.assertIn("verify worklogs in Jira", _next_step_hint(summary))
+
     def test_hint_for_failed(self):
         summary = JiraSyncSummary(posted=0, skipped=0, unresolved=0, failed=1)
         hint = _next_step_hint(summary)

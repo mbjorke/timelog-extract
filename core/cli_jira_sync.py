@@ -30,12 +30,12 @@ def _next_step_hint(summary: JiraSyncSummary) -> str:
     """One concise line after the summary for every outcome (demo + ops clarity)."""
     if summary.failed > 0:
         return "Next: verify Jira credentials and issue visibility, then rerun `gittan jira-sync --dry-run`."
+    if summary.posted > 0:
+        return "Next: verify worklogs in Jira for the posted issue(s)."
     if summary.not_found > 0:
         return "Next: some keys aren't Jira issues (e.g. GitHub refs like GH-123) — they were skipped; narrow the git history or configure Jira project keys."
     if summary.unresolved > 0:
         return "Next: add Jira issue keys in commit subjects or branch name."
-    if summary.posted > 0:
-        return "Next: verify worklogs in Jira for the posted issue(s)."
     if summary.already > 0:
         return "Next: nothing new — those issue/day worklogs were already synced (re-runs are safe)."
     if summary.skipped > 0:

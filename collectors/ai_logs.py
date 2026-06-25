@@ -187,7 +187,7 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
         if not proj_dir.is_dir():
             continue
         dir_name = proj_dir.name.lower()
-        for jsonl_file in proj_dir.glob("*.jsonl"):
+        for jsonl_file in proj_dir.rglob("*.jsonl"):
             cli_id = _cli_session_id_from_jsonl(jsonl_file)
             meta = session_index.get(cli_id) or {}
             label = meta.get("label")

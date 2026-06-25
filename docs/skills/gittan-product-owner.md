@@ -71,6 +71,20 @@ the PRs, and tooling can see it:
 - **Implementing PRs must link to the spec** and update `implementation_status` /
   `implementation.pr` as work lands.
 
+### Issue lifecycle (Story ID)
+
+A `story_id: GH-N` is a real GitHub issue — the tracker for the spec. Keep it
+disciplined so the issue list stays a trustworthy view of active work:
+
+- **Create the issue when an item is prioritized to `now`/`next`** — not for raw
+  suggestions, and not for `later` / `do not build yet` items (those live only in
+  the task-prompt until promoted). The product-owner pass is the prioritization
+  gate; agents (CodeRabbit/Cursor) should not auto-open issues ahead of it.
+- **The implementing PR closes the issue** with `Closes #N`, so shipped work never
+  leaves a straggler open (the failure seen in #145/#146).
+- One issue per task-prompt; if a review spins off a follow-up, file it through the
+  backlog (promote → issue), not as an ad-hoc duplicate.
+
 This is enforced retrospectively by the feature-inventory generator's `--check`
 (see `docs/task-prompts/feature-inventory-generator-task.md`): a command or
 collector with no linked spec fails the gate. CodeRabbit cannot catch a *missing*

@@ -49,7 +49,14 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    --version) PIN_VERSION="${2:?--version requires a value}"; shift 2 ;;
+    --version)
+      if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == -* || ! "$2" =~ ^[0-9] ]]; then
+        printf '\033[1;31m !!\033[0m --version needs a version like 0.2.20, got: %s\n' "${2:-<none>}" >&2
+        exit 2
+      fi
+      PIN_VERSION="$2"
+      shift 2
+      ;;
     --help|-h) print_help; exit 0 ;;
     *) echo "Unknown option: $1" >&2; echo "Run with --help for usage." >&2; exit 2 ;;
   esac
@@ -107,7 +114,21 @@ else
     die "pip is unavailable for Python ${PY_VERSION_OUTPUT}. Install pip and retry, or use pipx."
   fi
   note "Installing ${COMMAND} with pip --user: python3 -m pip install --user --upgrade ${INSTALL_SPEC}"
-  run python3 -m pip install --user --upgrade "$INSTALL_SPEC"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf '   (dry-run) %s\n' "python3 -m pip install --user --upgrade $INSTALL_SPEC"
+  else
+    pip_out="$(python3 -m pip install --user --upgrade "$INSTALL_SPEC" 2>&1)" || {
+      if printf '%s\n' "$pip_out" | grep -qi 'externally-managed-environment'; then
+        die "pip refused to install: this Python is externally managed (PEP 668).
+This is common on Debian/Ubuntu and Homebrew Python. Choose one:
+  pipx (recommended):  https://pypa.github.io/pipx/
+  virtualenv:          python3 -m venv .venv && source .venv/bin/activate && pip install ${INSTALL_SPEC}
+  opt in explicitly:   python3 -m pip install --user --upgrade --break-system-packages ${INSTALL_SPEC}"
+      fi
+      printf '%s\n' "$pip_out" >&2
+      die "pip install failed; see pip output above."
+    }
+  fi
 fi
 
 # --- confirm ---

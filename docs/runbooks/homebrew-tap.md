@@ -5,7 +5,7 @@
 **Package on PyPI:** `timelog-extract` (CLI commands: `gittan`, `timelog-extract`).  
 **Goal for a live demo:** one memorable install line, e.g. `brew tap <org>/gittan && brew install gittan`.
 
-This doc is a **maintainer runbook**, not user-facing install docs (those stay in root [`README.md`](../../README.md): **pipx** / **pip** remain the supported defaults until the tap exists).
+This doc is a **maintainer runbook**, not user-facing install docs (the curl installer is the canonical path; this section only tracks the future Homebrew tap).
 
 ---
 

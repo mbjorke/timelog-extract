@@ -167,8 +167,10 @@ def session_preview_omitted_summary(
         return None
     shown = {id(e) for e in display_events}
     hidden = [e for e in session_events if id(e) not in shown]
+    if not hidden:
+        return None
     noise_hidden = sum(1 for e in hidden if _is_low_signal_preview_event(e))
-    if not noise_hidden:
+    if noise_hidden != len(hidden):
         return None
     noun = "line" if noise_hidden == 1 else "lines"
     return f"… {noise_hidden} IDE log {noun} hidden — omit --compact for full detail"

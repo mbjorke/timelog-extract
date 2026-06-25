@@ -345,7 +345,7 @@ def cluster_repo_families(slugs: set[str]) -> list[set[str]]:
     return clusters
 
 
-from core.github_slug_activity import (  # noqa: F401  re-export for callers
+from core.github_slug_activity import (  # noqa: E402, F401  re-export for callers
     collect_profile_activity_from_events,
     collect_slug_activity_from_events,
     collect_slug_last_epoch_from_events,

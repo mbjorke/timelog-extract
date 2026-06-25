@@ -116,6 +116,29 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertIsNotNone(summary)
         self.assertIn("IDE log", summary)
 
+    def test_footer_skips_misleading_ide_label_when_evidence_also_hidden(self):
+        order = ["A", "B"]
+        base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        session = [
+            {
+                "source": "A",
+                "local_ts": base.replace(minute=i),
+                "project": "P",
+                "detail": f"evidence-{i}",
+            }
+            for i in range(3)
+        ] + [
+            {
+                "source": "Cursor",
+                "local_ts": base.replace(minute=10),
+                "project": "P",
+                "detail": "timelog-extract — hooks.json — noise",
+            }
+        ]
+        picked = pick_session_preview_events(session, order, max_lines=2)
+        summary = session_preview_omitted_summary(session, picked)
+        self.assertIsNone(summary)
+
     def test_high_signal_lovable_not_capped_by_noise(self):
         order = ["Lovable (desktop)", "Cursor"]
         base = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)

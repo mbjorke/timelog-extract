@@ -13,6 +13,16 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
+class JiraApiError(RuntimeError):
+    """A Jira API call failed. ``status`` is the HTTP code when there was one
+    (``None`` for network/transport errors), so callers can branch — e.g. treat a
+    404 as "issue not found / no access" rather than a fatal error."""
+
+    def __init__(self, message: str, status: Optional[int] = None):
+        super().__init__(message)
+        self.status = status
+
+
 @dataclass
 class JiraCredentials:
     base_url: str
@@ -159,7 +169,8 @@ def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
     marker on a later page is never missed during dedup.
 
     Raises:
-        RuntimeError: If an HTTP request fails or Jira returns a non-JSON response.
+        JiraApiError: If an HTTP request fails (``.status`` carries the HTTP code,
+            or ``None`` for a network error) or Jira returns a non-JSON response.
     """
     base = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
     collected: List[dict] = []
@@ -174,13 +185,13 @@ def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
                 body = response.read().decode("utf-8")
         except HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Jira HTTP {exc.code}: {detail}") from exc
+            raise JiraApiError(f"Jira HTTP {exc.code}: {detail}", status=exc.code) from exc
         except URLError as exc:
-            raise RuntimeError(f"Jira network error: {exc.reason}") from exc
+            raise JiraApiError(f"Jira network error: {exc.reason}", status=None) from exc
         try:
             parsed = json.loads(body)
         except json.JSONDecodeError as exc:
-            raise RuntimeError("Jira returned non-JSON response for worklog list") from exc
+            raise JiraApiError("Jira returned non-JSON response for worklog list", status=None) from exc
         worklogs = parsed.get("worklogs")
         page = list(worklogs) if isinstance(worklogs, list) else []
         collected.extend(page)

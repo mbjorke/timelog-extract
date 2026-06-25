@@ -75,7 +75,7 @@ def reported_sync(
 
     written = already = 0
     for rec in to_confirm:
-        if query(project=rec.project, date=rec.date, states=REPORTED_STATES):
+        if _already_reported(rec):
             already += 1
             continue
         if not dry_run:
@@ -118,7 +118,7 @@ def reported_review(
 
     confirmed = edited = dismissed = skipped = already = 0
     for rec in proposals:
-        if query(project=rec.project, date=rec.date, states=REPORTED_STATES):
+        if _already_reported(rec):
             already += 1
             continue
         issue_suffix = f"  →{rec.issue_key}" if rec.issue_key else ""
@@ -143,6 +143,18 @@ def reported_review(
     typer.echo(
         f"Reported review: confirmed={confirmed}, edited={edited}, dismissed={dismissed}, "
         f"already={already}, skipped={skipped}"
+    )
+
+
+def _already_reported(rec: ReportedTimeRecord) -> bool:
+    """True if this exact (project, day, issue_key) is already confirmed/edited.
+
+    Phase 3b emits one proposal per issue on a project+day, so dedup must compare
+    ``issue_key`` too — otherwise the first reported issue would skip its siblings.
+    """
+    return any(
+        current.issue_key == rec.issue_key
+        for current in query(project=rec.project, date=rec.date, states=REPORTED_STATES)
     )
 
 

@@ -49,20 +49,19 @@ def _git_issue_resolver(report: "ReportPayload", repo_path: "Path"):
 
     Reuses jira-sync's per-session inference (commits-in-window, then current
     branch) so observed time is stamped with the issue it belongs to at proposal
-    time. Returns a resolver that always yields ``None`` if git is unreadable.
+    time. ``load_commit_tags`` / ``load_current_branch_issue_key`` already turn git
+    command failures into ``[]`` / ``None`` (so a repo with no commits just yields
+    no issues); unexpected errors are left to surface rather than silently dropping
+    every session's issue key.
     """
-    try:
-        from core.jira_sync import (
-            _issue_key_for_session,
-            load_commit_tags,
-            load_current_branch_issue_key,
-        )
+    from core.jira_sync import (
+        _issue_key_for_session,
+        load_commit_tags,
+        load_current_branch_issue_key,
+    )
 
-        commits = load_commit_tags(repo_path, report.dt_from, report.dt_to)
-        branch_key = load_current_branch_issue_key(repo_path)
-    except Exception as exc:  # pragma: no cover - defensive
-        _LOGGER.warning("Could not load git issue context: %s", exc)
-        return lambda start, end: None
+    commits = load_commit_tags(repo_path, report.dt_from, report.dt_to)
+    branch_key = load_current_branch_issue_key(repo_path)
 
     def resolve(start, end) -> Optional[str]:
         key, _source = _issue_key_for_session(start, end, commits, branch_key)

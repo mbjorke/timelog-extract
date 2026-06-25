@@ -174,6 +174,28 @@ class SyncCommandTests(unittest.TestCase):
             self.assertIn("Would auto-report 1", result.output)
             self.assertEqual(rt.query(), [])
 
+    def test_sibling_issue_not_skipped_as_already_reported(self):
+        # Phase 3b dedup must be issue-aware: a reported KAN-2 must not skip KAN-3
+        # on the same project+day (CodeRabbit #196).
+        tmp, store = _temp_store()
+        report = SimpleNamespace(profiles=[{"name": "Alpha", "auto_report": True}])
+        p2 = rt.ReportedTimeRecord(date="2026-06-18", project="Alpha", hours=2.0, source="session",
+                                   state="proposed", origin_ref=["2026-06-18T1000"], issue_key="KAN-2")
+        p3 = rt.ReportedTimeRecord(date="2026-06-18", project="Alpha", hours=3.0, source="session",
+                                   state="proposed", origin_ref=["2026-06-18T1100"], issue_key="KAN-3")
+        with tmp, store:
+            rt.append_record(rt.ReportedTimeRecord(
+                date="2026-06-18", project="Alpha", hours=2.0, source="session",
+                state="confirmed", origin_ref=["2026-06-18T1000"], issue_key="KAN-2"))
+            with patch("core.report_service.run_timelog_report", return_value=report), patch(
+                "core.cli_reported.build_reported_proposals", return_value=[p2, p3]
+            ):
+                result = CliRunner().invoke(app, ["reported", "sync", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            confirmed = {(r.project, r.issue_key) for r in rt.query(states={"confirmed"})}
+            self.assertEqual(confirmed, {("Alpha", "KAN-2"), ("Alpha", "KAN-3")})
+            self.assertIn("Auto-reported 1", result.output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,7 +90,12 @@ class CursorAgentTurnsTests(unittest.TestCase):
             self.assertEqual(covered, {cid})
             self.assertGreaterEqual(len(events), 2)
             self.assertEqual(events[0]["source"], "Cursor (agent)")
-            self.assertIn("freelance bridge", events[0]["anchors"].get("label", ""))
+            self.assertEqual(
+                events[0]["anchors"].get("label"),
+                "Freelance bridge dashboard development",
+            )
+            self.assertIn("turn", events[0]["detail"])
+            self.assertNotIn("Freelance bridge", events[0]["detail"])
             composer_events = collect_cursor_composer_sessions(
                 profiles,
                 dt_from,

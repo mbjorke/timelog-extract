@@ -107,6 +107,7 @@ class GithubCollectorTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["source"], "GitHub")
         self.assertEqual(events[0].get("_github_event_id"), "1")
+        self.assertEqual(events[0].get("_github_user"), "u")
         called_url = mock_urlopen.call_args[0][0].full_url
         self.assertIn("api.github.com/users/u/events/public", called_url)
 

@@ -12,7 +12,7 @@ from rich.tree import Tree
 
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_preview import (
-    format_event_detail,
+    assemble_timeline_event_line,
     pick_session_preview_events,
     session_preview_omitted_summary,
 )
@@ -20,12 +20,13 @@ from outputs.terminal_theme import (
     CLR_BERRY_BRIGHT,
     CLR_DIM,
     CLR_GREEN,
-    CLR_SOURCE_BLUE,
+    CLR_MUTED,
     CLR_TEXT_SOFT,
     CLR_VALUE_ORANGE,
-    CLR_MUTED,
     STYLE_BORDER,
     WARN_ICON,
+    display_source_label,
+    get_source_color,
 )
 from outputs.terminal_warnings import print_report_warnings
 
@@ -39,18 +40,11 @@ STYLE_ACCENT = CLR_BERRY_BRIGHT
 STYLE_POSITIVE = CLR_GREEN
 
 
-def _display_source_label(source: str) -> str:
-    """Render neutral source labels without changing underlying source keys."""
-    if source == "TIMELOG.md":
-        return "Worklog (TIMELOG.md)"
-    return source
-
-
 def _build_dynamic_legend(source_order: Sequence[str]) -> Text:
     legend = Text()
     legend.append("Evidence legend: ", style=f"bold {STYLE_LABEL}")
     for idx, source in enumerate(source_order):
-        legend.append(_display_source_label(source), style=f"italic {get_source_color(source)}")
+        legend.append(display_source_label(source), style=f"italic {get_source_color(source)}")
         if idx < len(source_order) - 1:
             legend.append("  ", style=STYLE_META)
     return legend
@@ -72,7 +66,7 @@ def print_source_summary(events: List[Dict[str, Any]], source_order: Sequence[st
     table.add_column("Events", justify="right", style=CLR_VALUE_ORANGE)
 
     for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
-        table.add_row(_display_source_label(src), str(counts[src]))
+        table.add_row(display_source_label(src), str(counts[src]))
     table.add_section()
     table.add_row(
         f"[bold {STYLE_LABEL}]Total[/bold {STYLE_LABEL}]",
@@ -159,17 +153,13 @@ def print_project_source_mix(
     mix_table.add_column(style=STYLE_BODY)
     mix_table.add_column(justify="right", style=STYLE_BODY)
     for src in sorted(counts, key=lambda s: source_order.index(s) if s in source_order else 99):
-        mix_table.add_row(_display_source_label(src), str(counts[src]))
+        mix_table.add_row(display_source_label(src), str(counts[src]))
     console.print(mix_table)
     console.print(
         f"[{STYLE_META}]Event span: "
         f"{first_event['local_ts'].strftime('%H:%M')} -> {last_event['local_ts'].strftime('%H:%M')} "
         f"({len(project_events)} events)[/{STYLE_META}]"
     )
-
-
-def get_source_color(source: str) -> str:
-    return CLR_SOURCE_BLUE
 
 
 def print_report(
@@ -243,14 +233,17 @@ def print_report(
                 display_events = session_events
 
             for event in display_events:
-                src_color = get_source_color(event["source"])
-                event_line = Text.assemble(
-                    (f"{event['local_ts'].strftime('%H:%M')} ", STYLE_POSITIVE),
-                    (f"{_display_source_label(event['source'])} ", f"italic {src_color}"),
-                    (f"{event['project']} ", STYLE_LABEL),
-                    (format_event_detail(event), STYLE_META),
+                session_node.add(
+                    assemble_timeline_event_line(
+                        event,
+                        source_label=display_source_label(event["source"], event),
+                        source_style=f"italic {get_source_color(event['source'])}",
+                        time_style=STYLE_POSITIVE,
+                        project_style=STYLE_LABEL,
+                        label_style=CLR_VALUE_ORANGE,
+                        detail_style=STYLE_META,
+                    )
                 )
-                session_node.add(event_line)
 
             if use_compact:
                 omitted = session_preview_omitted_summary(session_events, display_events)

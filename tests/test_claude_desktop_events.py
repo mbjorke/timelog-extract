@@ -106,10 +106,9 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         self.assertEqual(times[-1], stamps[-1])
         first_cluster = [t for t in times if t <= base + timedelta(hours=2)]
         self.assertGreaterEqual((first_cluster[-1] - first_cluster[0]).total_seconds(), 110 * 60)
-        # Two clusters → two distinct details (turn counts differ).
+        # Two clusters → two distinct turn counts.
         details = {ev["detail"] for ev in events}
-        self.assertEqual(len(details), 2)
-        self.assertIn("Code session session_01TESTALPHA — 31 turns", details)
+        self.assertEqual(details, {"31 turns", "2 turns"})
 
     def test_internal_uuid_session_merges_with_key_session_id(self) -> None:
         # Real cache bodies mix events carrying an internal session_id UUID
@@ -144,7 +143,7 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
 
         events = self._collect()
         details = {ev["detail"] for ev in events}
-        self.assertEqual(details, {"Code session session_01MERGE — 2 turns"})
+        self.assertEqual(details, {"2 turns"})
         for ev in events:
             self.assertEqual(ev["project"], "project-alpha")
 
@@ -159,8 +158,8 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
 
         events = self._collect()
         details = {ev["detail"] for ev in events}
-        self.assertEqual(details, {"Code session: Build dashboard MVP — 2 turns"})
-        self.assertEqual(events[0]["anchors"].get("label"), "build dashboard mvp")
+        self.assertEqual(details, {"2 turns"})
+        self.assertEqual(events[0]["anchors"].get("label"), "Build dashboard MVP")
 
     def test_session_metadata_repo_slug_attributes_project(self) -> None:
         # Session metadata carries an explicit owner/repo in git outcomes —
@@ -216,7 +215,7 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
 
         events = self._collect()
         details = {ev["detail"] for ev in events}
-        self.assertEqual(details, {"Code session session_01DUP — 3 turns"})
+        self.assertEqual(details, {"3 turns"})
 
     def test_corrupt_and_foreign_entries_are_skipped(self) -> None:
         cache = self.home / "Library" / "Application Support" / "Claude" / "Cache" / "Cache_Data"
@@ -247,7 +246,7 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         )
         events = self._collect()
         self.assertTrue(events)
-        self.assertEqual(events[0]["detail"], "Code session session_01Z — 2 turns")
+        self.assertEqual(events[0]["detail"], "2 turns")
 
 
 if __name__ == "__main__":

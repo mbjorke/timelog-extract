@@ -12,6 +12,7 @@ from rich.console import Console
 from core.cli_app import app
 from core.cli_report_status_helpers import build_report_options, resolve_timeframe_args
 from core.config import default_projects_config_option
+from core.anchor_nudge import maybe_run_interactive_anchor_mapping
 from core.mapping_assistant import run_interactive_mapping_flow
 from core.mapping_review import build_mapping_review
 from outputs.cli_heroes import print_command_hero
@@ -80,6 +81,10 @@ def map_workspace(
         f"(report {report_elapsed:.1f}s, mapping review {review_elapsed:.1f}s).[/]"
     )
     if review.change_count() == 0:
+        config = str(getattr(report, "config_path", None) or projects_config)
+        if maybe_run_interactive_anchor_mapping(console, report, projects_config=config):
+            console.print("[dim]Re-run `gittan report` for the same window to verify project hours.[/dim]")
+            raise typer.Exit(code=0)
         console.print(f"[{STYLE_MUTED}]No suggested project mapping changes for this window.[/]")
         raise typer.Exit(code=0)
 

@@ -11,6 +11,29 @@ from core.report_postamble import run_post_report_followups, status_anchor_warn_
 
 class ReportPostambleTests(unittest.TestCase):
     @patch("core.report_postamble.build_unanchored_anchors_nudge", return_value="anchor-nudge")
+    @patch("core.report_postamble.maybe_run_interactive_anchor_mapping", return_value=False)
+    @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
+    @patch("core.report_postamble.prepare_mapping_review_after_report")
+    @patch("core.report_postamble.build_unexplained_gap_nudge", return_value=None)
+    @patch("core.report_postamble._wants_mapping_prompt", return_value=True)
+    def test_prints_anchor_nudge_when_interactive_flow_skipped(
+        self,
+        _wants_mapping,
+        _gap,
+        _prepare,
+        _mapping,
+        _anchor_flow,
+        _anchors,
+    ):
+        console = MagicMock()
+        console.status.return_value.__enter__ = MagicMock()
+        console.status.return_value.__exit__ = MagicMock(return_value=False)
+        report = SimpleNamespace(args=SimpleNamespace(quiet=False, output_format="terminal"))
+        with patch("core.report_postamble._wants_status", return_value=True):
+            run_post_report_followups(console, report)
+        console.print.assert_called_once_with("anchor-nudge")
+
+    @patch("core.report_postamble.maybe_run_interactive_anchor_mapping", return_value=True)
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
     @patch("core.report_postamble.prepare_mapping_review_after_report")
     @patch("core.report_postamble.build_unexplained_gap_nudge", return_value=None)
@@ -21,7 +44,7 @@ class ReportPostambleTests(unittest.TestCase):
         _gap,
         _prepare,
         _mapping,
-        _anchors,
+        anchor_flow,
     ):
         console = MagicMock()
         console.status.return_value.__enter__ = MagicMock()
@@ -30,9 +53,9 @@ class ReportPostambleTests(unittest.TestCase):
         with patch("core.report_postamble._wants_status", return_value=True):
             run_post_report_followups(console, report)
         self.assertEqual(console.status.call_count, 2)
-        console.print.assert_called_once_with("anchor-nudge")
+        anchor_flow.assert_called_once_with(console, report)
 
-    @patch("core.report_postamble.build_unanchored_anchors_nudge")
+    @patch("core.report_postamble.maybe_run_interactive_anchor_mapping")
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=True)
     @patch("core.report_postamble.prepare_mapping_review_after_report")
     @patch("core.report_postamble.build_unexplained_gap_nudge", return_value="gap-nudge")

@@ -7,11 +7,15 @@ import unittest
 from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from core.report_service import ReportPayload
 from core.reported_sync import (
     auto_report_projects,
+    build_reported_proposals,
     reported_hours_for_window,
+    reported_issue_hours_for_window,
     split_auto_confirm,
     window_days,
 )
@@ -110,6 +114,50 @@ class ReportedWindowTests(unittest.TestCase):
         self._confirm("Alpha", "2026-07-01", 3.0)  # out of window
         self._confirm("Beta", "2026-06-24", 2.0, state="proposed")  # not confirmed
         self.assertIsNone(reported_hours_for_window(_payload("2026-06-23", "2026-06-25"), self.home))
+
+    def test_issue_view_keys_by_issue(self):
+        # Phase 3b: the issue-aware view keeps the per-issue split.
+        append_record(ReportedTimeRecord(date="2026-06-24", project="Alpha", hours=2.0, source="session",
+                                         state="confirmed", origin_ref=["x"], issue_key="KAN-2"), home=self.home)
+        append_record(ReportedTimeRecord(date="2026-06-24", project="Alpha", hours=3.0, source="session",
+                                         state="confirmed", origin_ref=["y"], issue_key="KAN-3"), home=self.home)
+        view = reported_issue_hours_for_window(_payload("2026-06-23", "2026-06-25"), self.home)
+        self.assertEqual(view, {("Alpha", "2026-06-24", "KAN-2"): 2.0, ("Alpha", "2026-06-24", "KAN-3"): 3.0})
+
+
+def _session_payload(day: str, project: str):
+    start = datetime.fromisoformat(f"{day}T10:00:00")
+    end = datetime.fromisoformat(f"{day}T11:00:00")
+    return ReportPayload(
+        dt_from=datetime.fromisoformat(f"{day}T00:00:00"),
+        dt_to=datetime.fromisoformat(f"{day}T23:59:00"),
+        profiles=[], config_path=None, worklog_path=None,  # type: ignore[arg-type]
+        all_events=[], included_events=[], grouped={},
+        overall_days={day: {"sessions": [(start, end, [{"project": project, "source": "TIMELOG.md"}])], "hours": 1.0}},
+        project_reports={}, screen_time_days=None, collector_status={},
+        args=Namespace(min_session=15, min_session_passive=5),
+        source_strategy_effective="worklog-first",
+    )
+
+
+class ProposalIssueStampTests(unittest.TestCase):
+    """Phase 3b: build_reported_proposals stamps the git-inferred issue per session."""
+
+    def test_stamps_issue_key_from_git_commit(self):
+        report = _session_payload("2026-04-10", "Alpha")
+        commit = SimpleNamespace(committed_at=datetime(2026, 4, 10, 10, 30), subject="KAN-7 work")
+        with patch("core.jira_sync.load_commit_tags", return_value=[commit]), patch(
+            "core.jira_sync.load_current_branch_issue_key", return_value=None
+        ):
+            proposals = build_reported_proposals(report, Path("."))
+        self.assertEqual(len(proposals), 1)
+        self.assertEqual(proposals[0].issue_key, "KAN-7")
+
+    def test_no_repo_leaves_issue_key_none(self):
+        report = _session_payload("2026-04-10", "Alpha")
+        proposals = build_reported_proposals(report)
+        self.assertEqual(len(proposals), 1)
+        self.assertIsNone(proposals[0].issue_key)
 
 
 if __name__ == "__main__":

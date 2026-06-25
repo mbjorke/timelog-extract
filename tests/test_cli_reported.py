@@ -68,6 +68,26 @@ class AddCommandTests(unittest.TestCase):
             ])
         self.assertNotEqual(result.exit_code, 0)
 
+    def test_add_with_issue_sets_issue_key(self):
+        tmp, store = _temp_store()
+        with tmp, store:
+            result = CliRunner().invoke(app, [
+                "reported", "add", "--project", "P", "--date", "2026-06-18",
+                "--hours", "2", "--note", "phone call", "--issue", "KAN-9",
+            ])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            recs = rt.query(project="P", date="2026-06-18", states={"confirmed"})
+            self.assertEqual(recs[0].issue_key, "KAN-9")
+
+    def test_add_rejects_malformed_issue(self):
+        tmp, store = _temp_store()
+        with tmp, store:
+            result = CliRunner().invoke(app, [
+                "reported", "add", "--project", "P", "--date", "2026-06-18",
+                "--hours", "2", "--note", "x", "--issue", "not a key",
+            ])
+        self.assertNotEqual(result.exit_code, 0)
+
 
 class ReviewCommandTests(unittest.TestCase):
     def _proposal(self):

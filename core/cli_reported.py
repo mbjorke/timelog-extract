@@ -9,10 +9,14 @@ Only confirmed/edited records are later pushed (Toggl/Jira) or billed.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+
+_ISSUE_KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
@@ -56,6 +60,7 @@ def reported_sync(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
+    git_repo: Annotated[Optional[str], typer.Option("--git-repo", help="Repo to infer the Jira issue per session (Phase 3b).")] = None,
     dry_run: Annotated[bool, typer.Option(help="Preview; write nothing.")] = False,
 ):
     """Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review."""
@@ -65,7 +70,7 @@ def reported_sync(
         today=today, yesterday=yesterday, last_week=last_week, last_month=last_month,
         projects_config=projects_config,
     )
-    proposals = build_reported_proposals(report)
+    proposals = build_reported_proposals(report, Path(git_repo).expanduser() if git_repo else None)
     to_confirm, left = split_auto_confirm(proposals, report.profiles)
 
     written = already = 0
@@ -96,6 +101,7 @@ def reported_review(
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
+    git_repo: Annotated[Optional[str], typer.Option("--git-repo", help="Repo to infer the Jira issue per session (Phase 3b).")] = None,
     dry_run: Annotated[bool, typer.Option(help="Preview proposals; write nothing.")] = False,
 ):
     """Confirm / edit / dismiss observed time into reported_time records."""
@@ -105,7 +111,7 @@ def reported_review(
         today=today, yesterday=yesterday, last_week=last_week, last_month=last_month,
         projects_config=projects_config,
     )
-    proposals = build_reported_proposals(report)
+    proposals = build_reported_proposals(report, Path(git_repo).expanduser() if git_repo else None)
     if not proposals:
         typer.echo("No observed time to review for this period.")
         return
@@ -115,7 +121,8 @@ def reported_review(
         if query(project=rec.project, date=rec.date, states=REPORTED_STATES):
             already += 1
             continue
-        typer.echo(f"{rec.date}  {rec.project}  {rec.hours:.2f}h  (observed)")
+        issue_suffix = f"  →{rec.issue_key}" if rec.issue_key else ""
+        typer.echo(f"{rec.date}  {rec.project}  {rec.hours:.2f}h  (observed){issue_suffix}")
         if dry_run:
             skipped += 1
             continue
@@ -149,6 +156,7 @@ def _with(rec: ReportedTimeRecord, **changes) -> ReportedTimeRecord:
         origin_ref=list(rec.origin_ref),
         note=rec.note,
         edited_from_hours=changes.get("edited_from_hours"),
+        issue_key=rec.issue_key,
     )
 
 
@@ -158,18 +166,23 @@ def reported_add(
     date: Annotated[datetime, typer.Option("--date", formats=["%Y-%m-%d"], help="YYYY-MM-DD")],
     hours: Annotated[float, typer.Option(help="Hours worked.")],
     note: Annotated[str, typer.Option(help="What the time was (required — no silent time).")],
+    issue: Annotated[Optional[str], typer.Option("--issue", help="Jira issue this manual time posts to, e.g. KAN-2.")] = None,
 ):
     """Add net-new manual time gittan never observed (SFTP, mail, meetings)."""
     if not note.strip():
         raise typer.BadParameter("A note is required for manual reported time.")
     if hours <= 0:
         raise typer.BadParameter("Hours must be greater than 0.")
+    issue_key = (issue or "").strip() or None
+    if issue_key and not _ISSUE_KEY_RE.fullmatch(issue_key):
+        raise typer.BadParameter("--issue must look like 'ABC-123' (PROJECT-NUMBER).")
     rec = ReportedTimeRecord(
         date=date.strftime("%Y-%m-%d"), project=project, hours=hours,
-        source="manual", state="confirmed", note=note.strip(),
+        source="manual", state="confirmed", note=note.strip(), issue_key=issue_key,
     )
     append_record(rec)
-    typer.echo(f"Added manual reported time: {rec.date} {project} {hours:.2f}h — {note.strip()}")
+    issue_suffix = f" →{issue_key}" if issue_key else ""
+    typer.echo(f"Added manual reported time: {rec.date} {project} {hours:.2f}h — {note.strip()}{issue_suffix}")
 
 
 @reported_app.command("list")

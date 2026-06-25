@@ -166,18 +166,20 @@ def build_issue_key_map(profiles: Optional[List[dict]]) -> dict[str, str]:
 
 
 def _candidates_from_reported(
-    reported: dict[tuple[str, str], float],
+    reported: dict[tuple[str, str, Optional[str]], float],
     issue_keys: dict[str, str],
 ) -> tuple[List[JiraWorklogCandidate], int]:
-    """Reported-mode (Phase 3): build worklog candidates from confirmed reported
-    hours per project+day, mapping each project to its explicit ``jira_issue_key``.
-    Projects with no mapped issue key are counted unresolved (never posted)."""
+    """Reported-mode (Phase 3b): build worklog candidates from confirmed reported
+    hours per ``(project, day, issue_key)``. Each record's own ``issue_key`` (git-
+    inferred at observation, or a manual ``--issue``) wins; when it is ``None`` the
+    project's profile ``jira_issue_key`` is the fallback. Records that resolve to no
+    issue are counted unresolved (never posted)."""
     from core.reported_sync import day_start
 
     unresolved = 0
     buckets: dict[tuple[str, str], JiraWorklogCandidate] = {}
-    for (project, day), hours in sorted(reported.items()):
-        issue_key = issue_keys.get(project)
+    for (project, day, record_issue), hours in sorted(reported.items(), key=lambda kv: (kv[0][1], kv[0][0], kv[0][2] or "")):
+        issue_key = record_issue or issue_keys.get(project)
         if not issue_key:
             unresolved += 1
             continue
@@ -218,13 +220,14 @@ def build_jira_worklog_candidates(
         tuple[List[JiraWorklogCandidate], int]: A tuple where the first element is a list of aggregated worklog candidates (one per issue key per day, sorted by day then issue key) and the second element is the count of sessions for which no issue key could be resolved.
 
     When confirmed/edited reported_time exists for the report window, candidates are
-    built from those confirmed hours mapped via each project's explicit
-    ``jira_issue_key`` (Phase 3 reported-mode); otherwise issue keys are inferred
-    from git as before (the pre-adoption fallback).
+    built from those confirmed hours per ``(project, day, issue_key)`` — each
+    record's git-inferred/manual ``issue_key`` wins, falling back to the project's
+    profile ``jira_issue_key`` (Phase 3b reported-mode); otherwise issue keys are
+    inferred from git as before (the pre-adoption fallback).
     """
-    from core.reported_sync import reported_hours_for_window
+    from core.reported_sync import reported_issue_hours_for_window
 
-    reported = reported_hours_for_window(report, home)
+    reported = reported_issue_hours_for_window(report, home)
     if reported is not None:
         return _candidates_from_reported(reported, build_issue_key_map(profiles))
 

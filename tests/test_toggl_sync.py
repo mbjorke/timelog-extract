@@ -112,17 +112,26 @@ class ReportedModeTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def _confirm(self, project, day, hours, *, source="session", note="", state="confirmed"):
+    def _confirm(self, project, day, hours, *, source="session", note="", state="confirmed", issue_key=None):
         from core.reported_time import ReportedTimeRecord, append_record
 
-        origin = [] if source == "manual" else [f"{day}T0900"]
+        origin = [] if source == "manual" else [f"{day}T{int(hours * 100):04d}"]
         append_record(
             ReportedTimeRecord(
                 date=day, project=project, hours=hours, source=source,
-                state=state, origin_ref=origin, note=note,
+                state=state, origin_ref=origin, note=note, issue_key=issue_key,
             ),
             home=self.home,
         )
+
+    def test_issue_key_is_ignored_and_summed(self):
+        # Phase 3b: Toggl groups by project+day, summing across issue_key.
+        self._confirm("Project Alpha", "2026-06-23", 2.0, issue_key="KAN-2")
+        self._confirm("Project Alpha", "2026-06-23", 3.0, issue_key="KAN-3")
+        payload = _payload({}, [{"name": "Project Alpha", "toggl_project_id": 123}])
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].seconds, 5 * 3600)
 
     def test_uses_confirmed_hours_not_observed(self):
         # Observed says ~1h; confirmed reported says 5h — sync must post 5h.

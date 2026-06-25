@@ -113,5 +113,39 @@ class AggregationTests(unittest.TestCase):
             self.assertEqual(load_records(Path(tmp)), [])
 
 
+class IssueKeyTests(unittest.TestCase):
+    """Phase 3b: optional issue_key, distinctness, and backward-compatible ids."""
+
+    def test_issue_key_survives_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            append_record(
+                ReportedTimeRecord(date="2026-04-10", project="P", hours=2.0, source="session",
+                                   state="confirmed", origin_ref=["a"], issue_key="KAN-2"),
+                home=home,
+            )
+            (rec,) = load_records(home)
+            self.assertEqual(rec.issue_key, "KAN-2")
+
+    def test_two_issues_same_project_day_are_distinct(self):
+        a = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",
+                               state="confirmed", origin_ref=["x"], issue_key="KAN-2")
+        b = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",
+                               state="confirmed", origin_ref=["x"], issue_key="KAN-3")
+        self.assertNotEqual(a.id, b.id)
+
+    def test_no_issue_key_keeps_pre_3b_id(self):
+        # A record without issue_key must hash identically to the Phase 3 basis,
+        # so existing stored ids are unchanged after the upgrade.
+        rec = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",
+                                 state="confirmed", origin_ref=["x"])
+        self.assertEqual(rec.id, compute_reported_id("2026-04-10", "P", "session", ["x"], ""))
+
+    def test_blank_issue_key_normalizes_to_none(self):
+        rec = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",
+                                 state="confirmed", origin_ref=["x"], issue_key="  ")
+        self.assertIsNone(rec.issue_key)
+
+
 if __name__ == "__main__":
     unittest.main()

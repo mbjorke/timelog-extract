@@ -11,7 +11,13 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from core.cli import app
-from core.cli_triage_map_candidates import UrlCandidate, _auto_assign_high, _confidence_rank, build_url_candidates, build_url_candidates_from_gap_days
+from core.cli_triage_map_candidates import (
+    UrlCandidate,
+    _auto_assign_high,
+    _confidence_rank,
+    build_url_candidates,
+    build_url_candidates_from_gap_days,
+)
 
 
 class TriageMapTests(unittest.TestCase):
@@ -174,7 +180,6 @@ class TriageMapTests(unittest.TestCase):
         )
         tmp.close()
         self.addCleanup(lambda: os.unlink(tmp.name))
-        plan = {"days": [{"day": "2026-04-11", "gap": {"unexplained_screen_time_hours": 1.0}}]}
         rows = [
             UrlCandidate("t1", "key-high", "project-alpha", "high", 1.0, 0.1, 3, 1, "2026-04-11", []),
             UrlCandidate("t2", "key-med", "project-beta", "medium", 0.7, 0.2, 3, 1, "2026-04-11", []),

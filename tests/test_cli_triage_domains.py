@@ -9,7 +9,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
-from core.cli_triage_domains import build_domain_project_candidates, _candidate_choice
+from core.cli_triage_domains import _candidate_choice, build_domain_project_candidates
 
 
 class TriageDomainsTests(unittest.TestCase):

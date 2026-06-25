@@ -17,6 +17,7 @@ from core.sanity_bounds import (
     plausibility_warnings,
 )
 
+
 # Span-based stand-in for the 5-arg report wrapper: hours = end - start.
 def _span_hours(events, start, end, _mn, _mp):
     return (end - start).total_seconds() / 3600.0

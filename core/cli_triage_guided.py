@@ -28,7 +28,10 @@ from core.report_nudges import (
     UNCATEGORIZED_NUDGE_THRESHOLD_RATIO,
     uncategorized_hours_by_day,
 )
-from core.triage_domain_signals import is_generic_triage_domain, merged_history_entries_for_canonical
+from core.triage_domain_signals import (
+    is_generic_triage_domain,
+    merged_history_entries_for_canonical,
+)
 
 DEFAULT_GUIDED_RECENT_DAYS = 7
 _DECISIONS_SCHEMA_VERSION = 1

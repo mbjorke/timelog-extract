@@ -1,7 +1,7 @@
 """Regression: AGENTS.md must keep TIMELOG path/time policy."""
 
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 
 def _agents_text() -> str:

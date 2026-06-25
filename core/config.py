@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import getpass
 import json
 import os
 import shutil
 import tempfile
-import getpass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional

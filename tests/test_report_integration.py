@@ -1,7 +1,7 @@
 """Integration-style tests for report aggregation from synthetic events."""
 
-from datetime import datetime, timedelta, timezone
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from timelog_extract import LOCAL_TZ, estimate_hours_by_day, group_by_day
 

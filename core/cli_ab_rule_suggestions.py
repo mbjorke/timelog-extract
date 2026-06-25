@@ -263,6 +263,7 @@ def suggest_rules(
 ):
     """Suggest A/B mapping rules with preview; prompts for project if omitted."""
     from rich.console import Console
+
     from core.report_service import run_timelog_report
 
     warn_deprecated_command(

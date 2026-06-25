@@ -5,8 +5,9 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import chrome_history_paths, collect_chrome
 from chrome_test_support import EPOCH_DELTA_US, insert_visit, make_chrome_db, make_event
+
+from collectors.chrome import chrome_history_paths, collect_chrome
 
 
 class CollectChromeProfilesAndRawTests(unittest.TestCase):

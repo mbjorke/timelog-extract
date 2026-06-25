@@ -10,7 +10,11 @@ from typing import Any
 from rich import box
 from rich.table import Table
 
-from core.git_project_bootstrap import discover_git_project_hints, discover_local_git_repos, parse_github_origin
+from core.git_project_bootstrap import (
+    discover_git_project_hints,
+    discover_local_git_repos,
+    parse_github_origin,
+)
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
 

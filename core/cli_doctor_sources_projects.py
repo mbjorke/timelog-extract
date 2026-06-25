@@ -5,40 +5,48 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import sys
 from collections import defaultdict
 from pathlib import Path
-
-import typer
 from typing import Annotated, Optional
 
-from core.cli_app import app
-from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
-from core.config import (
-    load_profiles,
-    resolve_profile_worklog_paths,
-    resolve_projects_config_path,
-    projects_config_resolution_warnings,
-    resolve_worklog_path,
-)
-from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
-from core.git_project_bootstrap import assess_config_git_coverage
-from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
-from core.doctor_cli_path import add_cli_path_rows
-from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
-from core.doctor_table_checks import DoctorCheckStyle, doctor_check_db, doctor_check_file
+import typer
+
+from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
     lovable_desktop_history_candidates,
 )
-from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 from core.cache_evidence_health import codec_missing_reason
 from core.chromium_cache import CODEC_REINSTALL_HINT
+from core.cli_app import app
+from core.cli_options import TimelogRunOptions
+from core.cli_prompts import prompt_for_timeframe
+from core.config import (
+    default_projects_config_option,
+    load_profiles,
+    projects_config_resolution_warnings,
+    resolve_profile_worklog_paths,
+    resolve_projects_config_path,
+    resolve_worklog_path,
+)
+from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
+from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
+from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
+from core.doctor_table_checks import DoctorCheckStyle, doctor_check_db, doctor_check_file
+from core.git_project_bootstrap import assess_config_git_coverage
+from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
-from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, STYLE_BORDER, STYLE_LABEL, STYLE_MUTED, WARN_ICON
+from outputs.terminal_theme import (
+    FAIL_ICON,
+    NA_ICON,
+    OK_ICON,
+    STYLE_BORDER,
+    STYLE_LABEL,
+    STYLE_MUTED,
+    WARN_ICON,
+)
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 
@@ -91,9 +99,9 @@ def doctor(
         toggl_source (str): Toggl source mode: "auto", "on", or "off" (controls visibility of Toggl checks in the diagnostic output).
         jira_sync (str): Jira sync mode: "auto", "on", or "off" (controls visibility of Jira worklog sync checks in the diagnostic output).
     """
+    from rich import box
     from rich.console import Console
     from rich.table import Table
-    from rich import box
 
     console = Console()
     gh_mode = normalize_doctor_tri_state_mode(github_source, "--github-source")
@@ -369,13 +377,19 @@ def doctor(
 @app.command()
 def sources():
     """Analyze which data sources are contributing the most to your reports."""
-    from core.analytics import estimate_hours_by_day, group_by_day
-    from core.domain import session_duration_hours
-    from core.report_service import LOCAL_TZ, _compute_sessions, _session_duration_hours, run_timelog_report
-    from core.sources import AI_SOURCES
+    from rich import box
     from rich.console import Console
     from rich.table import Table
-    from rich import box
+
+    from core.analytics import estimate_hours_by_day, group_by_day
+    from core.domain import session_duration_hours
+    from core.report_service import (
+        LOCAL_TZ,
+        _compute_sessions,
+        _session_duration_hours,
+        run_timelog_report,
+    )
+    from core.sources import AI_SOURCES
 
     picked = prompt_for_timeframe()
 

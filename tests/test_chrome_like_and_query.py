@@ -8,13 +8,13 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.chrome import _like_escape, query_chrome
-
 from chrome_test_support import (
     EPOCH_DELTA_US,
     insert_visit,
     make_chrome_db,
 )
+
+from collectors.chrome import _like_escape, query_chrome
 
 
 class LikeEscapeTests(unittest.TestCase):

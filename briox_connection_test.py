@@ -16,8 +16,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from urllib import error as urlerror
-from urllib import request as urlrequest
+from urllib import error as urlerror, request as urlrequest
 from urllib.parse import urlencode
 
 SCRIPT_DIR = Path(__file__).parent

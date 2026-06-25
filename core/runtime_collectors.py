@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from collectors import calendar as calendar_collector
-from collectors import lovable_desktop as lovable_desktop_collector
+from collectors import calendar as calendar_collector, lovable_desktop as lovable_desktop_collector
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 
 
@@ -293,7 +292,12 @@ class RuntimeCollectors:
         return merged
 
     def collect_github(self, profiles, dt_from, dt_to):
-        from collectors.github import merge_github_public_events, resolve_github_api_base, resolve_github_usernames
+        """Collect public GitHub activity for configured usernames."""
+        from collectors.github import (
+            merge_github_public_events,
+            resolve_github_api_base,
+            resolve_github_usernames,
+        )
 
         users = resolve_github_usernames(self.cli_args) if self.cli_args is not None else []
         if not users:

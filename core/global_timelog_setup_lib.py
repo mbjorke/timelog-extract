@@ -13,20 +13,19 @@ from pathlib import Path
 
 import questionary
 import typer
-from rich.console import Console
 from rich import box
 from rich.table import Table
 
+from core.config import resolve_projects_config_path
 from core.global_timelog_machine_setup import run_global_timelog_setup
 from core.onboarding_guidance import build_setup_next_steps, print_next_steps
-from core.config import resolve_projects_config_path
 from core.setup_github_env import configure_github_env_for_setup
 from core.setup_integration_env import (
     configure_jira_env_for_setup,
     configure_toggl_env_for_setup,
 )
-from core.setup_projects_config_bootstrap import ensure_projects_config
 from core.setup_project_identity_wizard import run_project_identity_wizard
+from core.setup_projects_config_bootstrap import ensure_projects_config
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 

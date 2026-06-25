@@ -6,7 +6,6 @@ import unicodedata
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Keep scope tight to user-facing CLI/report surfaces.

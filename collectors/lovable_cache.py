@@ -10,8 +10,8 @@ from typing import Callable
 from urllib.parse import unquote_plus
 
 from collectors.lovable_desktop import (
-    SOURCE_NAME,
     _LOVABLE_PROJECT_UUID_RE,
+    SOURCE_NAME,
     _format_lovable_event_detail,
     _is_analytics_uuid_context,
     _merge_storage_events,

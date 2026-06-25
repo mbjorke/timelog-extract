@@ -9,7 +9,11 @@ from typing import Any, Iterable
 import questionary
 from rich.panel import Panel
 
-from core.config import backup_projects_config_if_exists, load_projects_config_payload, save_projects_config_payload
+from core.config import (
+    backup_projects_config_if_exists,
+    load_projects_config_payload,
+    save_projects_config_payload,
+)
 from core.mapping_assistant import reload_projects_after_evidence_mapping
 from core.setup_project_identity_candidates import print_customer_candidates_table
 from outputs.cli_heroes import print_command_hero

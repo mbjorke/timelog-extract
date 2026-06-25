@@ -5,12 +5,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from core.chromium_cache import codec_available
 from collectors.claude_desktop_events import (
     CLAUDE_DESKTOP_CODE_SOURCE,
     claude_events_cache_status,
     collect_claude_desktop_code,
 )
+from core.chromium_cache import codec_available
 
 _ENTRY_MAGIC = 0xFCFB6D1BA7725C30
 _EOF_MAGIC = 0xF4FA6F45970D41D8

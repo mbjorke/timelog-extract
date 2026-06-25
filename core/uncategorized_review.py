@@ -6,13 +6,12 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from core.tracked_url_policy import is_multi_tenant_tracked_url_host
 from core.triage_noise import (
     TRIAGE_NOISE_DOMAINS,
     is_uncategorized_noise_detail,
     is_uncategorized_noise_term,
 )
-from core.tracked_url_policy import is_multi_tenant_tracked_url_host
-
 
 _URL_RE = re.compile(r"https?://[^\s)>\"]+")
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9._/-]{2,}", re.IGNORECASE)

@@ -12,8 +12,10 @@ import questionary
 
 # Re-exported under the historical private names for backward compatibility
 # (tests and callers import these from this module).
-from core.setup_shell_profile import shell_profile_path as _shell_profile_path
-from core.setup_shell_profile import upsert_export as _upsert_export
+from core.setup_shell_profile import (
+    shell_profile_path as _shell_profile_path,
+    upsert_export as _upsert_export,
+)
 
 _GH_TIMEOUT_SECONDS = 10
 

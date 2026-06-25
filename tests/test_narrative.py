@@ -1,7 +1,7 @@
 """Tests for rule-based executive narrative."""
 
-from datetime import datetime, timezone
 import unittest
+from datetime import datetime, timezone
 
 from outputs.narrative import build_narrative_lines
 

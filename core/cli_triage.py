@@ -447,7 +447,6 @@ def triage(
             if str(profile.get("name", "")).strip()
         }
     )
-    projects_payload = load_projects_config_payload(Path(projects_config))
     applied_total = 0
     for row in days:
         day = str(row.get("day"))
@@ -493,7 +492,6 @@ def triage(
         applied_total += applied
         console.print(f"[green]Applied[/green] {applied} mapping(s) for {day} -> {target}")
         profiles = load_triage_profiles(projects_config)
-        projects_payload = load_projects_config_payload(Path(projects_config))
     console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
     console.print(_render_triage_next_steps(projects_config))
 

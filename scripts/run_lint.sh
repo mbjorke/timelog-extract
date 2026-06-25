@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional local lint/format gate (Ruff). Not in CI yet — see CONTRIBUTING.md.
+# Lint/format gate (Ruff). Enforced in CI via run_autotests.sh (check only).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

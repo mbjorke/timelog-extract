@@ -76,7 +76,7 @@ def run_setup_evidence_mapping(console, *, config_path: Path, dry_run: bool) -> 
         dt_to=getattr(report, "dt_to", None),
     )
     if review.change_count() == 0:
-        console.print(f"[dim]No suggested project mapping changes in the last 7 days.[/dim]")
+        console.print("[dim]No suggested project mapping changes in the last 7 days.[/dim]")
         return 0
 
     import questionary

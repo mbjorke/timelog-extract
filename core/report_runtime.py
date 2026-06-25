@@ -10,24 +10,26 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from collectors import (
+    ai_logs as ai_logs_collector,
+    antigravity as antigravity_collector,
+    chrome as chrome_collector,
+    cursor as cursor_collector,
+    github as github_collector,
+    mail as mail_collector,
+    timelog as timelog_collector,
+    toggl as toggl_collector,
+    windsurf as windsurf_collector,
+)
+from core.collector_registry import build_collector_specs
+from core.config import resolve_profile_worklog_paths
 from core.noise_profiles import (
     DEFAULT_LOVABLE_NOISE_PROFILE,
     DEFAULT_NOISE_PROFILE,
     LOVABLE_NOISE_PROFILES,
     NOISE_PROFILES,
 )
-from core.config import resolve_profile_worklog_paths
-
-from collectors import ai_logs as ai_logs_collector
-from collectors import antigravity as antigravity_collector
-from collectors import chrome as chrome_collector
-from collectors import cursor as cursor_collector
-from collectors import windsurf as windsurf_collector
-from collectors import github as github_collector
-from collectors import mail as mail_collector
-from collectors import timelog as timelog_collector
-from collectors import toggl as toggl_collector
-from core.collector_registry import build_collector_specs
 from core.pipeline import collect_all_events
 from core.runtime_collectors import RuntimeCollectors
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from datetime import datetime, timezone
 from typing import Any
 
 from core.setup_project_identity_candidates import _normalize_github_slug_hint
@@ -346,7 +345,7 @@ def cluster_repo_families(slugs: set[str]) -> list[set[str]]:
     return clusters
 
 
-from core.github_slug_activity import (  # noqa: E402  re-export for callers
+from core.github_slug_activity import (  # noqa: E402, F401  re-export for callers
     collect_profile_activity_from_events,
     collect_slug_activity_from_events,
     collect_slug_last_epoch_from_events,
@@ -355,3 +354,4 @@ from core.github_slug_activity import (  # noqa: E402  re-export for callers
     merge_slug_activity,
     suggest_project_from_slug_activity,
 )
+

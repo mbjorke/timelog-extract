@@ -232,7 +232,6 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
         # else resolved from the session cwd when it is a local repo path.
         slug = meta.get(sid, {}).get("slug", "") or resolve_path_repo_slug(acc["cwd_path"])
         meaningful = _meaningful_label(title)
-        label = meaningful or f"Code session {sid[:20]}"
         for cluster in _clusters(acc["stamps"]):
             turns = sum(1 for _ts, is_turn in cluster if is_turn)
             if turns == 0:

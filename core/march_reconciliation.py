@@ -1,8 +1,8 @@
 """Backward-compatible wrapper; prefer `core.calibration.reconciliation`."""
 
 from core.calibration.reconciliation import (
-    ReconciliationResult,
     GroupReconciliationResult,
+    ReconciliationResult,
     evaluate_reconciliation,
 )
 

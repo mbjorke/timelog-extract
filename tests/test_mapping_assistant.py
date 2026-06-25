@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import unittest
-from datetime import datetime, timezone
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-
 import json
 import tempfile
+import unittest
+from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from core.mapping_assistant import (
     apply_mapping_changes,

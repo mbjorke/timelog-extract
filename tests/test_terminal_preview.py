@@ -61,6 +61,7 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertEqual(len(picked), 3)
 
     def test_footer_never_says_and_n_more_for_evidence(self):
+        """Noise-only hidden rows get an IDE-log footer, not an 'and N more' cap."""
         order = ["Cursor"]
         base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         session = [
@@ -115,6 +116,30 @@ class TerminalPreviewTests(unittest.TestCase):
         summary = session_preview_omitted_summary(session, picked)
         self.assertIsNotNone(summary)
         self.assertIn("IDE log", summary)
+
+    def test_footer_skips_misleading_ide_label_when_evidence_also_hidden(self):
+        """Mixed hidden rows must not be summarized as pure IDE log noise."""
+        order = ["A", "B"]
+        base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        session = [
+            {
+                "source": "A",
+                "local_ts": base.replace(minute=i),
+                "project": "P",
+                "detail": f"evidence-{i}",
+            }
+            for i in range(3)
+        ] + [
+            {
+                "source": "Cursor",
+                "local_ts": base.replace(minute=10),
+                "project": "P",
+                "detail": "timelog-extract — hooks.json — noise",
+            }
+        ]
+        picked = pick_session_preview_events(session, order, max_lines=2)
+        summary = session_preview_omitted_summary(session, picked)
+        self.assertIsNone(summary)
 
     def test_high_signal_lovable_not_capped_by_noise(self):
         order = ["Lovable (desktop)", "Cursor"]

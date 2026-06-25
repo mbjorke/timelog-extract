@@ -9,7 +9,11 @@ from typing import Any
 
 from core.events import event_anchors
 from core.git_activity_discovery import collect_git_command_slug_hits
-from core.git_project_bootstrap import build_repo_project_seed, discover_local_git_repos, suggest_bootstrap_root
+from core.git_project_bootstrap import (
+    build_repo_project_seed,
+    discover_local_git_repos,
+    suggest_bootstrap_root,
+)
 from core.github_slug_match import (
     collect_profile_activity_from_events,
     collect_slug_activity_from_events,

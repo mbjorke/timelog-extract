@@ -8,8 +8,6 @@ from pathlib import Path
 from collectors.cursor_agent_turns import collect_cursor_agent_turns
 from collectors.cursor_composer import collect_cursor_composer_sessions, load_cursor_workspaces
 from core.triage_noise import is_uncategorized_noise_detail
-from urllib.parse import unquote, urlparse
-
 
 # Frequent Cursor diagnostics that are operational noise, not user work intent.
 # Machine heartbeats/pollers fire on timers for every open workspace whether or

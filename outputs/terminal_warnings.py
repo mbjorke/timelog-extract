@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from core.cache_evidence_health import codec_blocked_sources, codec_warning_lines
 from core.evidence_diagnostics import screen_time_incomplete_warnings

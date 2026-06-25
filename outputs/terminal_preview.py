@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Sequence
 
 from rich.text import Text
 
-from core.sources import WORKLOG_SOURCE
 from core.events import event_anchors
+from core.sources import WORKLOG_SOURCE
 
 _CURSOR_PREVIEW_NOISE_MARKERS = (
     ".git —",
@@ -167,9 +167,10 @@ def session_preview_omitted_summary(
         return None
     shown = {id(e) for e in display_events}
     hidden = [e for e in session_events if id(e) not in shown]
+    if not hidden:
+        return None
     noise_hidden = sum(1 for e in hidden if _is_low_signal_preview_event(e))
-    other_hidden = len(hidden) - noise_hidden
-    if not noise_hidden:
+    if noise_hidden != len(hidden):
         return None
     noun = "line" if noise_hidden == 1 else "lines"
     return f"… {noise_hidden} IDE log {noun} hidden — omit --compact for full detail"

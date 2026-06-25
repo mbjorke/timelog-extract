@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
@@ -113,6 +112,7 @@ def evidence_check(
 ):
     """Quick evidence-health check for source coverage vs Screen Time."""
     from rich.console import Console
+
     from core.report_service import run_timelog_report
 
     console = Console()

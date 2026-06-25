@@ -8,9 +8,10 @@ import shutil
 import site
 import sys
 from pathlib import Path
+
 from rich.table import Table
 
-from outputs.terminal_theme import OK_ICON, WARN_ICON, STYLE_MUTED
+from outputs.terminal_theme import OK_ICON, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 

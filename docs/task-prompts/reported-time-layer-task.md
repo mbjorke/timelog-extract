@@ -214,7 +214,7 @@ Python file over 500 lines.
   (this PR); Phase 3b (per-issue mapping) planned/next; Phases 4–5 + Calendar
   not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-06-25
+- last_updated_at: 2026-06-26
 - implementation.pr: #186 (merged), #187 (merged), + this PR (Phase 2b)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
   task/reported-auto-report

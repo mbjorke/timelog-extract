@@ -53,7 +53,9 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         return obj
 
     def test_maps_dir_to_existing_project(self):
-        cfg = self._cfg({"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]})
+        cfg = self._cfg(
+            {"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]}
+        )
         console = MagicMock()
         with patch("questionary.select", return_value=self._fake_select("gittan")):
             added = run_interactive_anchor_flow(
@@ -71,7 +73,9 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
     def test_create_new_project_choice(self):
         cfg = self._cfg({"projects": []})
         console = MagicMock()
-        with patch("questionary.select", return_value=self._fake_select("Create new project: newrepo")):
+        with patch(
+            "questionary.select", return_value=self._fake_select("Create new project: newrepo")
+        ):
             added = run_interactive_anchor_flow(
                 console, [{"kind": "dir", "value": "newrepo", "hits": 40}], [], str(cfg)
             )
@@ -81,7 +85,9 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         self.assertIn("newrepo", names)
 
     def test_skip_leaves_config_unchanged(self):
-        cfg = self._cfg({"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]})
+        cfg = self._cfg(
+            {"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]}
+        )
         before = cfg.read_text(encoding="utf-8")
         console = MagicMock()
         with patch("questionary.select", return_value=self._fake_select("Skip")):
@@ -95,12 +101,17 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
         self.assertEqual(cfg.read_text(encoding="utf-8"), before)
 
     def test_stop_halts_remaining_anchors(self):
-        cfg = self._cfg({"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]})
+        cfg = self._cfg(
+            {"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]}
+        )
         console = MagicMock()
         with patch("questionary.select", return_value=self._fake_select("Stop mapping")):
             added = run_interactive_anchor_flow(
                 console,
-                [{"kind": "dir", "value": "a", "hits": 50}, {"kind": "branch", "value": "b", "hits": 40}],
+                [
+                    {"kind": "dir", "value": "a", "hits": 50},
+                    {"kind": "branch", "value": "b", "hits": 40},
+                ],
                 [{"name": "gittan", "match_terms": ["keep"]}],
                 str(cfg),
             )
@@ -121,14 +132,32 @@ class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
             profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
             config_path="/tmp/projects.json",
         )
-        with patch("core.anchor_nudge.should_prompt", return_value=True), patch(
-            "questionary.confirm"
-        ) as confirm, patch(
-            "core.anchor_nudge.run_interactive_anchor_flow", return_value=1
-        ) as run_flow:
+        with (
+            patch("core.anchor_nudge.should_prompt", return_value=True),
+            patch("questionary.confirm") as confirm,
+            patch("core.anchor_nudge.run_interactive_anchor_flow", return_value=1) as run_flow,
+        ):
             confirm.return_value.ask.return_value = True
             self.assertTrue(maybe_run_interactive_anchor_mapping(console, report))
             run_flow.assert_called_once()
+
+    def test_uses_precomputed_anchors_without_rescanning_report(self):
+        console = MagicMock()
+        report = SimpleNamespace(
+            all_events=[{"anchors": {"label": "session alpha"}} for _ in range(25)],
+            profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
+            config_path="/tmp/projects.json",
+        )
+        anchors = [{"kind": "label", "value": "session alpha", "hits": 25}]
+        with (
+            patch("core.anchor_nudge.should_prompt", return_value=True),
+            patch("core.report_nudges.unanchored_anchors_for_report") as rescan,
+            patch("questionary.confirm") as confirm,
+            patch("core.anchor_nudge.run_interactive_anchor_flow", return_value=0),
+        ):
+            confirm.return_value.ask.return_value = False
+            maybe_run_interactive_anchor_mapping(console, report, anchors=anchors)
+        rescan.assert_not_called()
 
 
 if __name__ == "__main__":

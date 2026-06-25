@@ -13,7 +13,9 @@ from core.cli_options import TimelogRunOptions
 from core.cli_report_status_helpers import (
     build_report_options as _build_report_options,
     capture_shadow_log_line as _capture_shadow_log_line,
+    print_status_anchor_nudge as _print_status_anchor_nudge,
     resolve_timeframe_args as _resolve_timeframe_args,
+    run_status_timelog_report as _run_status_timelog_report,
 )
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
@@ -310,7 +312,7 @@ def status(
 
     from core.domain import session_duration_hours
     from core.project_hours import count_project_sessions_from_overall_days
-    from core.report_service import AI_SOURCES, run_timelog_report
+    from core.report_service import AI_SOURCES
     from outputs.cli_heroes import print_command_hero
     from outputs.terminal_theme import (
         CLR_GREEN,
@@ -359,7 +361,14 @@ def status(
     console.print(f"[bold {CLR_TEXT_SOFT}]Gittan Status — {title_date}[/bold {CLR_TEXT_SOFT}]\n")
 
     try:
-        report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+        report = _run_status_timelog_report(
+            console,
+            projects_config=options.projects_config,
+            date_from=options.date_from,
+            date_to=options.date_to,
+            options=options,
+            title_date=title_date,
+        )
         # Capture before the empty-result early return so --shadow-log on still
         # records observed evidence even when nothing is categorized this period.
         shadow_line = _capture_shadow_log_line(shadow_log, report.all_events)
@@ -465,16 +474,7 @@ def status(
         nudge = build_unexplained_gap_nudge(report)
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
-        if anchor_nudge:
-            from core.report_postamble import status_anchor_warn_line
-
-            warn_line = status_anchor_warn_line(report, console=console, ignore_quiet=True)
-            if warn_line:
-                # Interactive mapping lives in `gittan map`; status stays a read-only snapshot.
-                console.print(f"[{CLR_VALUE_ORANGE}]{warn_line}[/{CLR_VALUE_ORANGE}]")
-                console.print(
-                    f"[{STYLE_MUTED}]Run `gittan map` to review and apply project mappings.[/{STYLE_MUTED}]"
-                )
+        _print_status_anchor_nudge(console, report, anchor_nudge=anchor_nudge)
         timelog_projects = sorted(
             {
                 str(event.get("project", "")).strip()

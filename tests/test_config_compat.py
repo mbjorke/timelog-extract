@@ -89,6 +89,13 @@ class ConfigCompatibilityTests(unittest.TestCase):
         profile = normalize_profile({"name": "Demo"})
         self.assertNotIn("toggl_project_id", profile)
 
+    def test_normalize_profile_auto_report_requires_real_bool(self):
+        self.assertTrue(normalize_profile({"name": "Demo", "auto_report": True})["auto_report"])
+        self.assertFalse(normalize_profile({"name": "Demo", "auto_report": False})["auto_report"])
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "auto_report": "true"})
+        self.assertNotIn("auto_report", normalize_profile({"name": "Demo"}))
+
     def test_normalize_profile_supports_canonical_project_and_aliases(self):
         profile = normalize_profile(
             {

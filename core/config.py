@@ -219,7 +219,10 @@ def normalize_profile(raw):
     # Opt-in: auto-confirm this project's observed time into reported_time without
     # manual review (the user pre-authorizes a well-mapped project — not silent).
     if "auto_report" in raw:
-        profile["auto_report"] = bool(raw.get("auto_report"))
+        auto_report = raw.get("auto_report")
+        if not isinstance(auto_report, bool):
+            raise ValueError("auto_report must be a boolean (true/false)")
+        profile["auto_report"] = auto_report
     return profile
 
 

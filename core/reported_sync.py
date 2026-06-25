@@ -19,10 +19,13 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# The fallback project name (matches the report pipeline's classify fallback).
+UNCATEGORIZED = "Uncategorized"
+
 
 def _dominant_project(session_events: List[Dict[str, Any]]) -> str:
-    counts: Counter = Counter(str(e.get("project") or "Uncategorized") for e in session_events)
-    return counts.most_common(1)[0][0] if counts else "Uncategorized"
+    counts: Counter = Counter(str(e.get("project") or UNCATEGORIZED) for e in session_events)
+    return counts.most_common(1)[0][0] if counts else UNCATEGORIZED
 
 
 def _session_seconds(session_events, start, end, args) -> int:
@@ -87,7 +90,7 @@ def split_auto_confirm(
     to_confirm: List[ReportedTimeRecord] = []
     left: List[ReportedTimeRecord] = []
     for rec in proposals:
-        if rec.project in auto and rec.project != "Uncategorized":
+        if rec.project in auto and rec.project != UNCATEGORIZED:
             to_confirm.append(
                 ReportedTimeRecord(
                     date=rec.date,

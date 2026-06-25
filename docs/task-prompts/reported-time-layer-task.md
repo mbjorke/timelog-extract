@@ -120,7 +120,7 @@ Python file over 500 lines.
 
 ## Traceability
 
-- story_id: GH-TBD (reported/approved time layer)
+- story_id: GH-186 (reported/approved time layer epic; lead PR, PR-tracked)
 - spec_status: draft
 - implementation_status: in progress — Phase 1 built (#186), Phase 2 built (#187),
   Phase 2b (auto-reporting) built (this PR); Phases 3–5 + Calendar not built

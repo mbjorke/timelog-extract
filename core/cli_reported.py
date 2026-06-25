@@ -84,7 +84,7 @@ def reported_sync(
         f"{already} already reported; {len(left)} left for review (`gittan reported review`)."
     )
     if len(left) and not to_confirm:
-        typer.echo("Tip: set `\"auto_report\": true` on a project in timelog_projects.json to auto-confirm its time.")
+        typer.echo(f"Tip: set `\"auto_report\": true` on a project in {projects_config} to auto-confirm its time.")
 
 
 @reported_app.command("review")

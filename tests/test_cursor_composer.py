@@ -10,12 +10,19 @@ from unittest.mock import patch
 
 from core.domain import classify_project
 from collectors.cursor_composer import (
+    _branch_reflected_in_label,
     _composer_activity_span_ms,
     collect_cursor_composer_sessions,
 )
 
 
 class CursorComposerTests(unittest.TestCase):
+    def test_branch_reflected_in_label_uses_tokens_not_substrings(self):
+        self.assertTrue(_branch_reflected_in_label("timelog-extract", "timelog-extract"))
+        self.assertTrue(_branch_reflected_in_label("main", "work on @main fixes"))
+        self.assertFalse(_branch_reflected_in_label("a", "timelog-extract"))
+        self.assertFalse(_branch_reflected_in_label("feature-x", "My feature work"))
+
     def test_collect_cursor_composer_sessions_emits_label_anchor(self):
         ts_ms = int(datetime(2026, 6, 11, 9, 0, tzinfo=timezone.utc).timestamp() * 1000)
         payload = {

@@ -43,6 +43,7 @@ def normalize_worklog_detail(detail: str) -> str:
 def enrich_worklog_session_labels(
     events: list[dict[str, Any]],
     *,
+    uncategorized: str = "Uncategorized",
     lookback_seconds: int = _DEFAULT_LOOKBACK_SECONDS,
 ) -> None:
     """Attach the nearest prior AI session title to commit worklog rows (in-place)."""
@@ -56,6 +57,8 @@ def enrich_worklog_session_labels(
         if not is_commit_worklog_detail(detail):
             continue
         project = str(event.get("project") or "")
+        if project == uncategorized:
+            continue
         ts = event["timestamp"]
         label = _nearest_session_label(ordered, idx, project=project, before_ts=ts, lookback_seconds=lookback_seconds)
         if not label:
@@ -70,6 +73,7 @@ def enrich_worklog_session_labels(
 def enrich_github_session_labels(
     events: list[dict[str, Any]],
     *,
+    uncategorized: str = "Uncategorized",
     lookback_seconds: int = _DEFAULT_LOOKBACK_SECONDS,
 ) -> None:
     """Attach the nearest prior AI session title to GitHub activity rows (in-place)."""
@@ -80,6 +84,8 @@ def enrich_github_session_labels(
         if str(event_anchors(event).get("label") or "").strip():
             continue
         project = str(event.get("project") or "")
+        if project == uncategorized:
+            continue
         ts = event["timestamp"]
         label = _nearest_session_label(ordered, idx, project=project, before_ts=ts, lookback_seconds=lookback_seconds)
         if not label:
@@ -92,11 +98,16 @@ def enrich_github_session_labels(
 def enrich_delivery_session_labels(
     events: list[dict[str, Any]],
     *,
+    uncategorized: str = "Uncategorized",
     lookback_seconds: int = _DEFAULT_LOOKBACK_SECONDS,
 ) -> None:
     """Worklog commits and GitHub rows inherit the nearest prior chat session title."""
-    enrich_worklog_session_labels(events, lookback_seconds=lookback_seconds)
-    enrich_github_session_labels(events, lookback_seconds=lookback_seconds)
+    enrich_worklog_session_labels(
+        events, uncategorized=uncategorized, lookback_seconds=lookback_seconds
+    )
+    enrich_github_session_labels(
+        events, uncategorized=uncategorized, lookback_seconds=lookback_seconds
+    )
 
 
 def _nearest_session_label(

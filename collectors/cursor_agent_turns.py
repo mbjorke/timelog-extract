@@ -22,6 +22,7 @@ from typing import Callable
 
 from collectors.ai_logs import _anchors, _meaningful_label
 from collectors.cursor_composer import (
+    _branch_reflected_in_label,
     _composer_classification_haystack,
     _composer_git_context,
     _composer_workspace_path,
@@ -198,8 +199,8 @@ def collect_cursor_agent_turns(
         for cluster in _clusters(stamps):
             cluster_turns = len(cluster)
             cluster_detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
-            if branch and branch.lower() not in (name or label or "").lower():
-                cluster_detail += f" · @{branch}"
+            if branch and not _branch_reflected_in_label(branch, name or label or ""):
+                cluster_detail += f" (@{branch})"
             for ts in _thin(cluster):
                 results.append(
                     make_event(

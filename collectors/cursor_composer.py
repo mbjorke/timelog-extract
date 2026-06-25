@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,24 @@ _COMPOSER_TOUCH_MERGE_MINUTES = 14
 _COMPOSER_SPILLED_DAY_EXTENSION_MS = 4 * 60 * 60 * 1000
 # Branch touches shortly after midnight imply the session ran through the evening.
 _COMPOSER_SPILLED_GRACE_MS = 6 * 60 * 60 * 1000
+
+
+def _branch_reflected_in_label(branch: str, text: str) -> bool:
+    """True when branch is already represented in the session title/label text."""
+    token = branch.lower().strip()
+    if not token or not text:
+        return False
+    low = text.lower().strip()
+    if f"@{token}" in low:
+        return True
+    if token == low:
+        return True
+    text_parts = {part for part in re.split(r"[\s·/\-_]+", low) if part}
+    branch_parts = [part for part in re.split(r"[\s·/\-_]+", token) if part]
+    if not branch_parts:
+        return False
+    return all(part in text_parts for part in branch_parts)
+
 # Credit most of the remaining calendar day (not full midnight fabricate).
 _COMPOSER_SPILLED_DAY_FRACTION = 0.88
 
@@ -377,7 +396,7 @@ def collect_cursor_composer_sessions(
         haystack = _composer_classification_haystack(composer, title=name)
         project = classify_project(haystack, profiles)
         context_bits: list[str] = []
-        if branch and branch.lower() not in (name or label or "").lower():
+        if branch and not _branch_reflected_in_label(branch, name or label or ""):
             context_bits.append(f"@{branch}")
         detail = " · ".join(context_bits)[:100]
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)

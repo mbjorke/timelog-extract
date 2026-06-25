@@ -19,8 +19,11 @@ from collectors.calendar import (
 _COCOA_EPOCH_UNIX = datetime(2001, 1, 1, tzinfo=timezone.utc).timestamp()
 
 
-def _make_event(source, ts, detail, project):
-    return {"source": source, "timestamp": ts, "detail": detail, "project": project}
+def _make_event(source, ts, detail, project, anchors=None):
+    event = {"source": source, "timestamp": ts, "detail": detail, "project": project}
+    if anchors:
+        event["anchors"] = anchors
+    return event
 
 
 def _to_cocoa(dt: datetime) -> float:
@@ -93,9 +96,24 @@ class CalendarCollectorTests(unittest.TestCase):
             out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Calendar")
-            self.assertIn("AXOR OneFlow", out[0]["detail"])
+            self.assertEqual(out[0]["anchors"]["label"], "AXOR OneFlow")
+            self.assertEqual(out[0]["detail"], "[Work] 2.00h")
             self.assertEqual(out[0]["calendar_role"], ROLE_SCHEDULED_CONTEXT)
             self.assertEqual(out[0]["timestamp"], datetime(2026, 4, 1, 8, 0, tzinfo=timezone.utc))
+
+    def test_untitled_event_has_no_label_anchor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, [{
+                "calendar": "Work",
+                "summary": "",
+                "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc),
+            }])
+            out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
+            self.assertEqual(len(out), 1)
+            self.assertNotIn("anchors", out[0])
+            self.assertIn("(no title)", out[0]["detail"])
 
     def test_excludes_all_day_events(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -9,6 +9,26 @@ from typing import Callable, Dict
 from pathlib import Path
 from urllib.parse import urlparse
 
+from collectors.ai_logs import _anchors
+
+
+def split_chrome_tab_title(title: str, *, url: str = "") -> tuple[str | None, str]:
+    """Split GitHub tab titles: ``Pull requests · owner/repo``."""
+    text = (title or "").strip()
+    if not text:
+        return None, ""
+    # Match the real host, not a substring: github.com.evil.com / notgithub.com
+    # contain "github.com" but are not GitHub.
+    host = (urlparse(url or "").hostname or "").lower()
+    if host != "github.com" and not host.endswith(".github.com"):
+        return None, text
+    if " · " in text:
+        lead, tail = text.split(" · ", 1)
+        lead, tail = lead.strip(), tail.strip()
+        if lead and tail:
+            return lead, tail
+    return None, text
+
 
 def _like_escape(value: str) -> str:
     """Escape SQLite LIKE wildcard characters so values match literally.
@@ -301,7 +321,12 @@ def collect_chrome(
     results = []
     for visit_time_cu, url, title in rows:
         ts = chrome_ts(visit_time_cu, epoch_delta_us)
-        detail = (f"{(title or '').strip()} — {url}".strip(" —") if include_all else (title or url))[:240]
+        page_label, page_tail = split_chrome_tab_title((title or "").strip(), url=url or "")
+        if include_all:
+            detail = (f"{page_tail} — {url}".strip(" —") if url else page_tail)[:240]
+        else:
+            detail = (page_tail or url or "")[:240]
         project = classify_project(f"{url} {title}", profiles)
-        results.append(make_event("Chrome", ts, detail, project))
+        anchors = _anchors(label=page_label) if page_label else None
+        results.append(make_event("Chrome", ts, detail, project, anchors=anchors))
     return results

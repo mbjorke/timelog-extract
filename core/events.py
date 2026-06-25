@@ -21,6 +21,15 @@ def dedupe_events(events, event_key_fn):
     return sorted(unique.values(), key=lambda e: e["timestamp"])
 
 
+def _normalize_anchor_value(kind: str, value) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if kind == "label":
+        return text[:80]
+    return text.lower()
+
+
 def make_event(source, ts, detail, project, uncategorized, anchors=None):
     event = {
         "source": source,
@@ -32,11 +41,13 @@ def make_event(source, ts, detail, project, uncategorized, anchors=None):
     # anchors (working directory, git branch, session title) that classification
     # already uses, preserved for audit/suggestion. Never the primary detail.
     # See docs/specs/working-directory-anchor-signal.md.
-    clean = {
-        str(kind): str(value).strip().lower()
-        for kind, value in (anchors or {}).items()
-        if kind and value and str(value).strip()
-    }
+    clean = {}
+    for kind, value in (anchors or {}).items():
+        if not kind:
+            continue
+        normalized = _normalize_anchor_value(str(kind), value)
+        if normalized:
+            clean[str(kind)] = normalized
     if clean:
         event["anchors"] = clean
     return event

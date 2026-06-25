@@ -186,6 +186,7 @@ def collect_public_events(
             haystack = f"{repo} {detail}"
             project = classify_project(haystack, profiles)
             row = make_event(GITHUB_SOURCE, ts, detail, project)
+            row["_github_user"] = username
             eid = ev.get("id")
             if eid is not None:
                 row["_github_event_id"] = str(eid)

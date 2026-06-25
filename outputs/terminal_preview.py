@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Sequence
 
+from rich.text import Text
+
+from core.sources import WORKLOG_SOURCE
 from core.events import event_anchors
 
 _CURSOR_PREVIEW_NOISE_MARKERS = (
@@ -27,17 +30,85 @@ _CURSOR_PREVIEW_NOISE_MARKERS = (
 )
 
 
-def format_event_detail(event: dict) -> str:
-    """Prefer session title over IDE log tails; composer rows show title only."""
+def _strip_label_from_detail(label: str, detail: str) -> str:
+    """Drop collector echoes of the session title from the detail tail."""
+    text = (detail or "").strip()
+    if not text or not label:
+        return text
+    low_label = label.casefold()
+    low_text = text.casefold()
+    if low_text == low_label:
+        return ""
+    if low_text.startswith("code session:"):
+        body = text.split(":", 1)[1].strip()
+        if body.casefold().startswith(low_label):
+            body = body[len(label) :].lstrip()
+            if body.startswith(("—", "·", "-")):
+                body = body[1:].lstrip()
+            return body
+    if low_text.startswith(low_label):
+        rest = text[len(label) :].lstrip()
+        if rest.startswith(("·", "—", "-", ":")):
+            rest = rest[1:].lstrip()
+        return rest
+    parts = [part.strip() for part in text.split("·")]
+    if parts and parts[0].casefold() == low_label:
+        return " · ".join(parts[1:]).strip()
+    return text
+
+
+def event_detail_parts(event: dict) -> tuple[str, str]:
+    """Return (label_prefix, detail) for styled terminal rows."""
     detail = str(event.get("detail") or "")
     label = str(event_anchors(event).get("label") or "").strip()
     if not label:
+        return "", detail
+    remainder = _strip_label_from_detail(label, detail)
+    return label, remainder
+
+
+def format_event_detail(event: dict) -> str:
+    """Prefer session title over IDE log tails; composer rows show title only."""
+    label, detail = event_detail_parts(event)
+    if not label:
         return detail
-    if detail.lower().strip() == label:
-        return detail
-    if label in detail.lower():
-        return detail
-    return f"{label} — {detail}" if detail else label
+    sep = ", " if str(event.get("source") or "") == WORKLOG_SOURCE else ": "
+    return f"{label}{sep}{detail}" if detail else label
+
+
+def assemble_timeline_event_detail(
+    event: dict,
+    *,
+    label_style: str,
+    detail_style: str,
+) -> Text:
+    label, detail = event_detail_parts(event)
+    if label:
+        if detail:
+            sep = ", " if str(event.get("source") or "") == WORKLOG_SOURCE else ": "
+            return Text.assemble((f"{label}{sep}", label_style), (detail, detail_style))
+        return Text(label, style=label_style)
+    return Text(format_event_detail(event), style=detail_style)
+
+
+def assemble_timeline_event_line(
+    event: dict,
+    *,
+    source_label: str,
+    source_style: str,
+    time_style: str,
+    project_style: str,
+    label_style: str,
+    detail_style: str,
+) -> Text:
+    return Text.assemble(
+        (f"{event['local_ts'].strftime('%H:%M')} ", time_style),
+        (f"{source_label} ", source_style),
+        (f"{event['project']} ", project_style),
+        assemble_timeline_event_detail(
+            event, label_style=label_style, detail_style=detail_style
+        ),
+    )
 
 
 def _is_high_signal_preview_event(event: Dict[str, Any]) -> bool:

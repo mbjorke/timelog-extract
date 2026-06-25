@@ -61,8 +61,8 @@ _GENERIC_LABELS = {"session", "untitled", "new session", "new chat", "conversati
 
 def _meaningful_label(name) -> str | None:
     """Session title usable as an anchor, or None for generic placeholders."""
-    label = str(name or "").strip().lower()
-    if not label or label in _GENERIC_LABELS:
+    label = str(name or "").strip()
+    if not label or label.lower() in _GENERIC_LABELS:
         return None
     return label[:80]
 
@@ -94,6 +94,42 @@ def _claude_jsonl_is_noise(obj: dict, detail: str) -> bool:
     if stripped == typ:
         return True
     return False
+
+
+def _cli_session_id_from_jsonl(jsonl_file: Path) -> str:
+    """Map a Claude Code jsonl path to the Desktop session id (cliSessionId)."""
+    if jsonl_file.parent.name == "subagents":
+        return jsonl_file.parent.parent.name
+    return jsonl_file.stem
+
+
+def _load_claude_code_session_index(home: Path) -> dict[str, dict]:
+    """Index Desktop claude-code-sessions metadata by cliSessionId."""
+    sessions_dir = home / "Library" / "Application Support" / "Claude" / "claude-code-sessions"
+    index: dict[str, dict] = {}
+    if not sessions_dir.is_dir():
+        return index
+    for json_file in sessions_dir.glob("**/local_*.json"):
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        cli_id = str(data.get("cliSessionId") or "").strip()
+        if not cli_id:
+            continue
+        title = str(data.get("title") or "").strip()
+        cwd = str(data.get("cwd") or data.get("originCwd") or "").strip()
+        slug = resolve_path_repo_slug(cwd) if cwd else ""
+        index[cli_id] = {
+            "title": title,
+            "label": _meaningful_label(title),
+            "cwd": cwd,
+            "slug": slug,
+            "dir": _cwd_leaf({"cwd": cwd}) if cwd else None,
+        }
+    return index
 
 
 def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
@@ -146,80 +182,44 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
     projects_dir = home / ".claude" / "projects"
     if not projects_dir.exists():
         return results
+    session_index = _load_claude_code_session_index(home)
     for proj_dir in projects_dir.iterdir():
         if not proj_dir.is_dir():
             continue
         dir_name = proj_dir.name.lower()
-        for jsonl_file in proj_dir.glob("*.jsonl"):
+        for jsonl_file in proj_dir.rglob("*.jsonl"):
+            cli_id = _cli_session_id_from_jsonl(jsonl_file)
+            meta = session_index.get(cli_id) or {}
+            label = meta.get("label")
+            meta_title = str(meta.get("title") or "")
+            meta_slug = str(meta.get("slug") or "")
+            meta_dir = meta.get("dir")
             for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
                 if _claude_jsonl_is_noise(obj, detail):
                     continue
                 branch = _branch_leaf(obj)
+                cwd = str(obj.get("cwd") or meta.get("cwd") or "") if isinstance(obj, dict) else ""
                 # Worktree-invariant attribution: the remote slug is identical
                 # across worktrees, so a session in a sibling worktree still
                 # classifies to the project even when the path/leaf does not.
-                slug = resolve_path_repo_slug(str(obj.get("cwd") or "")) if isinstance(obj, dict) else ""
+                slug = resolve_path_repo_slug(cwd) if cwd else meta_slug
+                dir_leaf = _cwd_leaf(obj) if isinstance(obj, dict) else None
+                if not dir_leaf:
+                    dir_leaf = meta_dir
                 project = classify_project(
-                    f"{slug} {dir_name} {branch or ''} {detail}", profiles
+                    f"{slug} {dir_name} {meta_title} {branch or ''} {detail}", profiles
                 )
                 results.append(
                     make_event(
                         "Claude Code CLI", ts, detail, project,
-                        anchors=_anchors(repo=slug, dir=_cwd_leaf(obj), branch=branch),
+                        anchors=_anchors(
+                            repo=slug or meta_slug or None,
+                            dir=dir_leaf,
+                            branch=branch,
+                            label=label,
+                        ),
                     )
                 )
-    return results
-
-
-def _claude_session_timestamp_ms(data: dict) -> int | None:
-    for key in ("lastActivityAt", "createdAt"):
-        raw = data.get(key)
-        if raw is None:
-            continue
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            continue
-    return None
-
-
-def _collect_claude_code_session_titles(profiles, dt_from, dt_to, home, classify_project, make_event):
-    """Session titles from Claude Desktop claude-code-sessions (label anchor)."""
-    sessions_dir = home / "Library" / "Application Support" / "Claude" / "claude-code-sessions"
-    if not sessions_dir.is_dir():
-        return []
-    results = []
-    for json_file in sessions_dir.glob("**/local_*.json"):
-        try:
-            data = json.loads(json_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(data, dict):
-            continue
-        title = str(data.get("title") or "").strip()
-        label = _meaningful_label(title)
-        if not label:
-            continue
-        ms = _claude_session_timestamp_ms(data)
-        if ms is None:
-            continue
-        try:
-            ts = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
-        except (OSError, OverflowError, ValueError):
-            continue
-        if not (dt_from <= ts <= dt_to):
-            continue
-        detail = title[:70]
-        project = classify_project(title, profiles)
-        results.append(
-            make_event(
-                "Claude Desktop",
-                ts,
-                detail,
-                project,
-                anchors=_anchors(label=label),
-            )
-        )
     return results
 
 
@@ -233,11 +233,6 @@ def collect_claude_desktop(profiles, dt_from, dt_to, home, classify_project, mak
                     continue
                 project = classify_project(detail, profiles)
                 results.append(make_event("Claude Desktop", ts, detail, project))
-    results.extend(
-        _collect_claude_code_session_titles(
-            profiles, dt_from, dt_to, home, classify_project, make_event
-        )
-    )
     return results
 
 

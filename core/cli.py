@@ -21,6 +21,7 @@ from core import cli_evidence  # noqa: F401
 from core import cli_global_timelog_setup  # noqa: F401
 from core import cli_jira_sync  # noqa: F401
 from core import cli_toggl_sync  # noqa: F401
+from core import cli_reported  # noqa: F401
 from core import cli_projects  # noqa: F401
 from core import cli_projects_audit  # noqa: F401
 from core import cli_report_status  # noqa: F401

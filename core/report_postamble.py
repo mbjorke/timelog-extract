@@ -72,7 +72,8 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
             "[bold blue]Checking unmapped activity anchors (working dirs, branches, titles)…[/]",
         ):
             if _wants_status(report):
-                mapped_interactively = maybe_run_interactive_anchor_mapping(console, report)
+                if not maybe_run_interactive_anchor_mapping(console, report):
+                    anchors_nudge = build_unanchored_anchors_nudge(report)
             else:
                 anchors_nudge = build_unanchored_anchors_nudge(report)
         if anchors_nudge:

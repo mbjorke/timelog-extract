@@ -55,6 +55,7 @@ class JiraWorklogCandidate:
 class JiraSyncSummary:
     posted: int = 0
     already: int = 0
+    not_found: int = 0
     skipped: int = 0
     unresolved: int = 0
     failed: int = 0

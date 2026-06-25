@@ -9,6 +9,7 @@
 - UX: Chrome splits GitHub tab titles on `·` into orange page label and repo tail (`Pull requests: mbjorke/timelog-extract`); Cursor branch suffix uses `(@branch)` instead of ` · @branch`.
 - UX: Apple Mail and Calendar use the same label/detail split (subject or meeting title in orange; recipient or `[calendar] duration` as muted detail).
 - Fix: Apple Mail reads all Sent messages by default (profile `email` no longer filters From); use `--email` to restrict. Unmapped sent mail stays visible for review instead of being dropped at collection.
+- Fix ([#182](https://github.com/mbjorke/timelog-extract/issues/182)): anchor nudges for session titles/dirs/branches now open interactive mapping via `gittan map` and post-report follow-up (not git-only empty exit).
 - CI: remove unused GitHub Pages deploy workflow (`static.yml`); fix `main` CI file-length gate by extracting doctor table checks.
 - CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate ([#167](https://github.com/mbjorke/timelog-extract/pull/167)).
 - Accuracy: treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.

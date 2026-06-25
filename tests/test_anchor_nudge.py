@@ -6,9 +6,14 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from core.anchor_nudge import run_interactive_anchor_flow, status_anchor_line
+from core.anchor_nudge import (
+    maybe_run_interactive_anchor_mapping,
+    run_interactive_anchor_flow,
+    status_anchor_line,
+)
 from core.config import load_projects_config_payload, save_projects_config_payload
 
 
@@ -101,6 +106,30 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
                 str(cfg),
             )
         self.assertEqual(added, 0)
+
+
+class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
+    def test_skips_when_not_tty(self):
+        console = MagicMock()
+        report = MagicMock()
+        with patch("core.anchor_nudge.should_prompt", return_value=False):
+            self.assertFalse(maybe_run_interactive_anchor_mapping(console, report))
+
+    def test_runs_flow_when_anchors_present(self):
+        console = MagicMock()
+        report = SimpleNamespace(
+            all_events=[{"anchors": {"label": "session alpha"}} for _ in range(25)],
+            profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
+            config_path="/tmp/projects.json",
+        )
+        with patch("core.anchor_nudge.should_prompt", return_value=True), patch(
+            "questionary.confirm"
+        ) as confirm, patch(
+            "core.anchor_nudge.run_interactive_anchor_flow", return_value=1
+        ) as run_flow:
+            confirm.return_value.ask.return_value = True
+            self.assertTrue(maybe_run_interactive_anchor_mapping(console, report))
+            run_flow.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from core.anchor_nudge import should_prompt
+from core.anchor_nudge import maybe_run_interactive_anchor_mapping, should_prompt
 from core.mapping_assistant import (
     maybe_run_mapping_assistant_after_report,
     prepare_mapping_review_after_report,
@@ -71,7 +71,11 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
             report,
             "[bold blue]Checking unmapped activity anchors (working dirs, branches, titles)…[/]",
         ):
-            anchors_nudge = build_unanchored_anchors_nudge(report)
+            if _wants_status(report):
+                if not maybe_run_interactive_anchor_mapping(console, report):
+                    anchors_nudge = build_unanchored_anchors_nudge(report)
+            else:
+                anchors_nudge = build_unanchored_anchors_nudge(report)
         if anchors_nudge:
             console.print(anchors_nudge)
 

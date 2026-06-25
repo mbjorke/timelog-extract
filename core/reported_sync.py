@@ -19,10 +19,13 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# The fallback project name (matches the report pipeline's classify fallback).
+UNCATEGORIZED = "Uncategorized"
+
 
 def _dominant_project(session_events: List[Dict[str, Any]]) -> str:
-    counts: Counter = Counter(str(e.get("project") or "Uncategorized") for e in session_events)
-    return counts.most_common(1)[0][0] if counts else "Uncategorized"
+    counts: Counter = Counter(str(e.get("project") or UNCATEGORIZED) for e in session_events)
+    return counts.most_common(1)[0][0] if counts else UNCATEGORIZED
 
 
 def _session_seconds(session_events, start, end, args) -> int:
@@ -66,3 +69,39 @@ def build_reported_proposals(report: "ReportPayload") -> List[ReportedTimeRecord
             )
         )
     return proposals
+
+
+def auto_report_projects(profiles: List[Dict[str, Any]]) -> set:
+    """Names of projects the user opted into auto-reporting (`auto_report: true`)."""
+    return {str(p.get("name")) for p in (profiles or []) if p.get("auto_report")}
+
+
+def split_auto_confirm(
+    proposals: List[ReportedTimeRecord], profiles: List[Dict[str, Any]]
+) -> Tuple[List[ReportedTimeRecord], List[ReportedTimeRecord]]:
+    """Split observed proposals into ``(auto_confirm, left_for_review)``.
+
+    A proposal auto-confirms when its project is a configured project the user
+    marked ``auto_report: true`` (and is not ``Uncategorized``). The user
+    pre-authorized this per project, so it is not a silent promotion. Everything
+    else is left untouched for manual review.
+    """
+    auto = auto_report_projects(profiles)
+    to_confirm: List[ReportedTimeRecord] = []
+    left: List[ReportedTimeRecord] = []
+    for rec in proposals:
+        if rec.project in auto and rec.project != UNCATEGORIZED:
+            to_confirm.append(
+                ReportedTimeRecord(
+                    date=rec.date,
+                    project=rec.project,
+                    hours=rec.hours,
+                    source=rec.source,
+                    state="confirmed",
+                    origin_ref=list(rec.origin_ref),
+                    note=rec.note,
+                )
+            )
+        else:
+            left.append(rec)
+    return to_confirm, left

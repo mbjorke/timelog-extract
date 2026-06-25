@@ -17,7 +17,7 @@ import typer
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import default_projects_config_option
-from core.reported_sync import build_reported_proposals
+from core.reported_sync import build_reported_proposals, split_auto_confirm
 from core.reported_time import (
     REPORTED_STATES,
     ReportedTimeRecord,
@@ -45,6 +45,46 @@ def _run_report(**flags):
         **flags,
     )
     return run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+
+
+@reported_app.command("sync")
+def reported_sync(
+    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"])] = None,
+    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"])] = None,
+    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
+    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
+    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
+    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
+    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
+    dry_run: Annotated[bool, typer.Option(help="Preview; write nothing.")] = False,
+):
+    """Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review."""
+    report = _run_report(
+        date_from=date_from.strftime("%Y-%m-%d") if date_from else None,
+        date_to=date_to.strftime("%Y-%m-%d") if date_to else None,
+        today=today, yesterday=yesterday, last_week=last_week, last_month=last_month,
+        projects_config=projects_config,
+    )
+    proposals = build_reported_proposals(report)
+    to_confirm, left = split_auto_confirm(proposals, report.profiles)
+
+    written = already = 0
+    for rec in to_confirm:
+        if query(project=rec.project, date=rec.date, states=REPORTED_STATES):
+            already += 1
+            continue
+        if not dry_run:
+            append_record(rec)
+        written += 1
+
+    projects = len({rec.project for rec in to_confirm})
+    verb = "Would auto-report" if dry_run else "Auto-reported"
+    typer.echo(
+        f"{verb} {written} project-day(s) across {projects} project(s); "
+        f"{already} already reported; {len(left)} left for review (`gittan reported review`)."
+    )
+    if len(left) and not to_confirm:
+        typer.echo(f"Tip: set `\"auto_report\": true` on a project in {projects_config} to auto-confirm its time.")
 
 
 @reported_app.command("review")

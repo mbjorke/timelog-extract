@@ -111,5 +111,49 @@ class ReviewCommandTests(unittest.TestCase):
             self.assertIn("already=1", result.output)
 
 
+class SyncCommandTests(unittest.TestCase):
+    def _proposal(self, project):
+        return rt.ReportedTimeRecord(
+            date="2026-06-18", project=project, hours=2.5, source="session",
+            state="proposed", origin_ref=["2026-06-18T1000"],
+        )
+
+    def test_auto_reports_optin_project(self):
+        tmp, store = _temp_store()
+        report = SimpleNamespace(profiles=[{"name": "Alpha", "auto_report": True}])
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=report), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[self._proposal("Alpha")]
+        ):
+            result = CliRunner().invoke(app, ["reported", "sync", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertIn("Auto-reported 1", result.output)
+            recs = rt.query(states={"confirmed"})
+            self.assertEqual(len(recs), 1)
+            self.assertEqual(recs[0].project, "Alpha")
+
+    def test_non_optin_writes_nothing_and_nudges(self):
+        tmp, store = _temp_store()
+        report = SimpleNamespace(profiles=[{"name": "Beta"}])
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=report), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[self._proposal("Beta")]
+        ):
+            result = CliRunner().invoke(app, ["reported", "sync", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertEqual(rt.query(), [])
+            self.assertIn("1 left for review", result.output)
+            self.assertIn("auto_report", result.output)
+
+    def test_dry_run_writes_nothing(self):
+        tmp, store = _temp_store()
+        report = SimpleNamespace(profiles=[{"name": "Alpha", "auto_report": True}])
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=report), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[self._proposal("Alpha")]
+        ):
+            result = CliRunner().invoke(app, ["reported", "sync", "--today", "--dry-run"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertIn("Would auto-report 1", result.output)
+            self.assertEqual(rt.query(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

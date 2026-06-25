@@ -216,6 +216,13 @@ def normalize_profile(raw):
             profile["toggl_project_id"] = int(toggl_project_id)
         except (TypeError, ValueError):
             raise ValueError("toggl_project_id must be an integer (Toggl numeric project id)")
+    # Opt-in: auto-confirm this project's observed time into reported_time without
+    # manual review (the user pre-authorizes a well-mapped project — not silent).
+    if "auto_report" in raw:
+        auto_report = raw.get("auto_report")
+        if not isinstance(auto_report, bool):
+            raise ValueError("auto_report must be a boolean (true/false)")
+        profile["auto_report"] = auto_report
     return profile
 
 

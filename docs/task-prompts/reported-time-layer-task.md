@@ -55,6 +55,23 @@ rule for explicitly user-authored manual entries.
   `dismissed`; add→`manual` with note; dry-run no write; already-reported skip.
 - validation: `tests/test_cli_reported.py`; full suite green.
 
+### Phase 2b — auto-reporting (`gittan reported sync`)
+- priority: **built** — this PR
+- scope: most observed time should auto-confirm into the reported store for
+  well-configured projects, so manual review shrinks to the exceptions and the
+  agent surface stays quiet. Policy-safe via an **explicit per-project opt-in**
+  `auto_report: true` (the user pre-authorizes — not a silent promotion, per
+  `source-evidence-policy.md`). `core/reported_sync.py::split_auto_confirm`
+  marks eligible proposals (configured project, opted in, not `Uncategorized`) as
+  `confirmed`; `gittan reported sync` writes them non-interactively and leaves the
+  rest for `reported review`. `auto_report` added to `normalize_profile`.
+- acceptance: opted-in project's observed time → `confirmed` written; non-opted →
+  nothing written (stays unreported); `Uncategorized` never auto-confirms;
+  `--dry-run` writes nothing; already-reported project+days skipped.
+- validation: `tests/test_reported_sync.py`, `tests/test_cli_reported.py`.
+- non-goals (refinement, later): gate on dominant source strength (exclude
+  passive-only sessions) per the evidence policy's roles.
+
 ### Phase 3 — sync reads `confirmed`
 - priority: **next** — not built
 - scope: `build_toggl_entry_candidates` / `build_jira_worklog_candidates` source
@@ -103,14 +120,15 @@ Python file over 500 lines.
 
 ## Traceability
 
-- story_id: GH-TBD (reported/approved time layer)
+- story_id: GH-186 (reported/approved time layer epic; lead PR, PR-tracked)
 - spec_status: draft
-- implementation_status: in progress — Phase 1 built (#186), Phase 2 in review
-  (#187); Phases 3–5 + Calendar not built
+- implementation_status: in progress — Phase 1 built (#186), Phase 2 built (#187),
+  Phase 2b (auto-reporting) built (this PR); Phases 3–5 + Calendar not built
 - created_at: 2026-06-25
 - last_updated_at: 2026-06-25
-- implementation.pr: #186 (merged), #187 (open)
-- implementation.branch: task/reported-time-record (merged), task/reported-confirm-cli
+- implementation.pr: #186 (merged), #187 (merged), + this PR (Phase 2b)
+- implementation.branch: task/reported-time-record, task/reported-confirm-cli,
+  task/reported-auto-report
 - implementation.commits: []
 - validation.evidence: `tests/test_reported_time.py`, `tests/test_cli_reported.py`;
   full suite green (1001)
@@ -124,3 +142,7 @@ Python file over 500 lines.
     after Phases 1–2 had already shipped (#186/#187) without a traceable spec —
     the exact gap the product-owner skill update now prevents. Locked decisions
     D1–D5 and the manual-add amendment recorded; Phases 3–5 + Calendar named.
+  - 2026-06-25: Phase 2b (auto-reporting) built — `auto_report` per-project opt-in
+    + `gittan reported sync`; observed time for well-configured projects
+    auto-confirms (policy-safe via explicit opt-in). Surfaced by the
+    "gittan in the agent" vision (statusline shows the remaining exceptions).

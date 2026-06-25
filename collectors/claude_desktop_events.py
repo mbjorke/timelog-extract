@@ -231,7 +231,8 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
         # Worktree-invariant attribution: explicit slug from session metadata,
         # else resolved from the session cwd when it is a local repo path.
         slug = meta.get(sid, {}).get("slug", "") or resolve_path_repo_slug(acc["cwd_path"])
-        label = _meaningful_label(title) or f"Code session {sid[:20]}"
+        meaningful = _meaningful_label(title)
+        label = meaningful or f"Code session {sid[:20]}"
         for cluster in _clusters(acc["stamps"]):
             turns = sum(1 for _ts, is_turn in cluster if is_turn)
             if turns == 0:
@@ -247,7 +248,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
                         ts,
                         detail,
                         project,
-                        anchors=_anchors(repo=slug, dir=cwd, label=label if title else None),
+                        anchors=_anchors(repo=slug, dir=cwd, label=meaningful),
                     )
                 )
     return results

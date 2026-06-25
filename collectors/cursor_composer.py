@@ -377,7 +377,7 @@ def collect_cursor_composer_sessions(
         haystack = _composer_classification_haystack(composer, title=name)
         project = classify_project(haystack, profiles)
         context_bits: list[str] = []
-        if branch and branch.lower() not in name.lower():
+        if branch and branch.lower() not in (name or label or "").lower():
             context_bits.append(f"@{branch}")
         detail = " · ".join(context_bits)[:100]
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)

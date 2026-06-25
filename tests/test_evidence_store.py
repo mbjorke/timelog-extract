@@ -150,6 +150,7 @@ class TestEvidenceDataControls(unittest.TestCase):
         )
 
     def test_export_writes_all_records(self):
+        """export_store writes every seeded record to the destination JSONL file."""
         self._seed()
         dest = Path(self._tmp.name) / "out" / "export.jsonl"
         result = export_store(dest, base_dir=self.base)

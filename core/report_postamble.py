@@ -17,6 +17,7 @@ from core.report_service import ReportPayload
 
 
 def _wants_interactive_status(report: ReportPayload, *, ignore_quiet: bool = False) -> bool:
+    """True when post-report prompts may run (TTY, terminal format, not quiet)."""
     if not ignore_quiet and getattr(report.args, "quiet", False):
         return False
     if str(getattr(report.args, "output_format", "terminal") or "terminal") != "terminal":
@@ -25,10 +26,12 @@ def _wants_interactive_status(report: ReportPayload, *, ignore_quiet: bool = Fal
 
 
 def _wants_status(report: ReportPayload) -> bool:
+    """True when Rich status spinners may run during post-report follow-ups."""
     return _wants_interactive_status(report)
 
 
 def _wants_mapping_prompt(report: ReportPayload) -> bool:
+    """True when the optional git-mapping question may run after a report."""
     if getattr(report.args, "map_prompt", True) is False:
         return False
     return _wants_status(report)
@@ -36,6 +39,7 @@ def _wants_mapping_prompt(report: ReportPayload) -> bool:
 
 @contextmanager
 def _status(console: Console, report: ReportPayload, message: str) -> Iterator[None]:
+    """Show a Rich spinner while post-report work runs on interactive terminals."""
     if _wants_status(report):
         with console.status(message, spinner="dots"):
             yield

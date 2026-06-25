@@ -61,6 +61,7 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertEqual(len(picked), 3)
 
     def test_footer_never_says_and_n_more_for_evidence(self):
+        """Noise-only hidden rows get an IDE-log footer, not an 'and N more' cap."""
         order = ["Cursor"]
         base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         session = [
@@ -117,6 +118,7 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertIn("IDE log", summary)
 
     def test_footer_skips_misleading_ide_label_when_evidence_also_hidden(self):
+        """Mixed hidden rows must not be summarized as pure IDE log noise."""
         order = ["A", "B"]
         base = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         session = [

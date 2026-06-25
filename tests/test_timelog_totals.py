@@ -24,6 +24,7 @@ def _classify(text, profiles, fallback="Uncategorized"):
 
 class TestComputeTimelogProjectTotals(unittest.TestCase):
     def _run(self, md_content, profiles):
+        """Parse a temp worklog and return project totals for assertions."""
         from core.sources import AI_SOURCES
         from core.timelog_totals import compute_timelog_project_totals
 

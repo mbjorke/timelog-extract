@@ -103,6 +103,7 @@ class CredentialGatingTests(unittest.TestCase):
         self.assertIn("off", reason)
 
     def test_requires_token_and_workspace(self):
+        """Missing workspace id fails even when a token is passed on args."""
         with patch.dict(
             "os.environ",
             {"TOGGL_API_TOKEN": "", "TOGGL_WORKSPACE_ID": ""},

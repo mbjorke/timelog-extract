@@ -292,6 +292,7 @@ class RuntimeCollectors:
         return merged
 
     def collect_github(self, profiles, dt_from, dt_to):
+        """Collect public GitHub activity for configured usernames."""
         from collectors.github import (
             merge_github_public_events,
             resolve_github_api_base,

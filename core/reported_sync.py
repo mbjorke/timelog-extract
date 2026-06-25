@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from core.reported_time import ReportedTimeRecord
 
@@ -69,6 +71,52 @@ def build_reported_proposals(report: "ReportPayload") -> List[ReportedTimeRecord
             )
         )
     return proposals
+
+
+def window_days(report: "ReportPayload") -> List[str]:
+    """Every calendar day ``YYYY-MM-DD`` in the report window, inclusive.
+
+    Uses the full date range (not just observed days) so manual reported time on a
+    day with no tracked sessions is still in scope for sync.
+    """
+    start = report.dt_from.date()
+    end = report.dt_to.date()
+    days: List[str] = []
+    cursor = start
+    while cursor <= end:
+        days.append(cursor.isoformat())
+        cursor += timedelta(days=1)
+    return days
+
+
+def day_start(day: str) -> datetime:
+    """A tz-aware default start (09:00 local) for a reported project+day.
+
+    Reported records carry no clock time (project+day granularity), so sync needs a
+    synthetic start for the Toggl/Jira entry; 09:00 local is a neutral choice.
+    """
+    return datetime.fromisoformat(f"{day}T09:00:00").astimezone()
+
+
+def reported_hours_for_window(
+    report: "ReportPayload", home: Optional[Path] = None
+) -> Optional[Dict[Tuple[str, str], float]]:
+    """D4 adoption switch for sync.
+
+    If any ``confirmed``/``edited`` reported_time falls within the report window,
+    return ``{(project, day): hours}`` for that window (sync runs in *reported
+    mode* — push only confirmed time). If none exists, return ``None`` so callers
+    keep today's observed behavior unchanged (the pre-adoption fallback).
+    """
+    from core.reported_time import reported_hours_by_project_day
+
+    window = set(window_days(report))
+    in_window = {
+        (project, day): hours
+        for (project, day), hours in reported_hours_by_project_day(home).items()
+        if day in window
+    }
+    return in_window or None
 
 
 def auto_report_projects(profiles: List[Dict[str, Any]]) -> set:

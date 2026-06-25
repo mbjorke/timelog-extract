@@ -154,9 +154,58 @@ def _issue_key_for_session(
     return None, "unresolved"
 
 
+def build_issue_key_map(profiles: Optional[List[dict]]) -> dict[str, str]:
+    """Map project name -> explicit ``jira_issue_key`` for profiles that declare one."""
+    mapping: dict[str, str] = {}
+    for profile in profiles or []:
+        name = str(profile.get("name") or "").strip()
+        key = str(profile.get("jira_issue_key") or "").strip()
+        if name and key:
+            mapping[name] = key
+    return mapping
+
+
+def _candidates_from_reported(
+    reported: dict[tuple[str, str], float],
+    issue_keys: dict[str, str],
+) -> tuple[List[JiraWorklogCandidate], int]:
+    """Reported-mode (Phase 3): build worklog candidates from confirmed reported
+    hours per project+day, mapping each project to its explicit ``jira_issue_key``.
+    Projects with no mapped issue key are counted unresolved (never posted)."""
+    from core.reported_sync import day_start
+
+    unresolved = 0
+    buckets: dict[tuple[str, str], JiraWorklogCandidate] = {}
+    for (project, day), hours in sorted(reported.items()):
+        issue_key = issue_keys.get(project)
+        if not issue_key:
+            unresolved += 1
+            continue
+        seconds = int(round(max(0.0, hours) * 3600))
+        if seconds <= 0:
+            continue
+        key = (issue_key, day)
+        if key not in buckets:
+            buckets[key] = JiraWorklogCandidate(
+                issue_key=issue_key,
+                day=day,
+                started=day_start(day),
+                seconds=seconds,
+                projects=[project],
+                source="reported",
+            )
+        else:
+            buckets[key].seconds += seconds
+            buckets[key].projects = sorted(set(buckets[key].projects) | {project})
+    candidates = sorted(buckets.values(), key=lambda item: (item.day, item.issue_key))
+    return candidates, unresolved
+
+
 def build_jira_worklog_candidates(
     report: ReportPayload,
     repo_path: Path,
+    profiles: Optional[List[dict]] = None,
+    home: Optional[Path] = None,
 ) -> tuple[List[JiraWorklogCandidate], int]:
     """
     Aggregate report sessions into JiraWorklogCandidate objects by inferring Jira issue keys from git commits or the current branch and summing per-issue/per-day durations.
@@ -167,7 +216,18 @@ def build_jira_worklog_candidates(
     
     Returns:
         tuple[List[JiraWorklogCandidate], int]: A tuple where the first element is a list of aggregated worklog candidates (one per issue key per day, sorted by day then issue key) and the second element is the count of sessions for which no issue key could be resolved.
+
+    When confirmed/edited reported_time exists for the report window, candidates are
+    built from those confirmed hours mapped via each project's explicit
+    ``jira_issue_key`` (Phase 3 reported-mode); otherwise issue keys are inferred
+    from git as before (the pre-adoption fallback).
     """
+    from core.reported_sync import reported_hours_for_window
+
+    reported = reported_hours_for_window(report, home)
+    if reported is not None:
+        return _candidates_from_reported(reported, build_issue_key_map(profiles))
+
     commits = load_commit_tags(repo_path, report.dt_from, report.dt_to)
     branch_key = load_current_branch_issue_key(repo_path)
     unresolved_sessions = 0

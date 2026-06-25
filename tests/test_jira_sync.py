@@ -5,8 +5,13 @@ from __future__ import annotations
 import unittest
 from argparse import Namespace
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+
+# A home with no reported_time store, so observed-path tests never flip into
+# Phase 3 reported-mode by reading the developer's real ~/.gittan.
+_EMPTY_HOME = Path("/nonexistent-gittan-home-for-tests")
 
 from typer.testing import CliRunner
 
@@ -68,7 +73,7 @@ class JiraSyncTests(unittest.TestCase):
                 SimpleNamespace(committed_at=mid, subject="ABC-101 continue"),
             ]
             load_branch.return_value = "ABC-999"
-            candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))
+            candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."), home=_EMPTY_HOME)
         self.assertEqual(unresolved, 0)
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].issue_key, "ABC-101")
@@ -116,7 +121,7 @@ class JiraSyncTests(unittest.TestCase):
                 SimpleNamespace(committed_at=datetime(2026, 4, 9, 8, 0), subject="ABC-1 old")
             ]
             load_branch.return_value = "ABC-2"
-            candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."))
+            candidates, unresolved = build_jira_worklog_candidates(payload, PathLike("."), home=_EMPTY_HOME)
         self.assertEqual(unresolved, 0)
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].issue_key, "ABC-2")

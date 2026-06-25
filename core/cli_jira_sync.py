@@ -112,7 +112,9 @@ def jira_sync(
     if creds is None:
         raise typer.BadParameter("Missing Jira credentials")
 
-    candidates, unresolved = build_jira_worklog_candidates(report, Path(git_repo).expanduser())
+    candidates, unresolved = build_jira_worklog_candidates(
+        report, Path(git_repo).expanduser(), getattr(report, "profiles", None)
+    )
     if not candidates:
         typer.echo("No Jira worklog candidates found.")
         if unresolved:

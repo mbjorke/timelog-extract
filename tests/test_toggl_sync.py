@@ -103,9 +103,14 @@ class CredentialGatingTests(unittest.TestCase):
         self.assertIn("off", reason)
 
     def test_requires_token_and_workspace(self):
-        ok, reason = toggl_sync_enabled(
-            Namespace(toggl_sync="on", toggl_api_token="t", toggl_workspace_id=None)
-        )
+        with patch.dict(
+            "os.environ",
+            {"TOGGL_API_TOKEN": "", "TOGGL_WORKSPACE_ID": ""},
+            clear=False,
+        ):
+            ok, reason = toggl_sync_enabled(
+                Namespace(toggl_sync="on", toggl_api_token="t", toggl_workspace_id=None)
+            )
         self.assertFalse(ok)
         self.assertIn("credentials missing", reason)
 

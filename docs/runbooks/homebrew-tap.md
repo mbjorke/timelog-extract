@@ -1,9 +1,11 @@
 # Homebrew tap for `brew install gittan` (sketch)
 
+> **Status (2026-06):** The canonical one-line install is now the curl installer — `curl -fsSL https://gittan.sh/install | bash` (see [`versioning.md`](versioning.md) → *Install script*, and [`packaging/install/gittan-install.sh`](../../packaging/install/gittan-install.sh)). This Homebrew tap is an **optional, future** distribution track, not required to close the install path. The notes below are kept for when the tap is picked up.
+
 **Package on PyPI:** `timelog-extract` (CLI commands: `gittan`, `timelog-extract`).  
 **Goal for a live demo:** one memorable install line, e.g. `brew tap <org>/gittan && brew install gittan`.
 
-This doc is a **maintainer runbook**, not user-facing install docs (those stay in root [`README.md`](../../README.md): **pipx** / **pip** remain the supported defaults until the tap exists).
+This doc is a **maintainer runbook**, not user-facing install docs (the curl installer is the canonical path; this section only tracks the future Homebrew tap).
 
 ---
 

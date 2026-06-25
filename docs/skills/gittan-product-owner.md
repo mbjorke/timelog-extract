@@ -37,8 +37,12 @@ behavior, menu-bar UX, or backlog ordering. Trigger examples:
 - [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md) —
   when the work touches sources/collectors (evidence roles, weighting).
 
+- [`../task-prompts/task-traceability-template.md`](../task-prompts/task-traceability-template.md)
+  — the `## Traceability` block every committed task spec must carry.
+
 Policy (branches, safety, tests, PR language) lives in `AGENTS.md`; point to it,
-don't restate it.
+don't restate it. In particular `AGENTS.md` §223 (*Task spec traceability —
+required*) governs the deliverable below.
 
 ## Workflow
 
@@ -50,6 +54,43 @@ don't restate it.
    tiny internal task.
 6. Include acceptance criteria and validation evidence for each `now` item.
 7. Name dependencies and decisions needed before implementation.
+8. **Commit the backlog as the deliverable** (see below) — a working/plan-mode
+   draft in `~/.claude/plans/` is not the artifact.
+
+## Deliverable: a committed, traceable task-prompt (required)
+
+The backlog **is** the deliverable, and it must land in the repo so the team,
+the PRs, and tooling can see it:
+
+- Write it to **`docs/task-prompts/<slug>-task.md`** (`AGENTS.md` §105–106),
+  using [`../task-prompts/task-traceability-template.md`](../task-prompts/task-traceability-template.md).
+- Include a `## Traceability` block (`AGENTS.md` §223): `story_id`,
+  `spec_status`, `implementation_status`, `implementation.pr`, `changelog`, etc.
+- A plan-mode file under `~/.claude/plans/` is a **working draft only** — never
+  leave the backlog there as the final state; copy it into the committed spec.
+- **Implementing PRs must link to the spec** and update `implementation_status` /
+  `implementation.pr` as work lands.
+
+### Issue lifecycle (Story ID)
+
+A `story_id: GH-N` is a real GitHub issue — the tracker for the spec. Keep it
+disciplined so the issue list stays a trustworthy view of active work:
+
+- **Create the issue when an item is prioritized to `now`/`next`** — not for raw
+  suggestions, and not for `later` / `do not build yet` items (those live only in
+  the task-prompt until promoted). The product-owner pass is the prioritization
+  gate; agents (CodeRabbit/Cursor) should not auto-open issues ahead of it.
+- **The implementing PR closes the issue** with `Closes #N`, so shipped work never
+  leaves a straggler open (the failure seen in #145/#146).
+- One issue per task-prompt; if a review spins off a follow-up, file it through the
+  backlog (promote → issue), not as an ad-hoc duplicate.
+
+This is enforced retrospectively by the feature-inventory generator's `--check`
+(see `docs/task-prompts/feature-inventory-generator-task.md`): a command or
+collector with no linked spec fails the gate. CodeRabbit cannot catch a *missing*
+spec (it reviews the diff), so this discipline is on the planner. (Lesson: the
+reported-time layer shipped in #186/#187 with the backlog only in a local plan
+file and no traceable spec link — exactly what this section prevents.)
 
 ## Backlog item shape
 
@@ -86,6 +127,10 @@ existing behavior contract.
 - [ ] User-visible or trust-sensitive items include a Gherkin scenario.
 - [ ] Non-goals and open decisions/dependencies are named.
 - [ ] No code was changed — output is a backlog, not an implementation.
+- [ ] The backlog is committed to `docs/task-prompts/` with a `## Traceability`
+      block — not left only in a local plan-mode file.
+- [ ] Implementing PRs link back to the spec and keep `implementation_status`
+      current.
 
 ## Behavior Contract
 
@@ -99,4 +144,11 @@ Feature: Product-owner planning skill
     Then the agent should produce ordered backlog items
     And user-visible or trust-sensitive items should include Gherkin scenarios
     And implementation should remain out of scope until priorities are clear
+
+  Scenario: The backlog lands as a committed, traceable spec
+    Given a product-owner planning pass has produced a backlog
+    When the pass is finished
+    Then the backlog is committed to docs/task-prompts/ as a task spec
+    And it includes a Traceability block per AGENTS.md §223
+    And it is not left only in a local plan-mode file
 ```

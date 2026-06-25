@@ -22,6 +22,7 @@ from typing import Callable
 
 from collectors.ai_logs import _anchors, _meaningful_label
 from collectors.cursor_composer import (
+    _branch_reflected_in_label,
     _composer_classification_haystack,
     _composer_git_context,
     _composer_workspace_path,
@@ -34,18 +35,6 @@ from collectors.cursor_composer import (
 CURSOR_AGENT_SOURCE = "Cursor (agent)"
 
 _LOG_LINE_TS = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)")
-
-
-def _branch_reflected_in_label(branch: str, text: str) -> bool:
-    """True when branch is already represented in the session title/label text."""
-    token = branch.lower().strip()
-    if not token or not text:
-        return False
-    low = text.lower()
-    if f"@{token}" in low:
-        return True
-    parts = [part for part in re.split(r"[\s·/\-_]+", low) if part]
-    return token in parts
 _WORKSPACE_ID_RE = re.compile(r"workspaceId-([0-9a-f]{32})")
 _JSON_TAIL_RE = re.compile(r"\{.*\}$")
 

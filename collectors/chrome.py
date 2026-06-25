@@ -17,7 +17,10 @@ def split_chrome_tab_title(title: str, *, url: str = "") -> tuple[str | None, st
     text = (title or "").strip()
     if not text:
         return None, ""
-    if "github.com" not in (url or "").lower():
+    # Match the real host, not a substring: github.com.evil.com / notgithub.com
+    # contain "github.com" but are not GitHub.
+    host = (urlparse(url or "").hostname or "").lower()
+    if host != "github.com" and not host.endswith(".github.com"):
         return None, text
     if " · " in text:
         lead, tail = text.split(" · ", 1)

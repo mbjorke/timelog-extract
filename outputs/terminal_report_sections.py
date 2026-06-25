@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager
+from datetime import date, datetime
 from typing import Any, Dict, Iterator, List, Optional
 
 from rich.console import Console
@@ -23,15 +24,25 @@ STYLE_META = CLR_DIM
 from outputs.terminal_warnings import print_report_warnings
 
 
+def _format_period_bound(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
 def period_label(args: Any) -> str | None:
     """Human-readable report window from CLI args, or None when unset."""
     date_from = getattr(args, "date_from", None)
     date_to = getattr(args, "date_to", None)
     if not date_from or not date_to:
         return None
-    if date_from == date_to:
-        return str(date_from)
-    return f"{date_from} to {date_to}"
+    start = _format_period_bound(date_from)
+    end = _format_period_bound(date_to)
+    if start == end:
+        return start
+    return f"{start} to {end}"
 
 
 def period_heading_suffix(args: Any) -> str:

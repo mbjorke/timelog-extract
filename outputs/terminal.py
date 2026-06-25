@@ -285,7 +285,7 @@ def print_report(
     day_count = len(overall_days)
     with report_section_spinner(
         console,
-        "[bold blue]Preparing review summary…[/]",
+        f"[{STYLE_META}]Preparing review summary…[/{STYLE_META}]",
         day_count=day_count,
     ):
         print_review_summary_section(
@@ -314,7 +314,7 @@ def print_report(
 
     with report_section_spinner(
         console,
-        "[bold blue]Preparing project-hour review…[/]",
+        f"[{STYLE_META}]Preparing project-hour review…[/{STYLE_META}]",
         day_count=day_count,
     ):
         print_project_hour_review_section(

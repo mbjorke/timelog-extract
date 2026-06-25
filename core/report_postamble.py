@@ -18,6 +18,7 @@ from core.report_nudges import (
     unanchored_anchors_for_report,
 )
 from core.report_service import ReportPayload
+from outputs.terminal_theme import CLR_DIM
 
 
 def _wants_spinner(report: ReportPayload, *, ignore_quiet: bool = False) -> bool:
@@ -68,7 +69,7 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
         with _status(
             console,
             report,
-            "[bold blue]Reviewing git bindings for mapping suggestions…[/]",
+            f"[{CLR_DIM}]Reviewing git bindings for mapping suggestions…[/{CLR_DIM}]",
         ):
             review = prepare_mapping_review_after_report(report, fast_post_report=True)
         mapped_interactively = maybe_run_mapping_assistant_after_report(
@@ -84,7 +85,7 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
         with _status(
             console,
             report,
-            "[bold blue]Checking unmapped activity anchors (working dirs, branches, titles)…[/]",
+            f"[{CLR_DIM}]Checking unmapped activity anchors (working dirs, branches, titles)…[/{CLR_DIM}]",
         ):
             unmapped_anchors = unanchored_anchors_for_report(report)
         anchors_nudge = build_unanchored_anchors_nudge(report, anchors=unmapped_anchors)
@@ -96,7 +97,7 @@ def scan_unmapped_anchors_with_status(
     console: Console,
     report: ReportPayload,
     *,
-    message: str = "[bold blue]Checking unmapped activity anchors…[/]",
+    message: str = f"[{CLR_DIM}]Checking unmapped activity anchors…[/{CLR_DIM}]",
     ignore_quiet: bool = False,
 ) -> list[dict]:
     """Scan for unmapped anchors; show a Rich spinner on interactive terminals."""

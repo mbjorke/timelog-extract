@@ -132,10 +132,11 @@ def run_status_timelog_report(
     """Collect report payload for `gittan status`, with a TTY spinner when interactive."""
     from core.anchor_nudge import should_prompt
     from core.report_service import run_timelog_report
+    from outputs.terminal_theme import CLR_DIM
 
     if should_prompt():
         with console.status(  # type: ignore[attr-defined]
-            f"[bold blue]Collecting activity for status ({title_date})…[/]",
+            f"[{CLR_DIM}]Collecting activity for status ({title_date})…[/{CLR_DIM}]",
             spinner="dots",
         ):
             return run_timelog_report(projects_config, date_from, date_to, options)

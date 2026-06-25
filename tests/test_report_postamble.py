@@ -140,5 +140,26 @@ class ReportPostambleTests(unittest.TestCase):
         console.status.assert_called_once()
 
 
+class PeriodLabelTests(unittest.TestCase):
+    def test_period_label_formats_datetime_as_date_only(self):
+        from datetime import datetime
+
+        from outputs.terminal_report_sections import period_label
+
+        args = SimpleNamespace(
+            date_from=datetime(2026, 5, 1, 0, 0, 0),
+            date_to=datetime(2026, 5, 30, 23, 59, 59),
+        )
+        self.assertEqual(period_label(args), "2026-05-01 to 2026-05-30")
+
+    def test_period_label_single_day(self):
+        from datetime import date
+
+        from outputs.terminal_report_sections import period_label
+
+        args = SimpleNamespace(date_from=date(2026, 6, 25), date_to=date(2026, 6, 25))
+        self.assertEqual(period_label(args), "2026-06-25")
+
+
 if __name__ == "__main__":
     unittest.main()

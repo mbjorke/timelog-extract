@@ -226,14 +226,16 @@ def collect_calendar(
 
         project = classify_project(f"{cal_title} {summary}", profiles)
         hours = max((end_dt - start_dt).total_seconds() / 3600.0, 0.0)
-        title = (summary or "").strip() or "(no title)"
+        title = (summary or "").strip()
         detail = f"[{cal_title}] {hours:.2f}h"
+        if not title:
+            detail = f"(no title) {detail}"
         event = make_event(
             CALENDAR_SOURCE,
             start_dt,
             detail,
             project,
-            anchors=_anchors(label=title),
+            anchors=_anchors(label=title) if title else None,
         )
         # Private metadata for the reported-time bridge (not invoice truth here).
         event["calendar_role"] = role

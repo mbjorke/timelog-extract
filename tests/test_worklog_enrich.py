@@ -84,6 +84,28 @@ class WorklogEnrichTests(unittest.TestCase):
         enrich_worklog_session_labels(events)
         self.assertNotIn("label", events[1].get("anchors", {}))
 
+    def test_enrich_skips_uncategorized_rows(self):
+        base = datetime(2026, 6, 24, 15, 40, tzinfo=timezone.utc)
+        events = [
+            make_test_event(
+                "Cursor (agent)",
+                base,
+                "2 turns",
+                "Uncategorized",
+                anchors={"label": "Shared session title"},
+            ),
+            make_test_event(
+                "GitHub",
+                base + timedelta(minutes=5),
+                "push to owner-a/project-beta",
+                "Uncategorized",
+            ),
+        ]
+        from core.worklog_enrich import enrich_delivery_session_labels
+
+        enrich_delivery_session_labels(events, uncategorized="Uncategorized")
+        self.assertNotIn("label", events[1].get("anchors", {}))
+
 
 if __name__ == "__main__":
     unittest.main()

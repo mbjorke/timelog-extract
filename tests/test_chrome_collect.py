@@ -305,8 +305,15 @@ class CollectChromeTests(unittest.TestCase):
 
     def test_split_chrome_tab_title_helper(self):
         self.assertEqual(
-            split_chrome_tab_title("Pull requests · owner-a/project-alpha"),
+            split_chrome_tab_title(
+                "Pull requests · owner-a/project-alpha",
+                url="https://github.com/owner-a/project-alpha/pulls",
+            ),
             ("Pull requests", "owner-a/project-alpha"),
+        )
+        self.assertEqual(
+            split_chrome_tab_title("Docs · Python", url="https://docs.python.org/"),
+            (None, "Docs · Python"),
         )
         self.assertEqual(split_chrome_tab_title("Standalone tab"), (None, "Standalone tab"))
 

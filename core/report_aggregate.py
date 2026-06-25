@@ -33,7 +33,7 @@ def aggregate_report(
     group_by_day_fn: Callable[[List[Dict[str, Any]], List[str]], Dict[str, Any]],
     estimate_hours_by_day_fn: Callable[[Dict[str, Any], int, int, int], Dict[str, Any]],
 ) -> AggregationResult:
-    enrich_delivery_session_labels(all_events)
+    enrich_delivery_session_labels(all_events, uncategorized=uncategorized)
     deduped_events = dedupe_events_fn(all_events)
     included_events = filter_included_events_fn(deduped_events, args, profiles, uncategorized)
 

@@ -101,6 +101,20 @@ class CalendarCollectorTests(unittest.TestCase):
             self.assertEqual(out[0]["calendar_role"], ROLE_SCHEDULED_CONTEXT)
             self.assertEqual(out[0]["timestamp"], datetime(2026, 4, 1, 8, 0, tzinfo=timezone.utc))
 
+    def test_untitled_event_has_no_label_anchor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_calendar_db(home, [{
+                "calendar": "Work",
+                "summary": "",
+                "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc),
+            }])
+            out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
+            self.assertEqual(len(out), 1)
+            self.assertNotIn("anchors", out[0])
+            self.assertIn("(no title)", out[0]["detail"])
+
     def test_excludes_all_day_events(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

@@ -34,6 +34,18 @@ from collectors.cursor_composer import (
 CURSOR_AGENT_SOURCE = "Cursor (agent)"
 
 _LOG_LINE_TS = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)")
+
+
+def _branch_reflected_in_label(branch: str, text: str) -> bool:
+    """True when branch is already represented in the session title/label text."""
+    token = branch.lower().strip()
+    if not token or not text:
+        return False
+    low = text.lower()
+    if f"@{token}" in low:
+        return True
+    parts = [part for part in re.split(r"[\s·/\-_]+", low) if part]
+    return token in parts
 _WORKSPACE_ID_RE = re.compile(r"workspaceId-([0-9a-f]{32})")
 _JSON_TAIL_RE = re.compile(r"\{.*\}$")
 
@@ -198,7 +210,7 @@ def collect_cursor_agent_turns(
         for cluster in _clusters(stamps):
             cluster_turns = len(cluster)
             cluster_detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
-            if branch and branch.lower() not in (name or label or "").lower():
+            if branch and not _branch_reflected_in_label(branch, name or label or ""):
                 cluster_detail += f" (@{branch})"
             for ts in _thin(cluster):
                 results.append(

@@ -6,7 +6,7 @@
 - UX: session titles keep original app casing, render in orange (not bold), and drop redundant title/project echoes in Cursor/Claude detail tails.
 - UX: GitHub timeline rows show `GitHub (login)`; worklog commit rows inherit the nearest prior AI session title (`Worklog` source label, comma-separated detail).
 - UX: GitHub delivery rows also inherit the nearest prior AI session title (same 2h/project window as worklog commits).
-- UX: Chrome splits GitHub tab titles on ` · ` into orange page label and repo tail (`Pull requests: mbjorke/timelog-extract`); Cursor branch suffix uses `(@branch)` instead of ` · @branch`.
+- UX: Chrome splits GitHub tab titles on `·` into orange page label and repo tail (`Pull requests: mbjorke/timelog-extract`); Cursor branch suffix uses `(@branch)` instead of ` · @branch`.
 - UX: Apple Mail and Calendar use the same label/detail split (subject or meeting title in orange; recipient or `[calendar] duration` as muted detail).
 - Fix: Apple Mail reads all Sent messages by default (profile `email` no longer filters From); use `--email` to restrict. Unmapped sent mail stays visible for review instead of being dropped at collection.
 - CI: remove unused GitHub Pages deploy workflow (`static.yml`); fix `main` CI file-length gate by extracting doctor table checks.

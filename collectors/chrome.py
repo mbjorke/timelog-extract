@@ -12,11 +12,13 @@ from urllib.parse import urlparse
 from collectors.ai_logs import _anchors
 
 
-def split_chrome_tab_title(title: str) -> tuple[str | None, str]:
-    """Split GitHub-style tab titles: ``Pull requests · owner/repo``."""
+def split_chrome_tab_title(title: str, *, url: str = "") -> tuple[str | None, str]:
+    """Split GitHub tab titles: ``Pull requests · owner/repo``."""
     text = (title or "").strip()
     if not text:
         return None, ""
+    if "github.com" not in (url or "").lower():
+        return None, text
     if " · " in text:
         lead, tail = text.split(" · ", 1)
         lead, tail = lead.strip(), tail.strip()
@@ -316,7 +318,7 @@ def collect_chrome(
     results = []
     for visit_time_cu, url, title in rows:
         ts = chrome_ts(visit_time_cu, epoch_delta_us)
-        page_label, page_tail = split_chrome_tab_title((title or "").strip())
+        page_label, page_tail = split_chrome_tab_title((title or "").strip(), url=url or "")
         if include_all:
             detail = (f"{page_tail} — {url}".strip(" —") if url else page_tail)[:240]
         else:

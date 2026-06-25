@@ -111,12 +111,13 @@ def collect_apple_mail(
             if senders and not any(sender in from_addr for sender in senders):
                 continue
 
-            to_addr = (msg.get("To", "") or "").lower()
+            to_display = _decode_header(msg.get("To", "") or "")
+            to_addr = to_display.lower()
             subject_raw = msg.get("Subject", "") or ""
             subject = _decode_header(subject_raw)
             project = classify_project(f"{to_addr} {subject}", profiles)
 
-            page_label, detail = mail_event_parts(subject, msg.get("To", "") or "")
+            page_label, detail = mail_event_parts(subject, to_display)
             anchors = _anchors(label=page_label) if page_label else None
             results.append(make_event("Apple Mail", ts, detail, project, anchors=anchors))
         except PermissionError:

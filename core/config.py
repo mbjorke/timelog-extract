@@ -221,8 +221,7 @@ def normalize_profile(raw):
     jira_issue_key = raw.get("jira_issue_key")
     if jira_issue_key not in (None, ""):
         key = jira_issue_key.strip() if isinstance(jira_issue_key, str) else None
-        # Jira project keys can include underscores (e.g. OPS_TEAM-123) on
-        # instances that configure it, so allow them here.
+        # Allow underscores in keys (e.g. OPS_TEAM-123) — some Jira instances use them.
         if not key or not re.fullmatch(r"[A-Z][A-Z0-9_]+-\d+", key):
             raise ValueError("jira_issue_key must look like 'ABC-123' (PROJECT-NUMBER)")
         profile["jira_issue_key"] = key

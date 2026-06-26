@@ -93,6 +93,11 @@ class ConfigCompatibilityTests(unittest.TestCase):
         profile = normalize_profile({"name": "Demo", "jira_issue_key": "ABC-123"})
         self.assertEqual(profile.get("jira_issue_key"), "ABC-123")
 
+    def test_normalize_profile_allows_underscore_jira_issue_key(self):
+        # Jira instances can configure project keys with underscores.
+        profile = normalize_profile({"name": "Demo", "jira_issue_key": "OPS_TEAM-123"})
+        self.assertEqual(profile.get("jira_issue_key"), "OPS_TEAM-123")
+
     def test_normalize_profile_strips_and_validates_jira_issue_key(self):
         self.assertEqual(
             normalize_profile({"name": "Demo", "jira_issue_key": "  KAN-2 "})["jira_issue_key"],

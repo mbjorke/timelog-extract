@@ -217,12 +217,12 @@ def normalize_profile(raw):
             profile["toggl_project_id"] = int(toggl_project_id)
         except (TypeError, ValueError):
             raise ValueError("toggl_project_id must be an integer (Toggl numeric project id)")
-    # Optional explicit Jira issue this project's reported time posts to (mirrors
-    # toggl_project_id) so jira-sync maps project->issue without inferring from git.
+    # Optional explicit Jira issue this project posts to (mirrors toggl_project_id).
     jira_issue_key = raw.get("jira_issue_key")
     if jira_issue_key not in (None, ""):
         key = jira_issue_key.strip() if isinstance(jira_issue_key, str) else None
-        if not key or not re.fullmatch(r"[A-Z][A-Z0-9]+-\d+", key):
+        # Allow underscores in keys (e.g. OPS_TEAM-123) — some Jira instances use them.
+        if not key or not re.fullmatch(r"[A-Z][A-Z0-9_]+-\d+", key):
             raise ValueError("jira_issue_key must look like 'ABC-123' (PROJECT-NUMBER)")
         profile["jira_issue_key"] = key
     # Opt-in: auto-confirm this project's observed time into reported_time without

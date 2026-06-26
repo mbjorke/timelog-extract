@@ -230,6 +230,23 @@ class TriageMapTests(unittest.TestCase):
         self.assertEqual(payload["command"], "gittan review")
         self.assertEqual(payload["candidate_count"], 1)
         self.assertEqual(payload["candidates"][0]["url_key"], "github.com/org/repo")
+        self.assertNotIn("Next steps", result.stdout)
+
+    def test_review_terminal_shows_next_steps_when_no_url_rows(self) -> None:
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump({"projects": [{"name": "project-alpha", "match_terms": ["alpha"]}]}, tmp)
+            cfg = tmp.name
+        try:
+            with patch("core.cli_url_mapping.resolve_date_window", return_value=("2026-04-11", "2026-04-11")), patch(
+                "core.cli_url_mapping.load_triage_map_candidates", return_value=[]
+            ), patch("core.cli_url_mapping.resolve_projects_config_path", return_value=cfg):
+                result = self.runner.invoke(app, ["review", "--today"])
+        finally:
+            os.unlink(cfg)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("No URL candidates", result.stdout)
+        self.assertIn("Next steps", result.stdout)
+        self.assertIn("gittan projects-audit", result.stdout)
 
 
 if __name__ == "__main__":

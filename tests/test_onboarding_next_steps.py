@@ -9,6 +9,7 @@ from pathlib import Path
 
 from core.onboarding_guidance import (
     build_doctor_next_steps,
+    build_review_next_steps,
     build_setup_next_steps,
     rule_hygiene_needed_for_config,
 )
@@ -267,6 +268,29 @@ class SetupNextStepsTests(unittest.TestCase):
             smoke_status="PASS",
         )
         self.assertIn("run `gittan setup` again and complete the project mapping step", "\n".join(steps))
+
+
+class ReviewNextStepsTests(unittest.TestCase):
+    def test_missing_config_points_to_setup_dry_run_and_projects(self):
+        steps = build_review_next_steps(config_resolved=False, has_candidates=True)
+        joined = "\n".join(steps)
+        self.assertIn("gittan setup --dry-run", joined)
+        self.assertIn("gittan projects", joined)
+
+    def test_resolved_with_candidates_mentions_audit_and_map_for_uncategorized(self):
+        steps = build_review_next_steps(
+            config_resolved=True, has_candidates=True, uncategorized=True
+        )
+        joined = "\n".join(steps)
+        self.assertIn("gittan projects-audit", joined)
+        self.assertIn("gittan map", joined)
+        self.assertIn("gittan projects", joined)
+
+    def test_resolved_without_candidates_suggests_audit_and_report(self):
+        steps = build_review_next_steps(config_resolved=True, has_candidates=False)
+        joined = "\n".join(steps)
+        self.assertIn("gittan projects-audit", joined)
+        self.assertIn("gittan report --today --source-summary", joined)
 
 
 if __name__ == "__main__":

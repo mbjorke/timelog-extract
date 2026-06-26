@@ -106,6 +106,27 @@ class SetupProjectsConfigTests(unittest.TestCase):
             self.assertEqual(result.status, "PASS")
             self.assertEqual(existing_worklog.read_text(encoding="utf-8"), original)
 
+    def test_dry_run_leaves_config_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            original = '{"projects": [{"name": "keep-me", "match_terms": ["keep"]}]}'
+            cfg.write_text(original, encoding="utf-8")
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=True,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            self.assertEqual(result.status, "PASS (dry-run)")
+            self.assertEqual(cfg.read_text(encoding="utf-8"), original)
+            joined = "\n".join(result.next_steps)
+            self.assertIn(str(cfg), joined)
+            self.assertIn("gittan review", joined)
+            self.assertIn("without `--dry-run`", joined)
+
     def test_invalid_config_is_backed_up_and_recreated(self):
         with tempfile.TemporaryDirectory() as tmp:
             prev = Path.cwd()

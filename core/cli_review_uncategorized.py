@@ -45,8 +45,12 @@ def run_uncategorized_cluster_review(
     projects_config: str,
     max_clusters: int = 20,
     samples_per_cluster: int = 4,
-) -> None:
-    """Advanced manual cleanup for uncategorized activity clusters."""
+) -> bool:
+    """Advanced manual cleanup for uncategorized activity clusters.
+
+    Returns True when actionable uncategorized clusters were shown (advisory
+    next steps should treat the window as having mapping candidates).
+    """
     from core.report_service import run_timelog_report
 
     warn_deprecated_command(
@@ -82,7 +86,7 @@ def run_uncategorized_cluster_review(
     uncategorized_events = [event for event in report.included_events if event.get("project") == UNCATEGORIZED]
     if not uncategorized_events:
         console.print("[green]No uncategorized events found in selected range.[/green]")
-        return
+        return False
 
     noise_events = count_uncategorized_noise_events(uncategorized_events)
     clusters = build_uncategorized_clusters(
@@ -99,7 +103,7 @@ def run_uncategorized_cluster_review(
             )
         else:
             console.print("[yellow]No actionable clusters found. Try [cyan]gittan review[/cyan] or a wider range.[/yellow]")
-        return
+        return False
 
     config_path = Path(projects_config)
     payload = _load_projects_payload(console, config_path)
@@ -213,3 +217,4 @@ def run_uncategorized_cluster_review(
                 if isinstance(project, dict) and project.get("name")
             }
         )
+    return True

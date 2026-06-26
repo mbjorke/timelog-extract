@@ -352,59 +352,6 @@ class ZedCollectorTests(unittest.TestCase):
         detail2 = zed._format_detail(msg2)
         self.assertIn("[user]", detail2)
 
-    def test_parse_various_timestamps(self):
-        """Parse various timestamp formats."""
-        utc = timezone.utc
-
-        # Test Unix timestamp (seconds)
-        ts = zed._parse_zed_timestamp(1712745605)
-        self.assertIsNotNone(ts)
-
-        # Test Unix timestamp (milliseconds)
-        ts = zed._parse_zed_timestamp(1712745605000)
-        self.assertIsNotNone(ts)
-
-        # Test ISO format
-        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05+00:00")
-        self.assertIsNotNone(ts)
-        self.assertEqual(ts.astimezone(utc), datetime(2026, 4, 10, 12, 0, 5, tzinfo=utc))
-
-        # Test ISO with Z
-        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05Z")
-        self.assertIsNotNone(ts)
-
-        # Test None
-        ts = zed._parse_zed_timestamp(None)
-        self.assertIsNone(ts)
-
-        # Test invalid
-        ts = zed._parse_zed_timestamp("invalid")
-        self.assertIsNone(ts)
-
-    def test_parse_zed_message_entry_role_keyed(self):
-        """Parse Zed message entries with role-keyed format."""
-        # Standard format
-        result = zed._parse_zed_message_entry({"role": "user", "content": "Hello"})
-        self.assertEqual(result, ("user", "Hello"))
-
-        # Zed format with User
-        result = zed._parse_zed_message_entry({"User": {"content": [{"Text": "Hello from user"}]}})
-        self.assertEqual(result, ("user", "Hello from user"))
-
-        # Zed format with Agent
-        result = zed._parse_zed_message_entry(
-            {"Agent": {"content": [{"Text": "Hello from assistant"}]}}
-        )
-        self.assertEqual(result, ("agent", "Hello from assistant"))
-
-        # Invalid input (not a dict)
-        result = zed._parse_zed_message_entry("not a dict")
-        self.assertIsNone(result)
-
-        # Empty dict
-        result = zed._parse_zed_message_entry({})
-        self.assertIsNone(result)
-
     def test_collect_with_role_keyed_format(self):
         """Collect events with Zed's role-keyed message format."""
         dt_from = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)

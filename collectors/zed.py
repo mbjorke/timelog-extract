@@ -25,11 +25,13 @@ SOURCE = "Zed"
 
 # Common Zed data directory locations
 _ZED_DB_PATHS = [
-    # macOS (both possible locations)
+    # macOS (primary location - Zed 0.150+)
+    "~/Library/Application Support/zed/threads/threads.db",
+    # macOS (legacy location)
     "~/Library/Application Support/zed/db/threads.db",
-    "~/.local/share/zed/threads/threads.db",
     # Linux
     "~/.local/share/zed/db/threads.db",
+    "~/.local/share/zed/threads/threads.db",
     # Windows
     "~/AppData/Roaming/zed/db/threads.db",
 ]
@@ -68,7 +70,20 @@ def _decode_blob(data: bytes | str | None) -> str | None:
     if isinstance(data, str):
         return data
 
-    # Try zlib decompression first (Zed may compress some blobs)
+    # Try zstd decompression first (Zed 0.150+ uses zstd with frame header)
+    try:
+        import io
+
+        import zstandard as zstd
+
+        dctx = zstd.ZstdDecompressor()
+        with io.BytesIO(data) as stream:
+            decompressed = dctx.stream_reader(stream).read()
+        return decompressed.decode("utf-8", errors="replace")
+    except (ImportError, zstd.ZstdError, UnicodeDecodeError, AttributeError, OSError):
+        pass
+
+    # Try zlib decompression (legacy Zed versions)
     try:
         decompressed = zlib.decompress(data)
         return decompressed.decode("utf-8", errors="replace")
@@ -350,6 +365,44 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                                     content,
                                                 )
                                             )
+                                        else:
+                                            # Zed format: {"User": {...}, "Agent": {...}}
+                                            # The dict has a single key which is the role
+                                            if len(msg) == 1:
+                                                role_key = next(iter(msg.keys()))
+                                                role = str(role_key).lower()
+                                                role_data = msg.get(role_key, {})
+                                                if isinstance(role_data, dict):
+                                                    # Extract content from role_data
+                                                    content_obj = role_data.get("content", [])
+                                                    if (
+                                                        isinstance(content_obj, list)
+                                                        and content_obj
+                                                    ):
+                                                        # Zed uses list of content objects, get Text from first
+                                                        first_content = content_obj[0]
+                                                        if isinstance(first_content, dict):
+                                                            content = str(
+                                                                first_content.get("Text")
+                                                                or first_content.get("text")
+                                                                or ""
+                                                            )[:500]
+                                                        else:
+                                                            content = str(content_obj[0])[:500]
+                                                    elif isinstance(content_obj, str):
+                                                        content = content_obj[:500]
+                                                    else:
+                                                        continue
+                                                    if content:
+                                                        messages.append(
+                                                            ZedMessage(
+                                                                thread_id,
+                                                                f"{thread_id}-{i}",
+                                                                msg_ts,
+                                                                role,
+                                                                content,
+                                                            )
+                                                        )
                             else:
                                 # Direct dict format
                                 role = str(parsed.get("role") or "user").lower()

@@ -44,13 +44,16 @@ def collect_all_events(
     collect_github: Callable,
     collect_toggl: Callable,
     collect_calendar: Callable,
+    collect_zed: Callable,
     calendar_has_selection: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     all_events: List[Dict[str, Any]] = []
     collector_status: Dict[str, Dict[str, Any]] = {}
     chrome_history_exists = bool(chrome_history_path_fn(home))
     lovable_desktop_history_exists = bool(lovable_desktop_history_candidates(home))
-    lovable_desktop_usable = lovable_desktop_history_exists or lovable_desktop_has_storage_signals(home)
+    lovable_desktop_usable = lovable_desktop_history_exists or lovable_desktop_has_storage_signals(
+        home
+    )
     mail_root, mail_msg = detect_mail_root_fn(home)
     collectors = build_collector_specs_fn(
         args,
@@ -78,6 +81,7 @@ def collect_all_events(
         collect_github=collect_github,
         collect_toggl=collect_toggl,
         collect_calendar=collect_calendar,
+        collect_zed=collect_zed,
         calendar_has_selection=calendar_has_selection,
     )
     total_collectors = len(collectors)
@@ -123,9 +127,9 @@ def collect_all_events(
             collector = spec.collector
             enabled = spec.enabled
             reason = spec.reason
-            
+
             progress.update(task, description=f"[cyan]Scanning {name}...")
-            
+
             if not enabled:
                 collector_status[name] = {
                     "enabled": False,
@@ -134,7 +138,7 @@ def collect_all_events(
                 }
                 progress.advance(task)
                 continue
-            
+
             try:
                 events = collector(profiles, dt_from, dt_to)
                 all_events.extend(events)
@@ -149,7 +153,7 @@ def collect_all_events(
                     "reason": f"collector error: {exc}",
                     "events": 0,
                 }
-            
+
             progress.advance(task)
 
     enrich_ide_collector_versions(collector_status, home)

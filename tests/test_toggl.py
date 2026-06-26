@@ -87,6 +87,7 @@ class TogglSourceTests(unittest.TestCase):
                 collect_github=lambda *_: [],
                 collect_toggl=lambda *_: [],
                 collect_calendar=lambda *_: [],
+                collect_zed=lambda *_: [],
             )
         toggl = next((spec for spec in specs if spec.name == "Toggl"), None)
         self.assertIsNotNone(toggl)
@@ -94,9 +95,9 @@ class TogglSourceTests(unittest.TestCase):
         self.assertTrue(toggl.enabled)
         self.assertIsNone(toggl.reason)
 
-
     def test_toggl_source_invalid_mode_is_rejected(self):
         """New in PR: invalid mode string returns (False, descriptive error)."""
+
         class Args:
             toggl_source = "bogus"
             toggl_api_token = None
@@ -110,6 +111,7 @@ class TogglSourceTests(unittest.TestCase):
 
     def test_toggl_source_off_is_disabled_even_with_token(self):
         """Mode=off should always return disabled regardless of token presence."""
+
         class Args:
             toggl_source = "off"
             toggl_api_token = None
@@ -122,6 +124,7 @@ class TogglSourceTests(unittest.TestCase):
 
     def test_toggl_source_on_without_token_is_disabled(self):
         """Mode=on without a token returns disabled with clear message."""
+
         class Args:
             toggl_source = "on"
             toggl_api_token = None
@@ -134,6 +137,7 @@ class TogglSourceTests(unittest.TestCase):
 
     def test_toggl_source_on_with_token_is_enabled(self):
         """Mode=on with token present returns enabled."""
+
         class Args:
             toggl_source = "on"
             toggl_api_token = None
@@ -145,6 +149,7 @@ class TogglSourceTests(unittest.TestCase):
 
     def test_toggl_source_invalid_mode_error_message_format(self):
         """Error message for invalid mode includes mode value and expectation hint."""
+
         class Args:
             toggl_source = "maybe"
             toggl_api_token = None

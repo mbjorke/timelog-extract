@@ -21,6 +21,7 @@ from collectors import (
     timelog as timelog_collector,
     toggl as toggl_collector,
     windsurf as windsurf_collector,
+    zed as zed_collector,
 )
 from core.collector_registry import build_collector_specs
 from core.config import resolve_profile_worklog_paths
@@ -38,7 +39,11 @@ def _resolve_only_project_filter(args: argparse.Namespace, profiles: List[Dict[s
     requested = str(getattr(args, "only_project", "") or "").strip()
     if not requested:
         return
-    by_name = {str(p.get("name", "")).strip().lower(): str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()}
+    by_name = {
+        str(p.get("name", "")).strip().lower(): str(p.get("name", "")).strip()
+        for p in profiles
+        if str(p.get("name", "")).strip()
+    }
     exact = by_name.get(requested.lower())
     if exact:
         if exact != requested:
@@ -54,7 +59,9 @@ def _resolve_only_project_filter(args: argparse.Namespace, profiles: List[Dict[s
         canonical = str(profile.get("name", "")).strip()
         if not canonical:
             continue
-        names = [canonical] + [str(a).strip() for a in (profile.get("aliases") or []) if str(a).strip()]
+        names = [canonical] + [
+            str(a).strip() for a in (profile.get("aliases") or []) if str(a).strip()
+        ]
         if any(needle in name.lower() for name in names):
             key = canonical.lower()
             if key not in seen:
@@ -141,9 +148,9 @@ def build_run_context(
         args.include_uncategorized = True
         # Also show source summary by default for setup-free first runs, but not for machine-readable outputs.
         is_machine_readable = (
-            getattr(args, 'machine_readable', False)
-            or getattr(args, 'output_format', '') in ('json', 'ndjson', 'script')
-            or (getattr(args, 'output_path', '') or '').endswith(('.json', '.ndjson'))
+            getattr(args, "machine_readable", False)
+            or getattr(args, "output_format", "") in ("json", "ndjson", "script")
+            or (getattr(args, "output_path", "") or "").endswith((".json", ".ndjson"))
         )
         if not is_machine_readable:
             args.source_summary = True
@@ -209,7 +216,9 @@ def build_run_context(
     chosen_strategy = str(getattr(args, "source_strategy", "auto") or "auto").strip().lower()
     if chosen_strategy not in {"auto", "worklog-first", "balanced"}:
         chosen_strategy = "auto"
-    worklog_exists = worklog_path.exists() and worklog_path.is_file() and os.access(worklog_path, os.R_OK)
+    worklog_exists = (
+        worklog_path.exists() and worklog_path.is_file() and os.access(worklog_path, os.R_OK)
+    )
     if chosen_strategy == "balanced":
         source_strategy_effective = "balanced"
     elif chosen_strategy == "worklog-first":
@@ -218,14 +227,25 @@ def build_run_context(
         source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
     args.source_strategy = chosen_strategy
     args.source_strategy_effective = source_strategy_effective
-    args.primary_source = worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
-    noise_profile = str(getattr(args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE).strip().lower()
+    args.primary_source = (
+        worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
+    )
+    noise_profile = (
+        str(getattr(args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE)
+        .strip()
+        .lower()
+    )
     if noise_profile not in NOISE_PROFILES:
         noise_profile = DEFAULT_NOISE_PROFILE
     args.noise_profile = noise_profile
-    lovable_noise_profile = str(
-        getattr(args, "lovable_noise_profile", DEFAULT_LOVABLE_NOISE_PROFILE) or DEFAULT_LOVABLE_NOISE_PROFILE
-    ).strip().lower()
+    lovable_noise_profile = (
+        str(
+            getattr(args, "lovable_noise_profile", DEFAULT_LOVABLE_NOISE_PROFILE)
+            or DEFAULT_LOVABLE_NOISE_PROFILE
+        )
+        .strip()
+        .lower()
+    )
     if lovable_noise_profile not in LOVABLE_NOISE_PROFILES:
         lovable_noise_profile = DEFAULT_LOVABLE_NOISE_PROFILE
     args.lovable_noise_profile = lovable_noise_profile
@@ -234,11 +254,15 @@ def build_run_context(
         print(f"\nScanning: {dt_from.date()} -> {dt_to.date()}")
         if args.only_project:
             print(f"Only project: {args.only_project!r}")
-        if getattr(args, "only_project_resolved", False) and getattr(args, "only_project_input", None):
+        if getattr(args, "only_project_resolved", False) and getattr(
+            args, "only_project_input", None
+        ):
             print(f"Project filter matched: {args.only_project_input!r} -> {args.only_project!r}")
         ambiguous_projects = getattr(args, "only_project_ambiguous", None) or []
         if ambiguous_projects:
-            print(f"Project filter ambiguous: {args.only_project!r} matches {', '.join(ambiguous_projects)}")
+            print(
+                f"Project filter ambiguous: {args.only_project!r} matches {', '.join(ambiguous_projects)}"
+            )
         if getattr(args, "only_project_no_match", False):
             print(f"Project filter {args.only_project!r} matched no profiles")
         if args.customer:
@@ -262,15 +286,21 @@ def build_run_context(
             print(f"Per-project worklogs: {len(worklog_paths) - 1} additional paths")
         if chosen_strategy == "worklog-first" and not worklog_exists:
             if worklog_path.exists() and worklog_path.is_file():
-                print("Source strategy: worklog-first requested, but worklog not readable; using balanced fallback.")
+                print(
+                    "Source strategy: worklog-first requested, but worklog not readable; using balanced fallback."
+                )
             else:
-                print("Source strategy: worklog-first requested, but worklog missing; using balanced fallback.")
+                print(
+                    "Source strategy: worklog-first requested, but worklog missing; using balanced fallback."
+                )
         else:
             print(f"Source strategy: {source_strategy_effective} (requested: {chosen_strategy})")
         print(f"Noise profile: {noise_profile}")
         if attribution_mode == "commit-first":
             print("Attribution mode: commit-first (GitHub-focused comparison preset)")
-            print("Preset sources: github=on, chrome=off, mail=off, screen_time=off, source_strategy=balanced")
+            print(
+                "Preset sources: github=on, chrome=off, mail=off, screen_time=off, source_strategy=balanced"
+            )
         profile_hints = {
             "lenient": "keep almost all collector diagnostics/events",
             "strict": "filter common heartbeat/diagnostic noise",
@@ -336,6 +366,7 @@ def collect_runtime_events(
         timelog_collector=timelog_collector,
         github_collector=github_collector,
         toggl_collector=toggl_collector,
+        zed_collector=zed_collector,
         github_token=os.environ.get("GITHUB_TOKEN"),
     )
     return collect_all_events(
@@ -367,6 +398,7 @@ def collect_runtime_events(
         collect_github=runtime_collectors.collect_github,
         collect_toggl=runtime_collectors.collect_toggl,
         collect_calendar=runtime_collectors.collect_calendar,
+        collect_zed=runtime_collectors.collect_zed,
         calendar_has_selection=bool(runtime_collectors.calendar_roles()),
     )
 

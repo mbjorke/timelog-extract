@@ -45,7 +45,7 @@ No source should silently promote classified time into approved invoice time.
 | --- | --- | --- | --- | --- | --- |
 | Configured per-project worklogs | `primary_claim` | yes | yes | yes, when source strategy says worklog-first | Maintained reporting should use explicit project `worklog` paths under Gittan home. Repo-local `TIMELOG.md` is legacy fallback only. |
 | Toggl | `primary_claim` | yes | yes | no by default | External tracked-time claim; preserve provenance and keep separate from invoice approval. |
-| Cursor / Codex / AI CLI logs | `direct_work_evidence` | yes | yes | usually yes over passive sources | High value for actual work activity. |
+| Cursor / Codex / AI CLI logs / Zed | `direct_work_evidence` | yes | yes | usually yes over passive sources | High value for actual work activity. |
 | GitHub | `delivery_evidence` | yes, cautiously | yes | no by itself | Strong project anchor, weak duration signal unless correlated with other activity. |
 | Chrome / Lovable desktop history | `passive_context` | yes, cautiously | yes | no | Good for context and project hints; noisy for duration. |
 | Apple Mail | `passive_context` | yes, cautiously | yes | no | Communication context; permission-sensitive. |

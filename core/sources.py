@@ -22,6 +22,7 @@ SOURCE_ORDER = [
     "Codex IDE",
     "GitHub Copilot CLI",
     "Gemini CLI",
+    "Zed",
     WORKLOG_SOURCE,
     "Apple Mail",
     "Chrome",

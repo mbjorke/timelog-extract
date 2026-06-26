@@ -26,6 +26,7 @@ dependencies = [
   "rich",
   "questionary",
   # Chromium cache-backed sources (Claude Desktop Code=zstd, Lovable=brotli).
+  # Zed AI chat uses zstd compression.
   "zstandard>=0.21",
   "brotli>=1.1",
 ]

@@ -107,7 +107,7 @@ rule for explicitly user-authored manual entries.
 - dependencies: Phase 1–2.
 
 ### Phase 3b — per-issue mapping for Jira (issue_key on the record)
-- priority: **next** — not built (planned via this product-owner pass)
+- priority: **built** — this PR
 - problem: Phase 3 maps a whole project to **one** `jira_issue_key`, so all of a
   project's confirmed time piles onto a single issue. Real worklogs need to land
   on the **specific issue** worked (KAN-1 vs KAN-2). The issue dimension only
@@ -211,19 +211,20 @@ Python file over 500 lines.
 - spec_status: draft
 - implementation_status: in progress — Phase 1 built (#186), Phase 2 built (#187),
   Phase 2b (auto-reporting) built (#190), Phase 3 (sync reads confirmed) built
-  (this PR); Phase 3b (per-issue mapping) planned/next; Phases 4–5 + Calendar
-  not built
+  (#194), Phase 3b (per-issue mapping) built (this PR, stacked on #194);
+  Phases 4–5 + Calendar not built
 - created_at: 2026-06-25
 - last_updated_at: 2026-06-26
 - implementation.pr: #186 (merged), #187 (merged), #190 (merged, Phase 2b),
-  this PR (#194, Phase 3 — sync reads confirmed)
+  #194 (Phase 3), this PR (#196, Phase 3b — stacked on #194)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
-  task/reported-auto-report, task/reported-sync-reads-confirmed
+  task/reported-auto-report, task/reported-sync-reads-confirmed,
+  task/reported-per-issue
 - implementation.commits: []
 - validation.evidence: `tests/test_reported_time.py`, `tests/test_cli_reported.py`,
-  `tests/test_jira_reported_mode.py`, `tests/test_toggl_sync.py`;
-  full suite green (1040)
-- validation.decision: GO for Phase 1–3; Phase 3b next; Phases 4–5 + Calendar pending
+  `tests/test_reported_sync.py`, `tests/test_jira_reported_mode.py`,
+  `tests/test_toggl_sync.py`; full suite green (1055)
+- validation.decision: GO for Phase 1–3b; Phases 4–5 + Calendar pending
 - related:
   - design root: [`../specs/scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md)
   - policy: [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md)
@@ -247,3 +248,10 @@ Python file over 500 lines.
     an optional `issue_key` stamped on the record at observation ("Väg 1"); D6
     locked. Phase 3's profile `jira_issue_key` becomes the fallback. Needs a
     GH issue at promotion to `now` (per the issue-lifecycle rule).
+  - 2026-06-26: Phase 3b built (stacked on #194) — optional `issue_key` on
+    `ReportedTimeRecord` (in the id basis only when set, so pre-3b ids are
+    unchanged); `build_reported_proposals(report, repo_path)` stamps the
+    git-inferred issue per session; `reported sync`/`review` take `--git-repo`;
+    `reported add --issue KAN-2` for manual time; jira-sync groups by
+    `(issue_key, day)` via `reported_issue_hours_for_window`, profile
+    `jira_issue_key` as fallback; Toggl unchanged (sums across issue_key).

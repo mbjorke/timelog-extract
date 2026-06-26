@@ -50,13 +50,32 @@ def _month_path(base_dir: Path, month: str) -> Path:
     return base_dir / f"{month}.jsonl"
 
 
-def compute_reported_id(date: str, project: str, source: str, origin_ref: List[str], note: str) -> str:
+def compute_reported_id(
+    date: str,
+    project: str,
+    source: str,
+    origin_ref: List[str],
+    note: str,
+    issue_key: Optional[str] = None,
+) -> str:
     """Deterministic id for a reported unit so re-writes are idempotent.
 
     Non-manual units key on (date, project, source, origin); manual units key on
-    (date, project, note) since they have no origin.
+    (date, project, note) since they have no origin. When an ``issue_key`` is set
+    (Phase 3b) the basis is an unambiguous JSON array so two issues on one
+    project+day are distinct (and free-text notes can't collide with an appended
+    key); records without an ``issue_key`` keep the pre-3b string basis, so
+    existing ids are unchanged.
     """
-    if source == "manual":
+    normalized_issue_key = str(issue_key).strip() if issue_key else ""
+    if normalized_issue_key:
+        payload = note.strip() if source == "manual" else sorted(origin_ref)
+        basis = json.dumps(
+            [date, project, source, payload, normalized_issue_key],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+    elif source == "manual":
         basis = f"{date}|{project}|manual|{note.strip()}"
     else:
         basis = f"{date}|{project}|{source}|{','.join(sorted(origin_ref))}"
@@ -75,6 +94,7 @@ class ReportedTimeRecord:
     edited_from_hours: Optional[float] = None
     captured_at: str = ""
     confirmed_at: Optional[str] = None
+    issue_key: Optional[str] = None  # Phase 3b: the Jira issue this time posts to
     id: str = ""
 
     def __post_init__(self) -> None:
@@ -97,9 +117,12 @@ class ReportedTimeRecord:
             self.captured_at = _utc_now_iso()
         if self.confirmed_at is None and self.state in REPORTED_STATES:
             self.confirmed_at = _utc_now_iso()
+        if self.issue_key is not None:
+            self.issue_key = str(self.issue_key).strip() or None
         if not self.id:
             self.id = compute_reported_id(
-                self.date, self.project, self.source, list(self.origin_ref), self.note
+                self.date, self.project, self.source, list(self.origin_ref),
+                self.note, self.issue_key,
             )
 
     def to_json(self) -> str:
@@ -119,6 +142,7 @@ def record_from_dict(data: dict) -> ReportedTimeRecord:
         edited_from_hours=data.get("edited_from_hours"),
         captured_at=str(data.get("captured_at", "")),
         confirmed_at=data.get("confirmed_at"),
+        issue_key=data.get("issue_key"),
         id=str(data.get("id", "")),
     )
 

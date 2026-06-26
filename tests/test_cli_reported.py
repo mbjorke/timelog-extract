@@ -68,6 +68,26 @@ class AddCommandTests(unittest.TestCase):
             ])
         self.assertNotEqual(result.exit_code, 0)
 
+    def test_add_with_issue_sets_issue_key(self):
+        tmp, store = _temp_store()
+        with tmp, store:
+            result = CliRunner().invoke(app, [
+                "reported", "add", "--project", "P", "--date", "2026-06-18",
+                "--hours", "2", "--note", "phone call", "--issue", "KAN-9",
+            ])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            recs = rt.query(project="P", date="2026-06-18", states={"confirmed"})
+            self.assertEqual(recs[0].issue_key, "KAN-9")
+
+    def test_add_rejects_malformed_issue(self):
+        tmp, store = _temp_store()
+        with tmp, store:
+            result = CliRunner().invoke(app, [
+                "reported", "add", "--project", "P", "--date", "2026-06-18",
+                "--hours", "2", "--note", "x", "--issue", "not a key",
+            ])
+        self.assertNotEqual(result.exit_code, 0)
+
 
 class ReviewCommandTests(unittest.TestCase):
     def _proposal(self):
@@ -96,6 +116,23 @@ class ReviewCommandTests(unittest.TestCase):
             self.assertEqual(len(recs), 1)
             self.assertEqual(recs[0].project, "Alpha")
             self.assertIn("confirmed=1", result.output)
+
+    def test_confirm_preserves_issue_key(self):
+        # Phase 3b regression: a proposal's git-inferred issue_key must survive
+        # confirm/edit (via _with), or jira-sync loses the per-issue mapping.
+        tmp, store = _temp_store()
+        proposal = rt.ReportedTimeRecord(
+            date="2026-06-18", project="Alpha", hours=2.5, source="session",
+            state="proposed", origin_ref=["2026-06-18T1000"], issue_key="KAN-7",
+        )
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=SimpleNamespace()), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[proposal]
+        ), patch("core.cli_reported.typer.prompt", return_value="c"):
+            result = CliRunner().invoke(app, ["reported", "review", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            recs = rt.query(states={"confirmed"})
+            self.assertEqual(len(recs), 1)
+            self.assertEqual(recs[0].issue_key, "KAN-7")
 
     def test_already_confirmed_is_skipped(self):
         tmp, store = _temp_store()
@@ -153,6 +190,28 @@ class SyncCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertIn("Would auto-report 1", result.output)
             self.assertEqual(rt.query(), [])
+
+    def test_sibling_issue_not_skipped_as_already_reported(self):
+        # Phase 3b dedup must be issue-aware: a reported KAN-2 must not skip KAN-3
+        # on the same project+day (CodeRabbit #196).
+        tmp, store = _temp_store()
+        report = SimpleNamespace(profiles=[{"name": "Alpha", "auto_report": True}])
+        p2 = rt.ReportedTimeRecord(date="2026-06-18", project="Alpha", hours=2.0, source="session",
+                                   state="proposed", origin_ref=["2026-06-18T1000"], issue_key="KAN-2")
+        p3 = rt.ReportedTimeRecord(date="2026-06-18", project="Alpha", hours=3.0, source="session",
+                                   state="proposed", origin_ref=["2026-06-18T1100"], issue_key="KAN-3")
+        with tmp, store:
+            rt.append_record(rt.ReportedTimeRecord(
+                date="2026-06-18", project="Alpha", hours=2.0, source="session",
+                state="confirmed", origin_ref=["2026-06-18T1000"], issue_key="KAN-2"))
+            with patch("core.report_service.run_timelog_report", return_value=report), patch(
+                "core.cli_reported.build_reported_proposals", return_value=[p2, p3]
+            ):
+                result = CliRunner().invoke(app, ["reported", "sync", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            confirmed = {(r.project, r.issue_key) for r in rt.query(states={"confirmed"})}
+            self.assertEqual(confirmed, {("Alpha", "KAN-2"), ("Alpha", "KAN-3")})
+            self.assertIn("Auto-reported 1", result.output)
 
 
 if __name__ == "__main__":

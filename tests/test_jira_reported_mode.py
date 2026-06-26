@@ -35,11 +35,12 @@ class JiraReportedModeTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def _confirm(self, project, day, hours):
+    def _confirm(self, project, day, hours, issue_key=None):
         append_record(
             ReportedTimeRecord(
                 date=day, project=project, hours=hours, source="session",
-                state="confirmed", origin_ref=[f"{day}T0900"],
+                state="confirmed", origin_ref=[f"{day}T{int(hours * 100):04d}"],
+                issue_key=issue_key,
             ),
             home=self.home,
         )
@@ -68,6 +69,36 @@ class JiraReportedModeTests(unittest.TestCase):
         )
         self.assertEqual(candidates, [])
         self.assertEqual(unresolved, 1)
+
+    def test_two_issues_one_project_day_become_two_worklogs(self):
+        # Phase 3b: per-session issue_key keeps the split — two issues, two worklogs.
+        self._confirm("Project A", "2026-04-10", 2.0, issue_key="KAN-2")
+        self._confirm("Project A", "2026-04-10", 3.0, issue_key="KAN-3")
+        payload = _reported_payload("2026-04-10")
+        with patch("core.jira_sync.load_commit_tags", side_effect=AssertionError("git consulted")):
+            candidates, unresolved = build_jira_worklog_candidates(
+                payload, Path("."), [{"name": "Project A"}], home=self.home
+            )
+        self.assertEqual(unresolved, 0)
+        by_issue = {c.issue_key: c.seconds for c in candidates}
+        self.assertEqual(by_issue, {"KAN-2": 2 * 3600, "KAN-3": 3 * 3600})
+
+    def test_record_issue_key_wins_over_profile_fallback(self):
+        self._confirm("Project A", "2026-04-10", 2.0, issue_key="KAN-9")
+        payload = _reported_payload("2026-04-10")
+        # Profile says ABC-101, but the record's own issue_key must win.
+        candidates, _unresolved = build_jira_worklog_candidates(
+            payload, Path("."), [{"name": "Project A", "jira_issue_key": "ABC-101"}], home=self.home
+        )
+        self.assertEqual([c.issue_key for c in candidates], ["KAN-9"])
+
+    def test_no_record_issue_falls_back_to_profile(self):
+        self._confirm("Project A", "2026-04-10", 2.0)  # no per-session issue
+        payload = _reported_payload("2026-04-10")
+        candidates, _unresolved = build_jira_worklog_candidates(
+            payload, Path("."), [{"name": "Project A", "jira_issue_key": "ABC-101"}], home=self.home
+        )
+        self.assertEqual([c.issue_key for c in candidates], ["ABC-101"])
 
 
 if __name__ == "__main__":

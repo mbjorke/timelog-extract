@@ -9,8 +9,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors import zed
-from collectors import zed_db
+from collectors import zed, zed_db
 
 UTC = timezone.utc
 

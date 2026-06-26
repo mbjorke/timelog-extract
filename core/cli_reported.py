@@ -16,7 +16,8 @@ from typing import Annotated, Optional
 
 import typer
 
-_ISSUE_KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
+# Jira project keys can include underscores (e.g. OPS_TEAM-123) on some instances.
+_ISSUE_KEY_RE = re.compile(r"[A-Z][A-Z0-9_]+-\d+")
 
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions

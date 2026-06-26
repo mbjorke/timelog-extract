@@ -43,6 +43,7 @@ AI_SOURCES = {
     "Codex IDE",
     "Cursor (agent)",
     "GitHub Copilot CLI",
+    "Zed",
     WORKLOG_SOURCE,
 }
 

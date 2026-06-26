@@ -156,6 +156,46 @@ def _inspect_db_schema(db_path: Path) -> dict[str, list[str]]:
     return schema
 
 
+def _parse_zed_message_entry(entry: Any) -> tuple[str, str] | None:
+    """Parse a Zed message entry, handling both standard and role-keyed formats.
+
+    Standard format: {"role": "user", "content": "..."}
+    Zed format: {"User": {"content": [{"Text": "..."}]}}
+
+    Returns: (role, content) tuple or None if no content found.
+    """
+    if not isinstance(entry, dict):
+        return None
+
+    # Try standard format first
+    role = str(entry.get("role") or "").lower()
+    content = str(entry.get("content") or entry.get("message") or "")
+    if role and content:
+        return role, content[:500]
+
+    # Zed format: single key is the role, value contains content
+    if len(entry) == 1:
+        role_key = next(iter(entry.keys()))
+        role = str(role_key).lower()
+        role_data = entry.get(role_key, {})
+        if isinstance(role_data, dict):
+            content_obj = role_data.get("content", [])
+            if isinstance(content_obj, list) and content_obj:
+                first_content = content_obj[0]
+                if isinstance(first_content, dict):
+                    content = str(first_content.get("Text") or first_content.get("text") or "")
+                    if content:
+                        return role, content[:500]
+                elif isinstance(first_content, str):
+                    if first_content:
+                        return role, first_content[:500]
+            elif isinstance(content_obj, str):
+                if content_obj:
+                    return role, content_obj[:500]
+
+    return None
+
+
 def _extract_messages_from_db(
     db_path: Path, dt_from: datetime, dt_to: datetime
 ) -> list[ZedMessage]:
@@ -221,9 +261,20 @@ def _query_messages_direct(conn, schema, message_tables, thread_tables, dt_from,
                 role = str(drow.get(role_col) or "user").lower()
                 if role not in ["user", "assistant", "system"]:
                     role = "user"
-                content = _decode_blob(drow.get(content_col)) or ""
-                if content:
-                    messages.append(ZedMessage(thread_id, msg_id, ts, role, content[:500]))
+                raw_content = _decode_blob(drow.get(content_col))
+                if raw_content:
+                    # Try to parse as JSON first (for role-keyed Zed format)
+                    try:
+                        parsed = json.loads(raw_content)
+                        parsed_msg = _parse_zed_message_entry(parsed)
+                        if parsed_msg:
+                            role, content = parsed_msg
+                        else:
+                            content = raw_content
+                    except (json.JSONDecodeError, TypeError):
+                        content = raw_content
+                    if content:
+                        messages.append(ZedMessage(thread_id, msg_id, ts, role, content[:500]))
         except (sqlite3.Error, KeyError):
             continue
     return messages
@@ -275,14 +326,25 @@ def _query_messages_join_threads(conn, schema, message_tables, thread_tables, dt
                     role = str(drow.get("role") or "user").lower()
                     if role not in ["user", "assistant", "system"]:
                         role = "user"
-                    content = (
+                    raw_content = (
                         _decode_blob(
                             drow.get("content") or drow.get("message") or drow.get("body") or b""
                         )
                         or ""
                     )
-                    if content:
-                        messages.append(ZedMessage(thread_id, msg_id, ts, role, content[:500]))
+                    if raw_content:
+                        # Try to parse as JSON first (for role-keyed Zed format)
+                        try:
+                            parsed = json.loads(raw_content)
+                            parsed_msg = _parse_zed_message_entry(parsed)
+                            if parsed_msg:
+                                role, content = parsed_msg
+                            else:
+                                content = raw_content
+                        except (json.JSONDecodeError, TypeError):
+                            content = raw_content
+                        if content:
+                            messages.append(ZedMessage(thread_id, msg_id, ts, role, content[:500]))
             except (sqlite3.Error, KeyError):
                 continue
     return messages
@@ -329,16 +391,19 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                         )
                                         or ts
                                     )
-                                    role = str(msg.get("role") or "user").lower()
-                                    content = str(msg.get("content") or msg.get("message") or "")[
-                                        :500
-                                    ]
-                                    if content:
-                                        messages.append(
-                                            ZedMessage(
-                                                thread_id, f"{thread_id}-{i}", msg_ts, role, content
+                                    parsed_msg = _parse_zed_message_entry(msg)
+                                    if parsed_msg:
+                                        role, content = parsed_msg
+                                        if content:
+                                            messages.append(
+                                                ZedMessage(
+                                                    thread_id,
+                                                    f"{thread_id}-{i}",
+                                                    msg_ts,
+                                                    role,
+                                                    content,
+                                                )
                                             )
-                                        )
                         elif isinstance(parsed, dict):
                             # Handle dict with nested messages array
                             messages_list = parsed.get("messages", [])
@@ -351,68 +416,30 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                             )
                                             or ts
                                         )
-                                        role = str(msg.get("role") or "user").lower()
-                                        content = str(
-                                            msg.get("content") or msg.get("message") or ""
-                                        )[:500]
-                                        if content:
-                                            messages.append(
-                                                ZedMessage(
-                                                    thread_id,
-                                                    f"{thread_id}-{i}",
-                                                    msg_ts,
-                                                    role,
-                                                    content,
+                                        parsed_msg = _parse_zed_message_entry(msg)
+                                        if parsed_msg:
+                                            role, content = parsed_msg
+                                            if content:
+                                                messages.append(
+                                                    ZedMessage(
+                                                        thread_id,
+                                                        f"{thread_id}-{i}",
+                                                        msg_ts,
+                                                        role,
+                                                        content,
+                                                    )
                                                 )
-                                            )
-                                        else:
-                                            # Zed format: {"User": {...}, "Agent": {...}}
-                                            # The dict has a single key which is the role
-                                            if len(msg) == 1:
-                                                role_key = next(iter(msg.keys()))
-                                                role = str(role_key).lower()
-                                                role_data = msg.get(role_key, {})
-                                                if isinstance(role_data, dict):
-                                                    # Extract content from role_data
-                                                    content_obj = role_data.get("content", [])
-                                                    if (
-                                                        isinstance(content_obj, list)
-                                                        and content_obj
-                                                    ):
-                                                        # Zed uses list of content objects, get Text from first
-                                                        first_content = content_obj[0]
-                                                        if isinstance(first_content, dict):
-                                                            content = str(
-                                                                first_content.get("Text")
-                                                                or first_content.get("text")
-                                                                or ""
-                                                            )[:500]
-                                                        else:
-                                                            content = str(content_obj[0])[:500]
-                                                    elif isinstance(content_obj, str):
-                                                        content = content_obj[:500]
-                                                    else:
-                                                        continue
-                                                    if content:
-                                                        messages.append(
-                                                            ZedMessage(
-                                                                thread_id,
-                                                                f"{thread_id}-{i}",
-                                                                msg_ts,
-                                                                role,
-                                                                content,
-                                                            )
-                                                        )
                             else:
-                                # Direct dict format
-                                role = str(parsed.get("role") or "user").lower()
-                                content = str(parsed.get("content") or parsed.get("message") or "")[
-                                    :500
-                                ]
-                                if content:
-                                    messages.append(
-                                        ZedMessage(thread_id, f"{thread_id}-0", ts, role, content)
-                                    )
+                                # Direct dict format - use helper for consistency
+                                parsed_msg = _parse_zed_message_entry(parsed)
+                                if parsed_msg:
+                                    role, content = parsed_msg
+                                    if content:
+                                        messages.append(
+                                            ZedMessage(
+                                                thread_id, f"{thread_id}-0", ts, role, content
+                                            )
+                                        )
                     except (json.JSONDecodeError, TypeError):
                         content = str(raw_content)[:500]
                         if content:

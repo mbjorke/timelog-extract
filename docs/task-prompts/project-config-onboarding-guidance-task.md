@@ -13,17 +13,18 @@ task explicitly changes that scope.
 
 - story_id: GH-197
 - spec_status: approved
-- implementation_status: in progress
+- implementation_status: built
 - created_at: 2026-06-26
 - last_updated_at: 2026-06-26
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/201
 - implementation.branch: task/project-config-onboarding-guidance
-- implementation.commits: []
-- validation.evidence: pending
+- implementation.commits: [a04fed9, b2d0ff6, 43cb7ea, e0f60d9, 58ffa50]
+- validation.evidence: pending (CI on PR #201 after rebase onto main)
 - validation.decision: conditional GO
 - changelog:
   - 2026-06-26: Initial product-owner task created as the next low-conflict backlog item while reported-time and Zed collector PRs remain active.
   - 2026-06-26: Iterated plan — 4 slices total (0 spec merged, A/B/C implementation). Slice A doctor/setup ready locally; B review wiring + C review tests remain.
+  - 2026-06-26: Slices A/B/C implemented on PR #201; traceability and slice table synced; review path uses shared finish_review_guidance.
 
 ## Non-goals (locked for GH-197)
 
@@ -50,9 +51,9 @@ Ship as **three implementation commits/PR batches** on
 | Slice | Scope | Status | Lands |
 | --- | --- | --- | --- |
 | **0 — Spec** | Task prompt + traceability (#198) | **merged** | `main` |
-| **A — Doctor + setup** | `build_doctor_next_steps`, `build_setup_next_steps`, bootstrap dry-run copy, setup→review handoff; tests in `test_onboarding_next_steps.py` + `test_setup_projects_config.py` | **ready to commit** (local) | Commit 1 → same branch PR |
-| **B — Review surface** | `build_review_next_steps` in `onboarding_guidance.py`; wire `print_next_steps` into `cli_review.py` (default + `--uncategorized` paths only; **not** `--json`) | not built | Commit 2 → same PR or follow-up push |
-| **C — Review tests + non-regression** | New `ReviewNextStepsTests`; terminal review shows "Next steps"; `--json` shape unchanged; rerun `test_cli_triage.py` | not built | Commit 3 → closes GH-197 |
+| **A — Doctor + setup** | `build_doctor_next_steps`, `build_setup_next_steps`, bootstrap dry-run copy, setup→review handoff; tests in `test_onboarding_next_steps.py` + `test_setup_projects_config.py` | **built** | PR #201 |
+| **B — Review surface** | `build_review_next_steps` + `finish_review_guidance` in `onboarding_guidance.py`; wired into `cli_review.py` / `cli_url_mapping.py` (not `--json`) | **built** | PR #201 |
+| **C — Review tests + non-regression** | `ReviewNextStepsTests`; terminal review shows "Next steps"; `--json` shape unchanged; `test_cli_triage_map.py` | **built** | PR #201 (closes GH-197) |
 
 **Deferred (out of GH-197):** profile rename/repair slice, optional AI assistant.
 

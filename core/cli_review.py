@@ -13,42 +13,9 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_review_uncategorized import run_uncategorized_cluster_review
 from core.cli_url_mapping import run_url_mapping_review
-from core.config import (
-    default_projects_config_option,
-    load_projects_config_payload,
-    resolve_projects_config_path,
-)
+from core.config import default_projects_config_option, resolve_projects_config_path
 from core.evidence_diagnostics import build_evidence_snapshot, build_evidence_warnings
-from core.onboarding_guidance import build_review_next_steps, print_next_steps
-
-
-def _emit_review_advisory(
-    console,
-    *,
-    projects_config: str,
-    has_candidates: bool,
-    uncategorized: bool,
-) -> None:
-    path = Path(projects_config).expanduser()
-    config_resolved = False
-    if path.exists():
-        try:
-            load_projects_config_payload(path)
-            config_resolved = True
-        except Exception:
-            config_resolved = False
-    print_next_steps(
-        console,
-        list(
-            dict.fromkeys(
-                build_review_next_steps(
-                    config_resolved=config_resolved,
-                    has_candidates=has_candidates,
-                    uncategorized=uncategorized,
-                )
-            )
-        ),
-    )
+from core.onboarding_guidance import finish_review_guidance
 
 
 @app.command()
@@ -113,7 +80,7 @@ def review(
             max_clusters=max_clusters,
             samples_per_cluster=samples_per_cluster,
         )
-        _emit_review_advisory(
+        finish_review_guidance(
             Console(),
             projects_config=resolved,
             has_candidates=has_candidates,

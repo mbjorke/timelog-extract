@@ -136,6 +136,64 @@ def build_setup_next_steps(
     return steps
 
 
+def _projects_config_resolved(config_path: Path) -> bool:
+    if not config_path.exists():
+        return False
+    try:
+        load_projects_config_payload(config_path)
+        return True
+    except Exception:
+        return False
+
+
+def build_review_next_steps(
+    *,
+    config_resolved: bool,
+    has_candidates: bool,
+    uncategorized: bool = False,
+) -> list[str]:
+    """Advisory project-config follow-ups after interactive ``gittan review``."""
+    steps: list[str] = []
+    if not config_resolved:
+        steps.append(
+            "Run `gittan setup --dry-run` to preview the resolved projects config path before mapping."
+        )
+        steps.append("Run `gittan projects` to inspect or repair project profiles (read-only until you apply).")
+        return steps
+    if has_candidates:
+        if uncategorized:
+            steps.append(
+                "Use `gittan map` to anchor session titles, working dirs, or branches when clusters need match_terms."
+            )
+        steps.append(
+            "Run `gittan projects-audit` to check match_terms and tracked_urls hit rates before trimming rules."
+        )
+        steps.append("Use `gittan projects` to refine profiles for projects you assigned during review.")
+    else:
+        steps.append(
+            "Run `gittan projects-audit` to find zero-hit rules or unanchored signals for this date window."
+        )
+        steps.append("Run `gittan report --today --source-summary` to confirm classification looks right.")
+    return steps
+
+
+def finish_review_guidance(
+    console,
+    *,
+    projects_config: str | Path,
+    has_candidates: bool,
+    uncategorized: bool = False,
+) -> None:
+    """Print deduped review next steps (terminal-only; never mutates config)."""
+    path = Path(projects_config).expanduser()
+    steps = build_review_next_steps(
+        config_resolved=_projects_config_resolved(path),
+        has_candidates=has_candidates,
+        uncategorized=uncategorized,
+    )
+    print_next_steps(console, list(dict.fromkeys(steps)))
+
+
 def print_next_steps(console, steps: list[str]) -> None:
     console.print("[bold]Next steps[/bold]")
     for step in steps:

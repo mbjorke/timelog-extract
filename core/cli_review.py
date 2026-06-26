@@ -13,8 +13,42 @@ from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.cli_review_uncategorized import run_uncategorized_cluster_review
 from core.cli_url_mapping import run_url_mapping_review
-from core.config import default_projects_config_option, resolve_projects_config_path
+from core.config import (
+    default_projects_config_option,
+    load_projects_config_payload,
+    resolve_projects_config_path,
+)
 from core.evidence_diagnostics import build_evidence_snapshot, build_evidence_warnings
+from core.onboarding_guidance import build_review_next_steps, print_next_steps
+
+
+def _emit_review_advisory(
+    console,
+    *,
+    projects_config: str,
+    has_candidates: bool,
+    uncategorized: bool,
+) -> None:
+    path = Path(projects_config).expanduser()
+    config_resolved = False
+    if path.exists():
+        try:
+            load_projects_config_payload(path)
+            config_resolved = True
+        except Exception:
+            config_resolved = False
+    print_next_steps(
+        console,
+        list(
+            dict.fromkeys(
+                build_review_next_steps(
+                    config_resolved=config_resolved,
+                    has_candidates=has_candidates,
+                    uncategorized=uncategorized,
+                )
+            )
+        ),
+    )
 
 
 @app.command()
@@ -57,12 +91,14 @@ def review(
 ):
     """Map URL hosts to projects (default). Use --uncategorized for legacy log-cluster cleanup."""
     if uncategorized:
+        from rich.console import Console
+
         resolved = str(projects_config) if projects_config else str(resolve_projects_config_path())
 
         def _date_str(value: Optional[datetime]) -> Optional[str]:
             return value.strftime("%Y-%m-%d") if isinstance(value, datetime) else None
 
-        run_uncategorized_cluster_review(
+        has_candidates = run_uncategorized_cluster_review(
             date_from=_date_str(date_from),
             date_to=_date_str(date_to),
             today=today,
@@ -76,6 +112,12 @@ def review(
             projects_config=resolved,
             max_clusters=max_clusters,
             samples_per_cluster=samples_per_cluster,
+        )
+        _emit_review_advisory(
+            Console(),
+            projects_config=resolved,
+            has_candidates=has_candidates,
+            uncategorized=True,
         )
         return
 
@@ -158,7 +200,7 @@ def evidence_check(
     if collected_but_excluded:
         console.print("- Collected but fully excluded (all rows uncategorized):")
         for source, count in sorted(collected_but_excluded.items(), key=lambda item: (-item[1], item[0])):
-            console.print(f"  - {source}: {count} (map with `gittan review` or `gittan map` to include)")
+            console.print(f"  - {source}: {count} (run `gittan review` to map URLs, or `gittan map` for anchors)")
     silent_ai = snapshot.get("silent_ai_sources") or []
     if silent_ai:
         console.print(

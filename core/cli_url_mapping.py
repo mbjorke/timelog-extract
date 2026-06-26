@@ -19,6 +19,23 @@ from core.cli_triage_apply import apply_triage_decisions_payload
 from core.cli_triage_map_candidates import UNCATEGORIZED, UrlCandidate, _auto_assign_high
 from core.cli_triage_map_context import build_triage_map_json_payload, load_triage_map_candidates
 from core.config import resolve_projects_config_path
+from core.onboarding_guidance import finish_review_guidance
+
+
+def _exit_url_mapping_review(
+    console: Console,
+    *,
+    projects_config: str,
+    has_candidates: bool,
+    code: int = 0,
+) -> None:
+    finish_review_guidance(
+        console,
+        projects_config=projects_config,
+        has_candidates=has_candidates,
+        uncategorized=False,
+    )
+    raise typer.Exit(code=code)
 
 
 def _render_candidates_table(
@@ -118,7 +135,7 @@ def run_url_mapping_review(
     project_names = sorted({str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()})
     if not rows:
         console.print("[green]No URL candidates found in this range (gap-day Chrome evidence).[/green]")
-        raise typer.Exit(code=0)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=False)
 
     _render_candidates_table(console, rows)
     assignment_by_key: dict[str, str | None] = {row.url_key: None for row in rows}
@@ -137,7 +154,7 @@ def run_url_mapping_review(
         ).ask()
         if choice is None:
             console.print("[yellow]Cancelled before writing config.[/yellow]")
-            raise typer.Exit(code=0)
+            _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
         if choice == "high":
             auto_assigned = dict(_auto_assign_high(rows, project_names))
@@ -173,7 +190,7 @@ def run_url_mapping_review(
     review_more = questionary.confirm("Review/edit remaining rows manually before apply?", default=False).ask()
     if review_more is None:
         console.print("[yellow]Cancelled before writing config.[/yellow]")
-        raise typer.Exit(code=0)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
     if review_more:
         review_rows = [row for row in rows if row.url_key not in auto_assigned]
         if not review_rows:
@@ -200,7 +217,7 @@ def run_url_mapping_review(
             ).ask()
             if edit_choice is None:
                 console.print("[yellow]Cancelled before writing config.[/yellow]")
-                raise typer.Exit(code=0)
+                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             if edit_choice == "__done__":
                 break
             row = next((r for r in rows if r.url_key == edit_choice), None)
@@ -219,7 +236,7 @@ def run_url_mapping_review(
             ).ask()
             if selected_project is None:
                 console.print("[yellow]Cancelled before writing config.[/yellow]")
-                raise typer.Exit(code=0)
+                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             assignment_by_key[row.url_key] = None if selected_project == "Skip this URL key" else str(selected_project)
 
     decisions: list[dict[str, str]] = []
@@ -237,7 +254,7 @@ def run_url_mapping_review(
 
     if not decisions:
         console.print("[yellow]No decisions selected. Nothing to apply.[/yellow]")
-        raise typer.Exit(code=0)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     preview = apply_triage_decisions_payload(
         decisions=decisions,
@@ -248,12 +265,12 @@ def run_url_mapping_review(
     )
     if preview.get("errors"):
         console.print(preview)
-        raise typer.Exit(code=1)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True, code=1)
     console.print(preview.get("preview", "No preview available."))
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
     if not confirmed:
         console.print("[yellow]Cancelled before writing config.[/yellow]")
-        raise typer.Exit(code=0)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     applied = apply_triage_decisions_payload(
         decisions=decisions,
@@ -264,5 +281,6 @@ def run_url_mapping_review(
     )
     if applied.get("errors"):
         console.print(applied)
-        raise typer.Exit(code=1)
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True, code=1)
     console.print("[green]URL mapping apply complete.[/green]")
+    _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)

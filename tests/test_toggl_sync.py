@@ -129,7 +129,7 @@ class ReportedModeTests(unittest.TestCase):
         self._confirm("Project Alpha", "2026-06-23", 2.0, issue_key="KAN-2")
         self._confirm("Project Alpha", "2026-06-23", 3.0, issue_key="KAN-3")
         payload = _payload({}, [{"name": "Project Alpha", "toggl_project_id": 123}])
-        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        candidates, _unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].seconds, 5 * 3600)
 

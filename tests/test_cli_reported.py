@@ -117,6 +117,23 @@ class ReviewCommandTests(unittest.TestCase):
             self.assertEqual(recs[0].project, "Alpha")
             self.assertIn("confirmed=1", result.output)
 
+    def test_confirm_preserves_issue_key(self):
+        # Phase 3b regression: a proposal's git-inferred issue_key must survive
+        # confirm/edit (via _with), or jira-sync loses the per-issue mapping.
+        tmp, store = _temp_store()
+        proposal = rt.ReportedTimeRecord(
+            date="2026-06-18", project="Alpha", hours=2.5, source="session",
+            state="proposed", origin_ref=["2026-06-18T1000"], issue_key="KAN-7",
+        )
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=SimpleNamespace()), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[proposal]
+        ), patch("core.cli_reported.typer.prompt", return_value="c"):
+            result = CliRunner().invoke(app, ["reported", "review", "--today"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            recs = rt.query(states={"confirmed"})
+            self.assertEqual(len(recs), 1)
+            self.assertEqual(recs[0].issue_key, "KAN-7")
+
     def test_already_confirmed_is_skipped(self):
         tmp, store = _temp_store()
         with tmp, store:

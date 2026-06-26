@@ -135,11 +135,13 @@ class IssueKeyTests(unittest.TestCase):
         self.assertNotEqual(a.id, b.id)
 
     def test_no_issue_key_keeps_pre_3b_id(self):
-        # A record without issue_key must hash identically to the Phase 3 basis,
-        # so existing stored ids are unchanged after the upgrade.
+        # A record without issue_key must keep the Phase 3 id so existing stored
+        # ids are unchanged. Assert the literal pre-3b hash (basis
+        # "2026-04-10|P|session|x") rather than re-calling compute_reported_id, so
+        # a regression inside the helper can't update both sides and still pass.
         rec = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",
                                  state="confirmed", origin_ref=["x"])
-        self.assertEqual(rec.id, compute_reported_id("2026-04-10", "P", "session", ["x"], ""))
+        self.assertEqual(rec.id, "8cddba63b532527a")
 
     def test_blank_issue_key_normalizes_to_none(self):
         rec = ReportedTimeRecord(date="2026-04-10", project="P", hours=1.0, source="session",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from argparse import Namespace
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -126,11 +126,13 @@ class ReportedWindowTests(unittest.TestCase):
 
 
 def _session_payload(day: str, project: str):
-    start = datetime.fromisoformat(f"{day}T10:00:00")
-    end = datetime.fromisoformat(f"{day}T11:00:00")
+    # tz-aware throughout to match the production shape (load_commit_tags and the
+    # report pipeline both yield aware datetimes).
+    start = datetime.fromisoformat(f"{day}T10:00:00+00:00")
+    end = datetime.fromisoformat(f"{day}T11:00:00+00:00")
     return ReportPayload(
-        dt_from=datetime.fromisoformat(f"{day}T00:00:00"),
-        dt_to=datetime.fromisoformat(f"{day}T23:59:00"),
+        dt_from=datetime.fromisoformat(f"{day}T00:00:00+00:00"),
+        dt_to=datetime.fromisoformat(f"{day}T23:59:00+00:00"),
         profiles=[], config_path=None, worklog_path=None,  # type: ignore[arg-type]
         all_events=[], included_events=[], grouped={},
         overall_days={day: {"sessions": [(start, end, [{"project": project, "source": "TIMELOG.md"}])], "hours": 1.0}},
@@ -145,7 +147,9 @@ class ProposalIssueStampTests(unittest.TestCase):
 
     def test_stamps_issue_key_from_git_commit(self):
         report = _session_payload("2026-04-10", "Alpha")
-        commit = SimpleNamespace(committed_at=datetime(2026, 4, 10, 10, 30), subject="KAN-7 work")
+        commit = SimpleNamespace(
+            committed_at=datetime(2026, 4, 10, 10, 30, tzinfo=timezone.utc), subject="KAN-7 work"
+        )
         with patch("core.jira_sync.load_commit_tags", return_value=[commit]), patch(
             "core.jira_sync.load_current_branch_issue_key", return_value=None
         ):

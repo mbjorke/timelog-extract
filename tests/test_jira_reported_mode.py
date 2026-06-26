@@ -87,7 +87,7 @@ class JiraReportedModeTests(unittest.TestCase):
         self._confirm("Project A", "2026-04-10", 2.0, issue_key="KAN-9")
         payload = _reported_payload("2026-04-10")
         # Profile says ABC-101, but the record's own issue_key must win.
-        candidates, unresolved = build_jira_worklog_candidates(
+        candidates, _unresolved = build_jira_worklog_candidates(
             payload, Path("."), [{"name": "Project A", "jira_issue_key": "ABC-101"}], home=self.home
         )
         self.assertEqual([c.issue_key for c in candidates], ["KAN-9"])
@@ -95,7 +95,7 @@ class JiraReportedModeTests(unittest.TestCase):
     def test_no_record_issue_falls_back_to_profile(self):
         self._confirm("Project A", "2026-04-10", 2.0)  # no per-session issue
         payload = _reported_payload("2026-04-10")
-        candidates, unresolved = build_jira_worklog_candidates(
+        candidates, _unresolved = build_jira_worklog_candidates(
             payload, Path("."), [{"name": "Project A", "jira_issue_key": "ABC-101"}], home=self.home
         )
         self.assertEqual([c.issue_key for c in candidates], ["ABC-101"])

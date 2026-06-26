@@ -1,6 +1,11 @@
 # Triage UX design session — learnings and restart preconditions
 
-Status: exploratory / paused (2026-06); restart blocked on grounding docs below
+Status: resumed (2026-06-26) → output landed in `../specs/triage-ux.md`.
+Both restart preconditions are now met: Document A
+(`triage-signal-examples.md`) is written, and the setup → triage chain
+(Document B) is built (anchor / `top_signals` / nudge / plan stack). This doc is
+kept as the rationale record for why the first session failed and why the
+five-prompt structure was reused.
 
 ## What happened
 

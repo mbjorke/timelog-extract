@@ -32,6 +32,7 @@ class RuntimeCollectors:
         timelog_collector,
         github_collector,
         toggl_collector,
+        zed_collector,
         github_token: Optional[str] = None,
     ):
         self.home = home
@@ -53,6 +54,7 @@ class RuntimeCollectors:
         self.timelog = timelog_collector
         self.github = github_collector
         self.toggl = toggl_collector
+        self.zed = zed_collector
         self.cli_args = cli_args
         self.github_token = github_token
 
@@ -106,8 +108,16 @@ class RuntimeCollectors:
         )
 
     def collect_chrome(self, profiles, dt_from, dt_to, collapse_minutes=0):
-        include_all = bool(getattr(self.cli_args, "chrome_raw", False)) if self.cli_args is not None else False
-        contains_url = str(getattr(self.cli_args, "chrome_contains_url", "") or "").strip() if self.cli_args is not None else ""
+        include_all = (
+            bool(getattr(self.cli_args, "chrome_raw", False))
+            if self.cli_args is not None
+            else False
+        )
+        contains_url = (
+            str(getattr(self.cli_args, "chrome_contains_url", "") or "").strip()
+            if self.cli_args is not None
+            else ""
+        )
         return self.chrome.collect_chrome(
             profiles,
             dt_from,
@@ -172,13 +182,19 @@ class RuntimeCollectors:
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 
+    def collect_zed(self, profiles, dt_from, dt_to):
+        from collectors.zed import collect_zed
+
+        return collect_zed(
+            profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
+        )
+
     def _noise_profile(self) -> str:
         """Resolve the configured noise profile, defaulting when unset."""
         if self.cli_args is None:
             return DEFAULT_NOISE_PROFILE
         return str(
-            getattr(self.cli_args, "noise_profile", DEFAULT_NOISE_PROFILE)
-            or DEFAULT_NOISE_PROFILE
+            getattr(self.cli_args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE
         ).lower()
 
     def collect_cursor(self, profiles, dt_from, dt_to):
@@ -240,7 +256,11 @@ class RuntimeCollectors:
         )
 
     def collect_worklog(self, worklog_path, dt_from, dt_to, profiles):
-        worklog_format = getattr(self.cli_args, "worklog_format", "auto") if self.cli_args is not None else "auto"
+        worklog_format = (
+            getattr(self.cli_args, "worklog_format", "auto")
+            if self.cli_args is not None
+            else "auto"
+        )
         paths: list[str]
         if worklog_path is None:
             paths = []

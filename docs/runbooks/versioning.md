@@ -80,6 +80,16 @@ python -m build
 
 **Manual upload** (token-based) remains possible with `twine` if you do not use the GitHub workflow.
 
+## Install script (`https://gittan.sh/install`)
+
+The one-line installer [`packaging/install/gittan-install.sh`](../../packaging/install/gittan-install.sh) is **version-agnostic**: it runs `pipx install timelog-extract` (or `pip install --user`), which resolves the latest release from PyPI at install time. Consequences for releases:
+
+- **Normal release:** no change to the script. Bump → tag → PyPI as above; `curl -fsSL https://gittan.sh/install | bash` picks up the new version automatically.
+- **Only when installer behavior changes:** edit `packaging/install/gittan-install.sh` in this repo, then mirror the file to the separate [`gittan-home`](https://github.com/mbjorke/gittan-home) repo as `install`. `gittan.sh` is served from `gittan-home` (Cloudflare Pages deploys on push to its `main`), so the mirrored file goes live only after that repo's `main` deploys.
+- Pin a release for users/CI: `curl -fsSL https://gittan.sh/install | bash -s -- --version X.Y.Z`.
+
+The Homebrew tap (see [`homebrew-tap.md`](homebrew-tap.md)) remains an optional, separate distribution track with its own per-release formula maintenance.
+
 ## Not the same: JSON truth payload `version`
 
 `--format json` output includes a **`version`** field inside the payload that describes the **truth-payload schema** (an integer contract for automation), not the PyPI package version. See `docs/legacy/v1-tag-annotation-draft.md` and `docs/runbooks/cli-first-v1-release-checklist.md`.

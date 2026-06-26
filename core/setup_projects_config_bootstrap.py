@@ -45,8 +45,26 @@ def _project_bootstrap_notes(summary: RepoBootstrapSummary, *, dry_run: bool) ->
     )
 
 
-def _project_bootstrap_next_steps(summary: RepoBootstrapSummary) -> list[str]:
-    steps = ["Run `gittan report --today --source-summary` once the imported projects look right."]
+def _project_bootstrap_next_steps(
+    summary: RepoBootstrapSummary,
+    *,
+    dry_run: bool = False,
+    config_path: Path | None = None,
+    has_projects: bool = False,
+) -> list[str]:
+    steps: list[str] = []
+    has_buckets = has_projects or bool(
+        summary.discovered and (summary.added + summary.updated or summary.fallback_used)
+    )
+    if dry_run:
+        if config_path is not None:
+            steps.append(f"Dry-run target: `{config_path}` — no config or worklog files were written.")
+        steps.append("Next: run `gittan setup` without `--dry-run` when the preview looks right.")
+    if has_buckets:
+        steps.append("Then: run `gittan review` to map URL domains to imported project buckets.")
+        steps.append("Optional: `gittan review --json` for read-only URL candidates (agents/scripts).")
+    if not dry_run:
+        steps.append("Run `gittan report --today --source-summary` once the imported projects look right.")
     if summary.skipped:
         steps.append("Use `gittan projects` to fill gaps for repos that were skipped or need broader `match_terms`.")
     if summary.discovered and summary.added + summary.updated:
@@ -308,7 +326,12 @@ def ensure_projects_config(
 
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would write merged project config to {config_path}")
-        next_steps = _project_bootstrap_next_steps(summary)
+        next_steps = _project_bootstrap_next_steps(
+            summary,
+            dry_run=True,
+            config_path=config_path,
+            has_projects=bool(merged_payload.get("projects")),
+        )
         return ProjectsConfigBootstrapResult(
             "PASS (dry-run)",
             _project_bootstrap_notes(summary, dry_run=True) + seed_note,
@@ -319,7 +342,12 @@ def ensure_projects_config(
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(merged_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     console.print(f"[green]Saved merged project config:[/green] {config_path}")
-    next_steps = _project_bootstrap_next_steps(summary)
+    next_steps = _project_bootstrap_next_steps(
+        summary,
+        dry_run=False,
+        config_path=config_path,
+        has_projects=bool(merged_payload.get("projects")),
+    )
     return ProjectsConfigBootstrapResult(
         "PASS",
         _project_bootstrap_notes(summary, dry_run=False) + seed_note,

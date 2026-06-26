@@ -353,6 +353,7 @@ def run_setup_wizard(
             doctor_status=doctor_status,
             smoke_status=smoke_status,
             fast=fast,
+            has_project_buckets=projects_status.startswith("PASS"),
         )
     )
     print_next_steps(console, list(dict.fromkeys(next_steps)))

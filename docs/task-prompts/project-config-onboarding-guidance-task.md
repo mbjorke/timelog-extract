@@ -13,16 +13,82 @@ task explicitly changes that scope.
 
 - story_id: GH-197
 - spec_status: approved
-- implementation_status: not built
+- implementation_status: in progress
 - created_at: 2026-06-26
 - last_updated_at: 2026-06-26
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/project-config-onboarding-guidance
 - implementation.commits: []
 - validation.evidence: pending
 - validation.decision: conditional GO
 - changelog:
   - 2026-06-26: Initial product-owner task created as the next low-conflict backlog item while reported-time and Zed collector PRs remain active.
+  - 2026-06-26: Iterated plan — 4 slices total (0 spec merged, A/B/C implementation). Slice A doctor/setup ready locally; B review wiring + C review tests remain.
+
+## Non-goals (locked for GH-197)
+
+- No changes to reported-time computation, sync, or store semantics.
+- No new or modified source collectors or collector parsing.
+- No changes to `gittan review --json` write behavior or triage JSON schema.
+- No changes to `projects-audit` / `projects_lint` rule logic — guidance may
+  *point to* those commands only.
+- No profile rename/repair automation (deferred slice).
+- No AI-assisted config generation (deferred / do-not-build).
+
+## Related material
+
+- Runbook: [`docs/runbooks/beta-onboarding-config.md`](../runbooks/beta-onboarding-config.md)
+- Shared module: `core/onboarding_guidance.py`
+- Existing contracts: `tests/test_onboarding_next_steps.py`, `tests/test_cli_triage.py`
+- Command map: [`docs/product/cli-command-map.md`](../product/cli-command-map.md)
+
+## Implementation slices
+
+Ship as **three implementation commits/PR batches** on
+`task/project-config-onboarding-guidance`. Spec-only work already landed via #198.
+
+| Slice | Scope | Status | Lands |
+| --- | --- | --- | --- |
+| **0 — Spec** | Task prompt + traceability (#198) | **merged** | `main` |
+| **A — Doctor + setup** | `build_doctor_next_steps`, `build_setup_next_steps`, bootstrap dry-run copy, setup→review handoff; tests in `test_onboarding_next_steps.py` + `test_setup_projects_config.py` | **ready to commit** (local) | Commit 1 → same branch PR |
+| **B — Review surface** | `build_review_next_steps` in `onboarding_guidance.py`; wire `print_next_steps` into `cli_review.py` (default + `--uncategorized` paths only; **not** `--json`) | not built | Commit 2 → same PR or follow-up push |
+| **C — Review tests + non-regression** | New `ReviewNextStepsTests`; terminal review shows "Next steps"; `--json` shape unchanged; rerun `test_cli_triage.py` | not built | Commit 3 → closes GH-197 |
+
+**Deferred (out of GH-197):** profile rename/repair slice, optional AI assistant.
+
+### Slice B — behavior contract (review)
+
+```gherkin
+Feature: Review surfaces advisory project-config next steps
+  Guidance is terminal-only and must not mutate config or JSON output.
+
+  Scenario: Interactive review ends with shared next steps
+    Given the user ran "gittan review" (not --json)
+    When mapping output finishes
+    Then a "Next steps" block appears via print_next_steps
+    And steps are built by build_review_next_steps from advisory inputs only
+    And steps may point to gittan projects, gittan projects-audit, or gittan map
+    And no config file is written
+
+  Scenario: JSON review stays machine-readable only
+    Given the user ran "gittan review --json"
+    Then the JSON payload shape is unchanged
+    And no Next steps block is injected into JSON
+```
+
+Messaging stays **advisory-only** across all slices. Existing doctor/setup guidance
+contracts from slice A are preserved; slice B adds review without replacing inline
+review copy that explains the current mapping loop.
+
+### Recommended iteration (CodeRabbit / reviewer feedback)
+
+```
+@coderabbitai Slice plan for GH-197: keep 3 implementation slices (A doctor/setup,
+B review wiring, C review tests). Skip profile-repair and AI assistant for this
+issue. Commit slice A now; land B then C on the same branch before merge. For
+slice C, add ReviewNextStepsTests without reverting slice A doctor/setup test
+updates — those tests document the new doctor/setup contract, not review.
+```
 
 ## Why this is next
 
@@ -218,9 +284,8 @@ Feature: Setup-to-review handoff
 
 ## Branch and implementation notes
 
-- Suggested implementation branch: `task/project-config-onboarding-guidance`.
-- Keep the implementation PR narrow: doctor/setup guidance and tests only.
-- Avoid collector additions and reported-time changes.
-- For CLI-facing edits, run `bash scripts/cli_impact_smoke.sh`.
-- Before push, run `bash scripts/run_autotests.sh`.
-- The implementing PR should include `Closes #197`.
+- Branch: `task/project-config-onboarding-guidance` (one PR, `Closes #197`).
+- **Commit 1 (slice A):** doctor/setup guidance — push when green.
+- **Commit 2 (slice B):** `build_review_next_steps` + `cli_review.py` wiring.
+- **Commit 3 (slice C):** review tests + `test_cli_triage.py` non-regression.
+- Run `bash scripts/cli_impact_smoke.sh` after CLI-facing edits; full suite before push.

@@ -35,7 +35,11 @@ from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
 from core.doctor_table_checks import DoctorCheckStyle, doctor_check_db, doctor_check_file
 from core.git_project_bootstrap import assess_config_git_coverage
-from core.onboarding_guidance import build_doctor_next_steps, print_next_steps
+from core.onboarding_guidance import (
+    build_doctor_next_steps,
+    print_next_steps,
+    rule_hygiene_needed_for_config,
+)
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
@@ -357,13 +361,18 @@ def doctor(
         "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"
     )
+    config_valid = project_config_ok and loaded_config_path is not None
     print_next_steps(
         console,
         build_doctor_next_steps(
             cli_on_path=cli_on_path,
             projects_config_ok=project_config_ok,
+            config_valid=config_valid,
             worklog_ok=worklog_ok,
             match_terms_ok=coverage.status != "warn",
+            rule_hygiene_needed=rule_hygiene_needed_for_config(
+                projects_cfg, git_coverage_warn=coverage.status == "warn"
+            ),
             config_path=projects_cfg,
             worklog_path=worklog_path,
         ),

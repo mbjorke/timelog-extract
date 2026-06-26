@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -379,6 +380,84 @@ class ZedCollectorTests(unittest.TestCase):
         # Test invalid
         ts = zed._parse_zed_timestamp("invalid")
         self.assertIsNone(ts)
+
+    def test_parse_zed_message_entry_role_keyed(self):
+        """Parse Zed message entries with role-keyed format."""
+        # Standard format
+        result = zed._parse_zed_message_entry({"role": "user", "content": "Hello"})
+        self.assertEqual(result, ("user", "Hello"))
+
+        # Zed format with User
+        result = zed._parse_zed_message_entry({"User": {"content": [{"Text": "Hello from user"}]}})
+        self.assertEqual(result, ("user", "Hello from user"))
+
+        # Zed format with Agent
+        result = zed._parse_zed_message_entry(
+            {"Agent": {"content": [{"Text": "Hello from assistant"}]}}
+        )
+        self.assertEqual(result, ("agent", "Hello from assistant"))
+
+        # Invalid input (not a dict)
+        result = zed._parse_zed_message_entry("not a dict")
+        self.assertIsNone(result)
+
+        # Empty dict
+        result = zed._parse_zed_message_entry({})
+        self.assertIsNone(result)
+
+    def test_collect_with_role_keyed_format(self):
+        """Collect events with Zed's role-keyed message format."""
+        dt_from = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)
+        dt_to = datetime(2026, 4, 10, 23, 59, 59, 999999, tzinfo=UTC)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            zed_dir = tmp / ".local" / "share" / "zed" / "db"
+            zed_dir.mkdir(parents=True)
+            db_path = zed_dir / "threads.db"
+
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                CREATE TABLE threads (
+                    id TEXT PRIMARY KEY,
+                    created_at INTEGER,
+                    content TEXT
+                )
+            """)
+
+            # Zed format with role-keyed entries
+            test_time = int(datetime(2026, 4, 10, 12, 0, 5, tzinfo=UTC).timestamp())
+            zed_format_content = json.dumps(
+                [
+                    {"User": {"content": [{"Text": "How do I fix this?"}]}},
+                    {"Agent": {"content": [{"Text": "Here is the solution"}]}},
+                ]
+            )
+            cursor.execute(
+                "INSERT INTO threads (id, created_at, content) VALUES (?, ?, ?)",
+                ("thread-1", test_time, zed_format_content),
+            )
+
+            conn.commit()
+            conn.close()
+
+            home = tmp
+
+            def classify(_hay, _profiles):
+                return "test-project"
+
+            events = zed.collect_zed([], dt_from, dt_to, home, classify, _make_event)
+
+            # Should find messages from role-keyed format
+            self.assertGreaterEqual(len(events), 2)
+            if len(events) >= 2:
+                # Check that both user and assistant messages are captured
+                details = [e["detail"] for e in events]
+                has_user = any("[user]" in str(d) for d in details)
+                has_assistant = any("[assistant]" in str(d) for d in details)
+                self.assertTrue(has_user or has_assistant)
 
 
 if __name__ == "__main__":

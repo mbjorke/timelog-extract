@@ -43,6 +43,7 @@ AI_SOURCES = {
     "Codex IDE",
     "Cursor (agent)",
     "GitHub Copilot CLI",
+    "Zed",
     WORKLOG_SOURCE,
 }
 
@@ -74,6 +75,7 @@ SOURCE_ROLES = {
     "Windsurf": DIRECT_WORK_EVIDENCE,
     "Codex IDE": DIRECT_WORK_EVIDENCE,
     "GitHub Copilot CLI": DIRECT_WORK_EVIDENCE,
+    "Zed": DIRECT_WORK_EVIDENCE,
     GITHUB_SOURCE: DELIVERY_EVIDENCE,
     GIT_COMMITS_SOURCE: DELIVERY_EVIDENCE,
     JIRA_SOURCE: DELIVERY_EVIDENCE,

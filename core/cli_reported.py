@@ -153,7 +153,7 @@ def _already_reported(rec: ReportedTimeRecord) -> bool:
     ``issue_key`` too — otherwise the first reported issue would skip its siblings.
     """
     return any(
-        current.issue_key == rec.issue_key
+        current.source == rec.source and current.issue_key == rec.issue_key
         for current in query(project=rec.project, date=rec.date, states=REPORTED_STATES)
     )
 

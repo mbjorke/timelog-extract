@@ -62,15 +62,23 @@ def compute_reported_id(
 
     Non-manual units key on (date, project, source, origin); manual units key on
     (date, project, note) since they have no origin. When an ``issue_key`` is set
-    (Phase 3b) it is appended so two issues on one project+day are distinct units;
-    records without one keep the pre-3b basis, so existing ids are unchanged.
+    (Phase 3b) the basis is an unambiguous JSON array so two issues on one
+    project+day are distinct (and free-text notes can't collide with an appended
+    key); records without an ``issue_key`` keep the pre-3b string basis, so
+    existing ids are unchanged.
     """
-    if source == "manual":
+    normalized_issue_key = str(issue_key).strip() if issue_key else ""
+    if normalized_issue_key:
+        payload = note.strip() if source == "manual" else sorted(origin_ref)
+        basis = json.dumps(
+            [date, project, source, payload, normalized_issue_key],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+    elif source == "manual":
         basis = f"{date}|{project}|manual|{note.strip()}"
     else:
         basis = f"{date}|{project}|{source}|{','.join(sorted(origin_ref))}"
-    if issue_key:
-        basis = f"{basis}|{issue_key}"
     return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
 
 

@@ -215,14 +215,16 @@ Python file over 500 lines.
   Phases 4–5 + Calendar not built
 - created_at: 2026-06-25
 - last_updated_at: 2026-06-26
-- implementation.pr: #186 (merged), #187 (merged), + this PR (Phase 2b)
+- implementation.pr: #186 (merged), #187 (merged), #190 (merged, Phase 2b),
+  #194 (Phase 3), this PR (#196, Phase 3b — stacked on #194)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
-  task/reported-auto-report, task/reported-sync-reads-confirmed
+  task/reported-auto-report, task/reported-sync-reads-confirmed,
+  task/reported-per-issue
 - implementation.commits: []
 - validation.evidence: `tests/test_reported_time.py`, `tests/test_cli_reported.py`,
-  `tests/test_jira_reported_mode.py`, `tests/test_toggl_sync.py`;
-  full suite green (1040)
-- validation.decision: GO for Phase 1–3; Phase 3b next; Phases 4–5 + Calendar pending
+  `tests/test_reported_sync.py`, `tests/test_jira_reported_mode.py`,
+  `tests/test_toggl_sync.py`; full suite green (1055)
+- validation.decision: GO for Phase 1–3b; Phases 4–5 + Calendar pending
 - related:
   - design root: [`../specs/scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md)
   - policy: [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md)

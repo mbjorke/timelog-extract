@@ -465,6 +465,54 @@ class ZedCollectorTests(unittest.TestCase):
                 has_assistant = any("[assistant]" in str(d) for d in details)
                 self.assertTrue(has_user or has_assistant)
 
+    def test_join_strategy_reads_aliased_created_at(self):
+        """JOIN path must select the timestamp expression it filters on."""
+        from collectors import zed_db
+
+        dt_from = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)
+        dt_to = datetime(2026, 4, 10, 23, 59, 59, 999999, tzinfo=UTC)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "zed.db"
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                "CREATE TABLE threads (id TEXT PRIMARY KEY, timestamp INTEGER)"
+            )
+            cursor.execute(
+                """
+                CREATE TABLE messages (
+                    id TEXT PRIMARY KEY,
+                    thread_id TEXT,
+                    created_at INTEGER,
+                    content TEXT
+                )
+                """
+            )
+            ts = int(datetime(2026, 4, 10, 12, 0, 0, tzinfo=UTC).timestamp())
+            cursor.execute("INSERT INTO threads (id, timestamp) VALUES (?, ?)", ("t1", ts))
+            cursor.execute(
+                "INSERT INTO messages (id, thread_id, created_at, content) VALUES (?, ?, ?, ?)",
+                ("m1", "t1", ts, json.dumps({"role": "user", "content": "join path ok"})),
+            )
+            conn.commit()
+            conn.close()
+
+            schema = zed_db._inspect_db_schema(db_path)
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            messages = zed_db._query_messages_join_threads(
+                conn,
+                schema,
+                ["messages"],
+                ["threads"],
+                dt_from,
+                dt_to,
+            )
+            conn.close()
+            self.assertEqual(len(messages), 1)
+            self.assertIn("join path ok", messages[0].content)
+
 
 if __name__ == "__main__":
     unittest.main()

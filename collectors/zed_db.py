@@ -294,6 +294,8 @@ def _query_messages_join_threads(conn, schema, message_tables, thread_tables, dt
                     break
             if not ts_col:
                 continue
+            ts_key = "__zed_ts"
+            select_cols.append(f"{ts_col} AS {_quote_sql_ident(ts_key)}")
             on_clause = (
                 f"m.{_quote_sql_ident('thread_id')} = t.{_quote_sql_ident('id')}"
                 if "thread_id" in msg_cols
@@ -312,9 +314,7 @@ def _query_messages_join_threads(conn, schema, message_tables, thread_tables, dt
                     drow = _row_as_dict(row)
                     thread_id = str(drow.get("thread_id") or drow.get("t.id") or "unknown")
                     msg_id = str(drow.get("id") or drow.get("m.id") or "unknown")
-                    ts = _parse_zed_timestamp(
-                        drow.get("timestamp") or drow.get("m.timestamp") or drow.get("t.timestamp")
-                    )
+                    ts = _parse_zed_timestamp(drow.get(ts_key))
                     if not ts or not _in_report_window(ts, dt_from, dt_to):
                         continue
                     role = str(drow.get("role") or "user").lower()
@@ -359,7 +359,7 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
         content_col = next(
             (c for c in ["content", "messages", "history", "data"] if c in thread_cols), None
         )
-        id_col = next((c for c in ["id", "thread_id"] if c in thread_cols), "id")
+        id_col = next((c for c in ["id", "thread_id"] if c in thread_cols), None)
         if not all([ts_col, content_col, id_col]):
             continue
         query = (

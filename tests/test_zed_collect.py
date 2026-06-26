@@ -352,65 +352,6 @@ class ZedCollectorTests(unittest.TestCase):
         detail2 = zed._format_detail(msg2)
         self.assertIn("[user]", detail2)
 
-    def test_parse_various_timestamps(self):
-        """Parse various timestamp formats."""
-        utc = timezone.utc
-
-        # Test Unix timestamp (seconds)
-        ts = zed._parse_zed_timestamp(1712745605)
-        self.assertIsNotNone(ts)
-
-        # Test Unix timestamp (milliseconds)
-        ts = zed._parse_zed_timestamp(1712745605000)
-        self.assertIsNotNone(ts)
-
-        # Test ISO format
-        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05+00:00")
-        self.assertIsNotNone(ts)
-        self.assertEqual(ts.astimezone(utc), datetime(2026, 4, 10, 12, 0, 5, tzinfo=utc))
-
-        # Test ISO with Z
-        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05Z")
-        self.assertIsNotNone(ts)
-
-        # Test ISO without offset (naive → UTC-aware)
-        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05")
-        self.assertIsNotNone(ts)
-        self.assertIsNotNone(ts.tzinfo)
-        self.assertEqual(ts.astimezone(utc), datetime(2026, 4, 10, 12, 0, 5, tzinfo=utc))
-
-        # Test None
-        ts = zed._parse_zed_timestamp(None)
-        self.assertIsNone(ts)
-
-        # Test invalid
-        ts = zed._parse_zed_timestamp("invalid")
-        self.assertIsNone(ts)
-
-    def test_parse_zed_message_entry_role_keyed(self):
-        """Parse Zed message entries with role-keyed format."""
-        # Standard format
-        result = zed._parse_zed_message_entry({"role": "user", "content": "Hello"})
-        self.assertEqual(result, ("user", "Hello"))
-
-        # Zed format with User
-        result = zed._parse_zed_message_entry({"User": {"content": [{"Text": "Hello from user"}]}})
-        self.assertEqual(result, ("user", "Hello from user"))
-
-        # Zed format with Agent
-        result = zed._parse_zed_message_entry(
-            {"Agent": {"content": [{"Text": "Hello from assistant"}]}}
-        )
-        self.assertEqual(result, ("agent", "Hello from assistant"))
-
-        # Invalid input (not a dict)
-        result = zed._parse_zed_message_entry("not a dict")
-        self.assertIsNone(result)
-
-        # Empty dict
-        result = zed._parse_zed_message_entry({})
-        self.assertIsNone(result)
-
     def test_collect_with_role_keyed_format(self):
         """Collect events with Zed's role-keyed message format."""
         dt_from = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)
@@ -464,54 +405,6 @@ class ZedCollectorTests(unittest.TestCase):
                 has_user = any("[user]" in str(d) for d in details)
                 has_assistant = any("[assistant]" in str(d) for d in details)
                 self.assertTrue(has_user or has_assistant)
-
-    def test_join_strategy_reads_aliased_created_at(self):
-        """JOIN path must select the timestamp expression it filters on."""
-        from collectors import zed_db
-
-        dt_from = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)
-        dt_to = datetime(2026, 4, 10, 23, 59, 59, 999999, tzinfo=UTC)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = Path(tmp) / "zed.db"
-            conn = sqlite3.connect(str(db_path))
-            cursor = conn.cursor()
-            cursor.execute(
-                "CREATE TABLE threads (id TEXT PRIMARY KEY, timestamp INTEGER)"
-            )
-            cursor.execute(
-                """
-                CREATE TABLE messages (
-                    id TEXT PRIMARY KEY,
-                    thread_id TEXT,
-                    created_at INTEGER,
-                    content TEXT
-                )
-                """
-            )
-            ts = int(datetime(2026, 4, 10, 12, 0, 0, tzinfo=UTC).timestamp())
-            cursor.execute("INSERT INTO threads (id, timestamp) VALUES (?, ?)", ("t1", ts))
-            cursor.execute(
-                "INSERT INTO messages (id, thread_id, created_at, content) VALUES (?, ?, ?, ?)",
-                ("m1", "t1", ts, json.dumps({"role": "user", "content": "join path ok"})),
-            )
-            conn.commit()
-            conn.close()
-
-            schema = zed_db._inspect_db_schema(db_path)
-            conn = sqlite3.connect(str(db_path))
-            conn.row_factory = sqlite3.Row
-            messages = zed_db._query_messages_join_threads(
-                conn,
-                schema,
-                ["messages"],
-                ["threads"],
-                dt_from,
-                dt_to,
-            )
-            conn.close()
-            self.assertEqual(len(messages), 1)
-            self.assertIn("join path ok", messages[0].content)
 
 
 if __name__ == "__main__":

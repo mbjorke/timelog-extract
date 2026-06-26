@@ -94,17 +94,60 @@ def _session_seconds(session_events: List[Dict[str, Any]], start: datetime, end:
         return int(round(max(0.0, args.min_session / 60) * 3600))
 
 
+def _candidates_from_reported(
+    reported: Dict[Tuple[str, str], float],
+    project_ids: Dict[str, int],
+) -> Tuple[List[TogglEntryCandidate], int]:
+    """Reported-mode (Phase 3): build candidates from confirmed reported hours per
+    project+day instead of raw sessions. Projects with no ``toggl_project_id`` are
+    counted unmapped. Manual reported time (no observed session) is included."""
+    from core.reported_sync import day_start
+
+    unmapped = 0
+    buckets: Dict[Tuple[int, str], TogglEntryCandidate] = {}
+    for (project_name, day), hours in sorted(reported.items()):
+        project_id = project_ids.get(project_name)
+        if project_id is None:
+            unmapped += 1
+            continue
+        seconds = int(round(max(0.0, hours) * 3600))
+        if seconds <= 0:
+            continue
+        key = (project_id, day)
+        if key not in buckets:
+            buckets[key] = TogglEntryCandidate(
+                project_name=project_name,
+                project_id=project_id,
+                day=day,
+                started=day_start(day),
+                seconds=seconds,
+            )
+        else:
+            buckets[key].seconds += seconds
+    candidates = sorted(buckets.values(), key=lambda item: (item.day, item.project_name))
+    return candidates, unmapped
+
+
 def build_toggl_entry_candidates(
     report: "ReportPayload",
     profiles: List[Dict[str, Any]],
+    home: Any = None,
 ) -> Tuple[List[TogglEntryCandidate], int]:
     """
     Aggregate report sessions into one Toggl candidate per mapped project + day.
 
-    Sessions whose Gittan project has no ``toggl_project_id`` are counted as
-    unmapped (and never posted). Returns ``(candidates, unmapped_session_count)``.
+    When confirmed/edited reported_time exists for the report window, candidates are
+    built from those confirmed hours (Phase 3 reported-mode); otherwise from raw
+    observed sessions (the pre-adoption fallback). Sessions/projects whose Gittan
+    project has no ``toggl_project_id`` are counted as unmapped (and never posted).
+    Returns ``(candidates, unmapped_count)``.
     """
+    from core.reported_sync import reported_hours_for_window
+
     project_ids = build_project_id_map(profiles)
+    reported = reported_hours_for_window(report, home)
+    if reported is not None:
+        return _candidates_from_reported(reported, project_ids)
     unmapped_sessions = 0
     buckets: Dict[Tuple[int, str], TogglEntryCandidate] = {}
 

@@ -89,6 +89,30 @@ class ConfigCompatibilityTests(unittest.TestCase):
         profile = normalize_profile({"name": "Demo"})
         self.assertNotIn("toggl_project_id", profile)
 
+    def test_normalize_profile_preserves_valid_jira_issue_key(self):
+        profile = normalize_profile({"name": "Demo", "jira_issue_key": "ABC-123"})
+        self.assertEqual(profile.get("jira_issue_key"), "ABC-123")
+
+    def test_normalize_profile_allows_underscore_jira_issue_key(self):
+        # Jira instances can configure project keys with underscores.
+        profile = normalize_profile({"name": "Demo", "jira_issue_key": "OPS_TEAM-123"})
+        self.assertEqual(profile.get("jira_issue_key"), "OPS_TEAM-123")
+
+    def test_normalize_profile_strips_and_validates_jira_issue_key(self):
+        self.assertEqual(
+            normalize_profile({"name": "Demo", "jira_issue_key": "  KAN-2 "})["jira_issue_key"],
+            "KAN-2",
+        )
+
+    def test_normalize_profile_rejects_malformed_jira_issue_key(self):
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "jira_issue_key": "not a key"})
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Demo", "jira_issue_key": 123})
+
+    def test_normalize_profile_omits_jira_issue_key_when_absent(self):
+        self.assertNotIn("jira_issue_key", normalize_profile({"name": "Demo"}))
+
     def test_normalize_profile_auto_report_requires_real_bool(self):
         self.assertTrue(normalize_profile({"name": "Demo", "auto_report": True})["auto_report"])
         self.assertFalse(normalize_profile({"name": "Demo", "auto_report": False})["auto_report"])

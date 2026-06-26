@@ -31,6 +31,13 @@ rule for explicitly user-authored manual entries.
   observed behavior (opt-in, nothing breaks before adoption).
 - **D5 Truth payload:** emit `confirmed` reported_time at a `TRUTH_PAYLOAD_VERSION`
   bump so the extension / invoice / feed read one source. *(Phase 4/5.)*
+- **D6 Per-issue granularity (Jira):** the issue dimension lives only in git, at
+  the **session** level, so it is captured **at observation time** as an optional
+  `issue_key` on the reported record and preserved through confirm — not
+  reconstructed at sync. This refines D2: a record is per `project + day + issue?`
+  (issue-aware when git context exists, else project+day as before). Worklogs post
+  to an **issue**, never a Jira project; the profile `jira_issue_key` (Phase 3) is
+  the fallback. *(Phase 3b.)*
 
 ## Phased backlog
 
@@ -73,11 +80,17 @@ rule for explicitly user-authored manual entries.
   passive-only sessions) per the evidence policy's roles.
 
 ### Phase 3 — sync reads `confirmed`
-- priority: **next** — not built
+- priority: **built** — this PR
 - scope: `build_toggl_entry_candidates` / `build_jira_worklog_candidates` source
   from `confirmed`/`edited` reported_time (project+day) instead of raw observed
   sessions, with the D4 fallback. Closes the evidence-policy gap (no silent
-  observed→pushed).
+  observed→pushed). The shared D4 switch is
+  `core/reported_sync.py::reported_hours_for_window` (returns `None` ⇒ observed
+  fallback). Toggl maps project→`toggl_project_id`; Jira maps project→a new
+  explicit `jira_issue_key` profile field (mirrors `toggl_project_id`) so
+  confirmed project+day hours post without inferring keys from git. Manual
+  reported time (no observed session) posts to Toggl; on Jira it needs a mapped
+  issue key. Unmapped projects are counted, never posted.
 - behavior:
   ```gherkin
   Scenario: Sync posts confirmed reported time, not raw observed
@@ -92,6 +105,80 @@ rule for explicitly user-authored manual entries.
 - acceptance: with confirmed records, sync posts those numbers; with none, observed
   behavior unchanged; tests.
 - dependencies: Phase 1–2.
+
+### Phase 3b — per-issue mapping for Jira (issue_key on the record)
+- priority: **next** — not built (planned via this product-owner pass)
+- problem: Phase 3 maps a whole project to **one** `jira_issue_key`, so all of a
+  project's confirmed time piles onto a single issue. Real worklogs need to land
+  on the **specific issue** worked (KAN-1 vs KAN-2). The issue dimension only
+  exists in git, at the **session** level (branch + commit subjects); once time is
+  confirmed at `project+day` (D2) that detail is gone. We must capture the issue
+  where it exists and carry it through, not reconstruct it after the fact.
+- user value: jira-sync posts each confirmed chunk to the issue it actually
+  belongs to; manual net-new time can name its issue; no opaque re-derivation.
+- decision (locked with maintainer, "Väg 1"): stamp the issue on the reported
+  record **at observation time**, keep it through confirm, group sync by it.
+  Rejected alternatives: re-derive + proportional split at sync (lossy, opaque);
+  profile-issue-only (Phase 3 — no per-issue). See **D6**.
+- non-goals: changing Toggl (it ignores `issue_key`, still groups
+  project→`toggl_project_id`); inferring issues for non-git work; a Jira
+  project-id mapping (worklogs post to an **issue**, never a project).
+- scope:
+  - `core/reported_time.py`: add optional `issue_key: Optional[str]` to
+    `ReportedTimeRecord`; include it in `compute_reported_id` so
+    `(date, project, issue A)` and `(…, issue B)` are **distinct** confirmable
+    units. Absent `issue_key` ⇒ today's project+day record (graceful for all
+    existing stored lines — event-sourced, no migration).
+  - `core/reported_sync.py::build_reported_proposals`: when a `--git-repo` is
+    available, infer each session's key via the existing
+    `core/jira_sync.py::_issue_key_for_session` (commits-in-window → branch) and
+    stamp it on that session's proposal; sessions with no key stay project-level.
+  - `core/cli_reported.py`: thread an optional `--git-repo` into
+    `reported sync` / `reported review`; `reported add --issue KAN-2` sets a
+    manual record's `issue_key` (validated like the profile field).
+  - `core/jira_sync.py` reported-mode: group confirmed/edited records by
+    `(issue_key, day)`; for a record with **no** `issue_key`, fall back to the
+    project's profile `jira_issue_key` (Phase 3); if neither resolves, count it
+    unresolved (never post). `reported_hours_for_window` returns issue-aware keys.
+- behavior:
+  ```gherkin
+  Scenario: Confirmed time posts to the git-inferred issue
+    Given a session on Project Alpha resolved to issue KAN-2 from git
+    And its reported_time was confirmed for that day
+    When the user runs jira-sync for that window
+    Then the worklog is posted to KAN-2 with the confirmed hours
+
+  Scenario: Two issues on one project+day stay separate
+    Given Project Alpha had confirmed time on KAN-2 and KAN-3 the same day
+    Then jira-sync posts two worklogs, one per issue, each with its own hours
+
+  Scenario: Manual time names its issue
+    Given the user ran `gittan reported add --issue KAN-9 --note "phone call"`
+    When jira-sync runs for that window
+    Then the manual hours post to KAN-9
+
+  Scenario: No per-session key falls back to the profile issue
+    Given a confirmed record with no issue_key for a project mapped to KAN-1
+    Then its hours post to KAN-1 (the profile jira_issue_key fallback)
+
+  Scenario: Toggl is unaffected
+    Given confirmed records carry issue_key
+    When toggl-sync runs
+    Then candidates still aggregate by project+day → toggl_project_id, ignoring issue_key
+  ```
+- acceptance: a record's `issue_key` survives write→read and confirm; two issues
+  on one project+day are two distinct records and two worklogs; manual `--issue`
+  sets it; missing key falls back to profile `jira_issue_key`, else unresolved;
+  Toggl candidates unchanged; old records (no `issue_key`) load and behave as
+  Phase 3; full suite green; no file > 500 lines.
+- validation: `tests/test_reported_time.py` (id/distinctness with issue_key),
+  `tests/test_reported_sync.py` (proposal stamping from git), new
+  `tests/test_jira_reported_mode.py` cases (per-issue grouping + fallback),
+  `tests/test_toggl_sync.py` (issue_key ignored). Live: a temp repo with KAN-2 and
+  KAN-3 branches/commits → confirm → jira-sync posts two worklogs.
+- dependencies: Phase 1–3; D6.
+- open decisions: should `reported review` show the inferred `issue_key` per row
+  (recommended, for trust) — UI detail, resolve at build time.
 
 ### Phase 4 — invoice reads the same layer
 - priority: **later** — not built
@@ -123,16 +210,20 @@ Python file over 500 lines.
 - story_id: GH-186 (reported/approved time layer epic; lead PR, PR-tracked)
 - spec_status: draft
 - implementation_status: in progress — Phase 1 built (#186), Phase 2 built (#187),
-  Phase 2b (auto-reporting) built (this PR); Phases 3–5 + Calendar not built
+  Phase 2b (auto-reporting) built (#190), Phase 3 (sync reads confirmed) built
+  (this PR); Phase 3b (per-issue mapping) planned/next; Phases 4–5 + Calendar
+  not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-06-25
-- implementation.pr: #186 (merged), #187 (merged), + this PR (Phase 2b)
+- last_updated_at: 2026-06-26
+- implementation.pr: #186 (merged), #187 (merged), #190 (merged, Phase 2b),
+  this PR (#194, Phase 3 — sync reads confirmed)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
-  task/reported-auto-report
+  task/reported-auto-report, task/reported-sync-reads-confirmed
 - implementation.commits: []
-- validation.evidence: `tests/test_reported_time.py`, `tests/test_cli_reported.py`;
-  full suite green (1001)
-- validation.decision: GO for Phase 1–2; Phases 3–5 pending
+- validation.evidence: `tests/test_reported_time.py`, `tests/test_cli_reported.py`,
+  `tests/test_jira_reported_mode.py`, `tests/test_toggl_sync.py`;
+  full suite green (1040)
+- validation.decision: GO for Phase 1–3; Phase 3b next; Phases 4–5 + Calendar pending
 - related:
   - design root: [`../specs/scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md)
   - policy: [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md)
@@ -146,3 +237,13 @@ Python file over 500 lines.
     + `gittan reported sync`; observed time for well-configured projects
     auto-confirms (policy-safe via explicit opt-in). Surfaced by the
     "gittan in the agent" vision (statusline shows the remaining exceptions).
+  - 2026-06-25: Phase 3 (sync reads confirmed) built — toggl-sync / jira-sync read
+    confirmed/edited reported_time per project+day via
+    `reported_hours_for_window` (D4 switch; falls back to observed when empty).
+    Added a `jira_issue_key` profile field so Jira maps project→issue explicitly
+    (maintainer chose this over git-inference/proportional split). Closes the
+    evidence-policy "no silent observed→pushed" gap for the sync path.
+  - 2026-06-26: Phase 3b planned (product-owner pass) — per-issue Jira mapping via
+    an optional `issue_key` stamped on the record at observation ("Väg 1"); D6
+    locked. Phase 3's profile `jira_issue_key` becomes the fallback. Needs a
+    GH issue at promotion to `now` (per the issue-lifecycle rule).

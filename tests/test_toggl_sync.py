@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 from argparse import Namespace
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+
+# A home with no reported_time store, so observed-path tests never flip into
+# Phase 3 reported-mode by reading the developer's real ~/.gittan.
+_EMPTY_HOME = Path("/nonexistent-gittan-home-for-tests")
 
 from typer.testing import CliRunner
 
@@ -64,7 +70,7 @@ class CandidateBuildingTests(unittest.TestCase):
             },
             [{"name": "Project Alpha", "toggl_project_id": 123}],
         )
-        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles)
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, _EMPTY_HOME)
         self.assertEqual(unmapped, 0)
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].project_id, 123)
@@ -79,7 +85,7 @@ class CandidateBuildingTests(unittest.TestCase):
             {"2026-06-23": {"sessions": [(start, end, [{"project": "Project Beta"}])], "hours": 1.0}},
             [{"name": "Project Alpha", "toggl_project_id": 123}],
         )
-        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles)
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, _EMPTY_HOME)
         self.assertEqual(candidates, [])
         self.assertEqual(unmapped, 1)
 
@@ -94,6 +100,70 @@ class CandidateBuildingTests(unittest.TestCase):
         self.assertEqual(candidate.marker_tag, "gittan:123:2026-06-23")
         self.assertIn("gittan", candidate.tags)
         self.assertIn("gittan:123:2026-06-23", candidate.tags)
+
+
+class ReportedModeTests(unittest.TestCase):
+    """Phase 3: with confirmed reported_time in the window, sync posts those hours."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _confirm(self, project, day, hours, *, source="session", note="", state="confirmed"):
+        from core.reported_time import ReportedTimeRecord, append_record
+
+        origin = [] if source == "manual" else [f"{day}T0900"]
+        append_record(
+            ReportedTimeRecord(
+                date=day, project=project, hours=hours, source=source,
+                state=state, origin_ref=origin, note=note,
+            ),
+            home=self.home,
+        )
+
+    def test_uses_confirmed_hours_not_observed(self):
+        # Observed says ~1h; confirmed reported says 5h — sync must post 5h.
+        self._confirm("Project Alpha", "2026-06-23", 5.0)
+        payload = _payload(
+            {"2026-06-23": {"sessions": [(datetime(2026, 6, 23, 10, 0), datetime(2026, 6, 23, 11, 0), [{"project": "Project Alpha"}])], "hours": 1.0}},
+            [{"name": "Project Alpha", "toggl_project_id": 123}],
+        )
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        self.assertEqual(unmapped, 0)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].project_id, 123)
+        self.assertEqual(candidates[0].seconds, 5 * 3600)
+
+    def test_manual_time_with_no_session_is_posted(self):
+        # Net-new manual time gittan never observed still posts (the undercount fix).
+        self._confirm("Project Alpha", "2026-06-23", 3.0, source="manual", note="SFTP deploy")
+        payload = _payload({}, [{"name": "Project Alpha", "toggl_project_id": 123}])
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].seconds, 3 * 3600)
+
+    def test_unmapped_project_counted_in_reported_mode(self):
+        self._confirm("Project Beta", "2026-06-23", 2.0)
+        payload = _payload({}, [{"name": "Project Alpha", "toggl_project_id": 123}])
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        self.assertEqual(candidates, [])
+        self.assertEqual(unmapped, 1)
+
+    def test_proposed_only_falls_back_to_observed(self):
+        # A proposed (not confirmed) record does not trigger reported-mode.
+        self._confirm("Project Alpha", "2026-06-23", 5.0, state="proposed")
+        observed_start = datetime(2026, 6, 23, 10, 0)
+        payload = _payload(
+            {"2026-06-23": {"sessions": [(observed_start, datetime(2026, 6, 23, 11, 0), [{"project": "Project Alpha"}])], "hours": 1.0}},
+            [{"name": "Project Alpha", "toggl_project_id": 123}],
+        )
+        candidates, unmapped = build_toggl_entry_candidates(payload, payload.profiles, self.home)
+        self.assertEqual(len(candidates), 1)
+        # Observed start preserved (not the synthetic 09:00 of reported-mode).
+        self.assertEqual(candidates[0].started, observed_start)
 
 
 class CredentialGatingTests(unittest.TestCase):

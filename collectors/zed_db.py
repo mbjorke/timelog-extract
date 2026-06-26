@@ -61,6 +61,14 @@ def _decode_blob(data: bytes | str | None) -> str | None:
     return None
 
 
+def _quote_sql_ident(name: str) -> str:
+    """Quote a SQLite identifier from local schema introspection (not user input)."""
+    ident = str(name)
+    if not ident or '"' in ident:
+        raise ValueError(f"invalid SQL identifier: {name!r}")
+    return f'"{ident}"'
+
+
 def _parse_zed_timestamp(ts_value: Any) -> datetime | None:
     """Parse various timestamp formats that Zed might use."""
     if ts_value is None:
@@ -84,11 +92,20 @@ def _parse_zed_timestamp(ts_value: Any) -> datetime | None:
         if ts_str.endswith("Z"):
             ts_str = ts_str[:-1] + "+00:00"
         try:
-            return datetime.fromisoformat(ts_str)
+            parsed = datetime.fromisoformat(ts_str)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
         except ValueError:
             pass
 
     return None
+
+
+def _in_report_window(ts: datetime | None, dt_from: datetime, dt_to: datetime) -> bool:
+    if ts is None:
+        return False
+    return dt_from <= ts <= dt_to
 
 
 def _row_as_dict(row: sqlite3.Row | dict) -> dict:
@@ -108,7 +125,7 @@ def _inspect_db_schema(db_path: Path) -> dict[str, list[str]]:
         tables = [r[0] for r in cursor.fetchall()]
         for table in tables:
             try:
-                cursor.execute(f"PRAGMA table_info({table})")
+                cursor.execute(f"PRAGMA table_info({_quote_sql_ident(table)})")
                 schema[table] = [r[1] for r in cursor.fetchall()]
             except sqlite3.OperationalError:
                 schema[table] = []
@@ -208,18 +225,24 @@ def _query_messages_direct(conn, schema, message_tables, thread_tables, dt_from,
         role_col = next((c for c in ["role", "sender", "author"] if c in msg_cols), None)
         if not all([thread_col, ts_col, content_col]):
             continue
-        cols = ["id", thread_col, ts_col, content_col]
+        id_col = "id" if "id" in msg_cols else None
+        cols = ([id_col] if id_col else []) + [thread_col, ts_col, content_col]
         if role_col:
             cols.append(role_col)
-        query = f"SELECT {', '.join(cols)} FROM {msg_table} WHERE {ts_col} IS NOT NULL ORDER BY {ts_col}"
+        query = (
+            f"SELECT {', '.join(_quote_sql_ident(c) for c in cols)} "
+            f"FROM {_quote_sql_ident(msg_table)} "
+            f"WHERE {_quote_sql_ident(ts_col)} IS NOT NULL "
+            f"ORDER BY {_quote_sql_ident(ts_col)}"
+        )
         try:
             for row in conn.execute(query):
                 drow = _row_as_dict(row)
                 ts = _parse_zed_timestamp(drow.get(ts_col))
-                if not ts or not (dt_from <= ts <= dt_to):
+                if not ts or not _in_report_window(ts, dt_from, dt_to):
                     continue
                 thread_id = str(drow.get(thread_col) or "unknown")
-                msg_id = str(drow.get("id") or "unknown")
+                msg_id = str(drow.get("id") or f"{thread_id}-{len(messages)}") if id_col else f"{thread_id}-{len(messages)}"
                 role = str(drow.get(role_col) or "user").lower()
                 if role not in ["user", "assistant", "system"]:
                     role = "user"
@@ -256,25 +279,34 @@ def _query_messages_join_threads(conn, schema, message_tables, thread_tables, dt
             select_cols = []
             for col in ["id", "thread_id", "timestamp", "role", "content", "message", "body"]:
                 if col in msg_cols:
-                    select_cols.append(f"m.{col}")
+                    select_cols.append(f"m.{_quote_sql_ident(col)}")
                 elif col in thread_cols:
-                    select_cols.append(f"t.{col}")
+                    select_cols.append(f"t.{_quote_sql_ident(col)}")
             if not select_cols:
                 continue
             ts_col = None
             for col in ["timestamp", "created_at", "updated_at", "date", "ts"]:
                 if col in msg_cols:
-                    ts_col = f"m.{col}"
+                    ts_col = f"m.{_quote_sql_ident(col)}"
                     break
                 elif col in thread_cols:
-                    ts_col = f"t.{col}"
+                    ts_col = f"t.{_quote_sql_ident(col)}"
                     break
             if not ts_col:
                 continue
-            on_clause = "m.thread_id = t.id" if "thread_id" in msg_cols else ""
+            on_clause = (
+                f"m.{_quote_sql_ident('thread_id')} = t.{_quote_sql_ident('id')}"
+                if "thread_id" in msg_cols
+                else ""
+            )
             if not on_clause:
                 continue
-            query = f"SELECT {', '.join(select_cols)} FROM {msg_table} m JOIN {thread_table} t ON {on_clause} WHERE {ts_col} IS NOT NULL ORDER BY {ts_col}"
+            query = (
+                f"SELECT {', '.join(select_cols)} "
+                f"FROM {_quote_sql_ident(msg_table)} m "
+                f"JOIN {_quote_sql_ident(thread_table)} t ON {on_clause} "
+                f"WHERE {ts_col} IS NOT NULL ORDER BY {ts_col}"
+            )
             try:
                 for row in conn.execute(query):
                     drow = _row_as_dict(row)
@@ -283,7 +315,7 @@ def _query_messages_join_threads(conn, schema, message_tables, thread_tables, dt
                     ts = _parse_zed_timestamp(
                         drow.get("timestamp") or drow.get("m.timestamp") or drow.get("t.timestamp")
                     )
-                    if not ts or not (dt_from <= ts <= dt_to):
+                    if not ts or not _in_report_window(ts, dt_from, dt_to):
                         continue
                     role = str(drow.get("role") or "user").lower()
                     if role not in ["user", "assistant", "system"]:
@@ -330,13 +362,16 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
         id_col = next((c for c in ["id", "thread_id"] if c in thread_cols), "id")
         if not all([ts_col, content_col, id_col]):
             continue
-        query = f"SELECT {id_col}, {ts_col}, {content_col} FROM {thread_table} WHERE {ts_col} IS NOT NULL ORDER BY {ts_col}"
+        query = (
+            f"SELECT {_quote_sql_ident(id_col)}, {_quote_sql_ident(ts_col)}, {_quote_sql_ident(content_col)} "
+            f"FROM {_quote_sql_ident(thread_table)} "
+            f"WHERE {_quote_sql_ident(ts_col)} IS NOT NULL "
+            f"ORDER BY {_quote_sql_ident(ts_col)}"
+        )
         try:
             for row in conn.execute(query):
                 drow = _row_as_dict(row)
-                ts = _parse_zed_timestamp(drow.get(ts_col))
-                if not ts or not (dt_from <= ts <= dt_to):
-                    continue
+                thread_ts = _parse_zed_timestamp(drow.get(ts_col))
                 thread_id = str(drow.get(id_col) or "unknown")
                 raw_content = drow.get(content_col)
                 if isinstance(raw_content, bytes):
@@ -351,8 +386,10 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                         _parse_zed_timestamp(
                                             msg.get("timestamp") or msg.get("created_at")
                                         )
-                                        or ts
+                                        or thread_ts
                                     )
+                                    if not _in_report_window(msg_ts, dt_from, dt_to):
+                                        continue
                                     parsed_msg = _parse_zed_message_entry(msg)
                                     if parsed_msg:
                                         role, content = parsed_msg
@@ -376,8 +413,10 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                             _parse_zed_timestamp(
                                                 msg.get("timestamp") or msg.get("created_at")
                                             )
-                                            or ts
+                                            or thread_ts
                                         )
+                                        if not _in_report_window(msg_ts, dt_from, dt_to):
+                                            continue
                                         parsed_msg = _parse_zed_message_entry(msg)
                                         if parsed_msg:
                                             role, content = parsed_msg
@@ -396,17 +435,17 @@ def _query_threads_with_content(conn, schema, message_tables, thread_tables, dt_
                                 parsed_msg = _parse_zed_message_entry(parsed)
                                 if parsed_msg:
                                     role, content = parsed_msg
-                                    if content:
+                                    if content and _in_report_window(thread_ts, dt_from, dt_to):
                                         messages.append(
                                             ZedMessage(
-                                                thread_id, f"{thread_id}-0", ts, role, content
+                                                thread_id, f"{thread_id}-0", thread_ts, role, content
                                             )
                                         )
                     except (json.JSONDecodeError, TypeError):
                         content = str(raw_content)[:500]
-                        if content:
+                        if content and _in_report_window(thread_ts, dt_from, dt_to):
                             messages.append(
-                                ZedMessage(thread_id, f"{thread_id}-0", ts, "user", content)
+                                ZedMessage(thread_id, f"{thread_id}-0", thread_ts, "user", content)
                             )
         except (sqlite3.Error, KeyError):
             continue

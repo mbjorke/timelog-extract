@@ -373,6 +373,12 @@ class ZedCollectorTests(unittest.TestCase):
         ts = zed._parse_zed_timestamp("2026-04-10T12:00:05Z")
         self.assertIsNotNone(ts)
 
+        # Test ISO without offset (naive → UTC-aware)
+        ts = zed._parse_zed_timestamp("2026-04-10T12:00:05")
+        self.assertIsNotNone(ts)
+        self.assertIsNotNone(ts.tzinfo)
+        self.assertEqual(ts.astimezone(utc), datetime(2026, 4, 10, 12, 0, 5, tzinfo=utc))
+
         # Test None
         ts = zed._parse_zed_timestamp(None)
         self.assertIsNone(ts)

@@ -11,12 +11,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
-from collectors.lovable_desktop import (
-    lovable_desktop_has_storage_signals,
-    lovable_desktop_history_candidates,
-)
-from core.cache_evidence_health import codec_missing_reason
 from core.chromium_cache import CODEC_REINSTALL_HINT
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
@@ -30,10 +24,10 @@ from core.config import (
     resolve_worklog_path,
 )
 from core.doctor_cli_path import add_cli_path_rows
-from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
+from core.doctor_collector_rows import add_collector_doctor_rows
 from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
-from core.doctor_table_checks import DoctorCheckStyle, doctor_check_db, doctor_check_file
+from core.doctor_table_checks import DoctorCheckStyle, doctor_check_file
 from core.git_project_bootstrap import assess_config_git_coverage
 from core.onboarding_guidance import (
     build_doctor_next_steps,
@@ -224,118 +218,14 @@ def doctor(
                     f"[{STYLE_MUTED}]{len(git_repos)} repo(s); pass --git on report for Git-only hours[/{STYLE_MUTED}]",
                 )
 
-        chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-        doctor_check_db(table, chrome_path, "Chrome History", "urls", check_style)
-        # Cache sources silently produce zero events when their codec is missing.
-        # That under-counts AI-heavy days with no obvious cause, so a present-cache-
-        # but-missing-codec state must read as a fixable failure, not a benign N/A.
-        lh = lovable_desktop_history_candidates(home)
-        if lh:
-            doctor_check_db(table, lh[0], "Lovable Desktop History", "urls", check_style)
-        elif lovable_desktop_has_storage_signals(home) or lovable_desktop_has_cache_signals(home):
-            cache_ok, cache_reason = lovable_cache_status(home)
-            cache_codec_missing = codec_missing_reason(cache_reason)
-            if cache_codec_missing:
-                codec_blocked.append("Lovable Desktop")
-            table.add_row(
-                "Lovable Desktop",
-                FAIL_ICON
-                if cache_codec_missing
-                else (OK_ICON if cache_ok else NA_ICON),
-                f"[{STYLE_MUTED}]{cache_reason}[/{STYLE_MUTED}]",
-            )
-        else:
-            table.add_row(
-                "Lovable Desktop History",
-                NA_ICON,
-                f"[{STYLE_MUTED}]No History DB yet (browse in Lovable to create one)[/{STYLE_MUTED}]",
-            )
-
-        from collectors.claude_desktop_events import claude_events_cache_status
-
-        events_ok, events_reason = claude_events_cache_status(home)
-        events_codec_missing = codec_missing_reason(events_reason)
-        if events_codec_missing:
-            codec_blocked.append("Claude Desktop (Code)")
-        table.add_row(
-            "Claude Desktop (Code)",
-            OK_ICON if events_ok else (FAIL_ICON if events_codec_missing else NA_ICON),
-            f"[{STYLE_MUTED}]{events_reason}[/{STYLE_MUTED}]",
-        )
-
-        mail_path = home / "Library" / "Mail"
-        if mail_path.exists():
-            try:
-                list(mail_path.glob("V[0-9]*"))
-                table.add_row("Apple Mail", OK_ICON, f"[{STYLE_MUTED}]Folder accessible[/{STYLE_MUTED}]")
-            except PermissionError:
-                table.add_row("Apple Mail", FAIL_ICON, f"[{STYLE_MUTED}]Permission denied (Full Disk Access?)[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Apple Mail", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
-
-        # Calendar: optional, opt-in source reading the local macOS Calendar DB.
-        from collectors.calendar import detect_calendar_db
-
-        _cal_db, cal_status = detect_calendar_db(home)
-        if _cal_db is not None:
-            table.add_row("Calendar", OK_ICON, f"[{STYLE_MUTED}]DB accessible (opt-in: --calendar-source on)[/{STYLE_MUTED}]")
-        elif cal_status == "Full Disk Access required":
-            table.add_row("Calendar", FAIL_ICON, f"[{STYLE_MUTED}]Full Disk Access required[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Calendar", NA_ICON, f"[{STYLE_MUTED}]{cal_status}[/{STYLE_MUTED}]")
-
-        cursor_log_path = (
-            home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
-        )
-        doctor_check_file(table, cursor_log_path, "Cursor Storage", check_style)
-
-        cursor_checkpoints = (
-            home / "Library/Application Support/Cursor/User/globalStorage/anysphere.cursor-commits/checkpoints"
-        )
-        if cursor_checkpoints.exists():
-            table.add_row("Cursor Checkpoints", OK_ICON, f"[{STYLE_MUTED}]Folder accessible[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Cursor Checkpoints", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
-
-        # Derive paths from the collectors so a new base dir/channel stays in sync.
-        from collectors.antigravity import antigravity_base_dir
-        from collectors.windsurf import windsurf_base_dirs
-
-        antigravity_logs = antigravity_base_dir(home) / "logs"
-        if not antigravity_logs.exists():
-            # Optional source: not-installed is informational, not a failure.
-            table.add_row("Antigravity", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
-        elif not os.access(antigravity_logs, os.R_OK):
-            table.add_row("Antigravity", WARN_ICON, f"[{STYLE_MUTED}]No read permission[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Antigravity", OK_ICON, f"[{STYLE_MUTED}]Logs accessible[/{STYLE_MUTED}]")
-
-        # Windsurf ships a stable channel and a "Next" beta; either may exist.
-        windsurf_logs = [base / "logs" for base in windsurf_base_dirs(home)]
-        present = [p for p in windsurf_logs if p.exists()]
-        if not present:
-            table.add_row("Windsurf", NA_ICON, f"[{STYLE_MUTED}]Not found[/{STYLE_MUTED}]")
-        elif not any(os.access(p, os.R_OK) for p in present):
-            table.add_row("Windsurf", WARN_ICON, f"[{STYLE_MUTED}]No read permission[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Windsurf", OK_ICON, f"[{STYLE_MUTED}]Logs accessible[/{STYLE_MUTED}]")
-
-        st_path = home / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db"
-        if not st_path.exists():
-            st_path = home / "Library" / "Application Support" / "KnowledgeC" / "knowledgeC.db"
-        doctor_check_db(table, st_path, "Screen Time DB", "ZOBJECT", check_style)
-
-        claude_path = home / ".claude" / "projects"
-        if claude_path.exists():
-            table.add_row("Claude Code CLI", OK_ICON, f"[{STYLE_MUTED}]Found projects[/{STYLE_MUTED}]")
-        else:
-            table.add_row("Claude Code CLI", NA_ICON, f"[{STYLE_MUTED}]Path not found[/{STYLE_MUTED}]")
-
-        add_copilot_cli_doctor_row(
+        add_collector_doctor_rows(
             table,
             home,
+            check_style,
+            codec_blocked=codec_blocked,
             ok_icon=OK_ICON,
             warn_icon=WARN_ICON,
+            fail_icon=FAIL_ICON,
             na_icon=NA_ICON,
             style_muted=STYLE_MUTED,
         )

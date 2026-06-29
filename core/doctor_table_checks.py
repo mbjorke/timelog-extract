@@ -43,6 +43,44 @@ def doctor_check_file(table: Table, path: Path, label: str, style: DoctorCheckSt
     return True
 
 
+def doctor_probe_sqlite(table: Table, path: Path, label: str, style: DoctorCheckStyle) -> bool:
+    """Probe a SQLite DB without requiring a known table name."""
+    if not path.exists():
+        table.add_row(label, style.fail_icon, f"[{style.style_muted}]DB not found[/{style.style_muted}]")
+        return False
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    tmp.close()
+    tmp_path = tmp.name
+    try:
+        shutil.copy2(path, tmp_path)
+        with sqlite3.connect(tmp_path) as conn:
+            conn.execute("SELECT count(*) FROM sqlite_master LIMIT 1").fetchone()
+        detail = sqlite_db_check_detail(path, base="DB OK")
+        table.add_row(label, style.ok_icon, f"[{style.style_muted}]{detail}[/{style.style_muted}]")
+        return True
+    except sqlite3.Error as e:
+        if isinstance(e, sqlite3.OperationalError) and "database is locked" in str(e):
+            table.add_row(
+                label,
+                style.warn_icon,
+                f"[{style.style_muted}]DB locked (try closing app)[/{style.style_muted}]",
+            )
+        else:
+            table.add_row(label, style.fail_icon, f"[{style.style_muted}]Query failed: {e}[/{style.style_muted}]")
+        return False
+    except PermissionError:
+        table.add_row(
+            label,
+            style.fail_icon,
+            f"[{style.style_muted}]Full Disk Access required[/{style.style_muted}]",
+        )
+        return False
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
 def doctor_check_db(table: Table, path: Path, label: str, table_name: str, style: DoctorCheckStyle) -> bool:
     """Probe a SQLite DB via temp copy and append a status row; return True on success."""
     if table_name not in _DOCTOR_SQL_TABLES:

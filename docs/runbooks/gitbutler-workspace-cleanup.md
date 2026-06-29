@@ -36,7 +36,7 @@ apply. `but branch show task/foo` works for unapplied branches; delete does not.
 | Error | Fix |
 | --- | --- |
 | `conflicts with existing stack` | Keep your active branch applied; try apply+delete anyway — independent merged branches often work alongside the active stack. If not: `but unapply <active>` → apply stale → delete → `but apply <active>`. |
-| `Uncommitted files would be overwritten` | Commit or stage `zz` changes to your active branch first (`but commit … --changes …`), then retry apply. |
+| `Uncommitted files would be overwritten` | Commit `zz` changes to your active branch first (`but commit … --changes …`), then retry apply. |
 | `Operation not permitted` | Retry outside sandbox / with full permissions; or use GitButler GUI. |
 
 ### Safety rails
@@ -150,7 +150,7 @@ Do not delete remotes for open PRs (#204, #200, #205).
 
 ## Periodic cadence
 
-- **After each merge to `main`:** `but pull --check` && `but pull`
+- **After each merge to `main`:** `but pull --check`, then `but pull`
 - **When unapplied count > 8:** run this runbook
 - **Before bulk delete:** `but oplog snapshot -m "pre-cleanup"`
 

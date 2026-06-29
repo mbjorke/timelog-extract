@@ -100,7 +100,7 @@ combo)** without worktree hopping.
 
 | Mode | Applied stacks | When |
 | --- | --- | --- |
-| **Focus + test** | **1** (the feature under test) | Default — `gittan …`, `run_autotests.sh`, push prep |
+| **Focus + test** | **1** (the feature under test) | Default — `bash scripts/run_autotests.sh`, push prep |
 | **Integration probe** | **2**, file-disjoint only | “Do A + B work together before PR?” |
 | **Parked WIP** | **0–1** + many **unapplied** branches | Commits saved; tree stays clean for the active slice |
 

@@ -45,17 +45,17 @@ becomes *confirmation* of mostly-classified events instead of
 
 ## Preconditions before restarting the design session
 
-Two grounding documents, both requiring a machine with real local data:
+Two grounding documents with **different data requirements**:
 
-- **A. Real signal examples** — anonymized actual `--format json` /
-  `review --json` output showing what `claude.ai`, `chrome`, and `cursor`
-  events look like, and what high vs low confidence means in practice.
-  (Follow AGENTS.md fixture hygiene: neutral placeholders, no real
-  customer/project identifiers.)
-- **B. Setup → triage prerequisite chain** — how the current
-  semi-automatic `gittan setup` flow works and where triage begins.
-  Largely assembleable from `docs/ideas/fast-project-mapping-playbook.md`
-  and `docs/product/cli-command-map.md`.
+- **A. Real signal examples** — requires a machine with real local data:
+  anonymized actual `--format json` / `review --json` output showing what
+  `claude.ai`, `chrome`, and `cursor` events look like, and what high vs
+  low confidence means in practice. (Follow AGENTS.md fixture hygiene: neutral
+  placeholders, no real customer/project identifiers.)
+- **B. Setup → triage prerequisite chain** — does **not** require local-data
+  access; assemble from existing docs: `docs/ideas/fast-project-mapping-playbook.md`
+  and `docs/product/cli-command-map.md` describe how the semi-automatic
+  `gittan setup` flow works and where triage begins.
 
 The five-prompt session structure itself held up and can be reused once
 Prompt 0 (project instructions) embeds both documents.

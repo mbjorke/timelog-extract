@@ -136,22 +136,28 @@ web view exists.
 Per `docs/ideas/conversational-ui-stack.md`, the AI is **not a classifier**. The
 deterministic CLI already produces the bulk of suggestions
 (`projects-audit` `top_signals`, `review --json`, rule suggestions). The AI
-layer's job is narrow and bounded:
+layer is **proposal- and narration-only** — scope selection, ranking, and plan
+ordering stay in deterministic code (`gittan triage` dispatcher and audit
+primitives). Its job is narrow and bounded:
 
 1. **Propose config from natural language.** "The project-beta work lives in the
    dashboard repo" → an anchor-plan op (`add match_terms "dashboard" →
    project-beta`), surfaced for confirmation. NL → **plan**, never NL → silent
    write.
-2. **Orchestrate the funnel.** Read the audit, choose the scope, sequence
-   proposals by **impact (hours)**, and narrate why ("3 dirs account for ~12h of
-   unmapped time this week").
+2. **Narrate the funnel (deterministic backbone).** **Orchestrate the funnel**
+   is a deterministic responsibility: read the audit, choose scope (signal →
+   session → event), and sequence proposals by **impact (hours)** from counted
+   fields. The AI may **propose** which scope the user might want to open and
+   **explain** that ordering ("3 dirs account for ~12h of unmapped time this
+   week") — it does not override scope selection or reorder ranked proposals.
 3. **Reformat output.** Turn the resolved report into the shape asked for
    (summary, invoice line, sync payload).
 
 Hard constraints (Truth Standard split — observed → classified → approved):
 
-- The AI may **rank and explain** candidates; it may **not** invent a project,
-  nor raise `confidence` above what the deterministic layer assigned.
+- The AI may **explain and summarize** deterministically ranked candidates; it
+  may **not** invent a project, choose funnel scope, reorder proposals, nor
+  raise `confidence` above what the deterministic layer assigned.
 - Every suggestion carries **provenance**: `origin ∈ {audit, review, nudge,
   ai-nl}` plus the `hits`/`confidence` that justify it, so the user always sees
   *counted fact* vs *model guess*.

@@ -20,6 +20,13 @@ from core.setup_projects_config_bootstrap import (
 )
 
 
+def _timestamped_projects_config_backups(directory: Path) -> list[Path]:
+    """Both backup naming styles used by setup (hyphen and dot timestamp separators)."""
+    backups = set(directory.glob("timelog_projects.backup-*.json"))
+    backups.update(directory.glob("timelog_projects.backup.*.json"))
+    return sorted(backups)
+
+
 class SetupProjectsConfigTests(unittest.TestCase):
     def test_ensure_projects_config_creates_missing_parent_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -298,7 +305,7 @@ class SetupConfigWriteGateTests(unittest.TestCase):
                     looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
                 )
             self.assertEqual(result.status, "PASS")
-            backups = list(Path(tmp).glob("timelog_projects.backup.*.json"))
+            backups = _timestamped_projects_config_backups(Path(tmp))
             self.assertEqual(len(backups), 1)
             payload = json.loads(cfg.read_text(encoding="utf-8"))
             self.assertEqual(payload["projects"][0]["name"], "existing-repo")
@@ -333,7 +340,7 @@ class SetupConfigWriteGateTests(unittest.TestCase):
             )
             self.assertTrue(result.merge_skipped)
             self.assertEqual(cfg.read_text(encoding="utf-8"), original_text)
-            self.assertEqual(len(list(Path(tmp).glob("timelog_projects.backup.*.json"))), 0)
+            self.assertEqual(len(_timestamped_projects_config_backups(Path(tmp))), 0)
 
     def test_yes_with_bootstrap_repos_still_requires_merge_confirmation(self):
         with tempfile.TemporaryDirectory() as tmp:

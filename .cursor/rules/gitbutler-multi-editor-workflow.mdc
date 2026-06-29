@@ -30,11 +30,15 @@ When But work is done for a while: `but teardown --checkout-to main`.
 
 ## GitButler hygiene (But mode)
 
-- Max **1–2** applied virtual branches with open work; unapply merged/stale stacks
+- **Many unapplied branches OK** (parked features); **applied stacks:** prefer **1** for test/handoff, **2** only if file-disjoint integration
+- Test another feature: `but oplog snapshot` → unapply current → apply target → test → restore (see policy doc *Parallel development + isolated testing*)
 - Before commit on shared files (`pyproject.toml`, `CHANGELOG.md`, `CONTRIBUTING.md`):
-  `but unapply` other branches → commit → re-apply only if needed
+  `but unapply` other applied stacks → commit → re-apply only if needed
 - One virtual branch ≈ one future PR; do not bundle unrelated scope
 - Use `but diff` → `but commit <branch> -m "…" --changes <ids>`; do not chain `but` mutations with `&&`
+- Delete stale lane: `but apply <branch>` then `but branch delete <branch>` (delete fails on unapplied lanes)
+- History edits: `but rub <source> <target>`; mode pick in policy doc (parallel / stack / worktree)
+- Stale lanes: `but oplog snapshot` before bulk cleanup; runbook `docs/runbooks/gitbutler-workspace-cleanup.md`
 - Push: `but push <branch-name>` then PR (`but pr new` or `gh pr create`)
 
 ## Handoff to next editor (Claude ↔ Cursor)

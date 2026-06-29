@@ -64,15 +64,19 @@ def _resolve_cwd() -> str:
     return os.getcwd()
 
 
-def _load_profiles() -> list:
-    """Load enabled project profiles from the resolved config (empty on any error)."""
+def _load_profiles(cwd: str) -> list:
+    """Load enabled project profiles for ``cwd``'s workspace (empty on any error).
+
+    Resolves the config from the same directory we classify the repo against, so a
+    statusline running outside the process cwd reads the right config.
+    """
     from core.config import (
         load_projects_config_payload,
         normalize_profile,
         resolve_projects_config_path,
     )
 
-    path = resolve_projects_config_path()
+    path = resolve_projects_config_path(Path(cwd))
     if not path.exists():
         return []
     payload = load_projects_config_payload(path)
@@ -87,8 +91,9 @@ def main() -> int:
     try:
         from core.repo_slug import resolve_path_repo_slug
 
-        slug = resolve_path_repo_slug(_resolve_cwd())
-        print(project_status(slug, _load_profiles()))
+        cwd = _resolve_cwd()
+        slug = resolve_path_repo_slug(cwd)
+        print(project_status(slug, _load_profiles(cwd)))
     except Exception:  # noqa: BLE001 - a statusline must never disrupt the prompt
         print("")
     return 0

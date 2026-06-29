@@ -45,6 +45,7 @@ def collect_all_events(
     collect_toggl: Callable,
     collect_calendar: Callable,
     collect_zed: Callable,
+    collect_conductor: Callable,
     calendar_has_selection: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     all_events: List[Dict[str, Any]] = []
@@ -82,6 +83,7 @@ def collect_all_events(
         collect_toggl=collect_toggl,
         collect_calendar=collect_calendar,
         collect_zed=collect_zed,
+        collect_conductor=collect_conductor,
         calendar_has_selection=calendar_has_selection,
     )
     total_collectors = len(collectors)

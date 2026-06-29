@@ -47,6 +47,7 @@ def build_collector_specs(
     collect_toggl: Callable,
     collect_calendar: Callable,
     collect_zed: Callable,
+    collect_conductor: Callable,
     calendar_has_selection: bool = False,
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
@@ -137,4 +138,5 @@ def build_collector_specs(
             reason=calendar_reason,
         ),
         CollectorSpec("Zed", collect_zed, "events"),
+        CollectorSpec("Conductor", collect_conductor, "events"),
     ]

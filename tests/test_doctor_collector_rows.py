@@ -109,6 +109,7 @@ class DoctorCollectorRowsTests(unittest.TestCase):
                 "Codex IDE",
                 "Gemini CLI",
                 "Zed",
+                "Conductor",
             ):
                 self.assertIn(expected, labels)
 

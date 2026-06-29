@@ -33,6 +33,7 @@ class RuntimeCollectors:
         github_collector,
         toggl_collector,
         zed_collector,
+        conductor_collector,
         github_token: Optional[str] = None,
     ):
         self.home = home
@@ -55,6 +56,7 @@ class RuntimeCollectors:
         self.github = github_collector
         self.toggl = toggl_collector
         self.zed = zed_collector
+        self.conductor = conductor_collector
         self.cli_args = cli_args
         self.github_token = github_token
 
@@ -186,6 +188,13 @@ class RuntimeCollectors:
         from collectors.zed import collect_zed
 
         return collect_zed(
+            profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
+        )
+
+    def collect_conductor(self, profiles, dt_from, dt_to):
+        from collectors.conductor import collect_conductor
+
+        return collect_conductor(
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 

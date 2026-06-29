@@ -84,6 +84,7 @@ def _project_bootstrap_next_steps(
     dry_run: bool = False,
     config_path: Path | None = None,
     has_projects: bool = False,
+    bootstrap_repos: bool = False,
 ) -> list[str]:
     steps: list[str] = []
     has_buckets = has_projects or bool(
@@ -92,10 +93,16 @@ def _project_bootstrap_next_steps(
     if dry_run:
         if config_path is not None:
             steps.append(f"Dry-run target: `{config_path}` — no config or worklog files were written.")
-        steps.append(
-            "Next: run `gittan setup` without `--dry-run` for non-destructive apply steps "
-            "(existing project config is not merge-written unless you pass `--bootstrap-repos`)."
-        )
+        if bootstrap_repos:
+            steps.append(
+                "Next: run `gittan setup --bootstrap-repos` without `--dry-run` when you are ready "
+                "to merge repos (backup + confirmation required before write)."
+            )
+        else:
+            steps.append(
+                "Next: run `gittan setup` without `--dry-run` for non-destructive apply steps "
+                "(existing project config is not merge-written unless you pass `--bootstrap-repos`)."
+            )
     if has_buckets:
         steps.append("Then: run `gittan review` to map URL domains to imported project buckets.")
         steps.append("Optional: `gittan review --json` for read-only URL candidates (agents/scripts).")
@@ -324,7 +331,7 @@ def ensure_projects_config(
             "[bold yellow]Warning:[/bold yellow] Repo bootstrap merge will rewrite "
             f"{config_path.name} and may change match_terms on existing profiles."
         )
-        should_merge = yes or questionary.confirm(
+        should_merge = questionary.confirm(
             "Proceed with repo bootstrap merge (backup will be created first)?",
             default=False,
         ).ask()
@@ -423,6 +430,7 @@ def ensure_projects_config(
             dry_run=True,
             config_path=config_path,
             has_projects=bool(merged_payload.get("projects")),
+            bootstrap_repos=bootstrap_repos,
         )
         return ProjectsConfigBootstrapResult(
             "PASS (dry-run)",
@@ -444,6 +452,7 @@ def ensure_projects_config(
         dry_run=False,
         config_path=config_path,
         has_projects=bool(merged_payload.get("projects")),
+        bootstrap_repos=bootstrap_repos,
     )
     return ProjectsConfigBootstrapResult(
         "PASS",

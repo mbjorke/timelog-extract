@@ -285,16 +285,18 @@ class SetupConfigWriteGateTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            result = ensure_projects_config(
-                console=Console(record=True),
-                yes=True,
-                dry_run=False,
-                bootstrap_repos=True,
-                bootstrap_root=tmp,
-                config_path=cfg,
-                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
-                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
-            )
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm") as confirm_mock:
+                confirm_mock.return_value.ask.return_value = True
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=True,
+                    dry_run=False,
+                    bootstrap_repos=True,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
             self.assertEqual(result.status, "PASS")
             backups = list(Path(tmp).glob("timelog_projects.backup.*.json"))
             self.assertEqual(len(backups), 1)
@@ -332,6 +334,57 @@ class SetupConfigWriteGateTests(unittest.TestCase):
             self.assertTrue(result.merge_skipped)
             self.assertEqual(cfg.read_text(encoding="utf-8"), original_text)
             self.assertEqual(len(list(Path(tmp).glob("timelog_projects.backup.*.json"))), 0)
+
+    def test_yes_with_bootstrap_repos_still_requires_merge_confirmation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            original_text = json.dumps(
+                {
+                    "projects": [
+                        {
+                            "name": "keep-me",
+                            "match_terms": ["keep"],
+                        }
+                    ]
+                }
+            )
+            cfg.write_text(original_text, encoding="utf-8")
+            with mock.patch("core.setup_projects_config_bootstrap.questionary.confirm") as confirm_mock:
+                confirm_mock.return_value.ask.return_value = False
+                result = ensure_projects_config(
+                    console=Console(record=True),
+                    yes=True,
+                    dry_run=False,
+                    bootstrap_repos=True,
+                    bootstrap_root=tmp,
+                    config_path=cfg,
+                    timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                    looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+                )
+            self.assertEqual(result.status, "SKIPPED")
+            self.assertTrue(result.merge_skipped)
+            self.assertEqual(cfg.read_text(encoding="utf-8"), original_text)
+
+    def test_dry_run_bootstrap_repos_next_step_preserves_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps({"projects": [{"name": "keep-me", "match_terms": ["keep"]}]}),
+                encoding="utf-8",
+            )
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=True,
+                bootstrap_repos=True,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            joined = "\n".join(result.next_steps)
+            self.assertIn("gittan setup --bootstrap-repos", joined)
+            self.assertNotIn("without `--dry-run` for non-destructive apply", joined)
 
 
 class SetupProjectsConfigProvisionTests(unittest.TestCase):

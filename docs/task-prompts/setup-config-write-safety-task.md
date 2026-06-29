@@ -13,10 +13,17 @@ This task is **trust-critical** and should ship before further onboarding UX pol
 - story_id: GH-211
 - spec_status: approved
 - implementation_status: in progress
+- created_at: 2026-06-29
 - last_updated_at: 2026-06-29
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/212
+- implementation.branch: task/setup-config-write-safety
+- implementation.commits: [21d0545, 10cf316]
+- validation.evidence: tests/test_setup_projects_config.py, tests/test_onboarding_next_steps.py, CI on PR #212
+- validation.decision: conditional GO
 - changelog:
   - 2026-06-29: Initial spec after maintainer incident — valid config overwritten during GH-197 setup testing; backup from 2026-06-25 retained 39 projects while apply path rewrote config without adequate warning.
   - 2026-06-29: Slices A/B implemented — write gate, --bootstrap-repos, backup before merge-write, guidance copy.
+  - 2026-06-29: PR #212 review — dry-run preserves `--bootstrap-repos` in next steps; merge confirm never bypassed by `--yes`.
 
 ## Incident context
 

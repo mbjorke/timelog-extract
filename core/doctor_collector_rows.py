@@ -19,8 +19,8 @@ from core.doctor_copilot_cli_row import add_copilot_cli_doctor_row
 from core.doctor_table_checks import (
     DoctorCheckStyle,
     doctor_check_db,
-    doctor_check_file,
     doctor_probe_sqlite,
+    sqlite_db_probe_ok,
 )
 from outputs.terminal_theme import FAIL_ICON, NA_ICON, OK_ICON, WARN_ICON
 
@@ -46,6 +46,17 @@ def _row(
     detail: str,
 ) -> None:
     ctx.table.add_row(label, icon, f"[{ctx.style_muted}]{detail}[/{ctx.style_muted}]")
+
+
+def _row_readable_file(ctx: DoctorCollectorContext, label: str, path: Path) -> bool:
+    if not path.exists():
+        _row(ctx, label, ctx.na_icon, "Not installed")
+        return False
+    if not os.access(path, os.R_OK):
+        _row(ctx, label, ctx.warn_icon, "No read access")
+        return False
+    _row(ctx, label, ctx.ok_icon, "Readable")
+    return True
 
 
 def _row_readable_dir(ctx: DoctorCollectorContext, label: str, path: Path, *, optional: bool = True) -> bool:
@@ -227,7 +238,7 @@ def add_collector_doctor_rows(
     )
 
     chrome_path = home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "History"
-    chrome_ok = chrome_path.exists() and os.access(chrome_path, os.R_OK)
+    chrome_ok = sqlite_db_probe_ok(chrome_path, table_name="urls")
 
     # --- AI / IDE (SOURCE_ORDER) ---
     claude_projects = home / ".claude" / "projects"
@@ -244,7 +255,7 @@ def add_collector_doctor_rows(
     cursor_log_path = (
         home / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
     )
-    doctor_check_file(table, cursor_log_path, "Cursor", check_style)
+    _row_readable_file(ctx, "Cursor", cursor_log_path)
 
     _add_cursor_agent_row(ctx)
 

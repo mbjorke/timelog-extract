@@ -68,6 +68,25 @@ class DoctorCollectorRowsTests(unittest.TestCase):
             self.assertEqual(rows["Claude.ai (web)"], "Requires Chrome History")
             self.assertEqual(rows["Gemini (web)"], "Requires Chrome History")
 
+    def test_web_url_sources_follow_chrome_db_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("core.doctor_collector_rows.sqlite_db_probe_ok", return_value=True) as probe:
+                rows = {
+                    label: _plain(detail)
+                    for label, _, detail in _capture_rows(Path(tmp))
+                }
+            probe.assert_called()
+            self.assertEqual(rows["Claude.ai (web)"], "Chrome History readable")
+            self.assertEqual(rows["Gemini (web)"], "Chrome History readable")
+
+    def test_cursor_missing_reads_not_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = {
+                label: _plain(detail)
+                for label, _, detail in _capture_rows(Path(tmp))
+            }
+            self.assertEqual(rows["Cursor"], "Not installed")
+
     def test_zed_row_probe_when_db_present(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

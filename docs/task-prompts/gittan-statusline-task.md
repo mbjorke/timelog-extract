@@ -59,7 +59,7 @@ cache that report runs persist as a byproduct.
   `tests/test_statusline.py`; collector-free (JSONL reads only).
 
 ### Part A — observed cache (enables S2)
-- priority: **built** — merged #210
+- priority: **built** — merged #210 (story GH-209)
 - scope: on report runs (`core/report_service.py`, where `overall_days` hours are
   known), persist a lightweight per-project-day observed summary to
   `~/.gittan/observed/YYYY-MM.jsonl` (mirrors `core/reported_time.py`
@@ -78,16 +78,16 @@ cache that report runs persist as a byproduct.
 
 ## Traceability
 
-- story_id: GH-207 (S1), GH-213 (S2)
+- story_id: GH-207 (S1), GH-209 (Part A), GH-213 (S2)
 - spec_status: approved
-- implementation_status: built — S1 merged (#208); Part A merged (#210); S2 on PR #214
+- implementation_status: built — S1 merged (#208); Part A merged (#210); S2 implemented on #214 (awaiting merge)
 - created_at: 2026-06-29
 - last_updated_at: 2026-06-29
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/208 (S1), https://github.com/mbjorke/timelog-extract/pull/210 (Part A), https://github.com/mbjorke/timelog-extract/pull/214 (S2)
 - implementation.branch: task/statusline-unconfigured-warning (S1), task/observed-cache (Part A), task/statusline-unreported (S2)
-- implementation.commits: [5c778bc] (S2)
+- implementation.commits: [5c778bc, a28a01c] (S2)
 - validation.evidence: `scripts/gittan_statusline.py`, `tests/test_statusline.py`, `core/observed_cache.py`, `tests/test_observed_cache.py`, `docs/runbooks/gittan-statusline.md`, CI on PR #214
-- validation.decision: conditional GO — S2 pending merge/CI on #214
+- validation.decision: GO (S1 #208, Part A #210 merged); conditional GO (S2 #214 — built on branch, pending merge/CI)
 - changelog:
   - 2026-06-29: S1 built — collector-free statusline warning for an
     unconfigured project; runbook + tests. First visible "gittan in the agent"
@@ -97,3 +97,4 @@ cache that report runs persist as a byproduct.
     collectors on prompt refresh.
   - 2026-06-29: S2 built — unreported-time nudge on `task/statusline-unreported`,
     PR #214 (Closes GH-213); closes the report → statusline → reported loop.
+  - 2026-06-29: Traceability sync — add GH-209 (Part A); align validation.decision with built-on-branch vs merged state.

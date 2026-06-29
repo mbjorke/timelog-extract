@@ -10,7 +10,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | --- | --- |
 | Commands | 33 |
 | Command groups | 2 |
-| Collectors | 20 |
+| Collectors | 21 |
 | Per-project config fields | 18 |
 
 ## Commands
@@ -66,6 +66,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Claude Desktop (Code) | events |
 | Claude.ai (specific URLs) | visits |
 | Codex IDE (OpenAI ~/.codex) | sessions |
+| Conductor | events |
 | Cursor | events |
 | Cursor checkpoints | events |
 | Gemini (web, specific URLs) | visits |

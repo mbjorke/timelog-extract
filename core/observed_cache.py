@@ -4,9 +4,10 @@ Written as a cheap byproduct of report runs so the agent statusline can compute
 ``unreported = observed − handled`` without running collectors (Part A of
 ``docs/task-prompts/gittan-statusline-task.md``).
 
-Mirrors ``core/reported_time.py``: append-only monthly JSONL under
-``~/.gittan/observed/YYYY-MM.jsonl``, latest write per ``(project, day)`` wins.
-Observed hours are computed with the **same** aggregation the reported layer uses
+Mirrors ``core/reported_time.py``: monthly JSONL under
+``~/.gittan/observed/YYYY-MM.jsonl``. Each report run atomically replaces all
+rows for the months it covers (stale entries removed). Observed hours are computed
+with the **same** aggregation the reported layer uses
 (``core/reported_sync.py::build_reported_proposals``), so ``observed − handled``
 is apples-to-apples against ``core/reported_time.py``.
 """
@@ -37,8 +38,8 @@ def _month_path(base_dir: Path, month: str) -> Path:
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
     """Persist per-``(project, day)`` observed hours from a report.
 
-    Returns the number of rows written. Idempotent by latest-write-wins: re-running
-    a report for the same window appends fresh rows that supersede the old ones.
+    Returns the number of rows written. Each run is authoritative for the months it
+    covers: all rows for those months are replaced atomically (stale entries removed).
     """
     from core.reported_sync import build_reported_proposals
 
@@ -59,7 +60,29 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
         row = {"project": project, "date": day, "hours": round(hours, 2), "captured_at": captured_at}
         by_month.setdefault(day[:7] or "unknown", []).append(row)
     for month, rows in by_month.items():
-        with _month_path(base, month).open("a", encoding="utf-8") as fh:
+        month_file = _month_path(base, month)
+        # Atomic replacement: read existing rows from other months, discard this month
+        existing_other_months = []
+        if month_file.exists():
+            try:
+                with month_file.open(encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            # Keep rows from other months (in case file naming was wrong)
+                            if str(data.get("date", ""))[:7] != month:
+                                existing_other_months.append(line)
+                        except (json.JSONDecodeError, KeyError, ValueError):
+                            pass  # skip garbled lines
+            except OSError:
+                pass  # proceed with empty existing set
+        # Write: other months first (if any), then new rows for this month
+        with month_file.open("w", encoding="utf-8") as fh:
+            for line in existing_other_months:
+                fh.write(line + "\n")
             for row in sorted(rows, key=lambda r: (r["date"], r["project"])):
                 fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
                 written += 1
@@ -69,8 +92,7 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
 def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str, str], float]:
     """Latest observed hours per ``(project, day)`` from the cache (empty if none).
 
-    Append-only with latest-write-wins, mirroring the reported store; garbled lines
-    are skipped, never raised."""
+    Each report run atomically replaces its months; garbled lines are skipped, never raised."""
     base = observed_base_dir(home)
     if not base.is_dir():
         return {}

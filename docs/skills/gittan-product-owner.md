@@ -54,8 +54,8 @@ required*) governs the deliverable below.
    tiny internal task.
 6. Include acceptance criteria and validation evidence for each `now` item.
 7. Name dependencies and decisions needed before implementation.
-8. **Commit the backlog as the deliverable** (see below) — a working/plan-mode
-   draft in `~/.claude/plans/` is not the artifact.
+8. **Commit the backlog as the deliverable** (see below) — a local working/
+   plan-mode draft is not the artifact.
 
 ## Deliverable: a committed, traceable task-prompt (required)
 
@@ -66,8 +66,8 @@ the PRs, and tooling can see it:
   using [`../task-prompts/task-traceability-template.md`](../task-prompts/task-traceability-template.md).
 - Include a `## Traceability` block (`AGENTS.md` §223): `story_id`,
   `spec_status`, `implementation_status`, `implementation.pr`, `changelog`, etc.
-- A plan-mode file under `~/.claude/plans/` is a **working draft only** — never
-  leave the backlog there as the final state; copy it into the committed spec.
+- A local plan-mode file is a **working draft only** — never leave the backlog
+  there as the final state; copy it into the committed spec.
 - **Implementing PRs must link to the spec** and update `implementation_status` /
   `implementation.pr` as work lands.
 

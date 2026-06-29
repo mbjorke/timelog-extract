@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
@@ -79,13 +81,24 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
                             pass  # skip garbled lines
             except OSError:
                 pass  # proceed with empty existing set
-        # Write: other months first (if any), then new rows for this month
-        with month_file.open("w", encoding="utf-8") as fh:
-            for line in existing_other_months:
-                fh.write(line + "\n")
-            for row in sorted(rows, key=lambda r: (r["date"], r["project"])):
-                fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
-                written += 1
+        # Write full payload to a temp file, then swap into place atomically.
+        fd, temp_path = tempfile.mkstemp(
+            dir=month_file.parent, prefix=".tmp_", suffix=".jsonl"
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                for line in existing_other_months:
+                    fh.write(line + "\n")
+                for row in sorted(rows, key=lambda r: (r["date"], r["project"])):
+                    fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+                    written += 1
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(temp_path, month_file)
+        except Exception:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise
     return written
 
 

@@ -65,6 +65,14 @@ def setup_wizard(
         "--bootstrap-root",
         help="Root directory to scan for nearby git repositories during project bootstrap.",
     ),
+    bootstrap_repos: bool = typer.Option(
+        False,
+        "--bootstrap-repos",
+        help=(
+            "Opt in to repo bootstrap merge-write when project config already exists. "
+            "Creates a backup and requires confirmation before overwriting timelog_projects.json."
+        ),
+    ),
 ):
     """
     Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report.
@@ -77,6 +85,7 @@ def setup_wizard(
     	dry_run (bool): Show planned actions without modifying files or git configuration.
     	skip_smoke (bool): Skip the final smoke report step.
     	bootstrap_root (str | None): Root directory to scan for nearby git repositories during project bootstrap.
+    	bootstrap_repos (bool): When set, allow repo bootstrap merge-write on existing valid project config (backup + confirmation).
     
     Raises:
     	typer.BadParameter: If both `interactive` and `one_click` are enabled simultaneously.
@@ -96,6 +105,7 @@ def setup_wizard(
         dry_run=dry_run,
         skip_smoke=skip_smoke,
         bootstrap_root=bootstrap_root,
+        bootstrap_repos=bootstrap_repos,
         fast=fast,
         prompt_project_mapping=prompt_project_mapping,
     )

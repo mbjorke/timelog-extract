@@ -64,10 +64,11 @@ class SetupProjectsConfigTests(unittest.TestCase):
                         bootstrap_root=tmp,
                     )
                 self.assertEqual(status, "PASS")
-                self.assertIn("discovered=0", notes)
+                self.assertIn("merge skipped", notes.lower())
                 payload = json.loads(cfg.read_text(encoding="utf-8"))
                 self.assertEqual(payload["projects"][0]["name"], "keep-me")
                 self.assertEqual(list(Path(tmp).glob("timelog_projects.backup-*.json")), [])
+                self.assertEqual(list(Path(tmp).glob("timelog_projects.backup.*.json")), [])
             finally:
                 os.chdir(prev)
 
@@ -123,9 +124,8 @@ class SetupProjectsConfigTests(unittest.TestCase):
             self.assertEqual(result.status, "PASS (dry-run)")
             self.assertEqual(cfg.read_text(encoding="utf-8"), original)
             joined = "\n".join(result.next_steps)
-            self.assertIn(str(cfg), joined)
+            self.assertIn("--bootstrap-repos", joined)
             self.assertIn("gittan review", joined)
-            self.assertIn("without `--dry-run`", joined)
 
     def test_invalid_config_is_backed_up_and_recreated(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,6 +255,83 @@ class SetupProjectsConfigTests(unittest.TestCase):
             payload = json.loads(cfg.read_text(encoding="utf-8"))
             self.assertEqual(len(payload["projects"]), 1)
             self.assertEqual(payload["projects"][0]["name"], "existing")
+
+
+class SetupConfigWriteGateTests(unittest.TestCase):
+    def test_bootstrap_repos_merges_existing_valid_config_with_backup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            cfg.write_text(
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "name": "existing-repo",
+                                "customer": "customer-a.test",
+                                "match_terms": ["existing-repo"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            repo_dir = Path(tmp) / "existing-repo"
+            repo_dir.mkdir()
+            subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "remote", "add", "origin", "https://github.com/example/existing-repo.git"],
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=False,
+                bootstrap_repos=True,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            self.assertEqual(result.status, "PASS")
+            backups = list(Path(tmp).glob("timelog_projects.backup.*.json"))
+            self.assertEqual(len(backups), 1)
+            payload = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(payload["projects"][0]["name"], "existing-repo")
+            self.assertIn("example/existing-repo", payload["projects"][0]["match_terms"])
+
+    def test_yes_without_bootstrap_repos_does_not_merge_valid_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            original_text = json.dumps(
+                {
+                    "projects": [
+                        {
+                            "name": "keep-me",
+                            "match_terms": ["keep"],
+                        }
+                    ]
+                }
+            )
+            cfg.write_text(original_text, encoding="utf-8")
+            repo_dir = Path(tmp) / "other-repo"
+            repo_dir.mkdir()
+            subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True, text=True)
+            result = ensure_projects_config(
+                console=Console(record=True),
+                yes=True,
+                dry_run=False,
+                bootstrap_repos=False,
+                bootstrap_root=tmp,
+                config_path=cfg,
+                timestamped_backup_path_fn=lambda path: path.with_suffix(".backup.json"),
+                looks_like_projects_config_fn=lambda payload: isinstance(payload, dict) and isinstance(payload.get("projects"), list),
+            )
+            self.assertTrue(result.merge_skipped)
+            self.assertEqual(cfg.read_text(encoding="utf-8"), original_text)
+            self.assertEqual(len(list(Path(tmp).glob("timelog_projects.backup.*.json"))), 0)
 
 
 class SetupProjectsConfigProvisionTests(unittest.TestCase):

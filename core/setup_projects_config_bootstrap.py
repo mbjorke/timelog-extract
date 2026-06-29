@@ -11,6 +11,7 @@ from pathlib import Path
 
 import questionary
 
+from core.config import backup_projects_config_if_exists
 from core.git_project_bootstrap import (
     RepoBootstrapSummary,
     build_repo_project_seed,
@@ -30,6 +31,38 @@ class ProjectsConfigBootstrapResult:
     status: str
     notes: str
     next_steps: list[str]
+    merge_skipped: bool = False
+
+
+def _count_named_projects(payload: dict | None) -> int:
+    if not isinstance(payload, dict):
+        return 0
+    projects = payload.get("projects")
+    if not isinstance(projects, list):
+        return 0
+    return sum(
+        1
+        for project in projects
+        if isinstance(project, dict) and str(project.get("name", "")).strip()
+    )
+
+
+def _merge_skipped_next_steps(*, dry_run: bool) -> list[str]:
+    steps = [
+        "Run `gittan review` to map URL domains to project buckets.",
+        "Run `gittan projects-audit` for match_terms and tracked_urls hygiene.",
+        "Use `gittan projects` to edit profiles manually.",
+    ]
+    if dry_run:
+        steps.append(
+            "Apply skips repo merge on existing config. Use `gittan setup --bootstrap-repos` "
+            "only if you intend to import local git repos (backup + confirmation before write)."
+        )
+    else:
+        steps.append(
+            "To import local git repos into this config, rerun with `gittan setup --bootstrap-repos`."
+        )
+    return steps
 
 
 def _manual_project_defaults() -> tuple[str, str, str]:
@@ -59,7 +92,10 @@ def _project_bootstrap_next_steps(
     if dry_run:
         if config_path is not None:
             steps.append(f"Dry-run target: `{config_path}` — no config or worklog files were written.")
-        steps.append("Next: run `gittan setup` without `--dry-run` when the preview looks right.")
+        steps.append(
+            "Next: run `gittan setup` without `--dry-run` for non-destructive apply steps "
+            "(existing project config is not merge-written unless you pass `--bootstrap-repos`)."
+        )
     if has_buckets:
         steps.append("Then: run `gittan review` to map URL domains to imported project buckets.")
         steps.append("Optional: `gittan review --json` for read-only URL candidates (agents/scripts).")
@@ -228,6 +264,7 @@ def ensure_projects_config(
     console,
     yes: bool,
     dry_run: bool,
+    bootstrap_repos: bool = False,
     prompt_bootstrap_root: bool = False,
     bootstrap_root: str | None,
     config_path: Path,
@@ -235,6 +272,7 @@ def ensure_projects_config(
     looks_like_projects_config_fn,
 ) -> ProjectsConfigBootstrapResult:
     payload: dict | None = None
+    had_valid_existing = False
     if config_path.exists():
         try:
             current_payload = json.loads(config_path.read_text(encoding="utf-8"))
@@ -242,6 +280,7 @@ def ensure_projects_config(
             current_payload = None
         if looks_like_projects_config_fn(current_payload):
             payload = dict(current_payload)
+            had_valid_existing = _count_named_projects(payload) > 0
             console.print(f"[green]Project config exists:[/green] {config_path}")
         else:
             console.print(f"[yellow]Project config looks invalid:[/yellow] {config_path}")
@@ -266,6 +305,38 @@ def ensure_projects_config(
             console.print("[yellow]Skipped project config bootstrap.[/yellow]")
             return ProjectsConfigBootstrapResult("SKIPPED", "Project config bootstrap skipped.", [])
         payload = {"projects": []}
+
+    if had_valid_existing and not bootstrap_repos and not dry_run:
+        console.print(
+            "[yellow]Protected existing project config:[/yellow] repo bootstrap merge skipped "
+            "to avoid overwriting tuned match_terms and tracked_urls."
+        )
+        count = _count_named_projects(payload)
+        return ProjectsConfigBootstrapResult(
+            "PASS",
+            f"Repo merge skipped | existing projects={count}",
+            _merge_skipped_next_steps(dry_run=False),
+            merge_skipped=True,
+        )
+
+    if bootstrap_repos and had_valid_existing and not dry_run:
+        console.print(
+            "[bold yellow]Warning:[/bold yellow] Repo bootstrap merge will rewrite "
+            f"{config_path.name} and may change match_terms on existing profiles."
+        )
+        should_merge = yes or questionary.confirm(
+            "Proceed with repo bootstrap merge (backup will be created first)?",
+            default=False,
+        ).ask()
+        if not should_merge:
+            console.print("[yellow]Skipped repo bootstrap merge; project config unchanged.[/yellow]")
+            count = _count_named_projects(payload)
+            return ProjectsConfigBootstrapResult(
+                "SKIPPED",
+                f"Repo merge skipped by user | existing projects={count}",
+                _merge_skipped_next_steps(dry_run=False),
+                merge_skipped=True,
+            )
 
     root_path = Path(bootstrap_root).expanduser() if bootstrap_root else suggest_bootstrap_root(Path.cwd())
     if (not yes or prompt_bootstrap_root) and bootstrap_root is None:
@@ -325,6 +396,27 @@ def ensure_projects_config(
     seed_note = ""
 
     if dry_run:
+        if had_valid_existing and not bootstrap_repos:
+            console.print(
+                "[yellow]Dry run:[/yellow] existing project config is protected — apply would "
+                "skip repo merge unless you pass `--bootstrap-repos`."
+            )
+            console.print(_project_bootstrap_notes(summary, dry_run=True) + seed_note)
+            if summary.added or summary.updated:
+                console.print(
+                    "[yellow]Dry run:[/yellow] with `--bootstrap-repos`, merge would change "
+                    f"added={summary.added} updated={summary.updated} (backup required before write)."
+                )
+            console.print(
+                "[yellow]Dry run:[/yellow] would NOT write timelog_projects.json (protected existing config)."
+            )
+            next_steps = _merge_skipped_next_steps(dry_run=True)
+            return ProjectsConfigBootstrapResult(
+                "PASS (dry-run)",
+                _project_bootstrap_notes(summary, dry_run=True) + seed_note + " | merge skipped",
+                next_steps,
+                merge_skipped=True,
+            )
         console.print(f"[yellow]Dry run:[/yellow] would write merged project config to {config_path}")
         next_steps = _project_bootstrap_next_steps(
             summary,
@@ -337,6 +429,11 @@ def ensure_projects_config(
             _project_bootstrap_notes(summary, dry_run=True) + seed_note,
             next_steps,
         )
+
+    if config_path.exists():
+        backup_path = backup_projects_config_if_exists(config_path)
+        if backup_path:
+            console.print(f"[green]Created backup:[/green] {backup_path}")
 
     _provision_missing_project_worklog_paths(payload=merged_payload, config_path=config_path)
     config_path.parent.mkdir(parents=True, exist_ok=True)

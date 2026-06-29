@@ -186,6 +186,21 @@ class DoctorNextStepsTests(unittest.TestCase):
 
 
 class SetupNextStepsTests(unittest.TestCase):
+    def test_setup_dry_run_merge_skipped_points_to_bootstrap_repos(self):
+        steps = build_setup_next_steps(
+            dry_run=True,
+            projects_status="PASS (dry-run)",
+            mapping_status="PASS (dry-run)",
+            doctor_status="PASS (dry-run)",
+            smoke_status="SKIPPED",
+            has_project_buckets=True,
+            merge_skipped=True,
+        )
+
+        joined = "\n".join(steps)
+        self.assertIn("--bootstrap-repos", joined)
+        self.assertIn("non-destructive apply", joined)
+
     def test_setup_dry_run_points_to_real_execution_and_review(self):
         steps = build_setup_next_steps(
             dry_run=True,

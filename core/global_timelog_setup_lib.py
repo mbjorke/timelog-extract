@@ -51,6 +51,7 @@ def _ensure_minimal_projects_config(
     dry_run: bool,
     prompt_bootstrap_root: bool = False,
     bootstrap_root: str | None = None,
+    bootstrap_repos: bool = False,
 ) -> tuple[str, str, list[str]]:
     """
     Ensure a minimal timelog projects configuration is present in the current working directory.
@@ -73,6 +74,7 @@ def _ensure_minimal_projects_config(
         console=console,
         yes=yes,
         dry_run=dry_run,
+        bootstrap_repos=bootstrap_repos,
         prompt_bootstrap_root=prompt_bootstrap_root,
         bootstrap_root=bootstrap_root,
         config_path=resolve_projects_config_path(),
@@ -210,6 +212,7 @@ def run_setup_wizard(
     dry_run: bool,
     skip_smoke: bool,
     bootstrap_root: str | None = None,
+    bootstrap_repos: bool = False,
     fast: bool = False,
     prompt_project_mapping: bool = False,
 ) -> None:
@@ -268,6 +271,7 @@ def run_setup_wizard(
         dry_run=dry_run,
         prompt_bootstrap_root=prompt_project_mapping and not dry_run,
         bootstrap_root=bootstrap_root,
+        bootstrap_repos=bootstrap_repos,
     )
     summary_rows.append(("Step 2: Project Bootstrap", projects_status, projects_note))
     next_steps.extend(project_steps)
@@ -354,6 +358,7 @@ def run_setup_wizard(
             smoke_status=smoke_status,
             fast=fast,
             has_project_buckets=projects_status.startswith("PASS"),
+            merge_skipped="merge skipped" in projects_note.lower(),
         )
     )
     print_next_steps(console, list(dict.fromkeys(next_steps)))

@@ -12,16 +12,11 @@ This task is **trust-critical** and should ship before further onboarding UX pol
 
 - story_id: GH-211
 - spec_status: approved
-- implementation_status: not built
-- created_at: 2026-06-29
+- implementation_status: in progress
 - last_updated_at: 2026-06-29
-- implementation.pr: pending
-- implementation.branch: task/setup-config-write-safety
-- implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
 - changelog:
   - 2026-06-29: Initial spec after maintainer incident — valid config overwritten during GH-197 setup testing; backup from 2026-06-25 retained 39 projects while apply path rewrote config without adequate warning.
+  - 2026-06-29: Slices A/B implemented — write gate, --bootstrap-repos, backup before merge-write, guidance copy.
 
 ## Incident context
 
@@ -63,8 +58,8 @@ Ship on branch `task/setup-config-write-safety` as **two implementation commits*
 
 | Slice | Scope | Status |
 | --- | --- | --- |
-| **A — Write gate + backup** | Valid config: no merge-write unless explicit opt-in; backup before any setup config write; stronger apply/dry-run copy | pending |
-| **B — Doctor/guidance + tests** | Doctor must not suggest destructive setup when config PASS; tests + CLI smoke | pending |
+| **A — Write gate + backup** | Valid config: no merge-write unless explicit opt-in; backup before any setup config write; stronger apply/dry-run copy | **built** |
+| **B — Doctor/guidance + tests** | Doctor must not suggest destructive setup when config PASS; tests + CLI smoke | **built** |
 
 ### Slice A — behavior contract (write gate)
 

@@ -43,7 +43,7 @@ class ProjectStatusTests(unittest.TestCase):
 
 
 class UnreportedTests(unittest.TestCase):
-    """S2 — unreported = observed − handled for today's current project."""
+    """S2 - unreported = observed - handled for today's current project."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -92,6 +92,14 @@ class UnreportedTests(unittest.TestCase):
         self._seed_reported("Alpha", 3.0, "confirmed")
         line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
         self.assertEqual(line, "gittan: Alpha · ✓ all reported today")
+
+    def test_statusline_sub_tenth_hour_unreported_shows_all_clear(self):
+        profiles = [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})]
+        self._seed_observed("Alpha", 3.04)
+        self._seed_reported("Alpha", 3.0, "confirmed")
+        line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
+        self.assertEqual(line, "gittan: Alpha · ✓ all reported today")
+        self.assertNotIn("0.0h unreported", line)
 
     def test_statusline_unconfigured_has_no_number(self):
         line = sl.statusline_text("acme/secret", [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})], self.day, self.home)

@@ -80,9 +80,10 @@ def statusline_text(slug: str, profiles: list, today: str, home: "Path | None" =
 
     project = classify_project(slug, profiles, UNCATEGORIZED)
     hours = unreported_hours(project, today, home)
-    if hours <= 0:
+    display_hours = round(hours, 1)
+    if display_hours <= 0:
         return f"{base} · ✓ all reported today"
-    return f"{base} · ⏱ {hours:.1f}h unreported · gittan reported"
+    return f"{base} · ⏱ {display_hours:.1f}h unreported · gittan reported"
 
 
 def _resolve_cwd() -> str:

@@ -1,14 +1,17 @@
-"""Tests for the gittan statusline (S1 — unconfigured-project warning)."""
+"""Tests for the gittan statusline (S1 warning + S2 unreported nudge)."""
 
 from __future__ import annotations
 
 import contextlib
 import importlib.util
 import io
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
 from core.config import normalize_profile
+from core.reported_time import ReportedTimeRecord, append_record
 
 _SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "gittan_statusline.py"
 _spec = importlib.util.spec_from_file_location("gittan_statusline", _SCRIPT)
@@ -37,6 +40,65 @@ class ProjectStatusTests(unittest.TestCase):
     def test_no_profiles_warns(self):
         # A git repo but an empty/absent config -> nudge to set up.
         self.assertEqual(sl.project_status("acme/anything", []), sl.WARNING)
+
+
+class UnreportedTests(unittest.TestCase):
+    """S2 — unreported = observed − handled for today's current project."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        self.day = "2026-06-20"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _seed_observed(self, project, hours):
+        base = self.home / ".gittan" / "observed"
+        base.mkdir(parents=True, exist_ok=True)
+        row = {"project": project, "date": self.day, "hours": hours, "captured_at": "2026-06-20T00:00:00+00:00"}
+        (base / f"{self.day[:7]}.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    def _seed_reported(self, project, hours, state="confirmed"):
+        append_record(
+            ReportedTimeRecord(
+                date=self.day, project=project, hours=hours, source="session",
+                state=state, origin_ref=[f"{self.day}T0900"],
+            ),
+            home=self.home,
+        )
+
+    def test_unreported_is_observed_minus_handled(self):
+        self._seed_observed("Alpha", 5.0)
+        self._seed_reported("Alpha", 2.0, "confirmed")
+        self.assertEqual(sl.unreported_hours("Alpha", self.day, self.home), 3.0)
+
+    def test_dismissed_counts_as_handled(self):
+        self._seed_observed("Alpha", 4.0)
+        self._seed_reported("Alpha", 4.0, "dismissed")
+        self.assertEqual(sl.unreported_hours("Alpha", self.day, self.home), 0.0)
+
+    def test_statusline_shows_unreported_for_current_project(self):
+        # slug "acme/alpha" classifies to profile "Alpha"; 5h observed, 1h handled.
+        profiles = [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})]
+        self._seed_observed("Alpha", 5.0)
+        self._seed_reported("Alpha", 1.0, "confirmed")
+        line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
+        self.assertEqual(line, "gittan: Alpha · ⏱ 4.0h unreported · gittan reported")
+
+    def test_statusline_all_reported(self):
+        profiles = [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})]
+        self._seed_observed("Alpha", 3.0)
+        self._seed_reported("Alpha", 3.0, "confirmed")
+        line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
+        self.assertEqual(line, "gittan: Alpha · ✓ all reported today")
+
+    def test_statusline_unconfigured_has_no_number(self):
+        line = sl.statusline_text("acme/secret", [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})], self.day, self.home)
+        self.assertEqual(line, sl.WARNING)
+
+    def test_statusline_no_slug_is_blank(self):
+        self.assertEqual(sl.statusline_text("", _profiles(), self.day, self.home), "")
 
 
 class MainSmokeTests(unittest.TestCase):

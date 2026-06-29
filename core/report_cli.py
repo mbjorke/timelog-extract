@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -57,6 +58,17 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     report = run_timelog_report(args.projects_config, args.date_from, args.date_to, args)
 
     want_json = getattr(args, "output_format", "terminal") == "json"
+
+    # Persist the observed-hours cache for the agent statusline (Part A). Only on
+    # real, non-quiet terminal runs — quiet/json paths (tests, `reported sync`,
+    # the extension) skip it so they never touch the user's ~/.gittan.
+    if not want_json and not getattr(args, "quiet", False):
+        try:
+            from core.observed_cache import write_observed_summary
+
+            write_observed_summary(report)
+        except Exception:  # noqa: BLE001 - the cache must never break a report
+            logging.getLogger(__name__).debug("observed-cache write skipped", exc_info=True)
     html_path = getattr(args, "report_html", None)
     want_html = bool(html_path)
 

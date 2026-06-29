@@ -46,20 +46,26 @@ cache that report runs persist as a byproduct.
 - non-goals: the unreported-hours number (S2); per-project observed cache (Part A).
 
 ### S2 — unreported-time nudge
-- priority: **next** — not built
+- priority: **built** — PR #214 (story GH-213)
+- problem: after `gittan report`, users still need a visible backlog of hours not
+  yet triaged via `gittan reported`.
 - scope: `⏱ Nh unreported · gittan reported` where
   `unreported = observed − handled` for today. Reads the observed cache (Part A)
   and the reported store (`core/reported_time.py::reported_hours_by_project_day`).
-  All-clear: `⏱ ✓ all reported today`; stale cache → a subtle hint.
-- dependencies: Part A.
+  All-clear: `✓ all reported today`; defensive blank on errors (same as S1).
+- dependencies: Part A (merged #210).
+- acceptance: composed statusline shows unreported nudge or all-clear for configured
+  projects; S1 paths unchanged for unconfigured / non-git; tests in
+  `tests/test_statusline.py`; collector-free (JSONL reads only).
 
 ### Part A — observed cache (enables S2)
-- priority: **next** — not built
+- priority: **built** — merged #210
 - scope: on report runs (`core/report_service.py`, where `overall_days` hours are
   known), persist a lightweight per-project-day observed summary to
   `~/.gittan/observed/YYYY-MM.jsonl` (mirrors `core/reported_time.py`
   conventions). Reuses already-computed hours; no new scan. The statusline reads
   this cache instead of running collectors.
+- validation: `core/observed_cache.py`, `tests/test_observed_cache.py`, CI on #210.
 
 ## Decisions
 
@@ -72,19 +78,22 @@ cache that report runs persist as a byproduct.
 
 ## Traceability
 
-- story_id: GH-207
-- spec_status: draft
-- implementation_status: in progress — S1 built this PR; S2 + Part A not built
+- story_id: GH-207 (S1), GH-213 (S2)
+- spec_status: approved
+- implementation_status: built — S1 merged (#208); Part A merged (#210); S2 on PR #214
 - created_at: 2026-06-29
 - last_updated_at: 2026-06-29
-- implementation.pr: this PR (S1)
-- implementation.branch: task/statusline-unconfigured-warning
-- implementation.commits: []
-- validation.evidence: `scripts/gittan_statusline.py`,
-  `tests/test_statusline.py`, `docs/runbooks/gittan-statusline.md`
-- validation.decision: GO for S1; S2 + Part A pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/208 (S1), https://github.com/mbjorke/timelog-extract/pull/210 (Part A), https://github.com/mbjorke/timelog-extract/pull/214 (S2)
+- implementation.branch: task/statusline-unconfigured-warning (S1), task/observed-cache (Part A), task/statusline-unreported (S2)
+- implementation.commits: [5c778bc] (S2)
+- validation.evidence: `scripts/gittan_statusline.py`, `tests/test_statusline.py`, `core/observed_cache.py`, `tests/test_observed_cache.py`, `docs/runbooks/gittan-statusline.md`, CI on PR #214
+- validation.decision: conditional GO — S2 pending merge/CI on #214
 - changelog:
   - 2026-06-29: S1 built — collector-free statusline warning for an
     unconfigured project; runbook + tests. First visible "gittan in the agent"
     slice; auto-reporting (reported-time Phase 2b, #190) is the substrate that
     keeps the later unreported number (S2) quiet.
+  - 2026-06-29: Part A built — observed cache merged via #210; enables S2 without
+    collectors on prompt refresh.
+  - 2026-06-29: S2 built — unreported-time nudge on `task/statusline-unreported`,
+    PR #214 (Closes GH-213); closes the report → statusline → reported loop.

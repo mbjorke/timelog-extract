@@ -99,11 +99,18 @@ def build_setup_next_steps(
     smoke_status: str,
     fast: bool = False,
     has_project_buckets: bool = False,
+    merge_skipped: bool = False,
 ) -> list[str]:
     steps: list[str] = []
     if dry_run:
         setup_cmd = "gittan setup --fast" if fast else "gittan setup"
-        steps.append(f"Next: run `{setup_cmd}` without `--dry-run` when you are ready to apply setup.")
+        if merge_skipped:
+            steps.append(
+                f"Next: run `{setup_cmd}` without `--dry-run` for non-destructive apply "
+                "(existing project config is not merge-written unless you add `--bootstrap-repos`)."
+            )
+        else:
+            steps.append(f"Next: run `{setup_cmd}` without `--dry-run` when you are ready to apply setup.")
         if has_project_buckets:
             steps.append("Then: run `gittan review` to map URL domains to project buckets.")
             steps.append("Optional: `gittan review --json` for read-only URL candidates (agents/scripts).")

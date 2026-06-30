@@ -218,7 +218,7 @@ def unanchored_top_anchors(
     leaf_pool = [e for e in uncovered if not event_anchors(e).get("repo")]
     out: list[dict[str, Any]] = []
     for kind in kinds:
-        pool = uncovered if kind == "repo" else leaf_pool
+        pool = leaf_pool if kind in ("dir", "branch", "label") else uncovered
         for value, hits in aggregate_top_anchors(pool, kind, limit=max(0, int(limit_per_kind))):
             if hits < floor or is_junk_anchor_value(value) or is_value_anchored_by_profiles(value, profiles):
                 continue

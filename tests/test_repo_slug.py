@@ -3,7 +3,11 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
+from core.repo_slug import (
+    path_attribution_anchor,
+    resolve_path_repo_slug,
+    slug_from_remote_url,
+)
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -56,6 +60,23 @@ class ResolvePathRepoSlugTests(unittest.TestCase):
             gone = repo / ".claude" / "worktrees" / "gone-leaf-ab12cd"
             self.assertEqual(resolve_path_repo_slug(str(gone)), "owner-a/project-alpha")
         self.assertEqual(resolve_path_repo_slug(""), "")
+
+
+class PathAttributionAnchorTests(unittest.TestCase):
+    def test_git_path_yields_repo_slug(self):
+        with TemporaryDirectory() as tmp:
+            repo = _make_repo(Path(tmp), "https://github.com/owner-a/project-alpha.git")
+            self.assertEqual(path_attribution_anchor(str(repo)), {"repo": "owner-a/project-alpha"})
+
+    def test_non_git_path_yields_dir_leaf(self):
+        with TemporaryDirectory() as tmp:
+            plain = Path(tmp) / "Some-Plain-Dir"
+            plain.mkdir()
+            self.assertEqual(path_attribution_anchor(str(plain)), {"dir": "some-plain-dir"})
+
+    def test_empty_path_is_none(self):
+        self.assertIsNone(path_attribution_anchor(""))
+        self.assertIsNone(path_attribution_anchor(None))
 
 
 if __name__ == "__main__":

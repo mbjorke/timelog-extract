@@ -68,10 +68,21 @@ class UnanchoredTopAnchorsTests(unittest.TestCase):
         ] * 3
         profiles = [{"name": "alpha", "match_terms": ["owner-a/project-alpha"]}]
         self.assertEqual(unanchored_top_anchors(events, profiles, min_hits=1), [])
-        # Without the slug mapped, all three anchors surface (repo first kind).
+        # Without the slug mapped, only the repo anchor surfaces: the dir/branch
+        # leaves are ephemeral worktree noise, so the user maps the repo, never
+        # the worktree name.
         rows = unanchored_top_anchors(events, [], min_hits=1)
         kinds = {row["kind"] for row in rows}
-        self.assertEqual(kinds, {"repo", "dir", "branch"})
+        self.assertEqual(kinds, {"repo"})
+
+    def test_dir_branch_surface_only_without_a_repo_anchor(self) -> None:
+        # Non-git activity (no repo anchor) still surfaces its dir/branch leaves.
+        events = [
+            {"source": "Cursor", "detail": "x", "anchors": {"dir": "some-project"}},
+            {"source": "Cursor", "detail": "x", "anchors": {"dir": "some-project"}},
+        ]
+        rows = unanchored_top_anchors(events, [], min_hits=1)
+        self.assertEqual([(r["kind"], r["value"]) for r in rows], [("dir", "some-project")])
 
     def test_unanchored_top_anchors_skips_junk_values(self) -> None:
         events = [

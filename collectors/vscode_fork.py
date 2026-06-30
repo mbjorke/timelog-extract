@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence
 from urllib.parse import unquote, urlparse
 
+from core.repo_slug import path_attribution_anchor
+
 logger = logging.getLogger(__name__)
 
 _TS_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
@@ -242,11 +244,11 @@ def collect_fork_logs(
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name
                         detail = f"{leaf} — {line.strip()[:90]}"
-                        dir_leaf = leaf.strip().lower()
                         results.append(
                             make_event(
                                 source_name, ts, detail, project,
-                                anchors={"dir": dir_leaf} if dir_leaf else None,
+                                # Prefer the worktree-invariant repo slug over the dir leaf.
+                                anchors=path_attribution_anchor(workspace_path),
                             )
                         )
             except OSError:

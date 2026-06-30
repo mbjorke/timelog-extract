@@ -211,9 +211,15 @@ def unanchored_top_anchors(
     """
     floor = max(1, int(min_hits))
     uncovered = _events_without_anchored_coverage(events, profiles)
+    # An event with a repo (slug) anchor attributes via the worktree-invariant
+    # slug, so its dir/branch/label leaves are ephemeral noise (worktree names,
+    # detached HEAD). Only surface those leaves for events with no repo anchor —
+    # i.e. you map the repo, never the worktree name.
+    leaf_pool = [e for e in uncovered if not event_anchors(e).get("repo")]
     out: list[dict[str, Any]] = []
     for kind in kinds:
-        for value, hits in aggregate_top_anchors(uncovered, kind, limit=max(0, int(limit_per_kind))):
+        pool = uncovered if kind == "repo" else leaf_pool
+        for value, hits in aggregate_top_anchors(pool, kind, limit=max(0, int(limit_per_kind))):
             if hits < floor or is_junk_anchor_value(value) or is_value_anchored_by_profiles(value, profiles):
                 continue
             out.append({"kind": kind, "value": value, "hits": int(hits)})

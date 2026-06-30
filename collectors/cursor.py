@@ -7,6 +7,7 @@ from pathlib import Path
 
 from collectors.cursor_agent_turns import collect_cursor_agent_turns
 from collectors.cursor_composer import collect_cursor_composer_sessions, load_cursor_workspaces
+from core.repo_slug import path_attribution_anchor
 from core.triage_noise import is_uncategorized_noise_detail
 
 # Frequent Cursor diagnostics that are operational noise, not user work intent.
@@ -190,11 +191,11 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name
                         detail = f"{leaf} — {line.strip()[:90]}"
-                        dir_leaf = leaf.strip().lower()
                         results.append(
                             make_event(
                                 "Cursor", ts, detail, project,
-                                anchors={"dir": dir_leaf} if dir_leaf else None,
+                                # Prefer the worktree-invariant repo slug over the dir leaf.
+                                anchors=path_attribution_anchor(workspace_path),
                             )
                         )
             except OSError:
@@ -251,13 +252,13 @@ def collect_cursor_checkpoints(
             if p:
                 paths.append(str(p))
         wid = data.get("workspaceId")
-        workspace_leaf = None
+        workspace_anchor = None
         if wid:
             mapped = workspace_map.get(wid)
             if mapped:
                 paths.append(str(mapped))
-                # The workspace root is the project leaf; request-file paths are not.
-                workspace_leaf = Path(str(mapped)).name.strip().lower() or None
+                # The workspace root attributes via its repo slug (or dir leaf).
+                workspace_anchor = path_attribution_anchor(str(mapped))
         hay = " ".join(paths)
         if not hay:
             continue
@@ -268,7 +269,7 @@ def collect_cursor_checkpoints(
         results.append(
             make_event(
                 source_name, ts, detail, project,
-                anchors={"dir": workspace_leaf} if workspace_leaf else None,
+                anchors=workspace_anchor,
             )
         )
     return results

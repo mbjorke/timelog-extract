@@ -62,3 +62,23 @@ def resolve_path_repo_slug(path_str: str) -> str:
     if completed.returncode != 0:
         return ""
     return slug_from_remote_url(completed.stdout)
+
+
+def path_attribution_anchor(path) -> dict[str, str] | None:
+    """Attribution anchor for a working path.
+
+    Prefers the **worktree-invariant repo slug** (``{"repo": "owner/repo"}``) when
+    the path is in a git repo, falling back to the directory leaf
+    (``{"dir": "<leaf>"}``) for non-git directories. Using the slug means an
+    ephemeral worktree leaf (Conductor's invented city names, Claude Code's hex
+    suffixes) never becomes the attribution key — map the repo once and every
+    worktree of it is covered.
+    """
+    raw = str(path or "").strip()
+    if not raw:
+        return None
+    slug = resolve_path_repo_slug(raw)
+    if slug:
+        return {"repo": slug}
+    leaf = Path(raw).name.strip().lower()
+    return {"dir": leaf} if leaf else None

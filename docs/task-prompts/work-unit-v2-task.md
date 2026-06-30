@@ -6,8 +6,9 @@ map`, and `match_terms` mechanics are **not** sacred and may be replaced.
 
 **Decision doc:** [`docs/decisions/work-unit-config-v2.md`](../decisions/work-unit-config-v2.md)  
 **Workshop handout:** [`work-unit-brainstorm-agenda.md`](work-unit-brainstorm-agenda.md)  
-**Operator acceptance (not in repo):** `~/.gittan/work-unit-acceptance.md` next to
-`timelog_projects.json` — real customers, hours, and anchor cases for spike pass/fail.
+**Operator acceptance (not in repo):** operator-local file
+`<operator-config-dir>/work-unit-acceptance.md` (alongside `timelog_projects.json`) —
+real customers, hours, and anchor cases for spike pass/fail.
 
 Supersedes map-centric implementation paths under GH-222:
 [`map-existing-project-and-merge-ux.md`](map-existing-project-and-merge-ux.md),
@@ -28,15 +29,16 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
 - implementation_status: `not built`
 - created_at: `2026-06-30`
 - last_updated_at: `2026-06-30`
-- implementation.pr: pending
-- implementation.branch: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/225
+- implementation.branch: `task/work-unit-v2-docs`
 - implementation.commits: []
-- validation.evidence: operator-local `~/.gittan/work-unit-acceptance.md`; spike report diff; `bash scripts/run_autotests.sh` on implementation slices
+- validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); spike report diff; `bash scripts/run_autotests.sh` on implementation slices
 - validation.decision: `conditional GO`
 - changelog:
   - `2026-06-30: Canonical PO backlog for report-first work-unit v2; supersedes map-first GH-222 implementation specs.`
-  - `2026-06-30: Operator acceptance tables live under ~/.gittan/ per config hygiene.`
+  - `2026-06-30: Operator acceptance tables stay operator-local (outside repo) per config hygiene.`
   - `2026-06-30: Open PR disposition decided — close #221–#224; land v2 docs via new PR.`
+  - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
 
 ## Product framing
 
@@ -90,7 +92,7 @@ reference/cherry-pick; PRs are **closed, not merged**.
 - behavior: Same collectors → improved classifier / anchor → existing **customer +
   line** (no new slug-only profile) → re-run report for the acceptance date window.
 - acceptance:
-  - Spike run documented against operator `~/.gittan/work-unit-acceptance.md` (period,
+  - Spike run documented against the operator-local acceptance file (period,
     target customers/lines, hour tolerance).
   - Uncategorized for the documented primary case moves toward ~0 without creating a
     duplicate profile whose `name` equals only a repo slug.

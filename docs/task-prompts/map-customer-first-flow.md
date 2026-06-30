@@ -50,7 +50,7 @@ Setup wizard already maps **customer → projects** (`setup_project_identity_wiz
 
 ## Mental model (target)
 
-```
+```text
 Activity signal (anchor / repo slug)
         ↓
    Which CUSTOMER?          ← primary question (billing)
@@ -87,7 +87,7 @@ fallback (non-goal here).
 
 For each unmapped anchor:
 
-```
+```text
 Signal: working directory "customer-Y-faq-helper" (112 events)
 
 1. Customer: [customer-y.example ▼]  (suggested from nearby profiles / fuzzy match)
@@ -104,7 +104,7 @@ If only one profile exists for the customer, **skip step 2** (or show as confirm
 
 ### New repo (`--scan-repos`)
 
-```
+```text
 Repo: owner-a/customer-Y-faq-helper-dev-31e799cf
 
 1. Customer: customer-y.example
@@ -114,7 +114,7 @@ Repo: owner-a/customer-Y-faq-helper-dev-31e799cf
 
 ### Duplicate / repo-family group
 
-```
+```text
 Customer: customer-a.example
 Variants: project-alpha, project-alpha-dev-31e799cf
 
@@ -154,7 +154,7 @@ Operator maps `customer-Y-faq-helper` cwd to customer `Customer Y`, engagement
   "match_terms": [
     "customer-Y-faq-helper",
     "owner-a/customer-Y-faq-helper",
-    "lovable banking chatbot admin interface"
+    "faq-admin-session-title"
   ]
 }
 ```

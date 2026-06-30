@@ -58,7 +58,7 @@ between profiles without a clear preview and breaks intentional billing splits.*
 
 | Area | Behavior today | Operator impact |
 | --- | --- | --- |
-| Anchor flow (`core/anchor_nudge.py`) | Lists existing projects + “Create new project: {value}”; no suggestion | Easy to create `landsbanken-faq-helper`-style names instead of picking `customer-Y-faq` |
+| Anchor flow (`core/anchor_nudge.py`) | Lists existing projects + “Create new project: {value}”; no suggestion | Easy to create `prospect-faq-helper`-style names instead of picking `customer-Y-faq` |
 | Repo scan (`core/mapping_review_flow.py`) | Default **Add as new project**; “Map to existing” is second choice | New repo path creates duplicates when profile already exists under another slug |
 | Duplicate groups (`core/mapping_review.py`, `core/mapping_review_flow.py`) | Auto `merge_target_for_customer()` → non-`-dev` parent; only **Merge (default)** or Skip | Dev/hash-fork activity consolidated onto parent; no “add slug to `-dev` profile” |
 | Merge effect (`_merge_additions_for_change`, `_merge_removals_for_change`) | Adds all family slugs + stems to target; strips github slugs from same-customer siblings | Parent gains `project-alpha-dev` stem; dev profile loses github terms |

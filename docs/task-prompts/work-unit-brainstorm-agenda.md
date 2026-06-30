@@ -3,8 +3,8 @@
 **Decision doc:** [`docs/decisions/work-unit-config-v2.md`](../decisions/work-unit-config-v2.md)  
 **Canonical backlog (PO):** [`work-unit-v2-task.md`](work-unit-v2-task.md)
 
-**Filled acceptance tables** (real customers, hours, anchors): operator-local file, e.g.
-`~/.gittan/work-unit-acceptance.md` — **do not commit**.
+**Filled acceptance tables** (real customers, hours, anchors): **operator-local acceptance
+file** (e.g. `<operator-config-dir>/work-unit-acceptance.md`) — **do not commit**.
 
 ## Ground rule
 
@@ -22,7 +22,7 @@ GH-222 is a symptom (wrong hours in that table), not a requirement to keep map.
 
 Sketch the **correct** Project-hour review for one painful period (e.g. a month), e.g.:
 
-```
+```text
 Project-hour review (YYYY-MM-DD to YYYY-MM-DD)
                       Hours  Days
 <customer-a>           ?h     ?
@@ -39,7 +39,8 @@ Fill in customers and **lines** (what the invoice should say, not raw config slu
 | Internal vs billable | | | |
 | Target Uncategorized after fix | — | — | ~0h |
 
-Paste the filled table into `~/.gittan/work-unit-acceptance.md`.
+Paste the filled table into the operator-local acceptance file
+(`<operator-config-dir>/work-unit-acceptance.md`).
 
 ---
 
@@ -93,15 +94,32 @@ How should gaps get fixed so **the next report** is right?
 | 1 | Invoice **line** unit (repo / ticket / mix) |
 | 2 | Tracking vs invoice (same or different?) |
 | 3 | Multiple lines per customer (rules) |
-| 4 | Target report period + acceptance path (`~/.gittan/…`) |
+| 4 | Target report period + operator-local acceptance file path |
 | 5 | Attribution UX sentence |
-| 6 | PR #221 / #223 / #224? | **Close all** (do not merge) — see `work-unit-v2-task.md` |
+| 6 | **Close** PR #221 / #223 / #224 (do not merge) — see `work-unit-v2-task.md` |
 | 7 | GO spike / v1 guardrails only / defer |
 
 ---
 
 ## After brainstorm
 
-1. Paste filled tables into `~/.gittan/work-unit-acceptance.md`.
+1. Paste filled tables into the operator-local acceptance file.
 2. Track implementation via [`work-unit-v2-task.md`](work-unit-v2-task.md) (Traceability
    lives there — this file is a workshop handout only).
+
+## Traceability
+
+Handout only — canonical traceability is in [`work-unit-v2-task.md`](work-unit-v2-task.md).
+
+- story_id: `GH-222`
+- spec_status: `draft`
+- implementation_status: `not built`
+- created_at: `2026-06-30`
+- last_updated_at: `2026-06-30`
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/225
+- implementation.branch: `task/work-unit-v2-docs`
+- implementation.commits: []
+- validation.evidence: see `work-unit-v2-task.md`
+- validation.decision: `conditional GO`
+- changelog:
+  - 2026-06-30: Workshop handout; implementation spec is `work-unit-v2-task.md`.

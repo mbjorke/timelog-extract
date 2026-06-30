@@ -11,8 +11,8 @@ Historical v1 UX notes (non-binding): [`map-customer-first-flow.md`](../task-pro
 [`map-existing-project-and-merge-ux.md`](../task-prompts/map-existing-project-and-merge-ux.md).
 
 **Operator-specific acceptance tables** (real customers, hours, anchors) live **outside the
-repo** — typically `~/.gittan/work-unit-acceptance.md` next to `timelog_projects.json`.
-Do not commit those rows.
+repo** — in an **operator-local acceptance file** (same directory as `timelog_projects.json`,
+e.g. `<operator-config-dir>/work-unit-acceptance.md`). Do not commit those rows.
 
 ---
 
@@ -33,7 +33,7 @@ result** operators trust for invoicing and reconciliation.
 
 The **Project-hour review** table for a date window:
 
-```
+```text
 Project-hour review (YYYY-MM-DD to YYYY-MM-DD)
                       Hours  Days
 <customer>             X.Xh      (rollup)
@@ -74,8 +74,8 @@ Work backward:
 2. What evidence must attach to that line?
 3. What operator action fixes gaps? (**Not** “how do we patch map?”)
 
-Record filled tables in **local operator docs** (`~/.gittan/work-unit-acceptance.md`), not
-in committed specs.
+Record filled tables in **local operator docs** (operator-local acceptance file; not in
+repo).
 
 ---
 
@@ -148,7 +148,7 @@ Both are **lines under a customer** in the sacred table. Product supports both v
 
 Internal config may look nothing like v1. Conceptual model:
 
-```
+```text
 Customer          → row in report rollup (customer-a.example, …)
     └── Work unit     → child line (· portal-repo, · faq-engagement, …)
             ├── primary     repo | ticket | name
@@ -233,7 +233,8 @@ Disposition decided 2026-06-30 — **close, do not merge** (see
 
 ## 9. Spike workflow
 
-1. Operator maintains acceptance table in `~/.gittan/work-unit-acceptance.md`.
+1. Operator maintains acceptance table in an operator-local file (e.g.
+   `<operator-config-dir>/work-unit-acceptance.md`).
 2. Copy config (`cp` timestamped backup); experiment on copy or branch config path.
 3. Spike — **same collectors → new classifier / attribution → same sacred table**.
 4. Pass/fail against local acceptance table (hours tolerance documented there).
@@ -250,6 +251,6 @@ v1 map PRs stay **parked** until step 4 passes.
 - 2026-06-30: Draft; repo vs ticket billing.
 - 2026-06-30: **Report-first** — sacred contract is `gittan report` output; `gittan map` and v1 config are not design anchors.
 - 2026-06-30: **Billable** column dropped from sacred table.
-- 2026-06-30: Operator acceptance tables moved to `~/.gittan/`; repo doc genericized.
+- 2026-06-30: Operator acceptance tables stay operator-local; repo doc genericized.
 - 2026-06-30: Canonical PO backlog → `docs/task-prompts/work-unit-v2-task.md`.
 - 2026-06-30: PR #221–#224 — close without merge; v2 docs via new PR.

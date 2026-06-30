@@ -276,7 +276,7 @@ def enrich_bindings_with_remote_activity(
     dt_to: Any = None,
 ) -> dict[str, SlugGitBinding]:
     """Attach in-window remote timestamps/hits without overwriting local git_cmd_hits."""
-    from core.github_slug_match import collect_slug_last_epoch_from_events
+    from core.github_slug_activity import collect_slug_last_epoch_from_events
 
     event_epochs = collect_slug_last_epoch_from_events(events)
     gh_epochs = gh_pushed_epochs or {}

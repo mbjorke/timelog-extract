@@ -66,7 +66,7 @@ def map_workspace(
     )
     console.print(f"[{STYLE_MUTED}]Nothing is saved without your approval.[/]")
 
-    anchors_applied, repo_applied, repo_hints = run_map_command(
+    anchors_applied, repo_applied, repo_hints, repo_scan_performed = run_map_command(
         console,
         options=options,
         projects_config=projects_config,
@@ -77,6 +77,7 @@ def map_workspace(
             anchors_applied=anchors_applied,
             repo_applied=repo_applied,
             had_repo_hints=bool(repo_hints),
+            repo_scan_performed=repo_scan_performed,
         )
     )
     raise typer.Exit(code=0)

@@ -24,10 +24,10 @@ def run_map_command(
     options,
     projects_config: str,
     scan_repos: bool,
-) -> tuple[bool, bool, list[str]]:
+) -> tuple[bool, bool, list[str], bool]:
     """Run map flow: report → anchors → optional repo scan.
 
-    Returns ``(anchors_applied, repo_mapping_applied, repo_hints)``.
+    Returns ``(anchors_applied, repo_mapping_applied, repo_hints, repo_scan_performed)``.
     """
     from core.report_service import run_timelog_report
 
@@ -56,7 +56,7 @@ def run_map_command(
             run_repo_scan = True
 
     if not run_repo_scan:
-        return anchors_applied, False, hints
+        return anchors_applied, False, hints, False
 
     review_started = time.perf_counter()
     with console.status(f"[{STYLE_LABEL}]Scanning local git clones and GitHub…[/]"):
@@ -72,7 +72,7 @@ def run_map_command(
 
     if review.change_count() == 0:
         console.print(f"[{STYLE_MUTED}]No repo mapping changes suggested for this window.[/]")
-        return anchors_applied, False, hints
+        return anchors_applied, False, hints, True
 
     applied = run_interactive_mapping_flow(
         console,
@@ -81,13 +81,15 @@ def run_map_command(
         config,
         review=review,
     )
-    return anchors_applied, bool(applied), hints
+    return anchors_applied, bool(applied), hints, True
 
 
-def map_exit_message(*, anchors_applied: bool, repo_applied: bool, had_repo_hints: bool) -> str:
+def map_exit_message(
+    *, anchors_applied: bool, repo_applied: bool, had_repo_hints: bool, repo_scan_performed: bool
+) -> str:
     if anchors_applied or repo_applied:
         return "[dim]Re-run `gittan report` for the same window to verify project hours.[/dim]"
-    if had_repo_hints:
+    if not repo_scan_performed and had_repo_hints:
         return (
             "[dim]Skipped repo scan — run `gittan map --scan-repos` to search local clones and GitHub.[/dim]"
         )

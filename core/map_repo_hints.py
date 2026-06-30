@@ -5,10 +5,13 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime
 
-from core.github_slug_activity import _SOURCE_WEIGHT, collect_slug_activity_from_events
+from core.github_slug_activity import (
+    _SOURCE_WEIGHT,
+    collect_slug_activity_from_events,
+    github_sourced_slugs_from_events,
+)
 from core.github_slug_match import (
     github_slugs_in_text,
-    github_sourced_slugs_from_events,
     is_plausible_github_slug,
     profile_configured_github_slugs,
     profile_for_github_slug,

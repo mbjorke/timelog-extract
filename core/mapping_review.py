@@ -7,12 +7,14 @@ from datetime import datetime
 from typing import Any
 
 from core.gh_repo_discovery import collect_gh_repo_list_data
+from core.github_slug_activity import (
+    collect_slug_activity_from_events,
+    github_sourced_slugs_from_events,
+)
 from core.github_slug_match import (
     cluster_repo_families,
-    collect_slug_activity_from_events,
     expand_repo_family,
     github_repo_stem,
-    github_sourced_slugs_from_events,
     is_hash_like_repo_name,
     is_new_github_repo_candidate,
     is_plausible_github_slug,

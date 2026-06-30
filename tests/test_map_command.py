@@ -68,7 +68,7 @@ class MapCommandFlowTests(unittest.TestCase):
             date_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
             date_to=datetime(2026, 6, 7, tzinfo=timezone.utc),
         )
-        anchors_applied, repo_applied, hints = run_map_command(
+        anchors_applied, repo_applied, hints, repo_scan_performed = run_map_command(
             console,
             options=options,
             projects_config="/tmp/projects.json",
@@ -78,6 +78,7 @@ class MapCommandFlowTests(unittest.TestCase):
         self.assertTrue(anchors_applied)
         self.assertFalse(repo_applied)
         self.assertEqual(hints, [])
+        self.assertFalse(repo_scan_performed)
         review_mock.assert_not_called()
         flow_mock.assert_not_called()
         anchor_mock.assert_called_once()
@@ -110,7 +111,7 @@ class MapCommandFlowTests(unittest.TestCase):
             date_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
             date_to=datetime(2026, 6, 7, tzinfo=timezone.utc),
         )
-        _, repo_applied, _ = run_map_command(
+        _, repo_applied, _, repo_scan_performed = run_map_command(
             console,
             options=options,
             projects_config="/tmp/projects.json",
@@ -118,6 +119,7 @@ class MapCommandFlowTests(unittest.TestCase):
         )
 
         self.assertTrue(repo_applied)
+        self.assertTrue(repo_scan_performed)
         review_mock.assert_called_once()
         flow_mock.assert_called_once()
         anchor_mock.assert_called_once()
@@ -125,15 +127,28 @@ class MapCommandFlowTests(unittest.TestCase):
 
 class MapExitMessageTests(unittest.TestCase):
     def test_success_message_when_anchor_mapped(self) -> None:
-        text = map_exit_message(anchors_applied=True, repo_applied=False, had_repo_hints=False)
+        text = map_exit_message(
+            anchors_applied=True, repo_applied=False, had_repo_hints=False, repo_scan_performed=False
+        )
         self.assertIn("Re-run", text)
 
     def test_scan_repos_hint_when_repo_hints_skipped(self) -> None:
-        text = map_exit_message(anchors_applied=False, repo_applied=False, had_repo_hints=True)
+        text = map_exit_message(
+            anchors_applied=False, repo_applied=False, had_repo_hints=True, repo_scan_performed=False
+        )
         self.assertIn("--scan-repos", text)
 
     def test_idle_message_when_nothing_to_do(self) -> None:
-        text = map_exit_message(anchors_applied=False, repo_applied=False, had_repo_hints=False)
+        text = map_exit_message(
+            anchors_applied=False, repo_applied=False, had_repo_hints=False, repo_scan_performed=False
+        )
+        self.assertIn("--scan-repos", text)
+
+    def test_idle_message_when_scan_ran_but_found_nothing(self) -> None:
+        text = map_exit_message(
+            anchors_applied=False, repo_applied=False, had_repo_hints=True, repo_scan_performed=True
+        )
+        self.assertNotIn("Skipped", text)
         self.assertIn("--scan-repos", text)
 
 

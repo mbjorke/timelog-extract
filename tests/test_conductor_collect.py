@@ -12,6 +12,7 @@ from pathlib import Path
 from collectors.conductor import (
     _find_conductor_db,
     _message_text,
+    _read_messages,
     _repo_slug,
     collect_conductor,
 )
@@ -146,6 +147,26 @@ class ConductorCollectTest(unittest.TestCase):
             "mbjorke/timelog-extract",
         )
         self.assertIsNone(_repo_slug(None))
+        self.assertIsNone(
+            _repo_slug("https://gitlab.com/acme/widget.git"),
+        )
+
+    def test_corrupt_database_raises(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "conductor.db"
+            db.write_text("not sqlite", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "Conductor database query failed"):
+                _read_messages(db, DT_FROM, DT_TO)
+
+    def test_schema_mismatch_raises(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "conductor.db"
+            conn = sqlite3.connect(str(db))
+            conn.execute("CREATE TABLE only_other (id INTEGER)")
+            conn.commit()
+            conn.close()
+            with self.assertRaisesRegex(RuntimeError, "Conductor database query failed"):
+                _read_messages(db, DT_FROM, DT_TO)
 
     def test_message_text_parsing(self):
         self.assertEqual(_message_text("user", "plain prompt"), "plain prompt")

@@ -90,18 +90,18 @@ def _parse_timestamp(value: Any) -> datetime | None:
 
 
 def _repo_slug(remote_url: str | None) -> str | None:
-    """Extract an ``owner/repo`` slug from a git remote URL, else None."""
+    """Extract an ``owner/repo`` slug from a GitHub remote URL, else None."""
     if not remote_url:
         return None
     cleaned = remote_url.strip()
     for prefix in ("https://github.com/", "git@github.com:", "http://github.com/"):
         if cleaned.startswith(prefix):
-            cleaned = cleaned[len(prefix) :]
-            break
-    if cleaned.endswith(".git"):
-        cleaned = cleaned[: -len(".git")]
-    cleaned = cleaned.strip("/")
-    return cleaned or None
+            slug = cleaned[len(prefix) :]
+            if slug.endswith(".git"):
+                slug = slug[: -len(".git")]
+            slug = slug.strip("/")
+            return slug or None
+    return None
 
 
 def _message_text(role: str, content: str | None) -> str | None:
@@ -155,14 +155,20 @@ def _format_detail(message: ConductorMessage) -> str:
 def _read_messages(
     db_path: Path, dt_from: datetime, dt_to: datetime
 ) -> List[ConductorMessage]:
-    """Best-effort read of in-window session messages from the Conductor DB."""
+    """Read in-window session messages from the Conductor DB.
+
+    Raises:
+        RuntimeError: when the database cannot be opened or queried (locked,
+            corrupt, or schema mismatch), so ``collector_status`` can report the
+            failure instead of a silent empty window.
+    """
     # Read-only so we never lock or mutate Conductor's live (WAL-mode) database;
     # mode=ro still reads committed WAL pages, unlike immutable=1 which would skip them.
     uri = f"file:{db_path}?mode=ro"
     try:
         conn = sqlite3.connect(uri, uri=True, timeout=5)
-    except sqlite3.Error:
-        return []
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Conductor database unreadable: {exc}") from exc
     messages: List[ConductorMessage] = []
     try:
         conn.row_factory = sqlite3.Row
@@ -184,8 +190,8 @@ def _read_messages(
             LEFT JOIN repos r ON w.repository_id = r.id
             """
         ).fetchall()
-    except sqlite3.Error:
-        return []
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Conductor database query failed: {exc}") from exc
     finally:
         conn.close()
 
@@ -239,8 +245,8 @@ def collect_conductor(
 ) -> List[Dict[str, Any]]:
     """Collect Conductor agent-session events from the local SQLite database.
 
-    Best-effort: a missing database, a schema mismatch, or unreadable rows yield
-    no events rather than raising.
+    Returns no events when Conductor is not installed (database missing). Raises
+    ``RuntimeError`` when the database exists but cannot be read or queried.
     """
     db_path = _find_conductor_db(home)
     if db_path is None:

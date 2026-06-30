@@ -19,6 +19,8 @@ _spec = importlib.util.spec_from_file_location("gittan_statusline", _SCRIPT)
 sl = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sl)
 
+_MOCK_CWD = "/fixture/statusline-cwd"
+
 
 def _profiles():
     return [normalize_profile({"name": "Timelog", "match_terms": ["timelog-extract"]})]
@@ -115,7 +117,7 @@ class MainSmokeTests(unittest.TestCase):
         # Exercise main()'s wiring without live git/config/jsonl I/O (that path is
         # covered by the pure helpers above and can take 30s+ against ~/.gittan).
         with contextlib.redirect_stdout(io.StringIO()), patch.object(
-            sl, "_resolve_cwd", return_value="/tmp"
+            sl, "_resolve_cwd", return_value=_MOCK_CWD
         ), patch("core.repo_slug.resolve_path_repo_slug", return_value=""), patch.object(
             sl, "_load_profiles", return_value=[]
         ):

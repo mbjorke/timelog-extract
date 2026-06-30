@@ -9,6 +9,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from core.config import normalize_profile
 from core.reported_time import ReportedTimeRecord, append_record
@@ -17,6 +18,8 @@ _SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "gittan_statuslin
 _spec = importlib.util.spec_from_file_location("gittan_statusline", _SCRIPT)
 sl = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sl)
+
+_MOCK_CWD = "/fixture/statusline-cwd"
 
 
 def _profiles():
@@ -111,10 +114,22 @@ class UnreportedTests(unittest.TestCase):
 
 class MainSmokeTests(unittest.TestCase):
     def test_main_never_raises(self):
-        # The statusline must never disrupt the prompt; main returns 0 regardless.
-        # Capture stdout so the printed line doesn't pollute test output.
-        with contextlib.redirect_stdout(io.StringIO()):
+        # Exercise main()'s wiring without live git/config/jsonl I/O (that path is
+        # covered by the pure helpers above and can take 30s+ against ~/.gittan).
+        with contextlib.redirect_stdout(io.StringIO()), patch.object(
+            sl, "_resolve_cwd", return_value=_MOCK_CWD
+        ), patch("core.repo_slug.resolve_path_repo_slug", return_value=""), patch.object(
+            sl, "_load_profiles", return_value=[]
+        ):
             self.assertEqual(sl.main(), 0)
+
+    def test_main_swallows_errors(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), patch.object(
+            sl, "_resolve_cwd", side_effect=RuntimeError("boom")
+        ):
+            self.assertEqual(sl.main(), 0)
+        self.assertEqual(buf.getvalue(), "\n")
 
 
 if __name__ == "__main__":

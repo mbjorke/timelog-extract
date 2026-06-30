@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -81,6 +82,8 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
         self.assertIn("same calendar year", completed.stderr)
 
     def test_open_window_with_allow_never_reports_go(self):
+        # A single-day window ending today is "open"; the gate decision is
+        # window-width-independent, so use one day to keep the report cheap.
         today = dt.datetime.now(dt.timezone.utc).date().isoformat()
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp) / "truth-check-open-window"
@@ -89,7 +92,7 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
                     "bash",
                     str(SCRIPT),
                     "--from",
-                    "2026-01-01",
+                    today,
                     "--to",
                     today,
                     "--allow-open-window",
@@ -100,6 +103,9 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=180,
+                # Empty HOME: collectors find no machine data, so the run is fast
+                # and hermetic. The gate decision is what this test asserts.
+                env={**os.environ, "HOME": tmp},
             )
             self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
             metrics = json.loads((out_dir / "benchmark_metrics.json").read_text(encoding="utf-8"))
@@ -113,10 +119,12 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
                 [
                     "bash",
                     str(SCRIPT),
+                    # A single closed (past) day still generates all artifacts;
+                    # window width is irrelevant to this check, so keep it cheap.
                     "--from",
                     "2026-01-01",
                     "--to",
-                    "2026-01-31",
+                    "2026-01-01",
                     "--out-dir",
                     str(out_dir),
                 ],
@@ -124,6 +132,8 @@ class TimelogTruthCheckScriptTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=180,
+                # Empty HOME: hermetic + fast; this test only asserts the artifacts exist.
+                env={**os.environ, "HOME": tmp},
             )
             self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
             self.assertTrue((out_dir / "benchmark_manifest.json").exists())

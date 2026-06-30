@@ -48,8 +48,10 @@ def _assistant_envelope(text: str) -> str:
     )
 
 
-def _build_db(path: Path) -> None:
+def _build_db(path: Path, *, wal: bool = False) -> sqlite3.Connection | None:
     conn = sqlite3.connect(str(path))
+    if wal:
+        conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(
         """
         CREATE TABLE repos (id TEXT PRIMARY KEY, name TEXT, remote_url TEXT);
@@ -97,7 +99,10 @@ def _build_db(path: Path) -> None:
     ]
     conn.executemany("INSERT INTO session_messages VALUES (?,?,?,?,?,?)", rows)
     conn.commit()
+    if wal:
+        return conn
     conn.close()
+    return None
 
 
 class ConductorCollectTest(unittest.TestCase):
@@ -136,6 +141,20 @@ class ConductorCollectTest(unittest.TestCase):
                 [], DT_FROM, DT_TO, Path(tmp), _classify_project, _make_event
             )
             self.assertEqual(events, [])
+
+    def test_reads_messages_with_wal_writer_open(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "conductor.db"
+            writer = _build_db(db, wal=True)
+            self.assertIsNotNone(writer)
+            try:
+                with _patched_db(db):
+                    events = collect_conductor(
+                        [], DT_FROM, DT_TO, Path(tmp), _classify_project, _make_event
+                    )
+            finally:
+                writer.close()
+        self.assertEqual(len(events), 2)
 
     def test_repo_slug(self):
         self.assertEqual(

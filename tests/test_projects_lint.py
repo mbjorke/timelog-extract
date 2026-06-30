@@ -75,6 +75,62 @@ class ProjectsLintHelperTests(unittest.TestCase):
         self.assertEqual(len(overlap), 1)
         self.assertEqual(overlap[0].severity, "warn")
 
+    def test_slug_customer_conflict_warns_for_different_customers(self):
+        payload = {
+            "projects": [
+                {"name": "Portal", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["acme/portal", "portal dev"]},
+                {"name": "portal-dup", "customer": "other.example", "enabled": True,
+                 "match_terms": ["acme/portal"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        conflict = [w for w in warnings if w.code == "slug-customer-conflict"]
+        self.assertEqual(len(conflict), 1)
+        self.assertIn("acme/portal", conflict[0].message)
+        self.assertIn("acme.example", conflict[0].message)
+        self.assertIn("other.example", conflict[0].message)
+        # generic overlap-term is suppressed for the conflicting slug
+        self.assertFalse(any(w.code == "overlap-term" and "acme/portal" in w.message for w in warnings))
+
+    def test_slug_same_customer_is_not_a_conflict(self):
+        payload = {
+            "projects": [
+                {"name": "Portal", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["acme/portal", "portal dev"]},
+                {"name": "Portal API", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["acme/portal"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        self.assertFalse(any(w.code == "slug-customer-conflict" for w in warnings))
+
+    def test_thin_slug_duplicate_warns_when_richer_profile_covers_slug(self):
+        payload = {
+            "projects": [
+                {"name": "Portal", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["portal-repo", "acme.example", "portal dev"]},
+                {"name": "portal-repo", "enabled": True, "match_terms": ["portal-repo"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        thin = [w for w in warnings if w.code == "thin-slug-duplicate"]
+        self.assertEqual(len(thin), 1)
+        self.assertIn("portal-repo", thin[0].message)
+        self.assertIn("Portal", thin[0].message)
+        # default-bucket note appended (thin profile has no distinct customer)
+        self.assertIn("no distinct customer", thin[0].message)
+
+    def test_thin_slug_duplicate_quiet_without_richer_twin(self):
+        payload = {
+            "projects": [
+                {"name": "portal-repo", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["portal-repo", "acme.example", "portal dev"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        self.assertFalse(any(w.code == "thin-slug-duplicate" for w in warnings))
+
     def test_repo_path_overlap_warns_across_projects(self):
         payload = {
             "projects": [

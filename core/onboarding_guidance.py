@@ -13,7 +13,14 @@ PROJECT_STATUS_SKIPPED = "SKIPPED"
 PROJECT_STATUS_ACTION_REQUIRED = "ACTION_REQUIRED"
 
 _RULE_HYGIENE_LINT_CODES = frozenset(
-    {"broad-tracked-url", "broad-term", "overlap-term", "repo-path-overlap"}
+    {
+        "broad-tracked-url",
+        "broad-term",
+        "overlap-term",
+        "repo-path-overlap",
+        "slug-customer-conflict",
+        "thin-slug-duplicate",
+    }
 )
 
 

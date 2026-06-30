@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+from core.github_slug_match import profile_match_term_github_slugs
+from core.map_project_suggest import (
+    suggest_project_for_duplicate_change,
+    suggest_project_for_new_repo,
+)
 from core.mapping_review import (
     _CANCEL,
     _STATUS_CANONICAL,
     MappingReview,
     NewProjectProposal,
     ProjectChangeProposal,
+    _family_slugs_for_change,
     _merge_additions_for_change,
     _merge_removals_for_change,
 )
+
+_ACTION_MAP_EXISTING = "Add slug to existing project"
+_ACTION_NEW = "Add as new project"
+_ACTION_CONSOLIDATE = "Consolidate all variants into one project"
 
 
 def _print_mapping_cancelled(console) -> None:
@@ -58,6 +68,51 @@ def prompt_new_project_fields(
     if title_answer is None:
         return None
     return slug, customer, str(title_answer).strip()
+
+
+def _additions_for_map_to_existing(
+    change: ProjectChangeProposal,
+    target: str,
+    profiles: list[dict],
+) -> list[tuple[str, str, str]]:
+    """Add family github slugs missing from the chosen profile; do not strip siblings."""
+    target_slugs = profile_match_term_github_slugs(_profile_by_name(profiles, target) or {})
+    additions: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for slug in sorted(_family_slugs_for_change(change)):
+        clean = str(slug or "").strip()
+        if not clean or clean in target_slugs or clean in seen:
+            continue
+        seen.add(clean)
+        additions.append((target, "match_terms", clean))
+    return additions
+
+
+def _profile_by_name(profiles: list[dict], name: str) -> dict | None:
+    key = str(name or "").strip().lower()
+    for profile in profiles:
+        if str(profile.get("name") or "").strip().lower() == key:
+            return profile
+    return None
+
+
+def _print_consolidate_preview(
+    console,
+    change: ProjectChangeProposal,
+    profiles: list[dict],
+) -> None:
+    additions = _merge_additions_for_change(change)
+    removals = _merge_removals_for_change(change, profiles)
+    console.print(f"\n[bold]Consolidate into {change.target_project}[/bold]")
+    console.print("[dim]Add to target profile:[/dim]")
+    for _project, _rule_type, value in additions:
+        console.print(f"  + {value}")
+    if removals:
+        console.print("[dim]Remove from sibling profiles:[/dim]")
+        for project, _rule_type, value in removals:
+            console.print(f"  - {project}: {value}")
+    else:
+        console.print("[dim]No github slugs removed from siblings.[/dim]")
 
 
 def _print_repo_binding(console, *, dot: str, remote_url: str, local_path: str, status: str) -> None:
@@ -116,8 +171,9 @@ def _print_change_group(console, change: ProjectChangeProposal) -> None:
     )
     if change.lines:
         console.print(
-            "\n[dim]Merge adds all repo variants to the canonical project and removes "
-            "duplicate github slugs from sibling profiles (profiles are kept).[/dim]"
+            "\n[dim]Repo variants share a billing customer. "
+            "Add slugs to an existing project, or consolidate all variants into one profile "
+            "(moves github slugs; sibling profile rows are kept).[/dim]"
         )
         console.print("\nHow do you want to handle following duplicates?")
         for line in change.lines:
@@ -165,18 +221,24 @@ def run_batch_mapping_review(
     for proposal in review.new_projects:
         _print_new_project_group(console, proposal)
         _print_activity_legend(console)
-        choices = ["Add as new project", "Map to existing project", "Skip", _CANCEL]
+        suggested_existing = suggest_project_for_new_repo(
+            proposal.slug,
+            proposal.suggested_name,
+            profiles,
+        )
+        choices = [_ACTION_MAP_EXISTING, _ACTION_NEW, "Skip", _CANCEL]
+        default = _ACTION_MAP_EXISTING if suggested_existing else _ACTION_NEW
         answer = questionary.select(
             f"New repo {proposal.url} — how to handle?",
             choices=choices,
-            default="Add as new project",
+            default=default,
         ).ask()
         if answer is None or answer == _CANCEL:
             _print_mapping_cancelled(console)
             return None
         if answer == "Skip":
             continue
-        if answer == "Add as new project":
+        if answer == _ACTION_NEW:
             fields = prompt_new_project_fields(
                 console,
                 default_profile_name=proposal.suggested_name,
@@ -191,31 +253,57 @@ def run_batch_mapping_review(
             existing_names.add(profile_name.lower())
             existing.append(profile_name)
             continue
+        map_choices = existing + ["Skip", _CANCEL]
+        map_default = suggested_existing if suggested_existing in existing else None
         target = questionary.select(
             "Map to which project?",
-            choices=existing + ["Skip", _CANCEL],
+            choices=map_choices,
+            default=map_default,
         ).ask()
         if target is None or target == _CANCEL:
             _print_mapping_cancelled(console)
             return None
         if target and target != "Skip":
             additions.append((target, "match_terms", proposal.slug))
+            if proposal.suggested_name and proposal.suggested_name != proposal.slug:
+                additions.append((target, "match_terms", proposal.suggested_name))
 
     for change in review.changes:
         _print_change_group(console, change)
         _print_activity_legend(console)
+        suggested_existing = suggest_project_for_duplicate_change(change, profiles)
         label = f"{change.customer} → {change.target_project}" if change.customer else change.target_project
         answer = questionary.select(
-            f"Duplicates for {label}",
-            choices=["Merge (default)", "Skip", _CANCEL],
-            default="Merge (default)",
+            f"Repo variants for {label}",
+            choices=[_ACTION_MAP_EXISTING, _ACTION_CONSOLIDATE, "Skip", _CANCEL],
+            default=_ACTION_MAP_EXISTING,
         ).ask()
         if answer is None or answer == _CANCEL:
             _print_mapping_cancelled(console)
             return None
         if answer == "Skip":
             continue
-        if answer == "Merge (default)":
+        if answer == _ACTION_MAP_EXISTING:
+            map_choices = existing + ["Skip", _CANCEL]
+            map_default = suggested_existing if suggested_existing in existing else None
+            target = questionary.select(
+                "Add repo slug(s) to which project?",
+                choices=map_choices,
+                default=map_default,
+            ).ask()
+            if target is None or target == _CANCEL:
+                _print_mapping_cancelled(console)
+                return None
+            if target and target != "Skip":
+                additions.extend(_additions_for_map_to_existing(change, target, profiles))
+            continue
+        if answer == _ACTION_CONSOLIDATE:
+            _print_consolidate_preview(console, change, profiles)
+            if not questionary.confirm(
+                f"Apply consolidation into {change.target_project}?",
+                default=False,
+            ).ask():
+                continue
             additions.extend(_merge_additions_for_change(change))
             removals.extend(_merge_removals_for_change(change, profiles))
 

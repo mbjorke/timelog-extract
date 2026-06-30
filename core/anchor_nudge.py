@@ -19,6 +19,7 @@ from core.config import (
     load_projects_config_payload,
     save_projects_config_payload,
 )
+from core.map_project_suggest import suggest_project_for_anchor
 from core.projects_audit import ANCHOR_KIND_LABELS
 
 _CREATE_PREFIX = "Create new project: "
@@ -50,11 +51,27 @@ def should_prompt() -> bool:
         return False
 
 
+def _anchor_project_choices(
+    existing: list[str],
+    value: str,
+    *,
+    suggestion: str | None,
+) -> tuple[list[str], str | None]:
+    create = f"{_CREATE_PREFIX}{value}"
+    ordered = list(existing)
+    if suggestion and suggestion in ordered:
+        ordered.remove(suggestion)
+        ordered.insert(0, suggestion)
+    return [*ordered, create, _SKIP, _STOP], suggestion if suggestion in existing else None
+
+
 def run_interactive_anchor_flow(
     console,
     anchors: list[dict],
     profiles: list[dict],
     projects_config: str,
+    *,
+    events: list[dict] | None = None,
 ) -> int:
     """Map unmapped anchors to projects via questionary; apply with backup.
 
@@ -75,11 +92,12 @@ def run_interactive_anchor_flow(
         if not value:
             continue
         kind = _kind_label(entry.get("kind", ""))
-        choices = [*existing, f"{_CREATE_PREFIX}{value}", _SKIP, _STOP]
-        answer = questionary.select(
-            f"Map {kind} '{value}' ({entry.get('hits', 0)} events) to project",
-            choices=choices,
-        ).ask()
+        suggestion = suggest_project_for_anchor(entry, profiles, events=events)
+        choices, default = _anchor_project_choices(existing, value, suggestion=suggestion)
+        prompt = f"Map {kind} '{value}' ({entry.get('hits', 0)} events) to project"
+        if suggestion:
+            prompt = f"{prompt} [suggested: {suggestion}]"
+        answer = questionary.select(prompt, choices=choices, default=default).ask()
         if answer is None or answer == _STOP:
             break
         if answer == _SKIP:
@@ -154,6 +172,7 @@ def maybe_run_interactive_anchor_mapping(
         anchors,
         list(getattr(report, "profiles", []) or []),
         config,
+        events=list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or []),
     )
     if applied:
         console.print("[dim]Re-run the same report to see updated project hours.[/dim]")

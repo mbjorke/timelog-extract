@@ -15,18 +15,19 @@ Fixtures below are **anonymized** — no live customer or owner names.
 
 ## Traceability
 
-- story_id: `GH-pending`
+- story_id: `GH-222`
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `in progress`
 - created_at: `2026-06-30`
 - last_updated_at: `2026-06-30`
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: `task/map-existing-project-merge-ux`
 - implementation.commits: []
 - validation.evidence: pending
 - validation.decision: `NO-GO`
 - changelog:
   - `2026-06-30: Problem spec from map session — create/merge vs map-to-existing; merge UX opaque.`
+  - `2026-06-30: GH-222 opened; implementation started on task/map-existing-project-merge-ux.`
 
 ## Problem (one sentence)
 

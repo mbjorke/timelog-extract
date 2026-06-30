@@ -57,18 +57,42 @@ class InteractiveAnchorFlowTests(unittest.TestCase):
             {"projects": [{"name": "gittan", "match_terms": ["keep"], "tracked_urls": []}]}
         )
         console = MagicMock()
-        with patch("questionary.select", return_value=self._fake_select("gittan")):
+        with patch("questionary.select", return_value=self._fake_select("gittan")) as select_mock:
             added = run_interactive_anchor_flow(
                 console,
                 [{"kind": "dir", "value": "timelog-extract", "hits": 280}],
                 load_projects_config_payload(cfg)["projects"],
                 str(cfg),
             )
+        select_mock.assert_called_once()
         self.assertEqual(added, 1)
         data = load_projects_config_payload(cfg)
         terms = [str(t).lower() for t in data["projects"][0]["match_terms"]]
         self.assertIn("timelog-extract", terms)
         self.assertIn("keep", terms)
+
+    def test_suggested_project_is_default_choice(self):
+        cfg = self._cfg(
+            {
+                "projects": [
+                    {
+                        "name": "customer-Y-faq",
+                        "match_terms": ["customer-Y-faq"],
+                        "tracked_urls": [],
+                    }
+                ]
+            }
+        )
+        console = MagicMock()
+        with patch("questionary.select", return_value=self._fake_select("customer-Y-faq")) as select_mock:
+            added = run_interactive_anchor_flow(
+                console,
+                [{"kind": "label", "value": "customer-Y-faq-helper", "hits": 12}],
+                load_projects_config_payload(cfg)["projects"],
+                str(cfg),
+            )
+        self.assertEqual(added, 1)
+        self.assertEqual(select_mock.call_args.kwargs.get("default"), "customer-Y-faq")
 
     def test_create_new_project_choice(self):
         cfg = self._cfg({"projects": []})

@@ -9,7 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-from core.observed_cache import observed_hours_by_project_day, write_observed_summary
+from core.observed_cache import (
+    observed_hours_by_project_day,
+    observed_last_capture_date,
+    write_observed_summary,
+)
 
 
 def _report(day: str, sessions):
@@ -68,6 +72,14 @@ class ObservedCacheTests(unittest.TestCase):
 
     def test_empty_store_reads_empty(self):
         self.assertEqual(observed_hours_by_project_day(self.home), {})
+
+    def test_last_capture_date_none_when_empty(self):
+        self.assertIsNone(observed_last_capture_date(self.home))
+
+    def test_last_capture_date_is_write_day(self):
+        write_observed_summary(_report("2026-06-20", [_session("2026-06-20", "Alpha")]), home=self.home)
+        today = datetime.now().date().isoformat()
+        self.assertEqual(observed_last_capture_date(self.home), today)
 
 
 if __name__ == "__main__":

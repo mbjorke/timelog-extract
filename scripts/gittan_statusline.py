@@ -71,14 +71,19 @@ def statusline_text(slug: str, profiles: list, today: str, home: "Path | None" =
     """Full statusline: S1 project context + S2 unreported-time nudge.
 
     Unconfigured/non-git cases fall back to the S1 line. For a configured project
-    it appends today's unreported hours (``⏱ Nh unreported``) or a quiet all-clear.
+    it appends today's unreported hours (``⏱ Nh unreported``), a quiet all-clear,
+    or — when the observed cache wasn't refreshed today — a stale-cache nudge to
+    run ``gittan report`` (so it never claims all-clear on stale data).
     """
     base = project_status(slug, profiles)
     if not base or base == WARNING:
         return base
     from core.domain import classify_project
+    from core.observed_cache import observed_last_capture_date
 
     project = classify_project(slug, profiles, UNCATEGORIZED)
+    if observed_last_capture_date(home) != today:
+        return f"{base} · ⟳ gittan report"
     hours = unreported_hours(project, today, home)
     display_hours = round(hours, 1)
     if display_hours <= 0:

@@ -8,6 +8,7 @@ import io
 import json
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -56,10 +57,14 @@ class UnreportedTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def _seed_observed(self, project, hours):
+    def _seed_observed(self, project, hours, captured=None):
+        captured = captured or self.day  # default: cache refreshed today (fresh)
         base = self.home / ".gittan" / "observed"
         base.mkdir(parents=True, exist_ok=True)
-        row = {"project": project, "date": self.day, "hours": hours, "captured_at": "2026-06-20T00:00:00+00:00"}
+        # Local-tz noon so astimezone().date() stays on `captured` in any timezone
+        # (a midnight-UTC stamp would slip to the previous day west of UTC).
+        captured_at = datetime.fromisoformat(f"{captured}T12:00:00").astimezone().isoformat()
+        row = {"project": project, "date": self.day, "hours": hours, "captured_at": captured_at}
         (base / f"{self.day[:7]}.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
 
     def _seed_reported(self, project, hours, state="confirmed"):
@@ -103,6 +108,20 @@ class UnreportedTests(unittest.TestCase):
         line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
         self.assertEqual(line, "gittan: Alpha · ✓ all reported today")
         self.assertNotIn("0.0h unreported", line)
+
+    def test_statusline_stale_cache_nudges_report(self):
+        # Cache last refreshed yesterday: never claim all-clear, even if fully handled.
+        profiles = [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})]
+        self._seed_observed("Alpha", 5.0, captured="2026-06-19")
+        self._seed_reported("Alpha", 5.0, "confirmed")
+        line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
+        self.assertEqual(line, "gittan: Alpha · ⟳ gittan report")
+
+    def test_statusline_no_cache_nudges_report(self):
+        # No observed cache at all -> stale nudge, not a false all-clear.
+        profiles = [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})]
+        line = sl.statusline_text("acme/alpha", profiles, self.day, self.home)
+        self.assertEqual(line, "gittan: Alpha · ⟳ gittan report")
 
     def test_statusline_unconfigured_has_no_number(self):
         line = sl.statusline_text("acme/secret", [normalize_profile({"name": "Alpha", "match_terms": ["alpha"]})], self.day, self.home)

@@ -146,6 +146,10 @@ Both are **lines under a customer** in the sacred table. Product supports both v
 
 ## 3. Greenfield model (implementation sketch — not sacred)
 
+> **Engineering design:** elaborated into a buildable architecture in
+> [`work-unit-v2-architecture.md`](work-unit-v2-architecture.md) (config model, classifier
+> contract, reuse-vs-replace, migration bridge).
+
 Internal config may look nothing like v1. Conceptual model:
 
 ```text

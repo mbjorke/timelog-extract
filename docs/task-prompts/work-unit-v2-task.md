@@ -82,6 +82,9 @@ reference/cherry-pick; PRs are **closed, not merged**.
 
 ### 1. Time-boxed work-unit spike (proof on copied config)
 
+- design: [`work-unit-v2-architecture.md`](../decisions/work-unit-v2-architecture.md) §8 —
+  spike builds a minimal **new-model** classifier (signals → work unit → customer), not v1
+  `match_terms` edits.
 - priority: **now**
 - problem: Unclear whether v2 attribution is worth a larger build; operator distrusts
   config after map sessions.
@@ -205,6 +208,8 @@ Feature: Report-gap attribution without duplicate slug profiles
 
 ### 5. Work-unit config schema + migrator
 
+- design: [`work-unit-v2-architecture.md`](../decisions/work-unit-v2-architecture.md) §3, §5,
+  §6, §7 — model, reuse/replace, truth_payload versioning, v1→v2 migration bridge.
 - priority: **later**
 - problem: v1 `name` + `match_terms` soup does not model customer → work unit →
   signals cleanly.

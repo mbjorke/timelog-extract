@@ -125,3 +125,32 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
         except OSError as exc:
             _LOGGER.warning("Could not read observed file %s: %s", path, exc)
     return latest
+
+
+def observed_last_capture_date(home: Optional[Path] = None) -> Optional[str]:
+    """The most recent ``captured_at`` date (``YYYY-MM-DD``) in the cache, or None.
+
+    Lets the statusline distinguish "all reported" from "the cache wasn't refreshed
+    today" (i.e. ``gittan report`` hasn't run) so it never claims all-clear on stale
+    data."""
+    base = observed_base_dir(home)
+    if not base.is_dir():
+        return None
+    latest: Optional[datetime] = None
+    for path in sorted(base.glob("*.jsonl")):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        captured = datetime.fromisoformat(str(json.loads(line).get("captured_at", "")))
+                    except (json.JSONDecodeError, ValueError, TypeError):
+                        continue
+                    if latest is None or captured > latest:
+                        latest = captured
+        except OSError as exc:
+            _LOGGER.warning("Could not read observed file %s: %s", path, exc)
+    # Compare in local time: captured_at is UTC but the statusline's "today" is local.
+    return latest.astimezone().date().isoformat() if latest is not None else None

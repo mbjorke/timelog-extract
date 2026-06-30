@@ -146,6 +146,8 @@ def observed_last_capture_date(home: Optional[Path] = None) -> Optional[str]:
                         continue
                     try:
                         captured = datetime.fromisoformat(str(json.loads(line).get("captured_at", "")))
+                        if captured.tzinfo is None:  # legacy/hand-edited rows: treat as UTC
+                            captured = captured.replace(tzinfo=timezone.utc)
                     except (json.JSONDecodeError, ValueError, TypeError):
                         continue
                     if latest is None or captured > latest:

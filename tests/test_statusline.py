@@ -8,6 +8,7 @@ import io
 import json
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from core.config import normalize_profile
@@ -57,7 +58,10 @@ class UnreportedTests(unittest.TestCase):
         captured = captured or self.day  # default: cache refreshed today (fresh)
         base = self.home / ".gittan" / "observed"
         base.mkdir(parents=True, exist_ok=True)
-        row = {"project": project, "date": self.day, "hours": hours, "captured_at": f"{captured}T00:00:00+00:00"}
+        # Local-tz noon so astimezone().date() stays on `captured` in any timezone
+        # (a midnight-UTC stamp would slip to the previous day west of UTC).
+        captured_at = datetime.fromisoformat(f"{captured}T12:00:00").astimezone().isoformat()
+        row = {"project": project, "date": self.day, "hours": hours, "captured_at": captured_at}
         (base / f"{self.day[:7]}.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
 
     def _seed_reported(self, project, hours, state="confirmed"):

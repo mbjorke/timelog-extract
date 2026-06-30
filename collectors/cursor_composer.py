@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
+from collectors.ai_logs import _GENERIC_BRANCHES, _meaningful_label
+from core.repo_slug import path_attribution_anchor
 
 SOURCE_NAME = "Cursor"
 from urllib.parse import unquote, urlparse
@@ -271,6 +272,39 @@ def _uri_fs_path(block: dict | None) -> str:
     return str(uri.get("fsPath") or uri.get("path") or "").strip()
 
 
+def _composer_primary_repo_path(composer: dict) -> str:
+    """First tracked git repo path from composer metadata, if any."""
+    for repo in composer.get("trackedGitRepos") or []:
+        if not isinstance(repo, dict):
+            continue
+        repo_path = str(repo.get("repoPath") or "").strip()
+        if repo_path:
+            return repo_path
+    return ""
+
+
+def _composer_event_anchors(
+    *,
+    workspace: str | None,
+    label: str | None,
+    branch: str | None,
+    repo_path: str | None = None,
+) -> dict[str, str]:
+    """Anchors for composer/agent sessions — repo slug before ephemeral dir leaves."""
+    anchors: dict[str, str] = dict(path_attribution_anchor(workspace or "") or {})
+    if "repo" not in anchors and repo_path:
+        fallback = path_attribution_anchor(repo_path)
+        if fallback and "repo" in fallback:
+            anchors = dict(fallback)
+    if label:
+        anchors["label"] = label
+    if branch and "repo" not in anchors:
+        leaf = str(branch).rsplit("/", 1)[-1].strip().lower()
+        if leaf and leaf not in _GENERIC_BRANCHES:
+            anchors["branch"] = leaf
+    return anchors
+
+
 def _composer_workspace_path(composer: dict) -> str:
     for key in ("workspaceIdentifier", "agentLocation"):
         path = _uri_fs_path(composer.get(key))
@@ -399,7 +433,12 @@ def collect_cursor_composer_sessions(
         if branch and not _branch_reflected_in_label(branch, name or label or ""):
             context_bits.append(f"@{branch}")
         detail = " · ".join(context_bits)[:100]
-        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        anchors = _composer_event_anchors(
+            workspace=workspace or None,
+            label=label,
+            branch=branch,
+            repo_path=_composer_primary_repo_path(composer) or None,
+        )
         touches = _composer_in_window_touch_ms(composer, from_ms, to_ms)
         if not touches:
             # Predate/spill threads with no in-window metadata touch: credit the

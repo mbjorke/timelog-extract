@@ -189,6 +189,6 @@ def build_unanchored_anchors_nudge(
     return (
         f"Nudge: {len(anchors)} unmapped activity anchor"
         f"{'' if len(anchors) == 1 else 's'} with activity: {listed}. "
-        "Run `gittan map` to map session titles, working dirs, and git repos interactively "
-        "(batch alternative: `gittan projects-audit --write-anchor-plan`)."
+        "Run `gittan map` to map session titles, working dirs, and branches interactively "
+        "(new GitHub repos: `gittan map --scan-repos`; batch: `gittan projects-audit --write-anchor-plan`)."
     )

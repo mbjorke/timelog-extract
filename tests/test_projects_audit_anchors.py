@@ -1,7 +1,9 @@
 """Tests for activity-anchor value rules and unmapped-anchor aggregation."""
 
 import unittest
+from unittest import mock
 
+from collectors.cursor_composer import _composer_event_anchors
 from core.projects_audit import (
     aggregate_top_anchors,
     is_junk_anchor_value,
@@ -18,6 +20,8 @@ class AnchorValueTests(unittest.TestCase):
         self.assertTrue(is_junk_anchor_value(".gittan:"))
         self.assertTrue(is_junk_anchor_value("a5cda8b561bb6536e880481734199a568cb647f4"))
         self.assertTrue(is_junk_anchor_value(""))
+        self.assertTrue(is_junk_anchor_value("head"))
+        self.assertTrue(is_junk_anchor_value("session-evidence.json"))
         # Real project anchors pass.
         self.assertFalse(is_junk_anchor_value("timelog-extract"))
         self.assertFalse(is_junk_anchor_value("project-beta-dashboard"))
@@ -27,6 +31,19 @@ class AnchorValueTests(unittest.TestCase):
         # path/remote layer, not here.
         self.assertFalse(is_junk_anchor_value("financing-portal-dev-31e799cf"))
         self.assertFalse(is_junk_anchor_value("offer-craft-34"))
+
+    def test_composer_event_anchors_prefers_repo_over_worktree_leaf(self) -> None:
+        with mock.patch("collectors.cursor_composer.path_attribution_anchor") as pa:
+            pa.return_value = {"repo": "owner-a/project-alpha"}
+            anchors = _composer_event_anchors(
+                workspace="/tmp/conductor/kolkata",
+                label="toggle integration progress",
+                branch="HEAD",
+            )
+        self.assertEqual(anchors["repo"], "owner-a/project-alpha")
+        self.assertEqual(anchors["label"], "toggle integration progress")
+        self.assertNotIn("dir", anchors)
+        self.assertNotIn("branch", anchors)
 
     def test_is_value_anchored_substring_rule(self) -> None:
         profiles = [{"name": "p", "match_terms": ["timelog-extract"], "tracked_urls": []}]
@@ -51,6 +68,22 @@ class AnchorValueTests(unittest.TestCase):
 
 
 class UnanchoredTopAnchorsTests(unittest.TestCase):
+    def test_composer_repo_anchor_suppresses_worktree_nag(self) -> None:
+        events = [
+            {
+                "source": "Cursor",
+                "detail": "x",
+                "anchors": {
+                    "repo": "owner-a/timelog-extract",
+                    "label": "toggle integration progress",
+                },
+            }
+        ] * 3
+        profiles = [{"name": "gittan", "match_terms": ["owner-a/timelog-extract"]}]
+        self.assertEqual(unanchored_top_anchors(events, profiles, min_hits=1), [])
+        unmapped = unanchored_top_anchors(events, [], min_hits=1)
+        self.assertEqual([(r["kind"], r["value"]) for r in unmapped], [("repo", "owner-a/timelog-extract")])
+
     def test_mapped_repo_slug_covers_worktree_leaves(self) -> None:
         # A worktree event carries both the per-worktree dir leaf and the
         # worktree-invariant repo slug. Once the slug is in match_terms, the

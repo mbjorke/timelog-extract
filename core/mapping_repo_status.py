@@ -31,7 +31,6 @@ class SlugGitBinding:
 def _epoch_in_report_window(epoch: int, dt_from: Any, dt_to: Any) -> int:
     if epoch <= 0 or dt_from is None or dt_to is None:
         return 0
-    from datetime import timezone
 
     ts = datetime.fromtimestamp(epoch, tz=timezone.utc)
     start = dt_from

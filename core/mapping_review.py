@@ -21,6 +21,7 @@ from core.github_slug_match import (
     profile_match_term_github_slugs,
     split_github_slug,
 )
+from core.map_repo_hints import github_create_times_from_events
 from core.mapping_repo_status import (
     SlugGitBinding,
     activity_dot,
@@ -76,30 +77,6 @@ def merge_target_for_customer(customer: str, profiles: list[dict]) -> str:
 
 def slug_to_github_url(slug: str) -> str:
     return slug_to_remote_url(slug)
-
-
-def _format_ts(value: Any) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.astimezone().strftime("%Y-%m-%d %H:%M")
-    return str(value)
-
-
-def _github_create_times(events: list[dict]) -> dict[str, str]:
-    times: dict[str, str] = {}
-    for event in events:
-        detail = str(event.get("detail") or "")
-        detail_lower = detail.lower()
-        if not detail_lower.startswith("created "):
-            continue
-        from core.github_slug_match import github_slugs_in_text
-
-        for slug in github_slugs_in_text(detail):
-            stamp = _format_ts(event.get("local_ts") or event.get("timestamp"))
-            if stamp:
-                times.setdefault(slug, stamp)
-    return times
 
 
 def _github_slugs_on_named_profile(profile_name: str, profiles: list[dict]) -> set[str]:
@@ -289,7 +266,7 @@ def build_mapping_review(
         )
     else:
         bindings = slug_bindings
-    create_times = _github_create_times(events)
+    create_times = github_create_times_from_events(events)
     github_sourced = github_sourced_slugs_from_events(events)
     if gh_discovery:
         gh_create_times, gh_pushed_epochs = collect_gh_repo_list_data(

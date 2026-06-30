@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import time
 from datetime import datetime
 from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
 
-from core.anchor_nudge import maybe_run_interactive_anchor_mapping
 from core.cli_app import app
 from core.cli_report_status_helpers import build_report_options, resolve_timeframe_args
 from core.config import default_projects_config_option
-from core.mapping_assistant import run_interactive_mapping_flow
-from core.mapping_review import build_mapping_review
+from core.map_command import map_exit_message, run_map_command
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
 
@@ -27,10 +24,15 @@ def map_workspace(
     yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
     last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
     projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
+    scan_repos: Annotated[
+        bool,
+        typer.Option(
+            "--scan-repos",
+            help="Scan local git clones and GitHub for new repo mappings (slow; skipped by default).",
+        ),
+    ] = False,
 ):
-    """Map git remotes and new GitHub repos to projects — nothing saved without approval."""
-    from core.report_service import run_timelog_report
-
+    """Map activity anchors and optionally git/GitHub repos — nothing saved without approval."""
     console = Console()
     timeframe = resolve_timeframe_args(
         date_from=date_from,
@@ -57,44 +59,24 @@ def map_workspace(
     )
     console.print("")
     print_command_hero(console, "map")
-    console.print(f"[{STYLE_LABEL}]Workspace mapping[/]")
+    console.print(f"[{STYLE_LABEL}]Project mapping[/]")
+    console.print(
+        f"[{STYLE_MUTED}]Anchors first (dirs, branches, session titles). "
+        "Pass --scan-repos for full git/GitHub repo discovery (slow).[/]"
+    )
     console.print(f"[{STYLE_MUTED}]Nothing is saved without your approval.[/]")
 
-    collect_started = time.perf_counter()
-    with console.status(f"[{STYLE_LABEL}]Collecting git and GitHub signals…[/]"):
-        report_started = time.perf_counter()
-        report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-        report_elapsed = time.perf_counter() - report_started
-        events = list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or [])
-        review_started = time.perf_counter()
-        review = build_mapping_review(
-            events,
-            report.profiles,
-            dt_from=getattr(report, "dt_from", None),
-            dt_to=getattr(report, "dt_to", None),
-            local_tz=getattr(report, "dt_from", None).tzinfo if getattr(report, "dt_from", None) else None,
-        )
-        review_elapsed = time.perf_counter() - review_started
-    collect_elapsed = time.perf_counter() - collect_started
-    console.print(
-        f"[{STYLE_MUTED}]Signals collected in {collect_elapsed:.1f}s "
-        f"(report {report_elapsed:.1f}s, mapping review {review_elapsed:.1f}s).[/]"
-    )
-    if review.change_count() == 0:
-        config = str(getattr(report, "config_path", None) or projects_config)
-        if maybe_run_interactive_anchor_mapping(console, report, projects_config=config):
-            console.print("[dim]Re-run `gittan report` for the same window to verify project hours.[/dim]")
-            raise typer.Exit(code=0)
-        console.print(f"[{STYLE_MUTED}]No suggested project mapping changes for this window.[/]")
-        raise typer.Exit(code=0)
-
-    config = str(getattr(report, "config_path", None) or projects_config)
-    applied = run_interactive_mapping_flow(
+    anchors_applied, repo_applied, repo_hints = run_map_command(
         console,
-        [],
-        report.profiles,
-        config,
-        review=review,
+        options=options,
+        projects_config=projects_config,
+        scan_repos=scan_repos,
     )
-    if applied:
-        console.print("[dim]Re-run `gittan report` for the same window to verify project hours.[/dim]")
+    console.print(
+        map_exit_message(
+            anchors_applied=anchors_applied,
+            repo_applied=repo_applied,
+            had_repo_hints=bool(repo_hints),
+        )
+    )
+    raise typer.Exit(code=0)

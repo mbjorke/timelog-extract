@@ -127,6 +127,18 @@ class UnanchoredAnchorsNudgeTests(unittest.TestCase):
         report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
         self.assertEqual(unanchored_anchors_for_report(report, min_hits=20), [])
 
+    def test_github_enriched_labels_are_not_map_nudges(self):
+        """Delivery rows inherit session titles for display — not for gittan map."""
+        events = [
+            {
+                "source": "GitHub",
+                "anchors": {"label": "toggle integration progress"},
+            }
+            for _ in range(30)
+        ]
+        report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
+        self.assertEqual(unanchored_anchors_for_report(report, min_hits=20), [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -198,6 +198,33 @@ class ClaudeCodeContextDirTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0]["detail"], "review billing export")
 
+    def test_skips_conductor_system_instruction_preamble(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            proj_dir = home / ".claude" / "projects" / "-Users-demo-kolkata"
+            proj_dir.mkdir(parents=True, exist_ok=True)
+            lines = [
+                {
+                    "timestamp": "2026-06-11T13:14:00Z",
+                    "cwd": "/Users/demo/conductor/kolkata",
+                    "type": "user",
+                    "message": {"content": "<system_instruction> You are working inside Conductor"},
+                },
+                {
+                    "timestamp": "2026-06-11T13:15:00Z",
+                    "cwd": "/Users/demo/conductor/kolkata",
+                    "type": "user",
+                    "message": {"content": "real user prompt"},
+                },
+            ]
+            (proj_dir / "session.jsonl").write_text(
+                "\n".join(json.dumps(row) for row in lines) + "\n",
+                encoding="utf-8",
+            )
+            events = self._collect(home)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["detail"], "real user prompt")
+
 
 if __name__ == "__main__":
     unittest.main()

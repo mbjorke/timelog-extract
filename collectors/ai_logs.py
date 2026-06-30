@@ -38,7 +38,17 @@ def _meaningful_leaf(name) -> str | None:
 
 
 # Branch names that identify a workflow, not a project, are useless as anchors.
-_GENERIC_BRANCHES = {"main", "master", "develop", "dev", "trunk", "release", "staging", "prod"}
+_GENERIC_BRANCHES = {
+    "main",
+    "master",
+    "develop",
+    "dev",
+    "trunk",
+    "release",
+    "staging",
+    "prod",
+    "head",  # detached HEAD — not a project branch name
+}
 
 
 def _branch_leaf(obj) -> str | None:
@@ -72,6 +82,27 @@ def _anchors(**kinds) -> dict:
     return {kind: value for kind, value in kinds.items() if value}
 
 
+def _session_event_anchors(
+    *,
+    repo: str | None = None,
+    dir_leaf: str | None = None,
+    branch: str | None = None,
+    label: str | None = None,
+) -> dict:
+    """Attribution anchors for AI session events.
+
+    When a repo slug is known, omit ephemeral dir/branch leaves so map nudges
+    surface ``owner/repo`` instead of Conductor worktree names or detached HEAD.
+    """
+    repo_val = str(repo or "").strip()
+    if repo_val:
+        out: dict[str, str] = {"repo": repo_val.lower()}
+        if label:
+            out["label"] = label
+        return out
+    return _anchors(dir=dir_leaf, branch=branch, label=label)
+
+
 _CLAUDE_JSONL_SKIP_TYPES = frozenset(
     {
         "pr-link",
@@ -92,6 +123,9 @@ def _claude_jsonl_is_noise(obj: dict, detail: str) -> bool:
     if stripped in {"", "log"}:
         return True
     if stripped == typ:
+        return True
+    # Conductor injects a static system preamble into Claude Code jsonl — not work.
+    if stripped.startswith("<system_instruction"):
         return True
     return False
 
@@ -177,6 +211,30 @@ def _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
     return results
 
 
+def _slug_from_claude_project_dir(proj_dir_name: str, profiles: list) -> str:
+    """Infer ``owner/repo`` from Claude's encoded Conductor worktree project dir.
+
+    When a Conductor worktree is removed, ``resolve_path_repo_slug(cwd)`` fails but
+    the jsonl still lives under ``…-conductor-workspaces-<repo>-<leaf>``.
+    """
+    lower = str(proj_dir_name or "").lower()
+    marker = "-conductor-workspaces-"
+    if marker not in lower:
+        return ""
+    tail = lower.split(marker, 1)[1]
+    parts = [p for p in tail.split("-") if p]
+    if len(parts) < 2:
+        return ""
+    repo_folder = "-".join(parts[:-1])
+    for profile in profiles:
+        for term in profile.get("match_terms") or []:
+            text = str(term).strip().lower()
+            if "/" in text and text.endswith(f"/{repo_folder}"):
+                return text
+    owner = (os.environ.get("GITHUB_USER") or os.environ.get("GITHUB_LOGIN") or "").split(",")[0].strip().lower()
+    return f"{owner}/{repo_folder}" if owner else ""
+
+
 def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_event):
     results = []
     projects_dir = home / ".claude" / "projects"
@@ -202,7 +260,11 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
                 # Worktree-invariant attribution: the remote slug is identical
                 # across worktrees, so a session in a sibling worktree still
                 # classifies to the project even when the path/leaf does not.
-                slug = resolve_path_repo_slug(cwd) if cwd else meta_slug
+                slug = resolve_path_repo_slug(cwd) if cwd else ""
+                if not slug:
+                    slug = meta_slug
+                if not slug:
+                    slug = _slug_from_claude_project_dir(proj_dir.name, profiles)
                 dir_leaf = _cwd_leaf(obj) if isinstance(obj, dict) else None
                 if not dir_leaf:
                     dir_leaf = meta_dir
@@ -212,9 +274,9 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
                 results.append(
                     make_event(
                         "Claude Code CLI", ts, detail, project,
-                        anchors=_anchors(
-                            repo=slug or meta_slug or None,
-                            dir=dir_leaf,
+                        anchors=_session_event_anchors(
+                            repo=slug or None,
+                            dir_leaf=dir_leaf,
                             branch=branch,
                             label=label,
                         ),

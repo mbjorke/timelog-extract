@@ -101,11 +101,14 @@ class GithubCollectorTests(unittest.TestCase):
             username="u",
             token=None,
             classify_project=lambda t, p: classify_project(t, p),
-            make_event=lambda src, ts, d, proj: core_make_event(src, ts, d, proj, "Uncategorized"),
+            make_event=lambda src, ts, d, proj, anchors=None: core_make_event(
+                src, ts, d, proj, "Uncategorized", anchors=anchors
+            ),
             api_base="https://api.github.com",
         )
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["source"], "GitHub")
+        self.assertEqual(events[0]["anchors"], {"repo": "o/r"})
         self.assertEqual(events[0].get("_github_event_id"), "1")
         self.assertEqual(events[0].get("_github_user"), "u")
         called_url = mock_urlopen.call_args[0][0].full_url
@@ -137,7 +140,9 @@ class GithubCollectorTests(unittest.TestCase):
             username="u",
             token=None,
             classify_project=lambda t, p: "P",
-            make_event=lambda src, ts, d, proj: core_make_event(src, ts, d, proj, "Uncategorized"),
+            make_event=lambda src, ts, d, proj, anchors=None: core_make_event(
+                src, ts, d, proj, "Uncategorized", anchors=anchors
+            ),
             api_base="https://git.example.com/api/v3",
         )
         self.assertEqual(len(events), 1)

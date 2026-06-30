@@ -24,7 +24,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). |
 | — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. |
 | — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. |
-| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. |
+| — | `map` | Map activity anchors and optionally git/GitHub repos — nothing saved without approval. |
 | — | `projects` | Manage project profiles interactively. |
 | — | `projects-anchor` | Add rules to projects from an anchor plan (unanchored signals: hosts, dirs, branches, titles). |
 | — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). |

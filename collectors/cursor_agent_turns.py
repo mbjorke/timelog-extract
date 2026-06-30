@@ -20,11 +20,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from collectors.ai_logs import _anchors, _meaningful_label
+from collectors.ai_logs import _meaningful_label
 from collectors.cursor_composer import (
     _branch_reflected_in_label,
     _composer_classification_haystack,
+    _composer_event_anchors,
     _composer_git_context,
+    _composer_primary_repo_path,
     _composer_workspace_path,
     _path_dir_leaf,
     _read_composer_headers,
@@ -193,7 +195,12 @@ def collect_cursor_agent_turns(
             else " ".join(part for part in (label, workspace) if part)
         )
         project = classify_project(haystack, profiles)
-        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        anchors = _composer_event_anchors(
+            workspace=workspace or None,
+            label=label,
+            branch=branch,
+            repo_path=_composer_primary_repo_path(composer) if composer else None,
+        )
 
         emitted = False
         for cluster in _clusters(stamps):

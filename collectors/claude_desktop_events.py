@@ -22,9 +22,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
+from collectors.ai_logs import _cwd_leaf, _meaningful_label
 from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
-from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
+from core.repo_slug import path_attribution_anchor, resolve_path_repo_slug, slug_from_remote_url
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
 
@@ -241,13 +241,26 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
             detail = f"{turns} turn{'s' if turns != 1 else ''}"
             project = classify_project(f"{slug} {cwd or ''} {title} {detail}", profiles)
             for ts in _thin([pair[0] for pair in cluster]):
+                cwd_path = acc["cwd_path"]
+                if slug:
+                    anchors = {"repo": slug.lower()}
+                elif cwd_path:
+                    anchors = dict(path_attribution_anchor(cwd_path) or {})
+                    if not anchors and cwd:
+                        anchors = {"dir": cwd}
+                elif cwd:
+                    anchors = {"dir": cwd}
+                else:
+                    anchors = {}
+                if meaningful:
+                    anchors["label"] = meaningful
                 results.append(
                     make_event(
                         CLAUDE_DESKTOP_CODE_SOURCE,
                         ts,
                         detail,
                         project,
-                        anchors=_anchors(repo=slug, dir=cwd, label=meaningful),
+                        anchors=anchors or None,
                     )
                 )
     return results

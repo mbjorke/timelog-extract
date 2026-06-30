@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from core.events import event_anchors
+from core.sources import GITHUB_SOURCE, WORKLOG_SOURCE
 from core.triage_domain_signals import canonical_domain_key, tracked_fragment_matches_domain
 
 _URL_RE = re.compile(r"https?://[^\s)>\"']+", re.IGNORECASE)
@@ -25,6 +26,9 @@ ANCHOR_PLAN_SCHEMA_VERSION = 1
 # slug (owner/repo) is the worktree-invariant key — see
 # docs/task-prompts/repo-slug-project-attribution.md.
 ANCHOR_KINDS = ("repo", "dir", "branch", "label")
+_DELIVERY_LABEL_SOURCES = frozenset({GITHUB_SOURCE, WORKLOG_SOURCE})  # enrich labels, not map targets
+_JUNK_FILE_SUFFIXES = (".json", ".jsonl", ".log", ".md", ".txt", ".yaml", ".yml")
+
 ANCHOR_KIND_LABELS = {
     "repo": "git repo",
     "dir": "working directory",
@@ -164,6 +168,10 @@ def is_junk_anchor_value(value: str) -> bool:
         return True
     if text.endswith((":", ";", ",")):
         return True
+    if text == "head":
+        return True
+    if text.endswith(_JUNK_FILE_SUFFIXES):
+        return True
     compact = text.replace("-", "").replace("_", "")
     if len(compact) >= 16 and all(c in "0123456789abcdef" for c in compact):
         return True
@@ -219,6 +227,8 @@ def unanchored_top_anchors(
     out: list[dict[str, Any]] = []
     for kind in kinds:
         pool = leaf_pool if kind in ("dir", "branch", "label") else uncovered
+        if kind == "label":
+            pool = [e for e in pool if str(e.get("source") or "") not in _DELIVERY_LABEL_SOURCES]
         for value, hits in aggregate_top_anchors(pool, kind, limit=max(0, int(limit_per_kind))):
             if hits < floor or is_junk_anchor_value(value) or is_value_anchored_by_profiles(value, profiles):
                 continue

@@ -55,6 +55,7 @@ class DoctorCollectorRowsTests(unittest.TestCase):
                 for label, _, detail in _capture_rows(Path(tmp))
             }
             self.assertEqual(rows["Zed"], "Not installed")
+            self.assertEqual(rows["Conductor"], "Not installed")
             self.assertEqual(rows["Codex IDE"], "Not installed")
             self.assertEqual(rows["Gemini CLI"], "Not installed")
             self.assertEqual(rows["Claude Desktop"], "Not installed")
@@ -100,6 +101,23 @@ class DoctorCollectorRowsTests(unittest.TestCase):
                     args = probe.call_args[0]
                     self.assertEqual(args[2], "Zed")
 
+    def test_conductor_row_probe_when_db_present(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            db_path = home / "conductor.db"
+            db_path.write_bytes(b"SQLite format 3\x00" + b"\x00" * 100)
+
+            with patch(
+                "core.doctor_collector_rows._find_conductor_db", return_value=db_path
+            ):
+                with patch("core.doctor_collector_rows.doctor_probe_sqlite") as probe:
+                    _capture_rows(home)
+                    conductor_calls = [
+                        call for call in probe.call_args_list if call[0][2] == "Conductor"
+                    ]
+                    self.assertEqual(len(conductor_calls), 1)
+                    self.assertEqual(conductor_calls[0][0][1], db_path)
+
     def test_new_sources_appear_in_doctor_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             labels = [label for label, _, _ in _capture_rows(Path(tmp))]
@@ -109,6 +127,7 @@ class DoctorCollectorRowsTests(unittest.TestCase):
                 "Codex IDE",
                 "Gemini CLI",
                 "Zed",
+                "Conductor",
             ):
                 self.assertIn(expected, labels)
 

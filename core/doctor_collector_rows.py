@@ -8,6 +8,7 @@ from pathlib import Path
 
 from rich.table import Table
 
+from collectors.conductor import _find_conductor_db
 from collectors.lovable_cache import lovable_cache_status, lovable_desktop_has_cache_signals
 from collectors.lovable_desktop import (
     lovable_desktop_has_storage_signals,
@@ -170,6 +171,14 @@ def _add_zed_row(ctx: DoctorCollectorContext) -> None:
     doctor_probe_sqlite(ctx.table, db_path, "Zed", ctx.check_style)
 
 
+def _add_conductor_row(ctx: DoctorCollectorContext) -> None:
+    db_path = _find_conductor_db(ctx.home)
+    if db_path is None:
+        _row(ctx, "Conductor", ctx.na_icon, "Not installed")
+        return
+    doctor_probe_sqlite(ctx.table, db_path, "Conductor", ctx.check_style)
+
+
 def _add_lovable_row(ctx: DoctorCollectorContext, codec_blocked: list[str]) -> None:
     lh = lovable_desktop_history_candidates(ctx.home)
     if lh:
@@ -292,6 +301,7 @@ def add_collector_doctor_rows(
 
     _add_gemini_cli_row(ctx)
     _add_zed_row(ctx)
+    _add_conductor_row(ctx)
 
     # --- Passive context ---
     _add_apple_mail_row(ctx)

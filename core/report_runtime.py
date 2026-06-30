@@ -15,6 +15,7 @@ from collectors import (
     ai_logs as ai_logs_collector,
     antigravity as antigravity_collector,
     chrome as chrome_collector,
+    conductor as conductor_collector,
     cursor as cursor_collector,
     github as github_collector,
     mail as mail_collector,
@@ -367,6 +368,7 @@ def collect_runtime_events(
         github_collector=github_collector,
         toggl_collector=toggl_collector,
         zed_collector=zed_collector,
+        conductor_collector=conductor_collector,
         github_token=os.environ.get("GITHUB_TOKEN"),
     )
     return collect_all_events(
@@ -399,6 +401,7 @@ def collect_runtime_events(
         collect_toggl=runtime_collectors.collect_toggl,
         collect_calendar=runtime_collectors.collect_calendar,
         collect_zed=runtime_collectors.collect_zed,
+        collect_conductor=runtime_collectors.collect_conductor,
         calendar_has_selection=bool(runtime_collectors.calendar_roles()),
     )
 

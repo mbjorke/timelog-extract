@@ -40,6 +40,7 @@
 3. **Simplify project configuration** — **High priority:** make `timelog_projects.json` easier to create and maintain (clearer defaults, validation users can act on, guided flows, fewer sharp edges) so classification is not a specialist-only task. This is partly **incremental UX/engine work** and partly the longer **AI-assisted authoring** vision in `**docs/sources/ai-assisted-config.md`** (optional cloud LLM with user API key **and/or** local LLM)—the vision doc stays the north star; shipping can start with non-LLM simplifications.
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
+6. **GitHub Marketplace is an aspirational distribution channel, not just a badge.** Timely's public Marketplace listing and API patterns are a useful benchmark for what GitHub-specific evidence users expect and what integration substance a credible listing would need. See `docs/ideas/timely-api-marketplace-benchmark.md`.
 
 ## Solo-first cloud delivery stance
 

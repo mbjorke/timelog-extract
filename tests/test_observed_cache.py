@@ -8,8 +8,11 @@ from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 from core.observed_cache import (
+    _month_path,
+    observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
     write_observed_summary,
@@ -82,10 +85,33 @@ class ObservedCacheTests(unittest.TestCase):
         after = observed_hours_by_project_day(self.home)[("Alpha", "2026-03-10")]
         self.assertEqual(after, peak)  # keep-max: the lower rerun did not degrade it
 
+    def test_read_failure_does_not_wipe_month(self):
+        # Fail closed: if the existing month file can't be read, the write must NOT
+        # overwrite it with a partial/empty merge (that would be data loss).
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        mf = _month_path(base, "2026-03")
+        mf.write_text(
+            '{"captured_at": "", "date": "2026-03-01", "hours": 3.0, "project": "Alpha"}\n',
+            encoding="utf-8",
+        )
+        original = mf.read_text(encoding="utf-8")
+        real_open = Path.open
+
+        def boom_on_read(self, *args, **kwargs):
+            mode = args[0] if args else kwargs.get("mode", "r")
+            if self == mf and "r" in mode:
+                raise OSError("simulated read failure")
+            return real_open(self, *args, **kwargs)
+
+        with mock.patch.object(Path, "open", boom_on_read):
+            write_observed_summary(
+                _report("2026-03-05", [_session("2026-03-05", "Beta")]), home=self.home
+            )
+        self.assertEqual(mf.read_text(encoding="utf-8"), original)  # untouched
+
     def test_malformed_existing_rows_are_skipped(self):
         # Valid-JSON-but-wrong-shape cache lines must be skipped, not crash the merge.
-        from core.observed_cache import _month_path, observed_base_dir
-
         base = observed_base_dir(self.home)
         base.mkdir(parents=True, exist_ok=True)
         _month_path(base, "2026-03").write_text(

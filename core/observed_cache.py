@@ -48,12 +48,16 @@ def _coerce_row(data: object) -> Optional[dict]:
     """
     if not isinstance(data, dict):
         return None
-    project = str(data.get("project", "")).strip()
-    date = str(data.get("date", "")).strip()
-    if not project or not date:
+    project_raw = data.get("project")
+    date_raw = data.get("date")
+    if not isinstance(project_raw, str) or not isinstance(date_raw, str):
+        return None
+    project = project_raw.strip()
+    date = date_raw.strip()
+    if not project or not date or "hours" not in data:
         return None
     try:
-        hours = float(data.get("hours", 0) or 0)
+        hours = float(data["hours"])
     except (TypeError, ValueError):
         return None
     return {"project": project, "date": date, "hours": hours, "captured_at": data.get("captured_at", "")}
@@ -114,8 +118,12 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
                         prev = merged.get(key)
                         if prev is None or existing["hours"] > prev["hours"]:
                             merged[key] = existing
-            except OSError:
-                pass  # proceed with empty existing set
+            except OSError as exc:
+                # Fail closed: if the existing month can't be fully read, do NOT
+                # rewrite it — an empty/partial merge would wipe good rows (the very
+                # data-loss this cache is meant to prevent). Skip; retry next run.
+                _LOGGER.warning("observed cache: skipping %s, read failed: %s", month, exc)
+                continue
         for row in rows:
             key = (row["project"], row["date"])
             prev = merged.get(key)
@@ -160,9 +168,12 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
                         continue
                     try:
                         data = json.loads(line)
-                        latest[(str(data["project"]), str(data["date"]))] = float(data["hours"])
-                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+                    except (json.JSONDecodeError, ValueError):
                         _LOGGER.warning("Skipping unreadable observed line in %s", path.name)
+                        continue
+                    row = _coerce_row(data)
+                    if row is not None:
+                        latest[(row["project"], row["date"])] = row["hours"]
         except OSError as exc:
             _LOGGER.warning("Could not read observed file %s: %s", path, exc)
     return latest

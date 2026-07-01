@@ -137,10 +137,12 @@ class ProjectsLintHelperTests(unittest.TestCase):
         self.assertIn("no distinct customer", thin[0].message)
 
     def test_thin_slug_duplicate_quiet_without_richer_twin(self):
+        # Slug-named and thin (<=THIN_TERM_MAX terms) so it passes the count check
+        # and reaches the twin loop — but no richer profile covers the slug, so quiet.
         payload = {
             "projects": [
                 {"name": "portal-repo", "customer": "acme.example", "enabled": True,
-                 "match_terms": ["portal-repo", "acme.example", "portal dev"]},
+                 "match_terms": ["portal-repo"]},
             ]
         }
         warnings = lint_projects_payload(payload)

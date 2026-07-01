@@ -10,14 +10,14 @@ from rich.table import Table
 from core.doctor_projects_config_rows import add_config_integrity_rows
 
 
-def _write_config(payload: dict) -> Path:
-    tmp = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
-    json.dump(payload, tmp)
-    tmp.close()
-    return Path(tmp.name)
-
-
 class DoctorConfigIntegrityRowTests(unittest.TestCase):
+    def _write_config(self, payload: dict) -> Path:
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+        json.dump(payload, tmp)
+        tmp.close()
+        self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
+        return Path(tmp.name)
+
     def _table(self) -> Table:
         table = Table()
         table.add_column("Source / Path")
@@ -26,7 +26,7 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
         return table
 
     def test_integrity_rows_added_for_conflict_and_thin_duplicate(self):
-        config = _write_config(
+        config = self._write_config(
             {
                 "projects": [
                     {"name": "Portal", "customer": "acme.example", "enabled": True,
@@ -43,7 +43,7 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
         self.assertGreaterEqual(table.row_count, 2)
 
     def test_no_rows_for_clean_config(self):
-        config = _write_config(
+        config = self._write_config(
             {
                 "projects": [
                     {"name": "Portal", "customer": "acme.example", "enabled": True,

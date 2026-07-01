@@ -93,6 +93,21 @@ class ProjectsLintHelperTests(unittest.TestCase):
         # generic overlap-term is suppressed for the conflicting slug
         self.assertFalse(any(w.code == "overlap-term" and "acme/portal" in w.message for w in warnings))
 
+    def test_slug_customer_conflict_warns_for_dash_slug_without_path(self):
+        # Exercises the non-path branch: "-" in term and _looks_like_slug(term).
+        payload = {
+            "projects": [
+                {"name": "Portal", "customer": "acme.example", "enabled": True,
+                 "match_terms": ["portal-repo", "portal dev"]},
+                {"name": "portal-dup", "customer": "other.example", "enabled": True,
+                 "match_terms": ["portal-repo"]},
+            ]
+        }
+        warnings = lint_projects_payload(payload)
+        conflict = [w for w in warnings if w.code == "slug-customer-conflict"]
+        self.assertEqual(len(conflict), 1)
+        self.assertIn("portal-repo", conflict[0].message)
+
     def test_slug_same_customer_is_not_a_conflict(self):
         payload = {
             "projects": [

@@ -52,15 +52,15 @@ def lint_projects_payload(payload: dict[str, Any]) -> list[LintWarning]:
         name = str(project.get("name", "")).strip()
         customer = str(project.get("customer") or "").strip().lower()
         canonical = str(project.get("canonical_project") or name).strip().lower()
-        clean_terms = sorted(
-            {str(t).strip().lower() for t in (project.get("match_terms", []) or []) if str(t).strip()}
-        )
+        clean_terms = {
+            str(t).strip().lower() for t in (project.get("match_terms", []) or []) if str(t).strip()
+        }
         profile_infos.append(
             {
                 "name": name,
                 "name_lc": name.lower(),
                 "customer_lc": customer,
-                "terms": set(clean_terms),
+                "terms": clean_terms,
                 "count": len(clean_terms),
             }
         )

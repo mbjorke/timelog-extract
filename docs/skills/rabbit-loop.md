@@ -27,7 +27,7 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ## The loop (converge-then-pause)
 
-```
+```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
 1. Generate Implement the task. Commit.
 2. Critic   scripts/rabbit_loop.sh            # base defaults to origin/main
@@ -65,7 +65,7 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 
 ## Running it
 
-```
+```bash
 scripts/rabbit_loop.sh                    # review local changes vs origin/main + autotests
 scripts/rabbit_loop.sh --base origin/main # explicit base (default)
 scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
@@ -97,7 +97,7 @@ Findings are saved to `.rabbit-loop/findings.txt`, test output to
 `.rabbit-loop/autotests.log` (both git-ignored). Maintain the human-readable
 audit trail in `.rabbit-loop/state.md`:
 
-```
+```text
 ## Iteration N — <date> — <branch> @ <sha>
 - CodeRabbit: <count> findings
   - [High] <file:line> <summary> → FIXED (<sha>)
@@ -111,7 +111,7 @@ audit trail in `.rabbit-loop/state.md`:
 Once `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, the loop may ship —
 but the **merge gate is by change class**, decided mechanically:
 
-```
+```bash
 scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
 ```
 
@@ -136,7 +136,7 @@ not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **an
 A pause is only useful if you know *what* to test. The loop **must** hand you a concrete,
 runnable checklist — never "please test this." Generate the scaffold, then complete it:
 
-```
+```bash
 scripts/rabbit_loop.sh --manual-test-plan > .rabbit-loop/manual-tests.md
 ```
 

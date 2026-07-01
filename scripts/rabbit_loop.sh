@@ -18,6 +18,8 @@
 # --manual-test-plan scaffolds a manual-test checklist from the committed diff:
 #   each changed AREA (collectors/outputs/core/cli/scripts/pkg/tests) maps to a
 #   concrete verification command for the maintainer to run at a NEEDS_HUMAN pause.
+#   To hand that pause to the project board (Status → "Needs manual testing") and
+#   post the checklist on the issue, use scripts/rabbit_handoff.sh --issue N.
 #
 # --classify-merge prints the ship gate for the committed diff vs base:
 #   MERGE_CLASS: SAFE        → no human-judgment surface touched; auto-merge when

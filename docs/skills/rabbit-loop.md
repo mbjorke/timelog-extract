@@ -159,6 +159,34 @@ The agent then **fills every step**:
 Post the completed checklist to the PR (or hand it over directly) and pause. Unknown/root files
 map conservatively to a behavior check — over-prompting beats missing a regression.
 
+### Board handoff — the "Needs manual testing" column
+
+The NEEDS_HUMAN pause has a home on the project board ([Project 3](https://github.com/users/mbjorke/projects/3)):
+the **`Needs manual testing`** Status column. It is *not* "things we forgot to test" — it means
+"the machine is done and confident, but this touches money/report-correctness, so a human does the
+last look." The board Status maps to the loop like this:
+
+```
+Backlog → Ready (prio now/next) → In progress (agent working)
+        → In review (PR open, CodeRabbit)
+              ├─ SAFE + CONVERGED ─────────────────────→ Done   (auto-merge)
+              └─ NEEDS_HUMAN + CONVERGED → Needs manual testing → Done
+                     (checklist posted on the issue; human runs it, then merges)
+```
+
+Do the handoff with one command (it reuses the classify + checklist above, and is the **only**
+kanin-loop script that writes to GitHub — `rabbit_loop.sh` stays read-only):
+
+```bash
+scripts/rabbit_handoff.sh --issue N            # park #N in "Needs manual testing" + post the checklist
+scripts/rabbit_handoff.sh --issue N --dry-run  # preview: show the move + checklist, write nothing
+```
+
+It refuses a `SAFE` diff (those auto-merge — pass `--force` to override), resolves the board
+field/column **by name** (surviving renames), and needs the `project` gh scope
+(`gh auth refresh -s project`). After you complete and run the checklist, move the issue to
+**Done** and merge.
+
 ## When NOT to loop
 
 - Product/architecture decisions — those are a product-owner pass, not a review

@@ -54,9 +54,9 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
   semantics, API/behavior changes without a spec). Record them as escalations.
 - **Autotests must stay green** every iteration — a second, deterministic critic
   alongside CodeRabbit.
-- **Read the generated code.** The human reviews the final diff; the loop is
-  assistive, not autonomous. It never commits on your behalf beyond your own
-  fixes, and never pushes or merges.
+- **Read the generated code.** The loop is assistive. After it converges it may
+  push and open a PR, but it **auto-merges only the safe class** (see Ship stage);
+  anything touching shipping code, tests, config, or governance pauses for you.
 - **Budget:** each iteration hits the CodeRabbit API. Use `--light` for cheaper
   passes; keep diffs small.
 
@@ -87,6 +87,32 @@ audit trail in `.rabbit-loop/state.md`:
 - Autotests: PASS/FAIL
 - Verdict: ITERATE / CONVERGED
 ```
+
+## Ship stage (converge → push → PR → gate)
+
+Once `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, the loop may ship —
+but the **merge gate is by change class**, decided mechanically:
+
+```
+scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
+```
+
+1. **Push** the branch and **open or update the PR** (English title/body per `AGENTS.md`;
+   include the converged CodeRabbit summary and any escalations — no private customer data).
+2. **Classify** the committed diff vs `origin/main`:
+   - **SAFE** — every changed path is under `docs/`, `.claude/skills/`, or `.cursor/rules/`
+     (docs / skills / rules only; no shipping code, tests, config, or governance). The loop may
+     **auto-merge** (squash) and report back.
+   - **NEEDS_HUMAN** — any path outside that allowlist (e.g. `core/`, `collectors/`, `outputs/`,
+     `scripts/`, `tests/`, `pyproject.toml`, `AGENTS.md`, `.github/`). The loop **stops**, posts a
+     **manual-test checklist** (what changed, what to exercise, how to run it), and **pings you**.
+     You run the manual tests and click merge.
+
+The classifier is intentionally strict: a misclassified auto-merge is worse than an unnecessary
+pause. Widen `SAFE_MERGE_PREFIXES` in `scripts/rabbit_loop.sh` only with a deliberate decision.
+
+**Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
+not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.
 
 ## When NOT to loop
 

@@ -12,8 +12,14 @@
 #
 # Usage:
 #   scripts/rabbit_loop.sh [--base <branch>] [--light] [--no-tests] [--help]
+#   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
 #
-# Exit codes: 0 = CONVERGED, 1 = ITERATE (findings and/or test failures),
+# --classify-merge prints the ship gate for the committed diff vs base:
+#   MERGE_CLASS: SAFE        → only docs/, .claude/skills/, .cursor/rules/ changed
+#                              (auto-merge permitted by docs/skills/rabbit-loop.md)
+#   MERGE_CLASS: NEEDS_HUMAN → any shipping/behavior/config path changed → pause
+#
+# Exit codes: 0 = CONVERGED / SAFE, 1 = ITERATE or NEEDS_HUMAN,
 #             2 = preflight/setup problem (e.g. not authenticated).
 
 set -euo pipefail
@@ -23,10 +29,39 @@ set -euo pipefail
 BASE="origin/main"
 LIGHT=""
 RUN_TESTS=1
+CLASSIFY=0
+
+# Auto-merge is permitted ONLY when every committed path lives under one of these
+# non-shipping prefixes. Anything touching core/, collectors/, outputs/, scripts/,
+# tests/, config, or governance falls through to NEEDS_HUMAN (pause). Conservative
+# by design: a misclassified auto-merge is worse than an unnecessary pause.
+SAFE_MERGE_PREFIXES=("docs/" ".claude/skills/" ".cursor/rules/")
 
 usage() {
   awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
   exit 0
+}
+
+classify_merge() {
+  local base="$1" changed unsafe=() f p ok
+  changed="$(git diff --name-only "${base}...HEAD")"
+  if [[ -z "$changed" ]]; then
+    echo "MERGE_CLASS: NEEDS_HUMAN (no committed changes vs $base)"; return 1
+  fi
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    ok=0
+    for p in "${SAFE_MERGE_PREFIXES[@]}"; do
+      [[ "$f" == "$p"* ]] && { ok=1; break; }
+    done
+    [[ $ok -eq 0 ]] && unsafe+=("$f")
+  done <<< "$changed"
+  if [[ ${#unsafe[@]} -eq 0 ]]; then
+    echo "MERGE_CLASS: SAFE (docs/skills/rules only)"; return 0
+  fi
+  echo "MERGE_CLASS: NEEDS_HUMAN (${#unsafe[@]} shipping/behavior path(s)):"
+  printf '  %s\n' "${unsafe[@]}"
+  return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -34,6 +69,7 @@ while [[ $# -gt 0 ]]; do
     --base) BASE="${2:?--base needs a branch}"; shift 2 ;;
     --light) LIGHT="--light"; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
+    --classify-merge) CLASSIFY=1; shift ;;
     -h|--help) usage ;;
     *) echo "rabbit_loop: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
@@ -43,6 +79,14 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   echo "rabbit_loop: not inside a git repository" >&2; exit 2
 }
 cd "$REPO_ROOT"
+
+# Ship-gate classification is a pure git-diff check; no CodeRabbit call needed.
+if [[ $CLASSIFY -eq 1 ]]; then
+  if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
+    echo "rabbit_loop: base ref '$BASE' not found (try \`git fetch origin\`)." >&2; exit 2
+  fi
+  classify_merge "$BASE"; exit $?
+fi
 
 STATE_DIR="$REPO_ROOT/.rabbit-loop"
 mkdir -p "$STATE_DIR"

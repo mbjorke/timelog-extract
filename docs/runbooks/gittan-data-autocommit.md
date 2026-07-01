@@ -29,7 +29,7 @@ install the timer.
 ### macOS (launchd)
 
 Save this as `~/Library/LaunchAgents/sh.gittan.autocommit.plist` and load it
-(replace the script path with your checkout, and `USERNAME`):
+(replace the script path with your actual checkout path):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -40,7 +40,7 @@ Save this as `~/Library/LaunchAgents/sh.gittan.autocommit.plist` and load it
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/USERNAME/Workspace/Project/timelog-extract/scripts/gittan_data_autocommit.sh</string>
+    <string>&lt;path-to-timelog-extract-checkout&gt;/scripts/gittan_data_autocommit.sh</string>
   </array>
   <key>StartInterval</key><integer>600</integer>
   <key>RunAtLoad</key><true/>

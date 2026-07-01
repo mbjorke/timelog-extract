@@ -92,6 +92,42 @@ spec (it reviews the diff), so this discipline is on the planner. (Lesson: the
 reported-time layer shipped in #186/#187 with the backlog only in a local plan
 file and no traceable spec link — exactly what this section prevents.)
 
+## Prioritizing the issue backlog (project board)
+
+Specs become issues, and this skill **prioritizes the issues** — the board is the
+live, ordered view.
+
+This is consistent with the *Issue lifecycle* rule above, once you hold one model
+of what a task-prompt is: **a `docs/task-prompts/*.md` file is a promoted (`now` /
+`next`) spec.** Ideas that are `later` / `do not build yet` live as backlog
+*entries inside* a spec (or in idea docs), **not** as their own task-prompt file.
+So "one issue per task-prompt" and "only `now`/`next` items get issues" are the
+same rule, not two — the generator only ever sees already-promoted specs.
+
+- **Create issues from specs with the generator**, not by hand: `/docs-to-issues`
+  ([`docs-to-issues.md`](docs-to-issues.md)) turns each `docs/task-prompts/*.md`
+  spec (already `now`/`next` by the rule above) into an issue idempotently (title +
+  Traceability + Gherkin acceptance criteria). It skips specs whose
+  `implementation_status` is already done. Dry-run, review, `--apply`. Re-runs never
+  duplicate.
+- **Set priority on each issue** with a label — `priority:now` / `priority:next` /
+  `priority:later` / `priority:do-not-build` — matching the backlog framework above.
+  Labels are the source of truth and work with the plain `repo` gh scope. (A demoted
+  spec keeps its issue but takes a `later` / `do-not-build` label rather than being
+  deleted.)
+- **Reflect priority + status on the board** (GitHub Project 3,
+  https://github.com/users/mbjorke/projects/3): add the issue and set its `Priority`
+  / `Status` fields. Board writes need the `project` gh scope
+  (`gh auth refresh -s project`); without it, keep priority in labels and add to the
+  board once the scope is granted.
+- **The product-owner pass owns priority.** Promotion to a committed task-prompt is
+  what makes an idea eligible for an issue; the pass then sets `now`/`next` vs a
+  parking label. Re-run the prioritization when scope shifts — labels and board
+  fields are cheap to move.
+
+Flow: **fuzzy ask → promote to spec (task-prompt) → issue (`/docs-to-issues`) →
+prioritized on the board (this skill).**
+
 ## Backlog item shape
 
 ````md

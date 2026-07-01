@@ -57,14 +57,30 @@ class ObservedCacheTests(unittest.TestCase):
         latest = observed_hours_by_project_day(self.home)[("Alpha", "2026-06-20")]
         self.assertGreater(latest, first)
 
-    def test_removed_keys_cleared_on_rerun(self):
-        # Month replacement: a later snapshot for the same month drops keys it no longer covers.
+    def test_prior_keys_preserved_on_rerun(self):
+        # keep-max never drops a (project, day) a later run no longer covers — evidence
+        # for closed days decays, and a rerun must not erase what an earlier run captured.
         write_observed_summary(_report("2026-06-20", [_session("2026-06-20", "Alpha")]), home=self.home)
-        self.assertIn(("Alpha", "2026-06-20"), observed_hours_by_project_day(self.home))
         write_observed_summary(_report("2026-06-21", [_session("2026-06-21", "Beta")]), home=self.home)
         hours = observed_hours_by_project_day(self.home)
-        self.assertNotIn(("Alpha", "2026-06-20"), hours)
+        self.assertIn(("Alpha", "2026-06-20"), hours)
         self.assertIn(("Beta", "2026-06-21"), hours)
+
+    def test_lower_rerun_keeps_max(self):
+        # Evidence decay: a later run seeing fewer hours must NOT lower the stored value.
+        write_observed_summary(
+            _report(
+                "2026-03-10",
+                [_session("2026-03-10", "Alpha", 10, 11), _session("2026-03-10", "Alpha", 13, 15)],
+            ),
+            home=self.home,
+        )
+        peak = observed_hours_by_project_day(self.home)[("Alpha", "2026-03-10")]
+        write_observed_summary(
+            _report("2026-03-10", [_session("2026-03-10", "Alpha", 10, 11)]), home=self.home
+        )
+        after = observed_hours_by_project_day(self.home)[("Alpha", "2026-03-10")]
+        self.assertEqual(after, peak)  # keep-max: the lower rerun did not degrade it
 
     def test_empty_report_writes_nothing(self):
         report = SimpleNamespace(overall_days={}, args=Namespace(min_session=15, min_session_passive=5))

@@ -83,7 +83,8 @@ If this section conflicts with any policy below, the detailed policy below wins.
 - **Do not use destructive or irreversible shell steps lightly** when they touch user-owned or gitignored state. Examples: `mv` / `rm` on `timelog_projects.json`, `TIMELOG.md`, dated backups, or anything under `private/`.
 - Before renaming, moving aside, or deleting files that are the **only copy** of configuration or work history, **confirm with the user** or use a **non-destructive** pattern first (e.g. `cp` to a timestamped path outside the repo, or document exact restore steps).
 - Scenario testing and “quick cleanup” are common ways to lose data; treat `timelog_projects.json` as **critical** even though it is gitignored.
-- **Incident reference** (project config lost during manual matrix scenario work, recovery from git history): `docs/incidents/2026-04-13-project-config-backup-gap.md`.
+- **Closed / invoiced months:** `~/.gittan/invoice/invoiced/ledger.yaml` is **authoritative** for what was billed — never trust a fresh `gittan report` of an old month (collector evidence decays as sources rotate). The observed cache (`~/.gittan/observed/`) is a keep-max high-water mark that a report run can only raise, never lower — but it is a convenience, not invoiced truth; reconcile closed months against the ledger and `reported/`.
+- **Incident references:** project config lost during manual matrix scenario work (`docs/incidents/2026-04-13-project-config-backup-gap.md`); observed cache silently degraded by reports on closed months (`docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md`).
 
 ## Branch policy (`main` + short-lived `task/*`)
 

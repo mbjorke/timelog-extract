@@ -5,8 +5,10 @@ Written as a cheap byproduct of report runs so the agent statusline can compute
 ``docs/task-prompts/gittan-statusline-task.md``).
 
 Mirrors ``core/reported_time.py``: monthly JSONL under
-``~/.gittan/observed/YYYY-MM.jsonl``. Each report run atomically replaces all
-rows for the months it covers (stale entries removed). Observed hours are computed
+``~/.gittan/observed/YYYY-MM.jsonl``. Each report run merges the months it covers
+**keep-max** per ``(project, day)`` — a run can only raise or hold a value, never
+lower it, so evidence decay on closed months cannot degrade the record. Observed
+hours are computed
 with the **same** aggregation the reported layer uses
 (``core/reported_sync.py::build_reported_proposals``), so ``observed − handled``
 is apples-to-apples against ``core/reported_time.py``.
@@ -40,8 +42,10 @@ def _month_path(base_dir: Path, month: str) -> Path:
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
     """Persist per-``(project, day)`` observed hours from a report.
 
-    Returns the number of rows written. Each run is authoritative for the months it
-    covers: all rows for those months are replaced atomically (stale entries removed).
+    Returns the number of rows written. Merge is **keep-max** per ``(project, date)``:
+    a run can only raise or hold a stored observed value, never lower it, so evidence
+    decay on closed months cannot silently degrade the record (see
+    ``docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md``).
     """
     from core.reported_sync import build_reported_proposals
 
@@ -63,8 +67,12 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
         by_month.setdefault(day[:7] or "unknown", []).append(row)
     for month, rows in by_month.items():
         month_file = _month_path(base, month)
-        # Atomic replacement: read existing rows from other months, discard this month
+        # Keep rows from other months verbatim; merge THIS month keep-max per
+        # (project, date) so a report run can only raise or hold an observed value,
+        # never lower it. Evidence for closed months decays as sources rotate, and a
+        # plain overwrite would silently degrade the record on every rerun.
         existing_other_months = []
+        merged: Dict[Tuple[str, str], dict] = {}
         if month_file.exists():
             try:
                 with month_file.open(encoding="utf-8") as fh:
@@ -74,13 +82,22 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
                             continue
                         try:
                             data = json.loads(line)
-                            # Keep rows from other months (in case file naming was wrong)
-                            if str(data.get("date", ""))[:7] != month:
-                                existing_other_months.append(line)
-                        except (json.JSONDecodeError, KeyError, ValueError):
-                            pass  # skip garbled lines
+                        except (json.JSONDecodeError, ValueError):
+                            continue  # skip garbled lines
+                        if str(data.get("date", ""))[:7] != month:
+                            existing_other_months.append(line)
+                            continue
+                        key = (str(data.get("project", "")), str(data.get("date", "")))
+                        prev = merged.get(key)
+                        if prev is None or float(data.get("hours", 0) or 0) > float(prev.get("hours", 0) or 0):
+                            merged[key] = data
             except OSError:
                 pass  # proceed with empty existing set
+        for row in rows:
+            key = (row["project"], row["date"])
+            prev = merged.get(key)
+            if prev is None or float(row["hours"]) > float(prev.get("hours", 0) or 0):
+                merged[key] = row
         # Write full payload to a temp file, then swap into place atomically.
         fd, temp_path = tempfile.mkstemp(
             dir=month_file.parent, prefix=".tmp_", suffix=".jsonl"
@@ -89,7 +106,7 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 for line in existing_other_months:
                     fh.write(line + "\n")
-                for row in sorted(rows, key=lambda r: (r["date"], r["project"])):
+                for row in sorted(merged.values(), key=lambda r: (r["date"], r["project"])):
                     fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
                     written += 1
                 fh.flush()
@@ -103,9 +120,10 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
 
 
 def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str, str], float]:
-    """Latest observed hours per ``(project, day)`` from the cache (empty if none).
+    """Observed hours per ``(project, day)`` from the cache (empty if none).
 
-    Each report run atomically replaces its months; garbled lines are skipped, never raised."""
+    Values are a keep-max high-water mark across report runs; garbled lines are
+    skipped, never raised."""
     base = observed_base_dir(home)
     if not base.is_dir():
         return {}

@@ -65,6 +65,14 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
         add_projects_config_lint_rows(table, Path(tmp.name), warn_icon="!", style_muted="dim")
         self.assertEqual(table.row_count, 0)
 
+    def test_missing_config_is_skipped_not_raised(self):
+        table = self._table()
+        # unreadable path (OSError) is swallowed → no rows, no raise
+        add_projects_config_lint_rows(
+            table, Path("/nonexistent/gittan-projects.json"), warn_icon="!", style_muted="dim"
+        )
+        self.assertEqual(table.row_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

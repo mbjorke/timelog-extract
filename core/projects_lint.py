@@ -36,6 +36,7 @@ class LintWarning:
 
 
 def lint_projects_payload(payload: dict[str, Any]) -> list[LintWarning]:
+    """Return lint warnings for overlap, slug conflicts, thin duplicates, and broad terms."""
     warnings: list[LintWarning] = []
     term_to_projects: dict[str, list[tuple[str, str, str]]] = {}
     repo_path_terms: list[tuple[str, str]] = []

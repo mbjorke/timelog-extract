@@ -16,7 +16,8 @@ When you are getting a `task/*` branch review-ready before a PR, run the
    `RABBIT_LOOP: CONVERGED`. Cap at 3 iterations; escalate Critical / out-of-scope.
 3. Ship gate: push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`.
    Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules); otherwise
-   post a manual-test checklist and pause for the maintainer.
+   generate a checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real
+   command + judgeable expected outcome per step), post it, and pause.
 
 Base defaults to `origin/main` — keep it fresh. Canonical workflow:
 **`docs/skills/rabbit-loop.md`**. Policy: **`AGENTS.md`**.

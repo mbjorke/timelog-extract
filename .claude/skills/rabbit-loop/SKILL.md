@@ -20,8 +20,10 @@ Bounds and stopping:
   **iteration cap (default 3)**, or when only escalations remain.
 - **Ship gate:** after converging, push + open/update the PR. Auto-merge **only**
   when `scripts/rabbit_loop.sh --classify-merge` prints `MERGE_CLASS: SAFE`
-  (docs / skills / rules only). Otherwise post a manual-test checklist and pause
-  for the maintainer — never auto-merge shipping code, tests, config, or governance.
+  (docs / skills / rules only). Otherwise generate a concrete manual-test
+  checklist with `scripts/rabbit_loop.sh --manual-test-plan` (fill each step with
+  a real command + judgeable expected outcome), post it, and pause for the
+  maintainer — never auto-merge shipping code, tests, config, or governance.
 - Keep an audit trail in `.rabbit-loop/state.md` (git-ignored).
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

@@ -16,8 +16,9 @@ Thin wrapper. The canonical, editor-agnostic workflow lives in
   `RABBIT_LOOP: CONVERGED`. Iteration cap 3; escalate Critical / out-of-scope.
 - Ship gate: after converging, push + open/update the PR. Auto-merge **only** when
   `scripts/rabbit_loop.sh --classify-merge` prints `MERGE_CLASS: SAFE` (docs /
-  skills / rules only); otherwise post a manual-test checklist and pause for the
-  maintainer.
+  skills / rules only); otherwise generate a checklist with
+  `scripts/rabbit_loop.sh --manual-test-plan` (real command + judgeable expected
+  outcome per step), post it, and pause for the maintainer.
 - Base defaults to `origin/main`; keep it fresh (`git fetch`).
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

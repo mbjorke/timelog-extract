@@ -122,15 +122,35 @@ scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
      (docs / skills / rules only; no shipping code, tests, config, or governance). The loop may
      **auto-merge** (squash) and report back.
    - **NEEDS_HUMAN** — any path outside that allowlist (e.g. `core/`, `collectors/`, `outputs/`,
-     `scripts/`, `tests/`, `pyproject.toml`, `AGENTS.md`, `.github/`). The loop **stops**, posts a
-     **manual-test checklist** (what changed, what to exercise, how to run it), and **pings you**.
-     You run the manual tests and click merge.
+     `scripts/`, `tests/`, `pyproject.toml`, `AGENTS.md`, `.github/`). The loop **stops**, produces a
+     **manual-test checklist** (below), and **pings you**. You run the checklist and click merge.
 
 The classifier is intentionally strict: a misclassified auto-merge is worse than an unnecessary
 pause. Widen `SAFE_MERGE_PREFIXES` in `scripts/rabbit_loop.sh` only with a deliberate decision.
 
 **Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
 not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.
+
+### Manual-test checklist (the NEEDS_HUMAN handoff)
+
+A pause is only useful if you know *what* to test. The loop **must** hand you a concrete,
+runnable checklist — never "please test this." Generate the scaffold, then complete it:
+
+```
+scripts/rabbit_loop.sh --manual-test-plan > .rabbit-loop/manual-tests.md
+```
+
+The scaffold maps each changed **area** to a verification command (collectors → `gittan-dev
+doctor` + source-summary; outputs → a `gittan-dev report` render; core → autotests + a report on
+a known window; CLI/scripts → `--help` + a representative run; `pyproject.toml` → build/install).
+The agent then **fills every step**:
+
+- a **concrete command** (real window, real args — not `<window>`), and
+- an **expected outcome the human can judge** — a specific number, table shape, exit code, or row.
+  No "looks right" / "seems fine" — if it can't be judged, it isn't a test step.
+
+Post the completed checklist to the PR (or hand it over directly) and pause. Unknown/root files
+map conservatively to a behavior check — over-prompting beats missing a regression.
 
 ## When NOT to loop
 

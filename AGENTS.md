@@ -219,7 +219,7 @@ one trigger per stable batch.
 ### Kanin-loop (CodeRabbit convergence loop — any agent)
 
 - **What:** an editor-agnostic loop-engineering pass — implement → `scripts/rabbit_loop.sh` (CodeRabbit `--agent` + `scripts/run_autotests.sh`) → fix **within** `docs/decisions/agent-review-contract.md` → repeat until `RABBIT_LOOP: CONVERGED` (iteration cap 3). Canonical workflow: **`docs/skills/rabbit-loop.md`**.
-- **Ship gate:** after converging, push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`. Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules only); anything touching shipping code, tests, config, or governance is `NEEDS_HUMAN` → post a manual-test checklist and pause for the maintainer.
+- **Ship gate:** after converging, push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`. Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules only); anything touching shipping code, tests, config, or governance is `NEEDS_HUMAN` → generate a concrete checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real command + judgeable expected outcome per step), post it, and pause for the maintainer.
 - **Per agent:** Claude Code and Cursor expose `/rabbit-loop`; **Zed, Codex, Conductor, Antigravity** (and any shell-capable agent) run `scripts/rabbit_loop.sh` directly and follow the canonical doc. Base defaults to `origin/main` — keep it fresh (a stale local `main` inflates the review).
 
 ### Task handover prompt (copy-paste)

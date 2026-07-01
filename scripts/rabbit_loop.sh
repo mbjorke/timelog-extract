@@ -13,6 +13,11 @@
 # Usage:
 #   scripts/rabbit_loop.sh [--base <branch>] [--light] [--no-tests] [--help]
 #   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
+#   scripts/rabbit_loop.sh --manual-test-plan [--base <branch>]
+#
+# --manual-test-plan scaffolds a manual-test checklist from the committed diff:
+#   each changed AREA (collectors/outputs/core/cli/scripts/pkg/tests) maps to a
+#   concrete verification command for the maintainer to run at a NEEDS_HUMAN pause.
 #
 # --classify-merge prints the ship gate for the committed diff vs base:
 #   MERGE_CLASS: SAFE        → only docs/, .claude/skills/, .cursor/rules/ changed
@@ -30,6 +35,7 @@ BASE="origin/main"
 LIGHT=""
 RUN_TESTS=1
 CLASSIFY=0
+MANUAL_PLAN=0
 
 # Auto-merge is permitted ONLY when every committed path lives under one of these
 # non-shipping prefixes. Anything touching core/, collectors/, outputs/, scripts/,
@@ -64,12 +70,63 @@ classify_merge() {
   return 1
 }
 
+# Scaffold a manual-test checklist from the committed diff, mapping each changed
+# AREA to a concrete verification command. The agent completes each step's
+# "Expected:" with a judgeable outcome before handing it to the maintainer.
+manual_test_plan() {
+  local base="$1" changed f
+  changed="$(git diff --name-only "${base}...HEAD")"
+  if [[ -z "$changed" ]]; then
+    echo "No committed changes vs $base — nothing to manually test."; return 0
+  fi
+  local a_col=0 a_out=0 a_core=0 a_cli=0 a_scr=0 a_pkg=0 a_tst=0 a_doc=0
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    case "$f" in
+      collectors/*)               a_col=1 ;;
+      outputs/*)                   a_out=1 ;;
+      core/cli*|timelog_extract.py) a_cli=1 ;;
+      core/*)                      a_core=1 ;;
+      tests/*)                     a_tst=1 ;;
+      scripts/*)                   a_scr=1 ;;
+      pyproject.toml)              a_pkg=1 ;;
+      docs/*|.cursor/*|.claude/*|*.md) a_doc=1 ;;
+      *)                           a_core=1 ;;  # unknown → treat as behavior
+    esac
+  done <<< "$changed"
+
+  local -a steps=()
+  [[ $a_col -eq 1 ]] && steps+=("Source health (collectors/): \`gittan-dev doctor\` → changed source shows the right collector_status row; \`gittan-dev report --today --source-summary\` → it contributes events (or is correctly empty). Expected: <fill>")
+  [[ $a_out -eq 1 ]] && steps+=("Rendering (outputs/): \`gittan-dev report --from <window> --to <window> --screen-time off\` → the affected table/section renders (columns, grouping, totals). Expected: <fill>")
+  [[ $a_core -eq 1 ]] && steps+=("Behavior (core/): \`bash scripts/run_autotests.sh\` green, then \`gittan-dev report --from <window> --to <window>\` on a known window → hours/grouping match expectation. Expected: <fill>")
+  [[ $a_cli -eq 1 ]] && steps+=("CLI: \`gittan-dev <changed-command> --help\` renders; run a representative invocation → correct output + exit code. Expected: <fill>")
+  [[ $a_scr -eq 1 ]] && steps+=("Script (scripts/): run it with \`--help\` and a representative invocation → expected behavior + exit code. Expected: <fill>")
+  [[ $a_pkg -eq 1 ]] && steps+=("Packaging (pyproject.toml): \`python -m build\` succeeds; smoke-install the wheel; \`gittan -V\`. Expected: <fill>")
+  [[ $a_tst -eq 1 ]] && steps+=("Targeted tests: \`python3 -m unittest tests/<changed_test>.py\` → green. Expected: <fill>")
+  [[ $a_doc -eq 1 && ${#steps[@]} -eq 0 ]] && steps+=("Docs/config only: skim rendering; no runtime test expected. Expected: <fill or 'n/a'>")
+
+  cat <<'HDR'
+# Manual-test checklist
+
+Change: <one line — what this branch does>
+Why manual: <what CodeRabbit + autotests cannot verify>
+
+Run each step; record a judgeable result (command + expected outcome — no "looks right").
+HDR
+  local i=1 s
+  for s in "${steps[@]}"; do
+    printf '\n%d. %s\n' "$i" "$s"
+    i=$((i + 1))
+  done
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --base) BASE="${2:?--base needs a branch}"; shift 2 ;;
     --light) LIGHT="--light"; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
     --classify-merge) CLASSIFY=1; shift ;;
+    --manual-test-plan) MANUAL_PLAN=1; shift ;;
     -h|--help) usage ;;
     *) echo "rabbit_loop: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
@@ -80,12 +137,14 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 }
 cd "$REPO_ROOT"
 
-# Ship-gate classification is a pure git-diff check; no CodeRabbit call needed.
-if [[ $CLASSIFY -eq 1 ]]; then
+# Ship-gate classification and the manual-test scaffold are pure git-diff checks;
+# no CodeRabbit call needed.
+if [[ $CLASSIFY -eq 1 || $MANUAL_PLAN -eq 1 ]]; then
   if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
     echo "rabbit_loop: base ref '$BASE' not found (try \`git fetch origin\`)." >&2; exit 2
   fi
-  classify_merge "$BASE"; exit $?
+  [[ $CLASSIFY -eq 1 ]] && { classify_merge "$BASE"; exit $?; }
+  manual_test_plan "$BASE"; exit 0
 fi
 
 STATE_DIR="$REPO_ROOT/.rabbit-loop"

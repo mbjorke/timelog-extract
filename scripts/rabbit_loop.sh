@@ -229,11 +229,15 @@ if [[ $CR_EXIT -ne 0 || "$REVIEW_COMPLETED" != "1" ]]; then
   echo "RABBIT_LOOP: REVIEW_INCOMPLETE (cr_exit=$CR_EXIT completed=$REVIEW_COMPLETED) — see $FINDINGS_FILE"
   exit 1
 fi
-if [[ "$FINDINGS_COUNT" == "0" && ( "$TESTS_STATUS" == "PASS" || "$TESTS_STATUS" == "SKIPPED" ) ]]; then
-  echo "RABBIT_LOOP: CONVERGED (findings=0 tests=$TESTS_STATUS)"
+# CONVERGED is the ship signal — it requires green tests, never skipped ones.
+if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
+  echo "RABBIT_LOOP: CONVERGED (findings=0 tests=PASS)"
   exit 0
+fi
+if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "SKIPPED" ]]; then
+  echo "RABBIT_LOOP: REVIEW_CLEAN (findings=0, tests skipped — rerun without --no-tests to converge)"
+  exit 1
 fi
 echo "RABBIT_LOOP: ITERATE (findings=$FINDINGS_COUNT tests=$TESTS_STATUS)"
 echo "  Read $FINDINGS_FILE, fix within docs/decisions/agent-review-contract.md, then rerun."
-exit 1
 exit 1

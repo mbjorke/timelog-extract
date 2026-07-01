@@ -82,6 +82,27 @@ class ObservedCacheTests(unittest.TestCase):
         after = observed_hours_by_project_day(self.home)[("Alpha", "2026-03-10")]
         self.assertEqual(after, peak)  # keep-max: the lower rerun did not degrade it
 
+    def test_malformed_existing_rows_are_skipped(self):
+        # Valid-JSON-but-wrong-shape cache lines must be skipped, not crash the merge.
+        from core.observed_cache import _month_path, observed_base_dir
+
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        _month_path(base, "2026-03").write_text(
+            "[1, 2, 3]\n"  # JSON list, not a dict
+            '{"project": "", "date": "2026-03-01", "hours": 1}\n'  # empty project
+            '{"project": "Beta", "date": "2026-03-02", "hours": "x"}\n'  # non-numeric hours
+            '{"project": "Beta", "date": "2026-03-02", "hours": 2.5}\n',  # valid
+            encoding="utf-8",
+        )
+        written = write_observed_summary(
+            _report("2026-03-03", [_session("2026-03-03", "Alpha")]), home=self.home
+        )
+        hours = observed_hours_by_project_day(self.home)
+        self.assertGreater(written, 0)
+        self.assertIn(("Alpha", "2026-03-03"), hours)  # new row landed
+        self.assertEqual(hours[("Beta", "2026-03-02")], 2.5)  # only the valid existing row survived
+
     def test_empty_report_writes_nothing(self):
         report = SimpleNamespace(overall_days={}, args=Namespace(min_session=15, min_session_passive=5))
         self.assertEqual(write_observed_summary(report, home=self.home), 0)

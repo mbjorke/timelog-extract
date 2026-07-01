@@ -39,6 +39,26 @@ def _month_path(base_dir: Path, month: str) -> Path:
     return base_dir / f"{month}.jsonl"
 
 
+def _coerce_row(data: object) -> Optional[dict]:
+    """Normalize a parsed cache record, or return None if it is malformed.
+
+    Guards the keep-max merge against valid-JSON-but-wrong-shape lines (e.g. a list,
+    or a non-numeric ``hours``): only records with non-empty string ``project`` /
+    ``date`` and a numeric ``hours`` are kept; everything else is skipped.
+    """
+    if not isinstance(data, dict):
+        return None
+    project = str(data.get("project", "")).strip()
+    date = str(data.get("date", "")).strip()
+    if not project or not date:
+        return None
+    try:
+        hours = float(data.get("hours", 0) or 0)
+    except (TypeError, ValueError):
+        return None
+    return {"project": project, "date": date, "hours": hours, "captured_at": data.get("captured_at", "")}
+
+
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
     """Persist per-``(project, day)`` observed hours from a report.
 
@@ -83,20 +103,23 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
                         try:
                             data = json.loads(line)
                         except (json.JSONDecodeError, ValueError):
-                            continue  # skip garbled lines
-                        if str(data.get("date", ""))[:7] != month:
-                            existing_other_months.append(line)
+                            continue  # skip garbled JSON
+                        existing = _coerce_row(data)
+                        if existing is None:
+                            continue  # valid JSON but not a well-formed observed row
+                        if existing["date"][:7] != month:
+                            existing_other_months.append(line)  # keep verbatim
                             continue
-                        key = (str(data.get("project", "")), str(data.get("date", "")))
+                        key = (existing["project"], existing["date"])
                         prev = merged.get(key)
-                        if prev is None or float(data.get("hours", 0) or 0) > float(prev.get("hours", 0) or 0):
-                            merged[key] = data
+                        if prev is None or existing["hours"] > prev["hours"]:
+                            merged[key] = existing
             except OSError:
                 pass  # proceed with empty existing set
         for row in rows:
             key = (row["project"], row["date"])
             prev = merged.get(key)
-            if prev is None or float(row["hours"]) > float(prev.get("hours", 0) or 0):
+            if prev is None or float(row["hours"]) > prev["hours"]:
                 merged[key] = row
         # Write full payload to a temp file, then swap into place atomically.
         fd, temp_path = tempfile.mkstemp(

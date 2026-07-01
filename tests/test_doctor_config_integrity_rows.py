@@ -55,6 +55,16 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
         add_projects_config_lint_rows(table, config, warn_icon="!", style_muted="dim")
         self.assertEqual(table.row_count, 0)
 
+    def test_malformed_config_is_skipped_not_raised(self):
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+        tmp.write("{ this is not valid json")
+        tmp.close()
+        self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
+        table = self._table()
+        # malformed JSON (a ValueError subclass) is swallowed → no rows, no raise
+        add_projects_config_lint_rows(table, Path(tmp.name), warn_icon="!", style_muted="dim")
+        self.assertEqual(table.row_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

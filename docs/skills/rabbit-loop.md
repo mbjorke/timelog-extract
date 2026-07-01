@@ -1,14 +1,17 @@
 # rabbit-loop — CodeRabbit loop-engineering workflow
 
-Canonical workflow for the `/rabbit-loop` skill. A **loop-engineering** pass
-(Addy Osmani, https://addyosmani.com/blog/loop-engineering/): instead of
+Canonical, **editor-agnostic** workflow for the kanin-loop. A **loop-engineering**
+pass (Addy Osmani, https://addyosmani.com/blog/loop-engineering/): instead of
 hand-prompting turn-by-turn, run a **loop** where a generator produces work, an
 **independent critic** grades it against a verifiable condition, the generator
 fixes within bounds, and the loop repeats until a **stopping condition** holds —
 with state on disk and the human staying engaged.
 
-The critic here is **CodeRabbit** ("kanin"), run locally via its CLI. It is a
-different system from the generator, so it does not self-grade its own work.
+The critic is **CodeRabbit** ("kanin"), run locally via its CLI, plus autotests.
+Both are different systems from the generator, so they do not self-grade its work.
+
+**Any coding agent can run this** — the engine is `scripts/rabbit_loop.sh` + this
+doc, not any one editor. See *Invoking it per agent* below.
 
 Policy (branches, PR language, safety, tests): **`AGENTS.md`**.
 Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
@@ -17,10 +20,10 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 | Role | Who | Does |
 |------|-----|------|
-| Generator | this agent (Claude Code / Cursor) | implements the task, commits, applies in-contract fixes |
+| Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
 | Critic 1 | **CodeRabbit CLI** | independent review of the local diff → structured findings |
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (500-line gate + unit tests) |
-| Gate | **maintainer (human)** | final review; the loop never merges |
+| Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 
 ## The loop (converge-then-pause)
 
@@ -67,7 +70,22 @@ scripts/rabbit_loop.sh                    # review local changes vs origin/main 
 scripts/rabbit_loop.sh --base origin/main # explicit base (default)
 scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
+scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
 ```
+
+### Invoking it per agent
+
+The loop is the **script + this doc**; the only per-agent difference is how you
+launch it. In every case the agent then reads this doc and drives the loop.
+
+| Agent | How to start |
+|-------|--------------|
+| **Claude Code** | `/rabbit-loop` (skill: `.claude/skills/rabbit-loop/SKILL.md`) |
+| **Cursor** | `/rabbit-loop` (command: `.cursor/commands/rabbit-loop.md`; rule auto-attaches on a task branch) |
+| **Zed / Codex / Conductor / Antigravity** | run `scripts/rabbit_loop.sh` and follow this doc — these agents read `AGENTS.md`, which points here (§ *Review Cadence*) |
+
+Any agent that can run a shell command and edit files can execute the full loop;
+no editor-specific integration is required beyond the launch surface above.
 
 **Base ref matters.** The default base is `origin/main`, not local `main`. A
 stale local `main` makes CodeRabbit review *every* change merged since it — work

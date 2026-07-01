@@ -1,0 +1,22 @@
+---
+description: When converging a task branch against CodeRabbit before PR, follow the kanin-loop (review → fix in contract → autotests → ship gate)
+globs:
+alwaysApply: false
+---
+
+# Kanin-loop (CodeRabbit review convergence)
+
+When you are getting a `task/*` branch review-ready before a PR, run the
+**kanin-loop** instead of hand-prompting fixes:
+
+1. In **Cursor**, run **`/rabbit-loop`**, **or** open and follow
+   **`docs/skills/rabbit-loop.md`** (same workflow in any editor).
+2. Loop: `scripts/rabbit_loop.sh` (CodeRabbit `--agent` + `scripts/run_autotests.sh`)
+   → fix **only within** `docs/decisions/agent-review-contract.md` → repeat until
+   `RABBIT_LOOP: CONVERGED`. Cap at 3 iterations; escalate Critical / out-of-scope.
+3. Ship gate: push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`.
+   Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules); otherwise
+   post a manual-test checklist and pause for the maintainer.
+
+Base defaults to `origin/main` — keep it fresh. Canonical workflow:
+**`docs/skills/rabbit-loop.md`**. Policy: **`AGENTS.md`**.

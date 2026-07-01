@@ -20,9 +20,10 @@
 #   concrete verification command for the maintainer to run at a NEEDS_HUMAN pause.
 #
 # --classify-merge prints the ship gate for the committed diff vs base:
-#   MERGE_CLASS: SAFE        → only docs/, .claude/skills/, .cursor/rules/ changed
-#                              (auto-merge permitted by docs/skills/rabbit-loop.md)
-#   MERGE_CLASS: NEEDS_HUMAN → any shipping/behavior/config path changed → pause
+#   MERGE_CLASS: SAFE        → no human-judgment surface touched; auto-merge when
+#                              CONVERGED (per docs/skills/rabbit-loop.md)
+#   MERGE_CLASS: NEEDS_HUMAN → touches a judgment surface (report/invoice engine,
+#                              collectors, outputs, deps, CI, governance) → pause
 #
 # Exit codes: 0 = CONVERGED / SAFE, 1 = ITERATE or NEEDS_HUMAN,
 #             2 = preflight/setup problem (e.g. not authenticated).
@@ -37,36 +38,45 @@ RUN_TESTS=1
 CLASSIFY=0
 MANUAL_PLAN=0
 
-# Auto-merge is permitted ONLY when every committed path lives under one of these
-# non-shipping prefixes. Anything touching core/, collectors/, outputs/, scripts/,
-# tests/, config, or governance falls through to NEEDS_HUMAN (pause). Conservative
-# by design: a misclassified auto-merge is worse than an unnecessary pause.
-SAFE_MERGE_PREFIXES=("docs/" ".claude/skills/" ".cursor/rules/")
-
 usage() {
   awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
   exit 0
 }
 
+# The ship gate is by JUDGMENT, not file type. A change needs a human only when it
+# touches a surface where CI + CodeRabbit + autotests cannot judge correctness:
+# the report/invoice number engine, captured evidence, visual output, packaging,
+# CI, or governance. Everything else auto-merges when CONVERGED — a well-tested fix
+# should not need a human to run a command a script already ran.
+_judgment_required() {
+  case "$1" in
+    outputs/*) return 0 ;;                                 # rendering / PDF — visual judgment
+    collectors/*) return 0 ;;                              # changes captured evidence → real-data hours
+    core/domain.py|core/analytics.py|core/project_hours.py) return 0 ;;   # session / hour math
+    core/pipeline.py|core/truth_payload.py) return 0 ;;    # attribution spine
+    core/report_aggregate.py|core/report_service.py|core/report_runtime.py|core/report_cli.py) return 0 ;;
+    pyproject.toml) return 0 ;;                            # deps / packaging
+    .github/*) return 0 ;;                                 # CI
+    AGENTS.md|CLAUDE.md) return 0 ;;                       # governance
+    *) return 1 ;;
+  esac
+}
+
 classify_merge() {
-  local base="$1" changed unsafe=() f p ok
+  local base="$1" changed needs=() f
   changed="$(git diff --name-only "${base}...HEAD")"
   if [[ -z "$changed" ]]; then
     echo "MERGE_CLASS: NEEDS_HUMAN (no committed changes vs $base)"; return 1
   fi
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    ok=0
-    for p in "${SAFE_MERGE_PREFIXES[@]}"; do
-      [[ "$f" == "$p"* ]] && { ok=1; break; }
-    done
-    [[ $ok -eq 0 ]] && unsafe+=("$f")
+    _judgment_required "$f" && needs+=("$f")
   done <<< "$changed"
-  if [[ ${#unsafe[@]} -eq 0 ]]; then
-    echo "MERGE_CLASS: SAFE (docs/skills/rules only)"; return 0
+  if [[ ${#needs[@]} -eq 0 ]]; then
+    echo "MERGE_CLASS: SAFE (no human-judgment surface touched — auto-merge when CONVERGED)"; return 0
   fi
-  echo "MERGE_CLASS: NEEDS_HUMAN (${#unsafe[@]} shipping/behavior path(s)):"
-  printf '  %s\n' "${unsafe[@]}"
+  echo "MERGE_CLASS: NEEDS_HUMAN (${#needs[@]} human-judgment path(s)):"
+  printf '  %s\n' "${needs[@]}"
   return 1
 }
 

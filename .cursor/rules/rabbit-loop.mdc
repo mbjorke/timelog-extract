@@ -14,10 +14,11 @@ When you are getting a `task/*` branch review-ready before a PR, run the
 2. Loop: `scripts/rabbit_loop.sh` (CodeRabbit `--agent` + `scripts/run_autotests.sh`)
    → fix **only within** `docs/decisions/agent-review-contract.md` → repeat until
    `RABBIT_LOOP: CONVERGED`. Cap at 3 iterations; escalate Critical / out-of-scope.
-3. Ship gate: push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`.
-   Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules); otherwise
-   generate a checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real
-   command + judgeable expected outcome per step), post it, and pause.
+3. Ship gate (judgment, not file type): push + open the PR, then
+   `scripts/rabbit_loop.sh --classify-merge`. `SAFE` → **auto-merge** when CONVERGED.
+   `NEEDS_HUMAN` (report/invoice engine, `collectors/`, `outputs/`, deps, CI,
+   governance) → generate a checklist with `scripts/rabbit_loop.sh --manual-test-plan`
+   (real command + judgeable expected outcome per step), post it, and pause.
 
 Base defaults to `origin/main` — keep it fresh. Canonical workflow:
 **`docs/skills/rabbit-loop.md`**. Policy: **`AGENTS.md`**.

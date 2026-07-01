@@ -216,6 +216,12 @@ one trigger per stable batch.
 - **Typical commands** (from repo root): `coderabbit review --base main --type committed` to compare committed changes on your branch to `main`; `coderabbit review --type uncommitted` for unstaged/staged-only changes. Use `--interactive` or `--agent` if you prefer those modes.
 - **Note:** CLI and GitHub PR reviews use the same product family but can differ in scope and context; the PR thread remains the merge-facing review for collaborators.
 
+### Kanin-loop (CodeRabbit convergence loop — any agent)
+
+- **What:** an editor-agnostic loop-engineering pass — implement → `scripts/rabbit_loop.sh` (CodeRabbit `--agent` + `scripts/run_autotests.sh`) → fix **within** `docs/decisions/agent-review-contract.md` → repeat until `RABBIT_LOOP: CONVERGED` (iteration cap 3). Canonical workflow: **`docs/skills/rabbit-loop.md`**.
+- **Ship gate:** after converging, push + open the PR, then `scripts/rabbit_loop.sh --classify-merge`. Auto-merge **only** on `MERGE_CLASS: SAFE` (docs / skills / rules only); anything touching shipping code, tests, config, or governance is `NEEDS_HUMAN` → generate a concrete checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real command + judgeable expected outcome per step), post it, and pause for the maintainer.
+- **Per agent:** Claude Code and Cursor expose `/rabbit-loop`; **Zed, Codex, Conductor, Antigravity** (and any shell-capable agent) run `scripts/rabbit_loop.sh` directly and follow the canonical doc. Base defaults to `origin/main` — keep it fresh (a stale local `main` inflates the review).
+
 ### Task handover prompt (copy-paste)
 
 - For a **single canonical prompt** (release tagging, PyPI tag warning, worktrees, `gh pr` deduplication, A/B notes between agents), use `docs/contributing/agent-task-handover-prompt.md`. Land updates via a normal PR into `main`; until merged, paste from your branch or from GitHub’s file view.

@@ -35,6 +35,9 @@ private/
 .tmp/
 .wrangler/
 
+# CodeRabbit kanin-loop per-run state (scripts/rabbit_loop.sh)
+.rabbit-loop/
+
 # Generated reports/artifacts
 output/
 # CLI default report dir (`gittan report --json-file out/...`, reconciliation scripts, CI uploads under out/cli-experiments/)

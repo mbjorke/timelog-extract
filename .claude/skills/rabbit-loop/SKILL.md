@@ -10,20 +10,22 @@ Thin wrapper. Read and follow the canonical workflow:
 
 Loop-engineering pass (Addy Osmani): design a loop, don't hand-prompt. The
 **independent critic** is CodeRabbit via `scripts/rabbit_loop.sh` (which also
-runs autotests); you are the **generator**. Converge-then-pause — the loop never
-commits beyond your own fixes, never pushes or merges.
+runs autotests); you are the **generator**. After converging, the loop pushes +
+opens a PR and auto-merges the SAFE class; it pauses only for human-judgment
+changes (see Ship gate).
 
 Bounds and stopping:
 - Fix only **within** `docs/decisions/agent-review-contract.md` (severity →
   allowed action; ≤5 tracked files for medium; escalate Critical / out-of-scope).
 - **Stop** when `scripts/rabbit_loop.sh` prints `RABBIT_LOOP: CONVERGED`, at the
   **iteration cap (default 3)**, or when only escalations remain.
-- **Ship gate:** after converging, push + open/update the PR. Auto-merge **only**
-  when `scripts/rabbit_loop.sh --classify-merge` prints `MERGE_CLASS: SAFE`
-  (docs / skills / rules only). Otherwise generate a concrete manual-test
-  checklist with `scripts/rabbit_loop.sh --manual-test-plan` (fill each step with
-  a real command + judgeable expected outcome), post it, and pause for the
-  maintainer — never auto-merge shipping code, tests, config, or governance.
+- **Ship gate (judgment, not file type):** after converging, push + open/update
+  the PR, then `scripts/rabbit_loop.sh --classify-merge`. `MERGE_CLASS: SAFE` →
+  **auto-merge** (squash) when CONVERGED. `NEEDS_HUMAN` (touches the report/invoice
+  engine, `collectors/`, `outputs/`, packaging (`pyproject.toml`), CI, or governance) → generate a concrete
+  checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real command +
+  judgeable expected outcome per step), post it, and pause. Never auto-merge unless
+  CONVERGED.
 - Keep an audit trail in `.rabbit-loop/state.md` (git-ignored).
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

@@ -58,8 +58,9 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 - **Autotests must stay green** every iteration — a second, deterministic critic
   alongside CodeRabbit.
 - **Read the generated code.** The loop is assistive. After it converges it may
-  push and open a PR, but it **auto-merges only the safe class** (see Ship stage);
-  anything touching shipping code, tests, config, or governance pauses for you.
+  push and open a PR, and **auto-merges the SAFE class** (see Ship stage). It pauses
+  only for human-judgment surfaces — the report/invoice engine, `collectors/`,
+  `outputs/`, deps, CI, or governance — not for well-tested tooling or tests.
 - **Budget:** each iteration hits the CodeRabbit API. Use `--light` for cheaper
   passes; keep diffs small.
 
@@ -108,8 +109,9 @@ audit trail in `.rabbit-loop/state.md`:
 
 ## Ship stage (converge → push → PR → gate)
 
-Once `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, the loop may ship —
-but the **merge gate is by change class**, decided mechanically:
+Once `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, the loop may ship. The gate is by
+**judgment, not file type**: pause only when a human must *judge* something a script can't — not
+when a human would merely *run* a command a script already ran.
 
 ```bash
 scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
@@ -118,15 +120,20 @@ scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
 1. **Push** the branch and **open or update the PR** (English title/body per `AGENTS.md`;
    include the converged CodeRabbit summary and any escalations — no private customer data).
 2. **Classify** the committed diff vs `origin/main`:
-   - **SAFE** — every changed path is under `docs/`, `.claude/skills/`, or `.cursor/rules/`
-     (docs / skills / rules only; no shipping code, tests, config, or governance). The loop may
-     **auto-merge** (squash) and report back.
-   - **NEEDS_HUMAN** — any path outside that allowlist (e.g. `core/`, `collectors/`, `outputs/`,
-     `scripts/`, `tests/`, `pyproject.toml`, `AGENTS.md`, `.github/`). The loop **stops**, produces a
-     **manual-test checklist** (below), and **pings you**. You run the checklist and click merge.
+   - **NEEDS_HUMAN** — touches a **human-judgment surface** where CI + CodeRabbit + autotests
+     can't judge correctness: the report/invoice number engine (`core/domain.py`,
+     `core/analytics.py`, `core/project_hours.py`, `core/pipeline.py`, `core/truth_payload.py`,
+     `core/report_*`), captured evidence (`collectors/`), visual output (`outputs/`), packaging
+     (`pyproject.toml`), CI (`.github/`), or governance (`AGENTS.md`, `CLAUDE.md`). The loop
+     **stops**, produces a **manual-test checklist** (below), and **pings you**.
+   - **SAFE** — everything else (docs, skills, rules, tests, tooling/scripts, and well-tested
+     non-engine code like config lint or CLI plumbing). The loop **auto-merges** (squash) when
+     `CONVERGED`, and reports back. No human needed — the automated critics fully cover it.
 
-The classifier is intentionally strict: a misclassified auto-merge is worse than an unnecessary
-pause. Widen `SAFE_MERGE_PREFIXES` in `scripts/rabbit_loop.sh` only with a deliberate decision.
+Rationale: a file-type gate ("docs only") pauses on *every* real change, so nothing meaningful
+ever auto-merges. The judgment gate auto-merges well-covered changes and reserves your attention
+for changes that can silently break real numbers, look wrong, or have external/governance impact.
+Adjust `_judgment_required()` in `scripts/rabbit_loop.sh` deliberately.
 
 **Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
 not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.

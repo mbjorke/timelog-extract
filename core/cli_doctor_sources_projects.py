@@ -25,7 +25,7 @@ from core.config import (
 )
 from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_collector_rows import add_collector_doctor_rows
-from core.doctor_projects_config_rows import add_broad_tracked_url_lint_rows
+from core.doctor_projects_config_rows import add_projects_config_lint_rows
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
 from core.doctor_table_checks import DoctorCheckStyle, doctor_check_file
 from core.git_project_bootstrap import assess_config_git_coverage
@@ -151,7 +151,7 @@ def doctor(
                 WARN_ICON,
                 f"[{STYLE_MUTED}]{warning}[/{STYLE_MUTED}]",
             )
-        add_broad_tracked_url_lint_rows(
+        add_projects_config_lint_rows(
             table,
             projects_cfg,
             warn_icon=WARN_ICON,

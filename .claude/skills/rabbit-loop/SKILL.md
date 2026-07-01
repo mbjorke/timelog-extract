@@ -22,7 +22,7 @@ Bounds and stopping:
 - **Ship gate (judgment, not file type):** after converging, push + open/update
   the PR, then `scripts/rabbit_loop.sh --classify-merge`. `MERGE_CLASS: SAFE` →
   **auto-merge** (squash) when CONVERGED. `NEEDS_HUMAN` (touches the report/invoice
-  engine, `collectors/`, `outputs/`, deps, CI, or governance) → generate a concrete
+  engine, `collectors/`, `outputs/`, packaging (`pyproject.toml`), CI, or governance) → generate a concrete
   checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real command +
   judgeable expected outcome per step), post it, and pause. Never auto-merge unless
   CONVERGED.

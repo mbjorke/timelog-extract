@@ -58,7 +58,7 @@ between profiles without a clear preview and breaks intentional billing splits.*
 
 | Area | Behavior today | Operator impact |
 | --- | --- | --- |
-| Anchor flow (`core/anchor_nudge.py`) | Lists existing projects + “Create new project: {value}”; no suggestion | Easy to create `prospect-faq-helper`-style names instead of picking `customer-Y-faq` |
+| Anchor flow (`core/anchor_nudge.py`) | Lists existing projects + “Create new project: {value}”; no suggestion | Easy to create `new-repo-slug`-style names instead of picking `project-alpha` |
 | Repo scan (`core/mapping_review_flow.py`) | Default **Add as new project**; “Map to existing” is second choice | New repo path creates duplicates when profile already exists under another slug |
 | Duplicate groups (`core/mapping_review.py`, `core/mapping_review_flow.py`) | Auto `merge_target_for_customer()` → non-`-dev` parent; only **Merge (default)** or Skip | Dev/hash-fork activity consolidated onto parent; no “add slug to `-dev` profile” |
 | Merge effect (`_merge_additions_for_change`, `_merge_removals_for_change`) | Adds all family slugs + stems to target; strips github slugs from same-customer siblings | Parent gains `project-alpha-dev` stem; dev profile loses github terms |
@@ -127,17 +127,17 @@ Git sense.
 Feature: Map anchors to existing projects
 
   Background:
-    Given profile "customer-Y-faq" exists with customer "Customer Y"
-    And unmapped anchor "customer-Y-faq-helper" appears in the report window
+    Given profile "project-alpha" exists with customer "customer-a.test"
+    And unmapped anchor "project-alpha-helper" appears in the report window
 
   Scenario: Suggest existing project before create
     When the user runs gittan map interactively
-    Then the anchor prompt suggests "customer-Y-faq" as the default or top choice
+    Then the anchor prompt suggests "project-alpha" as the default or top choice
     And "Create new project" is not the default selection
 
   Scenario: Apply to existing does not create a profile
-    When the user maps the anchor to "customer-Y-faq"
-    Then match_terms on "customer-Y-faq" include the anchor value
+    When the user maps the anchor to "project-alpha"
+    Then match_terms on "project-alpha" include the anchor value
     And no new project row is created
 ```
 

@@ -54,7 +54,7 @@ _judgment_required() {
     collectors/*) return 0 ;;                              # changes captured evidence → real-data hours
     core/domain.py|core/analytics.py|core/project_hours.py) return 0 ;;   # session / hour math
     core/pipeline.py|core/truth_payload.py) return 0 ;;    # attribution spine
-    core/report_aggregate.py|core/report_service.py|core/report_runtime.py|core/report_cli.py) return 0 ;;
+    core/report_*.py) return 0 ;;                          # report engine (all report_* modules)
     pyproject.toml) return 0 ;;                            # deps / packaging
     .github/*) return 0 ;;                                 # CI
     AGENTS.md|CLAUDE.md) return 0 ;;                       # governance

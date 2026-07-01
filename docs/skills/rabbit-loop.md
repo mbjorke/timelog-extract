@@ -58,8 +58,9 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 - **Autotests must stay green** every iteration — a second, deterministic critic
   alongside CodeRabbit.
 - **Read the generated code.** The loop is assistive. After it converges it may
-  push and open a PR, but it **auto-merges only the safe class** (see Ship stage);
-  anything touching shipping code, tests, config, or governance pauses for you.
+  push and open a PR, and **auto-merges the SAFE class** (see Ship stage). It pauses
+  only for human-judgment surfaces — the report/invoice engine, `collectors/`,
+  `outputs/`, deps, CI, or governance — not for well-tested tooling or tests.
 - **Budget:** each iteration hits the CodeRabbit API. Use `--light` for cheaper
   passes; keep diffs small.
 

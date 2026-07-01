@@ -136,3 +136,4 @@ For Gittan, the most compatible shape appears to be:
 - Timely Memory.app Claude/Codex update: <https://www.timely.com/product-updates/2026-05-07-memory-app-claude-codex-tracking/>
 - GitHub Marketplace listing requirements: <https://docs.github.com/en/apps/github-marketplace/creating-apps-for-github-marketplace/requirements-for-listing-an-app>
 - GitHub Apps vs OAuth Apps: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps>
+- [`docs/inspiration/similar-repos-checklist.md`](../inspiration/similar-repos-checklist.md) — commercial competitor index (Timely alternatives hub) and OSS repo scan log

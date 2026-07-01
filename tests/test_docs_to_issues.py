@@ -48,6 +48,19 @@ class DocsToIssuesParseTests(unittest.TestCase):
         self.assertFalse(is_done("not built"))
         self.assertFalse(is_done("in progress"))
 
+    def test_is_done_negation_not_misclassified(self):
+        # substring matching would wrongly flag these as done → they must stay open
+        self.assertFalse(is_done("not done"))
+        self.assertFalse(is_done("not yet implemented"))
+        self.assertFalse(is_done("undone"))  # word-boundary: 'done' not a whole word here
+
+    def test_build_body_includes_traceability_without_story(self):
+        it = parse_task_prompt("# T\n## Traceability\n- implementation_status: in progress\n", "x")
+        body = build_body(it, "docs/task-prompts/x.md")
+        self.assertIn("**Story:** —", body)
+        self.assertIn("impl: in progress", body)
+        self.assertIn(f"<!-- {MARKER}: docs/task-prompts/x.md -->", body)
+
     def test_build_body_has_marker_and_acceptance(self):
         it = parse_task_prompt(SPEC, "x")
         body = build_body(it, "docs/task-prompts/x.md")

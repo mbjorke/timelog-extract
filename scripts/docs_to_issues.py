@@ -61,17 +61,18 @@ def parse_task_prompt(text: str, stem: str = "") -> Dict[str, Any]:
 
 def is_done(impl_status: str) -> bool:
     s = impl_status.lower()
-    return any(w in s for w in _DONE_WORDS)
+    if "not " in s:  # "not built", "not done", "not started" → NOT done
+        return False
+    return any(re.search(rf"\b{w}\b", s) for w in _DONE_WORDS)
 
 
 def build_body(item: Dict[str, Any], rel_path: str) -> str:
-    lines = [f"**Source spec:** `{rel_path}`", ""]
-    if item["story_id"]:
-        lines.append(
-            f"**Story:** {item['story_id']} · spec: {item['spec_status'] or '?'} "
-            f"· impl: {item['impl_status'] or '?'}"
-        )
-        lines.append("")
+    lines = [
+        f"**Source spec:** `{rel_path}`",
+        f"**Story:** {item['story_id'] or '—'} · spec: {item['spec_status'] or '?'} "
+        f"· impl: {item['impl_status'] or '?'}",
+        "",
+    ]
     if item["gherkin"]:
         lines.append("## Acceptance criteria")
         for g in item["gherkin"]:

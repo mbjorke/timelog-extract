@@ -12,58 +12,31 @@ from core.projects_lint import lint_projects_payload
 
 _LOG = logging.getLogger(__name__)
 
+# Lint codes surfaced as doctor rows: over-broad tracked_urls plus the config
+# integrity codes (duplicate/conflicting profiles mis-bucket hours at invoice time).
+_DOCTOR_LINT_CODES = frozenset(
+    {"broad-tracked-url", "slug-customer-conflict", "thin-slug-duplicate"}
+)
 
-# Config-integrity codes that must surface in doctor (vs. the broad-tracked-url
-# row). Duplicate/conflicting profiles mis-bucket hours at invoice time.
-_INTEGRITY_CODES = frozenset({"slug-customer-conflict", "thin-slug-duplicate"})
 
-
-def _add_lint_rows_for_codes(
+def add_projects_config_lint_rows(
     table: Table,
     config_path: Path,
-    codes: frozenset[str],
     *,
     warn_icon: str,
     style_muted: str,
 ) -> None:
-    """Add a doctor row per lint warning whose code is in ``codes``."""
+    """Load and lint the projects config once, adding a doctor row per surfaced warning."""
     try:
         payload = load_projects_config_payload(config_path)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:  # malformed JSON is a ValueError subclass
         _LOG.debug("projects lint skipped during doctor: %s", exc)
         return
     for warning in lint_projects_payload(payload):
-        if warning.code not in codes:
+        if warning.code not in _DOCTOR_LINT_CODES:
             continue
         table.add_row(
             "Projects config",
             warn_icon,
             f"[{style_muted}]{warning.message}[/{style_muted}]",
         )
-
-
-def add_broad_tracked_url_lint_rows(
-    table: Table,
-    config_path: Path,
-    *,
-    warn_icon: str,
-    style_muted: str,
-) -> None:
-    _add_lint_rows_for_codes(
-        table, config_path, frozenset({"broad-tracked-url"}),
-        warn_icon=warn_icon, style_muted=style_muted,
-    )
-
-
-def add_config_integrity_rows(
-    table: Table,
-    config_path: Path,
-    *,
-    warn_icon: str,
-    style_muted: str,
-) -> None:
-    """Add doctor rows for project-config integrity warnings (duplicate/conflicting profiles)."""
-    _add_lint_rows_for_codes(
-        table, config_path, _INTEGRITY_CODES,
-        warn_icon=warn_icon, style_muted=style_muted,
-    )

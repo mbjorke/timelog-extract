@@ -7,7 +7,7 @@ from pathlib import Path
 
 from rich.table import Table
 
-from core.doctor_projects_config_rows import add_config_integrity_rows
+from core.doctor_projects_config_rows import add_projects_config_lint_rows
 
 
 class DoctorConfigIntegrityRowTests(unittest.TestCase):
@@ -38,7 +38,7 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
             }
         )
         table = self._table()
-        add_config_integrity_rows(table, config, warn_icon="!", style_muted="dim")
+        add_projects_config_lint_rows(table, config, warn_icon="!", style_muted="dim")
         # slug-customer-conflict + thin-slug-duplicate => at least two rows
         self.assertGreaterEqual(table.row_count, 2)
 
@@ -52,7 +52,7 @@ class DoctorConfigIntegrityRowTests(unittest.TestCase):
             }
         )
         table = self._table()
-        add_config_integrity_rows(table, config, warn_icon="!", style_muted="dim")
+        add_projects_config_lint_rows(table, config, warn_icon="!", style_muted="dim")
         self.assertEqual(table.row_count, 0)
 
 

@@ -19,13 +19,14 @@ PROJECT="3"
 OWNER="mbjorke"
 STATUS="In review"
 PR_NUM=""
+PR_EXPLICIT=0
 DRY_RUN=0
 
 usage() { awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"; exit 0; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --pr)      [[ $# -ge 2 ]] || { echo "rabbit_board_sync: --pr needs a number" >&2; exit 2; }; PR_NUM="$2"; shift 2 ;;
+    --pr)      [[ $# -ge 2 ]] || { echo "rabbit_board_sync: --pr needs a number" >&2; exit 2; }; PR_EXPLICIT=1; PR_NUM="$2"; shift 2 ;;
     --status)  [[ $# -ge 2 ]] || { echo "rabbit_board_sync: --status needs a column name" >&2; exit 2; }; STATUS="$2"; shift 2 ;;
     --project) [[ $# -ge 2 ]] || { echo "rabbit_board_sync: --project needs a number" >&2; exit 2; }; PROJECT="$2"; shift 2 ;;
     --owner)   [[ $# -ge 2 ]] || { echo "rabbit_board_sync: --owner needs a login" >&2; exit 2; }; OWNER="$2"; shift 2 ;;
@@ -59,7 +60,11 @@ else
 fi
 
 if [[ -z "${PR_URL:-}" ]]; then
-  echo "rabbit_board_sync: no open PR for this branch (pass --pr N after gh pr create)." >&2
+  if [[ $PR_EXPLICIT -eq 1 ]]; then
+    echo "rabbit_board_sync: could not resolve PR #$PR_NUM (is it open and does it exist?)." >&2
+  else
+    echo "rabbit_board_sync: no open PR for this branch (pass --pr N after gh pr create)." >&2
+  fi
   exit 3
 fi
 

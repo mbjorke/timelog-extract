@@ -140,8 +140,14 @@ if [[ $DRY_RUN -eq 1 ]]; then
   echo "  • set #$ISSUE board Status → '$STATUS'"
   python3 "$BOARD_PY" --owner "$OWNER" --project "$PROJECT" --url "$ISSUE_URL" --status "$STATUS" --dry-run
   set +e
-  "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" --dry-run 2>&1 || true
+  BOARD_SYNC_OUT="$("$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" --dry-run 2>&1)"
+  BOARD_SYNC_RC=$?
   set -e
+  [[ -n "$BOARD_SYNC_OUT" ]] && echo "$BOARD_SYNC_OUT"
+  if [[ $BOARD_SYNC_RC -ne 0 && $BOARD_SYNC_RC -ne 3 ]]; then
+    echo "rabbit_handoff: PR board sync dry-run failed (exit $BOARD_SYNC_RC)." >&2
+    exit 2
+  fi
   echo "  • post the manual-test checklist as a comment on #$ISSUE"
   echo ""
   echo "--- checklist preview ---"
@@ -153,8 +159,14 @@ python3 "$BOARD_PY" --owner "$OWNER" --project "$PROJECT" --url "$ISSUE_URL" --s
 
 # Same Status for the open PR on this branch (if any) — keeps PR visible on the board.
 set +e
-"$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" >/dev/null 2>&1
+BOARD_SYNC_OUT="$("$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" 2>&1)"
+BOARD_SYNC_RC=$?
 set -e
+if [[ $BOARD_SYNC_RC -ne 0 && $BOARD_SYNC_RC -ne 3 ]]; then
+  [[ -n "$BOARD_SYNC_OUT" ]] && echo "$BOARD_SYNC_OUT" >&2
+  echo "rabbit_handoff: PR board sync failed (exit $BOARD_SYNC_RC)." >&2
+  exit 2
+fi
 
 COMMENT="$(printf '%s\n\n%s\n\n---\n_Parked in **%s** by the kanin-loop NEEDS_HUMAN handoff (`scripts/rabbit_handoff.sh`). Complete each step with a real command + a judgeable expected outcome, run it, then move to **Done**._\n' \
   "🔎 **Manual testing needed before merge** — this change is CONVERGED (CodeRabbit clean, tests green) but touches a human-judgment surface." \

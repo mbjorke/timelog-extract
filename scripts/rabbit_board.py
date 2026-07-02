@@ -14,9 +14,34 @@ class BoardError(Exception):
     """Board API or configuration failure."""
 
 
-def _run_gh(args: list[str]) -> subprocess.CompletedProcess[str]:
-    proc = subprocess.run(args, capture_output=True, text=True, check=False)
-    return proc
+def _run_gh(args: list[str], timeout: int = 30) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(args, capture_output=True, text=True, check=False, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        raise BoardError(f"gh command timed out: {' '.join(args)}") from exc
+
+
+def _load_json(proc: subprocess.CompletedProcess[str], context: str) -> Any:
+    try:
+        return json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise BoardError(f"invalid JSON from {context}: {exc}") from exc
+
+
+_OWNER_KIND_CACHE: dict[str, str] = {}
+
+
+def owner_kind(owner: str) -> str:
+    if owner in _OWNER_KIND_CACHE:
+        return _OWNER_KIND_CACHE[owner]
+    if _run_gh(["gh", "api", f"users/{owner}"]).returncode == 0:
+        kind = "user"
+    elif _run_gh(["gh", "api", f"orgs/{owner}"]).returncode == 0:
+        kind = "organization"
+    else:
+        raise BoardError(f"owner {owner!r} not found as user or organization")
+    _OWNER_KIND_CACHE[owner] = kind
+    return kind
 
 
 def _graphql(login: str, project_number: int, query: str, **variables: Any) -> dict:
@@ -40,14 +65,14 @@ def project_node_id(owner: str, project_number: int) -> str:
     proc = _run_gh(["gh", "project", "view", str(project_number), "--owner", owner, "--format", "json"])
     if proc.returncode != 0:
         raise BoardError(f"could not read project {project_number} (owner {owner})")
-    return json.loads(proc.stdout)["id"]
+    return _load_json(proc, "gh project view")["id"]
 
 
 def status_field_option(owner: str, project_number: int, status_name: str) -> tuple[str, str]:
     proc = _run_gh(["gh", "project", "field-list", str(project_number), "--owner", owner, "--format", "json"])
     if proc.returncode != 0:
         raise BoardError(f"could not list fields for project {project_number}")
-    for field in json.loads(proc.stdout).get("fields", []):
+    for field in _load_json(proc, "gh project field-list").get("fields", []):
         if field.get("name") == "Status":
             for option in field.get("options", []):
                 if option.get("name") == status_name:
@@ -57,31 +82,32 @@ def status_field_option(owner: str, project_number: int, status_name: str) -> tu
 
 
 def find_item_by_url(owner: str, project_number: int, content_url: str) -> str | None:
-    query = """
-query($login: String!, $number: Int!, $after: String) {
-  user(login: $login) {
-    projectV2(number: $number) {
-      items(first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
+    root = "user" if owner_kind(owner) == "user" else "organization"
+    query = f"""
+query($login: String!, $number: Int!, $after: String) {{
+  {root}(login: $login) {{
+    projectV2(number: $number) {{
+      items(first: 100, after: $after) {{
+        pageInfo {{ hasNextPage endCursor }}
+        nodes {{
           id
-          content {
-            ... on Issue { url }
-            ... on PullRequest { url }
-          }
-        }
-      }
-    }
-  }
-}
+          content {{
+            ... on Issue {{ url }}
+            ... on PullRequest {{ url }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
 """
     after: str | None = None
     while True:
         data = _graphql(login=owner, project_number=project_number, query=query, after=after)
-        user = (data.get("data") or {}).get("user")
-        if user is None:
-            raise BoardError(f"user {owner!r} not found or not accessible")
-        project = user.get("projectV2")
+        owner_node = (data.get("data") or {}).get(root)
+        if owner_node is None:
+            raise BoardError(f"owner {owner!r} not found or not accessible")
+        project = owner_node.get("projectV2")
         if project is None:
             raise BoardError(f"project #{project_number} not found for {owner!r}")
         block = project["items"]
@@ -100,7 +126,7 @@ def add_item(owner: str, project_number: int, content_url: str) -> str:
     )
     if proc.returncode != 0:
         raise BoardError(f"could not add {content_url} to the board")
-    return json.loads(proc.stdout)["id"]
+    return _load_json(proc, "gh project item-add")["id"]
 
 
 def set_item_status(project_id: str, item_id: str, field_id: str, option_id: str) -> None:

@@ -294,9 +294,14 @@ if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
   echo "RABBIT_LOOP: CONVERGED (findings=0 tests=PASS)"
   if [[ $SKIP_BOARD_SYNC -eq 0 && -f "$REPO_ROOT/scripts/rabbit_board_sync.sh" ]]; then
     set +e
-    bash "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "In review" 2>&1 | sed 's/^/  board: /'
-    # exit 3 = no open PR yet (normal before gh pr create)
+    BOARD_SYNC_OUT="$(bash "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "In review" 2>&1)"
+    BOARD_SYNC_RC=$?
     set -e
+    [[ -n "$BOARD_SYNC_OUT" ]] && printf '%s\n' "$BOARD_SYNC_OUT" | sed 's/^/  board: /'
+    # exit 3 = no open PR yet (normal before gh pr create)
+    if [[ $BOARD_SYNC_RC -ne 0 && $BOARD_SYNC_RC -ne 3 ]]; then
+      echo "  board: warning: sync failed with exit $BOARD_SYNC_RC; continuing" >&2
+    fi
   fi
   exit 0
 fi

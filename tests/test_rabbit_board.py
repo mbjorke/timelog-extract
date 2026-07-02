@@ -67,8 +67,9 @@ class RabbitBoardTests(unittest.TestCase):
                 }
             }
         }
-        with patch.object(self.board, "_graphql", return_value=empty_page):
-            missing = self.board.find_item_by_url("owner-a", 3, "https://github.com/o/r/issues/99")
+        with patch.object(self.board, "owner_kind", return_value="user"):
+            with patch.object(self.board, "_graphql", return_value=empty_page):
+                missing = self.board.find_item_by_url("owner-a", 3, "https://github.com/o/r/issues/99")
         self.assertIsNone(missing)
 
     def test_find_item_by_url_finds_pr_on_second_page(self):
@@ -104,8 +105,9 @@ class RabbitBoardTests(unittest.TestCase):
             }
         }
 
-        with patch.object(self.board, "_graphql", side_effect=[page1, page2]):
-            found = self.board.find_item_by_url("owner-a", 3, "https://github.com/o/r/pull/9")
+        with patch.object(self.board, "owner_kind", return_value="user"):
+            with patch.object(self.board, "_graphql", side_effect=[page1, page2]):
+                found = self.board.find_item_by_url("owner-a", 3, "https://github.com/o/r/pull/9")
         self.assertEqual(found, "item-2")
 
     def test_sync_content_url_dry_run_without_writes(self):
@@ -138,16 +140,45 @@ class RabbitBoardTests(unittest.TestCase):
                 return subprocess.CompletedProcess(args, 0, fields_json, "")
             raise AssertionError(f"unexpected gh call in dry-run: {args}")
 
-        with patch.object(self.board, "_run_gh", side_effect=fake_run):
-            with patch.object(self.board, "_graphql", return_value=graphql_page):
-                out = self.board.sync_content_url(
-                    owner="owner-a",
-                    project_number=3,
-                    content_url="https://github.com/o/r/pull/42",
-                    status_name="In review",
-                    dry_run=True,
-                )
+        with patch.object(self.board, "owner_kind", return_value="user"):
+            with patch.object(self.board, "_run_gh", side_effect=fake_run):
+                with patch.object(self.board, "_graphql", return_value=graphql_page):
+                    out = self.board.sync_content_url(
+                        owner="owner-a",
+                        project_number=3,
+                        content_url="https://github.com/o/r/pull/42",
+                        status_name="In review",
+                        dry_run=True,
+                    )
         self.assertTrue(out.startswith("dry-run:add:"))
+
+    def test_sync_content_url_writes_when_not_dry_run(self):
+        with patch.object(self.board, "status_field_option", return_value=("field-1", "opt-a")):
+            with patch.object(self.board, "owner_kind", return_value="user"):
+                with patch.object(self.board, "find_item_by_url", return_value=None):
+                    with patch.object(self.board, "project_node_id", return_value="proj-1"):
+                        with patch.object(self.board, "add_item", return_value="item-new") as add_item:
+                            with patch.object(self.board, "set_item_status") as set_status:
+                                out = self.board.sync_content_url(
+                                    owner="owner-a",
+                                    project_number=3,
+                                    content_url="https://github.com/o/r/pull/42",
+                                    status_name="In review",
+                                    dry_run=False,
+                                )
+        self.assertEqual(out, "item-new")
+        add_item.assert_called_once_with("owner-a", 3, "https://github.com/o/r/pull/42")
+        set_status.assert_called_once_with("proj-1", "item-new", "field-1", "opt-a")
+
+    def test_run_gh_timeout_raises_board_error(self):
+        with patch.object(
+            self.board.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(cmd=["gh"], timeout=30),
+        ):
+            with self.assertRaises(self.board.BoardError) as ctx:
+                self.board._run_gh(["gh", "version"])
+        self.assertIn("timed out", str(ctx.exception))
 
     def test_graphql_errors_fail_closed(self):
         with patch.object(

@@ -116,7 +116,7 @@ def report(
         ),
     ] = None,
     git_source: Annotated[bool, typer.Option("--git", help="Show Git-only column (requires git_repo in project config).")] = False,
-    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. Default: the \"shadow_log\" setting in timelog_projects.json, else off.")] = "auto",
+    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off/auto: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. auto (default) uses the \"shadow_log\" setting in timelog_projects.json, else off; explicit on/off overrides it.")] = "auto",
     shadow_replay: Annotated[str, typer.Option("--shadow-replay", help="on/off (opt-in): for a closed (past) window, restore stored evidence whose upstream source has since rotated.")] = "off",
 ):
     """Build detailed local evidence reports for a selected timeframe.
@@ -296,7 +296,7 @@ def status(
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
     anchor_nudge: Annotated[bool, typer.Option("--anchor-nudge/--no-anchor-nudge", help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).")] = True,
-    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. Default: the \"shadow_log\" setting in timelog_projects.json, else off.")] = "auto",
+    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off/auto: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. auto (default) uses the \"shadow_log\" setting in timelog_projects.json, else off; explicit on/off overrides it.")] = "auto",
 ):
     """Quick hours snapshot with project totals and session counts.
 

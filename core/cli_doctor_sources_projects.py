@@ -26,6 +26,7 @@ from core.config import (
 from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_collector_rows import add_collector_doctor_rows
 from core.doctor_projects_config_rows import add_projects_config_lint_rows
+from core.doctor_shadow_log_row import add_shadow_log_row
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
 from core.doctor_table_checks import DoctorCheckStyle, doctor_check_file
 from core.git_project_bootstrap import assess_config_git_coverage
@@ -156,6 +157,14 @@ def doctor(
             projects_cfg,
             warn_icon=WARN_ICON,
             style_muted=STYLE_MUTED,
+        )
+        add_shadow_log_row(
+            table,
+            projects_cfg,
+            ok_icon=OK_ICON,
+            warn_icon=WARN_ICON,
+            style_muted=STYLE_MUTED,
+            home=home,
         )
         using_single_worklog = bool(worklog) or bool(workspace_worklog)
         if using_single_worklog:

@@ -262,6 +262,19 @@ Use `./scripts/git_worktree.sh` or a sibling clone when:
 
 GitButler and worktrees can coexist: **But in primary clone**, plain git in worktrees.
 
+**Caveat — a fresh worktree has no `.venv`.** The test gate finds Ruff via
+`<root>/.venv/bin/ruff` (`scripts/run_lint.sh`, called by `run_autotests.sh`); a new
+worktree lacks that env, so lint exits non-zero under `set -e` and the unit tests
+never run — which reads as a *test failure*, not a setup gap. Give the worktree an
+env before running the gate:
+
+```bash
+# from the sibling worktree, reuse the primary clone's env:
+ln -sfn ../../<primary-clone>/.venv .venv    # then add .venv to .git/info/exclude
+# or create a dedicated one for this worktree:
+python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'
+```
+
 ## Anti-patterns (learned 2026-06-23)
 
 | Anti-pattern | Result |
@@ -275,6 +288,8 @@ GitButler and worktrees can coexist: **But in primary clone**, plain git in work
 | Bulk apply+delete with active branch **unapplied** first | Can flood `zz` with old branch diffs; use snapshot + restore |
 | All applied stacks left on during every test | Tests exercise accidental union of A+B+C |
 | Expect GitButler to run two isolated test suites simultaneously | Use worktrees or sequential apply/unapply |
+| Reuse an existing `task/*` name / branch without checking local lanes first | Branch collision; another agent's commit left dangling — recovered via reflog + `git tag safety/…` (2026-07-02, GH #240/#272) |
+| Assume a fresh worktree can run `run_autotests.sh` as-is | Missing `.venv` → Ruff gate fails, tests never run (see caveat above), 2026-07-02 |
 
 ## See also
 

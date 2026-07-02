@@ -4,7 +4,7 @@
 
 **Relationship (draft):** **Complement** — Gittan is evidence + review upstream; Harvest remains time entry + invoice truth for agencies and consultants.
 
-**Last updated:** 2026-07-02
+**Last updated:** 2026-07-01
 
 ---
 
@@ -53,7 +53,7 @@ Harvest is the classic **agency/consultant billing sink**: timers, projects, cli
 
 ## Integration sketch (technical)
 
-```
+```text
 gittan report --from … --to … --format json
   → user reviews / adjusts
   → gittan export harvest --dry-run   # future command

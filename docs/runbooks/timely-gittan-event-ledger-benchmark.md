@@ -18,7 +18,7 @@ Produce a **classified comparison** of what two trackers observed on the **same 
 
 ## Preconditions
 
-- **Closed day** — pick a day that is fully in the past (not today).
+- **Closed day** — pick a day that is fully in the past (not today) in **one timezone** (your local wall-clock day, e.g. `Europe/Stockholm`). Use the same calendar day in Timely's UI/export and in Gittan's `--from` / `--to` so midnight boundaries do not drift.
 - **Both tools ran** that day with Memory/automatic capture enabled (Timely) and normal Gittan collectors available (macOS).
 - Gittan project config reflects your real customers/projects (`--projects-config` if not default).
 - You accept that Timely and Gittan **measure different layers** (Memory timeline atoms vs local structured logs).
@@ -28,8 +28,9 @@ Produce a **classified comparison** of what two trackers observed on the **same 
 From repo root (adjust dates and config):
 
 ```bash
+# Local calendar day — must match Timely account/day view (same timezone).
 DAY=2026-06-15
-gittan report --from "$DAY" --to "$DAY" \
+TZ=Europe/Stockholm gittan report --from "$DAY" --to "$DAY" \
   --format json \
   --json-file "private/benchmarks/gittan-${DAY}.json" \
   --source-summary
@@ -41,12 +42,16 @@ Optional: include evidence volume for dedup context:
 gittan report --from "$DAY" --to "$DAY" --format json --evidence-volume
 ```
 
-**Extract events** from the truth payload: each session under `days[].sessions[].events[]` has `source`, `timestamp`, `detail`, `project`. Today there is no `observation_id` in JSON — compute offline if needed:
+**Extract events** from the truth payload: each session under `days[].sessions[].events[]` has `source`, `timestamp`, `detail`, `project`. Today there is no `observation_id` in JSON — compute offline with the canonical helper (do not hand-roll concatenation):
 
 ```python
-# One-liner pattern (adjust path to your export):
-# fingerprint = sha256(source + observed_at + detail)[:16]  — see core/evidence_record.py
+from core.evidence_record import compute_evidence_fingerprint
+
+# observed_at: event["timestamp"] (datetime or ISO string)
+fp = compute_evidence_fingerprint(event["source"], event["timestamp"], event["detail"])
 ```
+
+Contract: SHA-256 over UTF-8 `source \x1f observed_at \x1f detail`, where `observed_at` is normalized to UTC ISO-8601 (`Z` → `+00:00`); return first 16 hex chars. Project is **excluded** — see `core/evidence_record.py`.
 
 Store a flat table in `private/benchmarks/gittan-${DAY}-events.tsv` with columns:
 

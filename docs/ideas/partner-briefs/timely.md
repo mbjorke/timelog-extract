@@ -4,7 +4,7 @@
 
 **Relationship (draft):** Compete on the **evidence layer** (Memory.app / AI-tool capture) *and* potentially **partner** if Timely prefers to license or co-develop developer-grade collectors instead of rebuilding every AI/IDE source in-house.
 
-**Last updated:** 2026-07-02
+**Last updated:** 2026-07-01
 
 ---
 

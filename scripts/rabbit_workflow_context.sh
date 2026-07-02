@@ -13,6 +13,7 @@
 # Usage:
 #   scripts/rabbit_workflow_context.sh              # summary + artifacts
 #   scripts/rabbit_workflow_context.sh --json       # print JSON only
+#   scripts/rabbit_workflow_context.sh --chat-summary  # markdown for chat (agents)
 #   scripts/rabbit_workflow_context.sh --ack        # acknowledge (records HEAD)
 #   scripts/rabbit_workflow_context.sh --ack --force
 #
@@ -46,6 +47,7 @@ HTML_FILE="$STATE_DIR/preflight.html"
 ACK_FILE="$STATE_DIR/workflow.ack"
 
 JSON_ONLY=0
+CHAT_SUMMARY=0
 DO_ACK=0
 FORCE_ACK=0
 
@@ -57,12 +59,18 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --json) JSON_ONLY=1; shift ;;
+    --chat-summary) CHAT_SUMMARY=1; shift ;;
     --ack) DO_ACK=1; shift ;;
     --force) FORCE_ACK=1; shift ;;
     -h|--help) usage ;;
     *) echo "rabbit_workflow_context: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
 done
+
+if [[ $JSON_ONLY -eq 1 && $CHAT_SUMMARY -eq 1 ]]; then
+  echo "rabbit_workflow_context: use --json or --chat-summary, not both." >&2
+  exit 2
+fi
 
 mkdir -p "$STATE_DIR"
 
@@ -398,6 +406,15 @@ PY
 
 if [[ $JSON_ONLY -eq 1 ]]; then
   cat "$JSON_FILE"
+  exit 0
+fi
+
+if [[ $CHAT_SUMMARY -eq 1 ]]; then
+  python3 "$REPO_ROOT/scripts/rabbit_workflow_context_chat.py" "$JSON_FILE"
+  BLOCKERS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('blockers',[])))")"
+  WARNINGS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('warnings',[])))")"
+  if [[ "$BLOCKERS" -gt 0 ]]; then exit 2; fi
+  if [[ "$WARNINGS" -gt 0 ]]; then exit 1; fi
   exit 0
 fi
 

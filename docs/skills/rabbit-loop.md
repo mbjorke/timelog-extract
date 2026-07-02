@@ -29,8 +29,8 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
-0b. Workflow scripts/rabbit_workflow_context.sh → review .rabbit-loop/preflight.html
-              (plain git vs GitButler, local task/* lanes, open PRs, collision hints).
+0b. Workflow scripts/rabbit_workflow_context.sh → review briefing
+              (`--chat-summary` for agents in chat, or `.rabbit-loop/preflight.html` in browser).
               Acknowledge: scripts/rabbit_workflow_context.sh --ack (or rabbit_loop.sh --ack-workflow).
               Skipped automatically on re-run when HEAD matches .rabbit-loop/workflow.ack.
               See docs/decisions/gitbutler-multi-editor-workflow.md and GitHub #240.
@@ -73,7 +73,8 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 
 ```bash
 scripts/rabbit_workflow_context.sh           # local lanes + HTML questions (issue #240)
-scripts/rabbit_workflow_context.sh --ack     # after reviewing preflight.html
+scripts/rabbit_workflow_context.sh --chat-summary  # same data as markdown for chat/agents
+scripts/rabbit_workflow_context.sh --ack     # after reviewing preflight briefing
 scripts/rabbit_loop.sh                    # review local changes vs origin/main + autotests
 scripts/rabbit_loop.sh --ack-workflow     # record workflow ack, then run loop
 scripts/rabbit_loop.sh --base origin/main # explicit base (default)

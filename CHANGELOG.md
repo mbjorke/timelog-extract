@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-02
+
 - UX: Claude Code CLI turns from Desktop inherit session titles via `cliSessionId` (label on each row; no orphan `Claude Desktop` title line).
 - UX: session titles keep original app casing, render in orange (not bold), and drop redundant title/project echoes in Cursor/Claude detail tails.
 - UX: GitHub timeline rows show `GitHub (login)`; worklog commit rows inherit the nearest prior AI session title (`Worklog` source label, comma-separated detail).
@@ -14,6 +16,10 @@
 - CLI (#165): post-report spinner after hours table; skip slow workspace git scan in post-report mapping gate ([#167](https://github.com/mbjorke/timelog-extract/pull/167)).
 - Accuracy: treat Claude.ai/Gemini (web) as passive context; calendar-day dedupe for tracked web URLs; zero duration floor for passive-only sessions.
 - Sources: **Zed** AI chat collector reads from SQLite database (`~/Library/Application Support/zed/db/threads.db` on macOS, `~/.local/share/zed/db/threads.db` on Linux) with auto-detection of schema, support for seconds/milliseconds/ISO timestamps, and zlib-compressed blob decoding.
+- Data safety ([#231](https://github.com/mbjorke/timelog-extract/pull/231)): observed-hours cache (`~/.gittan/observed/`) merges **keep-max** per (project, date) and fails closed on read errors — report runs can never degrade closed months (incident: `docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md`).
+- Doctor ([#228](https://github.com/mbjorke/timelog-extract/pull/228)): `projects-lint` config-integrity warnings — `slug-customer-conflict` (same slug mapping to different customers mis-buckets hours) and `thin-slug-duplicate`; surfaced in `gittan doctor`.
+- Dev: `scripts/gittan_data_autocommit.sh` ([#232](https://github.com/mbjorke/timelog-extract/pull/232)) — versioned auto-commit of `~/.gittan` (commit-only by default; push opt-in). Dev: kanin-loop review harness (`scripts/rabbit_loop.sh`, [#226](https://github.com/mbjorke/timelog-extract/pull/226)) with judgment-based ship gate, board handoff + multi-agent workflow preflight ([#271](https://github.com/mbjorke/timelog-extract/pull/271)); docs→issues generator (`scripts/docs_to_issues.py`, [#243](https://github.com/mbjorke/timelog-extract/pull/243)).
+
 ## 0.2.20 - 2026-06-22
 
 - Packaging: **`zstandard`** and **`brotli`** are default dependencies; the optional **`cache-evidence`** extra remains (empty) for backward compatibility. `gittan doctor` and report warnings now suggest reinstall/upgrade instead of `[cache-evidence]`.

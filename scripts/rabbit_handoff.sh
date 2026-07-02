@@ -127,92 +127,34 @@ fi
 # --- 2. the concrete checklist (must be filled in before this pause is useful) -
 PLAN="$("$LOOP" --manual-test-plan --base "$BASE")"
 
-# --- 3. resolve board node ids BY NAME (robust to field/option renames) -------
-PID="$(gh project view "$PROJECT" --owner "$OWNER" --format json 2>/dev/null \
-  | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")" \
-  || { echo "rabbit_handoff: could not read project $PROJECT (owner $OWNER)." >&2; exit 2; }
+# --- 3–5. park issue on the board (+ PR when present) -------------------------
+BOARD_PY="$REPO_ROOT/scripts/rabbit_board.py"
+[[ -f "$BOARD_PY" ]] || { echo "rabbit_handoff: $BOARD_PY not found." >&2; exit 2; }
 
-read -r FIELD_ID OPTION_ID < <(gh project field-list "$PROJECT" --owner "$OWNER" --format json 2>/dev/null \
-  | STATUS="$STATUS" python3 -c "
-import json, os, sys
-status = os.environ['STATUS']
-data = json.load(sys.stdin)
-for f in data.get('fields', []):
-    if f.get('name') == 'Status':
-        for o in f.get('options', []):
-            if o.get('name') == status:
-                print(f['id'], o['id']); sys.exit(0)
-        sys.stderr.write('status column %r not found on the board\n' % status); sys.exit(4)
-sys.stderr.write('no Status field on the board\n'); sys.exit(4)
-")
-[[ -n "${FIELD_ID:-}" && -n "${OPTION_ID:-}" ]] || {
-  echo "rabbit_handoff: could not resolve Status field / '$STATUS' option." >&2; exit 2; }
-
-# --- 4. find (or add) the issue's board item ----------------------------------
-# Match on the canonical issue URL, not the bare number: a project can hold items
-# from several repos where issue numbers collide.
 ISSUE_URL="$(gh issue view "$ISSUE" --json url --jq '.url' 2>/dev/null)" \
   || { echo "rabbit_handoff: issue #$ISSUE not found." >&2; exit 2; }
-ITEM_ID="$(ISSUE_URL="$ISSUE_URL" PROJECT="$PROJECT" OWNER="$OWNER" python3 <<'PY'
-import json, os, subprocess, sys
-
-issue_url = os.environ["ISSUE_URL"]
-login = os.environ["OWNER"]
-number = int(os.environ["PROJECT"])
-query = """
-query($login: String!, $number: Int!, $after: String) {
-  user(login: $login) {
-    projectV2(number: $number) {
-      items(first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id content { ... on Issue { url } } }
-      }
-    }
-  }
-}
-"""
-after = None
-while True:
-    args = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"login={login}", "-f", f"number={number}"]
-    if after:
-        args.extend(["-f", f"after={after}"])
-    proc = subprocess.run(args, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        sys.exit(1)
-    data = json.loads(proc.stdout)
-    block = data["data"]["user"]["projectV2"]["items"]
-    for node in block["nodes"]:
-        url = (node.get("content") or {}).get("url")
-        if url == issue_url:
-            print(node["id"])
-            sys.exit(0)
-    if not block["pageInfo"]["hasNextPage"]:
-        break
-    after = block["pageInfo"]["endCursor"]
-PY
-)" || ITEM_ID=""
 
 if [[ $DRY_RUN -eq 1 ]]; then
   echo ""
   echo "DRY RUN — would:"
   echo "  • set #$ISSUE board Status → '$STATUS'"
+  python3 "$BOARD_PY" --owner "$OWNER" --project "$PROJECT" --url "$ISSUE_URL" --status "$STATUS" --dry-run
+  set +e
+  "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" --dry-run 2>&1 || true
+  set -e
   echo "  • post the manual-test checklist as a comment on #$ISSUE"
-  echo "  • (board item: ${ITEM_ID:-<would be added>})"
   echo ""
   echo "--- checklist preview ---"
   echo "$PLAN"
   exit 0
 fi
 
-if [[ -z "$ITEM_ID" ]]; then
-  ITEM_ID="$(gh project item-add "$PROJECT" --owner "$OWNER" --url "$ISSUE_URL" --format json 2>/dev/null \
-    | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")" \
-    || { echo "rabbit_handoff: could not add #$ISSUE to the board." >&2; exit 2; }
-fi
+python3 "$BOARD_PY" --owner "$OWNER" --project "$PROJECT" --url "$ISSUE_URL" --status "$STATUS"
 
-# --- 5. park it in the column + hand over the checklist ------------------------
-gh project item-edit --id "$ITEM_ID" --project-id "$PID" \
-  --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID" >/dev/null
+# Same Status for the open PR on this branch (if any) — keeps PR visible on the board.
+set +e
+"$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "$STATUS" --owner "$OWNER" --project "$PROJECT" >/dev/null 2>&1
+set -e
 
 COMMENT="$(printf '%s\n\n%s\n\n---\n_Parked in **%s** by the kanin-loop NEEDS_HUMAN handoff (`scripts/rabbit_handoff.sh`). Complete each step with a real command + a judgeable expected outcome, run it, then move to **Done**._\n' \
   "🔎 **Manual testing needed before merge** — this change is CONVERGED (CodeRabbit clean, tests green) but touches a human-judgment surface." \

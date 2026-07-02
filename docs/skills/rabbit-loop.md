@@ -29,6 +29,11 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
+0b. Workflow scripts/rabbit_workflow_context.sh → review .rabbit-loop/preflight.html
+              (plain git vs GitButler, local task/* lanes, open PRs, collision hints).
+              Acknowledge: scripts/rabbit_workflow_context.sh --ack (or rabbit_loop.sh --ack-workflow).
+              Skipped automatically on re-run when HEAD matches .rabbit-loop/workflow.ack.
+              See docs/decisions/gitbutler-multi-editor-workflow.md and GitHub #240.
 1. Generate Implement the task. Commit.
 2. Critic   scripts/rabbit_loop.sh            # base defaults to origin/main
               → coderabbit review --agent  (structured findings)  + scripts/run_autotests.sh
@@ -67,10 +72,14 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 ## Running it
 
 ```bash
+scripts/rabbit_workflow_context.sh           # local lanes + HTML questions (issue #240)
+scripts/rabbit_workflow_context.sh --ack     # after reviewing preflight.html
 scripts/rabbit_loop.sh                    # review local changes vs origin/main + autotests
+scripts/rabbit_loop.sh --ack-workflow     # record workflow ack, then run loop
 scripts/rabbit_loop.sh --base origin/main # explicit base (default)
 scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
+scripts/rabbit_loop.sh --skip-workflow    # emergency: skip multi-agent preflight
 scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
 ```
 

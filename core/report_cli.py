@@ -75,7 +75,9 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     from core.cli_report_status_helpers import capture_shadow_log_line, shadow_replay_line
 
     shadow_line = capture_shadow_log_line(
-        getattr(args, "shadow_log", "off"), getattr(report, "all_events", [])
+        getattr(args, "shadow_log", "auto"),
+        getattr(report, "all_events", []),
+        config_path=getattr(args, "projects_config", None),
     )
     if shadow_line and _want_log(args) and not want_json:
         print(shadow_line)

@@ -22,11 +22,19 @@ def shadow_log_status_line(status: Optional[Mapping[str, object]]) -> Optional[s
     )
 
 
-def capture_shadow_log_line(shadow_log: object, events: object) -> Optional[str]:
-    """Run the opt-in capture and return its one-line summary (or None when off)."""
+def capture_shadow_log_line(
+    shadow_log: object, events: object, config_path: object = None
+) -> Optional[str]:
+    """Run the opt-in capture and return its one-line summary (or None when off).
+
+    ``config_path`` lets the "auto" flag default defer to the persistent
+    ``"shadow_log"`` setting in the projects config (GH-274).
+    """
     from core.evidence_store import capture_if_enabled
 
-    return shadow_log_status_line(capture_if_enabled(shadow_log, events))
+    return shadow_log_status_line(
+        capture_if_enabled(shadow_log, events, config_path=config_path)
+    )
 
 
 def shadow_replay_line(restored: object) -> Optional[str]:

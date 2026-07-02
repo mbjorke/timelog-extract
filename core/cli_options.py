@@ -75,8 +75,9 @@ class TimelogRunOptions:
     invoice_mode: str = "baseline"
     invoice_ground_truth: Optional[str] = None
     # Opt-in durable evidence shadow log (docs/specs/local-evidence-shadow-log.md).
-    # "off" by default: nothing is written unless explicitly enabled.
-    shadow_log: str = "off"
+    # "auto" defers to the persistent "shadow_log" key in timelog_projects.json
+    # (GH-274); explicit "on"/"off" from the CLI always wins. Default state is off.
+    shadow_log: str = "auto"
     # Opt-in replay of stored evidence for closed windows (restores events whose
     # upstream source has rotated). "off" by default.
     shadow_replay: str = "off"

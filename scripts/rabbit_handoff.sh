@@ -28,7 +28,7 @@
 # Requires: gh (with the `project` scope — `gh auth refresh -s project`), a
 # CONVERGED stamp (`.rabbit-loop/converged.ack` written by `rabbit_loop.sh` on
 # RABBIT_LOOP: CONVERGED), and a clean committed branch. Exit codes: 0 = handed
-# usage problem, 3 = refused (SAFE without --force).
+# off (or dry-run), 2 = setup/usage problem, 3 = refused (SAFE without --force).
 set -euo pipefail
 
 BASE="origin/main"
@@ -43,11 +43,11 @@ usage() { awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"; exi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --issue)   ISSUE="${2:?--issue needs a number}"; shift 2 ;;
-    --base)    BASE="${2:?--base needs a branch}"; shift 2 ;;
-    --project) PROJECT="${2:?--project needs a number}"; shift 2 ;;
-    --owner)   OWNER="${2:?--owner needs a login}"; shift 2 ;;
-    --status)  STATUS="${2:?--status needs a column name}"; shift 2 ;;
+    --issue)   [[ $# -ge 2 ]] || { echo "rabbit_handoff: --issue needs a number" >&2; exit 2; }; ISSUE="$2"; shift 2 ;;
+    --base)    [[ $# -ge 2 ]] || { echo "rabbit_handoff: --base needs a branch" >&2; exit 2; }; BASE="$2"; shift 2 ;;
+    --project) [[ $# -ge 2 ]] || { echo "rabbit_handoff: --project needs a number" >&2; exit 2; }; PROJECT="$2"; shift 2 ;;
+    --owner)   [[ $# -ge 2 ]] || { echo "rabbit_handoff: --owner needs a login" >&2; exit 2; }; OWNER="$2"; shift 2 ;;
+    --status)  [[ $# -ge 2 ]] || { echo "rabbit_handoff: --status needs a column name" >&2; exit 2; }; STATUS="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --force)   FORCE=1; shift ;;
     -h|--help) usage ;;
@@ -153,14 +153,44 @@ sys.stderr.write('no Status field on the board\n'); sys.exit(4)
 # from several repos where issue numbers collide.
 ISSUE_URL="$(gh issue view "$ISSUE" --json url --jq '.url' 2>/dev/null)" \
   || { echo "rabbit_handoff: issue #$ISSUE not found." >&2; exit 2; }
-ITEM_ID="$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json 2>/dev/null \
-  | ISSUE_URL="$ISSUE_URL" python3 -c "
-import json, os, sys
-url = os.environ['ISSUE_URL']
-for it in json.load(sys.stdin).get('items', []):
-    if it.get('content', {}).get('url') == url:
-        print(it['id']); break
-")"
+ITEM_ID="$(ISSUE_URL="$ISSUE_URL" PROJECT="$PROJECT" OWNER="$OWNER" python3 <<'PY'
+import json, os, subprocess, sys
+
+issue_url = os.environ["ISSUE_URL"]
+login = os.environ["OWNER"]
+number = int(os.environ["PROJECT"])
+query = """
+query($login: String!, $number: Int!, $after: String) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      items(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id content { ... on Issue { url } } }
+      }
+    }
+  }
+}
+"""
+after = None
+while True:
+    args = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"login={login}", "-f", f"number={number}"]
+    if after:
+        args.extend(["-f", f"after={after}"])
+    proc = subprocess.run(args, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        sys.exit(1)
+    data = json.loads(proc.stdout)
+    block = data["data"]["user"]["projectV2"]["items"]
+    for node in block["nodes"]:
+        url = (node.get("content") or {}).get("url")
+        if url == issue_url:
+            print(node["id"])
+            sys.exit(0)
+    if not block["pageInfo"]["hasNextPage"]:
+        break
+    after = block["pageInfo"]["endCursor"]
+PY
+)" || ITEM_ID=""
 
 if [[ $DRY_RUN -eq 1 ]]; then
   echo ""

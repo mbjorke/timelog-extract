@@ -24,6 +24,22 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   echo "rabbit_workflow_context: not inside a git repository" >&2; exit 2; }
 cd "$REPO_ROOT"
 
+# Bounded subprocess (portable on macOS without GNU timeout).
+_run_timeout() {
+  local secs="$1"; shift
+  python3 - "$secs" "$@" <<'PY'
+import subprocess, sys
+secs = int(sys.argv[1])
+cmd = sys.argv[2:]
+try:
+    subprocess.run(cmd, timeout=secs, check=False)
+except subprocess.TimeoutExpired:
+    sys.exit(124)
+PY
+}
+
+LANE_SEP=$'\x1f'
+
 STATE_DIR="$REPO_ROOT/.rabbit-loop"
 JSON_FILE="$STATE_DIR/preflight.json"
 HTML_FILE="$STATE_DIR/preflight.html"
@@ -56,7 +72,9 @@ DIRTY="$(git status --porcelain 2>/dev/null || true)"
 
 WORKFLOW_MODE="plain_git"
 GITBUTLER_PROJECT=0
-[[ -d .git/gitbutler ]] && GITBUTLER_PROJECT=1
+COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"
+[[ "$COMMON_DIR" != /* ]] && COMMON_DIR="$REPO_ROOT/$COMMON_DIR"
+[[ -d "$COMMON_DIR/gitbutler" ]] && GITBUTLER_PROJECT=1
 if [[ "$CURRENT" == gitbutler/* ]]; then
   WORKFLOW_MODE="gitbutler"
 fi
@@ -73,7 +91,7 @@ fi
 
 WORKTREES="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' || true)"
 
-# Local task/* lanes — other agents may own these.
+# Local task/* lanes — other agents may own these (unit-sep fields; subjects may contain |).
 LOCAL_LANES=""
 while IFS='|' read -r bname date subj upstream; do
   [[ -z "$bname" ]] && continue
@@ -84,7 +102,7 @@ while IFS='|' read -r bname date subj upstream; do
     behind="${counts%%	*}"
     ahead="${counts##*	}"
   fi
-  LOCAL_LANES+="${bname}|${date}|${subj}|${upstream}|${ahead}|${behind}"$'\n'
+  LOCAL_LANES+="${bname}${LANE_SEP}${date}${LANE_SEP}${subj}${LANE_SEP}${upstream}${LANE_SEP}${ahead}${LANE_SEP}${behind}"$'\n'
 done < <(
   git for-each-ref --sort=-committerdate refs/heads/task/ \
     --format='%(refname:short)|%(committerdate:iso8601)|%(subject)|%(upstream:short)' 2>/dev/null \
@@ -98,7 +116,9 @@ _add_collision() { COLLISIONS+="$1"$'\n'; }
 if [[ -n "$CURRENT" && "$CURRENT" != "(detached)" ]]; then
   UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
   if [[ -n "$UPSTREAM" ]]; then
-    git fetch origin "$CURRENT" 2>/dev/null || true
+    if ! _run_timeout 20 git fetch origin "$CURRENT" 2>/dev/null; then
+      _add_collision "fetch_timeout|$CURRENT|origin|git fetch timed out — remote state may be stale; continuing with local refs."
+    fi
     LOCAL_TIP="$(git rev-parse HEAD 2>/dev/null || true)"
     REMOTE_TIP="$(git rev-parse "$UPSTREAM" 2>/dev/null || true)"
     if [[ -n "$LOCAL_TIP" && -n "$REMOTE_TIP" && "$LOCAL_TIP" != "$REMOTE_TIP" ]]; then
@@ -120,9 +140,10 @@ if [[ -n "$CURRENT" && "$CURRENT" != "(detached)" ]]; then
     fi
   fi
   # Reserved lane names: same branch name, different work (lesson from #268).
-  while IFS='|' read -r bname _date subj _up _ah _bh; do
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    IFS="$LANE_SEP" read -r bname _date subj _up _ah _bh <<< "$line"
     [[ -z "$bname" || "$bname" == "$CURRENT" ]] && continue
-    if [[ "$bname" == "$CURRENT" ]]; then continue; fi
     # Same topical words but different branch — warn if remote exists for current name.
     if git rev-parse --verify --quiet "origin/$CURRENT" >/dev/null 2>&1; then
       other_tip="$(git rev-parse "$bname" 2>/dev/null || true)"
@@ -146,8 +167,23 @@ fi
 
 OPEN_PRS=""
 if command -v gh >/dev/null 2>&1; then
-  OPEN_PRS="$(gh pr list --state open --limit 15 --json number,headRefName,title,url \
-    --jq '.[] | "\(.number)|\(.headRefName)|\(.title)|\(.url)"' 2>/dev/null || true)"
+  OPEN_PRS="$(python3 - <<'PY' 2>/dev/null || true
+import json, subprocess
+try:
+    out = subprocess.run(
+        ["gh", "pr", "list", "--state", "open", "--limit", "15", "--json", "number,headRefName,title,url"],
+        capture_output=True, text=True, timeout=20, check=False,
+    )
+    if out.returncode != 0:
+        raise SystemExit(0)
+    sep = "\x1f"
+    for pr in json.loads(out.stdout or "[]"):
+        print(sep.join([str(pr["number"]), pr["headRefName"], pr["title"], pr["url"]]))
+except subprocess.TimeoutExpired:
+    pass
+PY
+)"
+  [[ -z "$OPEN_PRS" ]] && _add_collision "gh_timeout|open_prs|gh|gh pr list timed out or failed — open PR table may be incomplete."
 fi
 
 # --- acknowledgement ---------------------------------------------------------
@@ -185,6 +221,7 @@ export WF_GB_PROJECT="$GITBUTLER_PROJECT" WF_BUT_AVAIL="$BUT_AVAILABLE"
 export WF_DIRTY="$DIRTY" WF_WORKTREES="$WORKTREES"
 export WF_LOCAL_LANES="$LOCAL_LANES" WF_COLLISIONS="$COLLISIONS"
 export WF_OPEN_PRS="$OPEN_PRS" WF_BUT_STATUS="$BUT_STATUS" WF_BUT_APPLIED="$BUT_APPLIED"
+export WF_LANE_SEP="$LANE_SEP"
 
 python3 - "$JSON_FILE" "$HTML_FILE" <<'PY'
 import html
@@ -207,8 +244,9 @@ dirty = bool(os.environ.get("WF_DIRTY", "").strip())
 worktrees = lines(os.environ.get("WF_WORKTREES", ""))
 
 lanes = []
+lane_sep = os.environ.get("WF_LANE_SEP", "\x1f")
 for ln in lines(os.environ.get("WF_LOCAL_LANES", "")):
-    parts = ln.split("|", 5)
+    parts = ln.split(lane_sep, 5)
     while len(parts) < 6:
         parts.append("")
     lanes.append({
@@ -233,18 +271,10 @@ for ln in lines(os.environ.get("WF_COLLISIONS", "")):
     else:
         warnings.append(entry)
 
-if mode == "gitbutler" and not but_avail:
-    blockers.append({"kind": "but_missing", "detail": "GitButler branch without but CLI", "refs": []})
-if gb_project and mode == "plain_git":
-    warnings.append({
-        "kind": "gitbutler_parallel",
-        "detail": "GitButler metadata present while working in plain-git mode — virtual branches may hold other agents' work.",
-        "refs": [],
-    })
-
 open_prs = []
+pr_sep = "\x1f"
 for ln in lines(os.environ.get("WF_OPEN_PRS", "")):
-    n, br, title, url = (ln.split("|", 3) + ["", "", "", ""])[:4]
+    n, br, title, url = (ln.split(pr_sep, 3) + ["", "", "", ""])[:4]
     if n:
         open_prs.append({"number": int(n), "branch": br, "title": title, "url": url})
 
@@ -291,6 +321,7 @@ payload = {
     "warnings": warnings,
     "questions": questions,
     "but_status_excerpt": (os.environ.get("WF_BUT_STATUS") or "")[:4000],
+    "but_applied": lines(os.environ.get("WF_BUT_APPLIED", "")),
     "ack_command": "scripts/rabbit_workflow_context.sh --ack",
 }
 
@@ -319,6 +350,8 @@ for q in questions:
 
 blk = "".join(f"<li><strong>{esc(b['kind'])}</strong>: {esc(b['detail'])}</li>" for b in blockers)
 wrn = "".join(f"<li><strong>{esc(w['kind'])}</strong>: {esc(w['detail'])}</li>" for w in warnings)
+but_applied = lines(os.environ.get("WF_BUT_APPLIED", ""))
+but_applied_html = "".join(f"<li><code>{esc(x)}</code></li>" for x in but_applied) or "<li>(none)</li>"
 
 page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/>
@@ -350,6 +383,8 @@ page = f"""<!DOCTYPE html>
 <table><tr><th>Branch</th><th>Date</th><th>Subject</th><th>Upstream</th><th>Ahead/Behind</th></tr>{rows or '<tr><td colspan=5>None</td></tr>'}</table>
 <h2>Open PRs</h2>
 <table><tr><th>PR</th><th>Head</th><th>Title</th></tr>{pr_rows or '<tr><td colspan=3>None / gh unavailable</td></tr>'}</table>
+<h2>GitButler applied (excerpt)</h2>
+<ul>{but_applied_html}</ul>
 <h2>Worktrees</h2>
 <ul>{''.join(f'<li><code>{esc(w)}</code></li>' for w in worktrees) or '<li>Primary clone only</li>'}</ul>
 </body></html>"""

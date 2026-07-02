@@ -171,10 +171,14 @@ TESTS_LOG="$STATE_DIR/autotests.log"
 WORKFLOW_CTX="$REPO_ROOT/scripts/rabbit_workflow_context.sh"
 
 # --- workflow preflight (GitButler / multi-agent) ----------------------------
-if [[ $SKIP_WORKFLOW -eq 0 && -x "$WORKFLOW_CTX" ]]; then
+if [[ $SKIP_WORKFLOW -eq 0 ]]; then
+  if [[ ! -f "$WORKFLOW_CTX" ]]; then
+    echo "rabbit_loop: workflow preflight script missing: $WORKFLOW_CTX" >&2
+    exit 2
+  fi
   echo "== kanin-loop: workflow preflight (git / GitButler / local lanes) =="
   if [[ $ACK_WORKFLOW -eq 1 ]]; then
-    "$WORKFLOW_CTX" --ack || exit 2
+    bash "$WORKFLOW_CTX" --ack || exit 2
   fi
   ACK_FILE="$STATE_DIR/workflow.ack"
   HEAD_NOW="$(git rev-parse HEAD 2>/dev/null || true)"
@@ -186,7 +190,7 @@ if [[ $SKIP_WORKFLOW -eq 0 && -x "$WORKFLOW_CTX" ]]; then
   fi
   if [[ $ACK_OK -eq 0 ]]; then
     set +e
-    "$WORKFLOW_CTX"
+    bash "$WORKFLOW_CTX"
     WF_EXIT=$?
     set -e
     echo ""

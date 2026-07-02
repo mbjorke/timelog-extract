@@ -170,8 +170,8 @@ map conservatively to a behavior check — over-prompting beats missing a regres
 
 ### Board handoff — the "Needs manual testing" column
 
-The NEEDS_HUMAN pause has a home on the project board ([Project 3](https://github.com/users/mbjorke/projects/3)):
-the **`Needs manual testing`** Status column. It is *not* "things we forgot to test" — it means
+The NEEDS_HUMAN pause has a home on your GitHub project board: the **`Needs manual testing`**
+Status column (configure with `rabbit_handoff.sh --project N --owner LOGIN`). It is *not* "things we forgot to test" — it means
 "the machine is done and confident, but this touches money/report-correctness, so a human does the
 last look." The board Status maps to the loop like this:
 

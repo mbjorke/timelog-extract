@@ -31,19 +31,21 @@ def render_chat_summary(data: dict) -> str:
     section(
         "Blockers",
         data.get("blockers") or [],
-        lambda b: f"- **[{b['kind']}]** {b['detail']}",
+        lambda b: f"- **[{b.get('kind', '?')}]** {b.get('detail', '')}",
     )
     section(
         "Warnings",
         data.get("warnings") or [],
-        lambda w: f"- **[{w['kind']}]** {w['detail']}",
+        lambda w: f"- **[{w.get('kind', '?')}]** {w.get('detail', '')}",
     )
 
     lines.append("### Questions")
     lines.append("_Answer in chat, then run the ack command below._")
     lines.append("")
     for i, q in enumerate(data.get("questions") or [], 1):
-        lines.append(f"{i}. **{q['id']}** — {q['prompt']}")
+        qid = q.get("id", "?")
+        prompt = q.get("prompt", "")
+        lines.append(f"{i}. **{qid}** — {prompt}")
         for opt in q.get("options") or []:
             lines.append(f"   - {opt}")
         lines.append("")
@@ -74,7 +76,10 @@ def render_chat_summary(data: dict) -> str:
     else:
         for pr in prs[:10]:
             title = (pr.get("title") or "")[:80]
-            lines.append(f"- [#{pr['number']}]({pr['url']}) `{pr['branch']}` — {title}")
+            num = pr.get("number", "?")
+            url = pr.get("url", "")
+            branch = pr.get("branch", "")
+            lines.append(f"- [#{num}]({url}) `{branch}` — {title}")
     lines.append("")
 
     worktrees = data.get("worktrees") or []
@@ -104,7 +109,8 @@ def main() -> None:
     if len(sys.argv) != 2:
         print("usage: rabbit_workflow_context_chat.py <preflight.json>", file=sys.stderr)
         sys.exit(2)
-    data = json.load(open(sys.argv[1], encoding="utf-8"))
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = json.load(f)
     print(render_chat_summary(data))
 
 

@@ -74,6 +74,15 @@ fi
 
 mkdir -p "$STATE_DIR"
 
+_read_preflight_counts() {
+  python3 - "$1" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    d = json.load(f)
+print(len(d.get("blockers", [])), len(d.get("warnings", [])))
+PY
+}
+
 CURRENT="$(git branch --show-current 2>/dev/null || echo "(detached)")"
 HEAD_SHA="$(git rev-parse HEAD 2>/dev/null || echo "")"
 DIRTY="$(git status --porcelain 2>/dev/null || true)"
@@ -411,8 +420,7 @@ fi
 
 if [[ $CHAT_SUMMARY -eq 1 ]]; then
   python3 "$REPO_ROOT/scripts/rabbit_workflow_context_chat.py" "$JSON_FILE"
-  BLOCKERS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('blockers',[])))")"
-  WARNINGS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('warnings',[])))")"
+  read -r BLOCKERS WARNINGS < <(_read_preflight_counts "$JSON_FILE")
   if [[ "$BLOCKERS" -gt 0 ]]; then exit 2; fi
   if [[ "$WARNINGS" -gt 0 ]]; then exit 1; fi
   exit 0
@@ -432,8 +440,7 @@ for w in d.get("warnings", []):
 print(f"  artifacts: .rabbit-loop/preflight.html")
 PY
 
-BLOCKERS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('blockers',[])))")"
-WARNINGS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('warnings',[])))")"
+read -r BLOCKERS WARNINGS < <(_read_preflight_counts "$JSON_FILE")
 
 # macOS: open HTML for visual review (best-effort).
 if [[ -f "$HTML_FILE" ]] && command -v open >/dev/null 2>&1; then

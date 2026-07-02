@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -48,18 +49,35 @@ class RabbitWorkflowContextChatTests(unittest.TestCase):
             "worktrees": [],
             "ack_command": "scripts/rabbit_workflow_context.sh --ack",
         }
-        path = REPO_ROOT / ".rabbit-loop" / "test-preflight-chat.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload), encoding="utf-8")
-        proc = subprocess.run(
-            ["python3", str(SCRIPT), str(path)],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", encoding="utf-8", delete=True
+        ) as tmp:
+            tmp.write(json.dumps(payload))
+            tmp.flush()
+            proc = subprocess.run(
+                ["python3", str(SCRIPT), tmp.name],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
         self.assertIn("task/cli", proc.stdout)
+
+    def test_render_tolerates_partial_entries(self):
+        md = render_chat_summary(
+            {
+                "branch": "task/x",
+                "head": "abc",
+                "workflow_mode": "plain_git",
+                "blockers": [{"detail": "no kind key"}],
+                "warnings": [],
+                "questions": [{"options": ["only option"]}],
+                "open_prs": [{"title": "orphan title"}],
+            }
+        )
+        self.assertIn("?", md)
+        self.assertIn("orphan title", md)
 
 
 if __name__ == "__main__":

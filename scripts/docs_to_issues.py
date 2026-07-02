@@ -26,16 +26,23 @@ MARKER = "docs2issue"
 TASK_PROMPTS = REPO_ROOT / "docs" / "task-prompts"
 
 # implementation_status values that mean "already built" → skip by default.
-_DONE_WORDS = ("shipped", "done", "implemented", "complete", "landed", "merged", "closed")
+_DONE_WORDS = ("shipped", "done", "implemented", "complete", "landed", "merged", "closed",
+               "built", "released")
 
 # task-prompt files that are meta, not actionable tasks → never ticket.
 _SKIP_STEMS = {"implementation-status", "task-traceability-template"}
 
 
 def _field(block: str, key: str) -> str:
-    """Read ``- key: value`` (with or without backticks) from a Traceability block."""
-    m = re.search(rf"^\s*-?\s*{re.escape(key)}\s*:\s*`?([^`\n]+)`?", block, re.M)
-    return m.group(1).strip() if m else ""
+    """Read ``- key: value`` from a Traceability block.
+
+    Captures the whole value line and strips backticks, so inline-code wrapping
+    anywhere in the value (e.g. ``implementation_status: `now` items shipped``)
+    does not truncate it — an earlier ``[^`]+`` stopped at the first backtick and
+    lost the "shipped" that marks the spec as done.
+    """
+    m = re.search(rf"^\s*-?\s*{re.escape(key)}\s*:\s*(.+?)\s*$", block, re.M)
+    return m.group(1).replace("`", "").strip() if m else ""
 
 
 def _gherkin_blocks(text: str) -> List[str]:

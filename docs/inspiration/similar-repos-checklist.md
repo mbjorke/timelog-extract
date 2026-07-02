@@ -155,5 +155,7 @@ Timely's social proof on the alternatives hub skews toward **Application Consult
 ### Related docs
 
 - [`docs/ideas/timely-api-marketplace-benchmark.md`](../ideas/timely-api-marketplace-benchmark.md) — Timely API, Memory.app overlap, GitHub Marketplace
+- [`docs/ideas/partner-briefs/`](../ideas/partner-briefs/) — Timely and Harvest partner hypotheses
+- [`docs/runbooks/timely-gittan-event-ledger-benchmark.md`](../runbooks/timely-gittan-event-ledger-benchmark.md) — same-day ledger diff before outreach
 - [`docs/ideas/opportunities.md`](../ideas/opportunities.md) — product bets and go-to-market notes
 

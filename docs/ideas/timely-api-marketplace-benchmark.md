@@ -104,6 +104,36 @@ Timely has user capacities, day properties/locks, roles, permissions, teams, and
 
 **Gittan implication:** these are not solo-first v1 requirements. They are useful vocabulary for future team/admin scope, but they should not pull the near-term product away from local-first trust and low admin overhead.
 
+### 7. Identity model — not `event_id`, but layered IDs
+
+Timely's public OpenAPI spec does **not** define a field named `event_id`. Identity is split across layers (reviewed from Timely's public API document):
+
+| Layer | Timely fields | Role |
+| --- | --- | --- |
+| **Memory timeline atom** | `entry_ids` (integer array on `Hour`) | Small captured activities from Memory.app that compose logged time |
+| **Time segments** | `timestamps[].id`, `timestamps[].entry_ids[]` | Sub-intervals within one logged hour |
+| **Approved time entry** | `Hour.id` (int), `Hour.uid` (string), `Hour.external_id` (string) | Durable billing/approval object; API bodies use `{ "event": { ... } }` for create/update — **“event” here means time entry, not a raw observation** |
+| **Integration sync** | `external_id` on projects, hours, users, tags, clients, teams | Idempotent mapping to external systems; webhooks include `entity_external_id` |
+
+**Gittan today (local-first):**
+
+| Layer | Gittan identity | Notes |
+| --- | --- | --- |
+| **Raw observation** (collector) | No explicit ID in runtime dicts; dedup via `(source, timestamp, detail, project)` | Report-time dedup in `core/events.py` |
+| **Evidence shadow log** | `fingerprint` — deterministic hash of `(source, observed_at, detail)` **excluding project** | See `core/evidence_record.py`; stable across reclassification |
+| **truth_payload session** | `id` = `{day}-{session_index}` | Ephemeral within one report run |
+| **truth_payload event** (JSON export) | **No ID field yet** | Only `source`, `timestamp`, `detail`, `project` |
+| **Approved export** (future work unit) | Not shipped — planned `work_unit_id` + `external_id` | Aligns with work-unit v2 and partner export idempotency |
+
+**Recommendation (do not copy Timely's naming blindly):**
+
+1. **Observations:** expose existing `fingerprint` as `observation_id` in truth_payload events (cheap, high leverage for ledger diffs and audit).
+2. **Approved output:** add `external_id` (and `work_unit_id`) on **reviewed/exportable** rows only — not on every raw collector line.
+3. **Source-native IDs:** when a collector has one (e.g. GitHub activity id), store in provenance; otherwise fall back to `fingerprint`.
+4. **Avoid** calling approved hours “events” in Gittan export APIs — Timely overloads that term.
+
+See also [`docs/decisions/work-unit-v2-architecture.md`](../decisions/work-unit-v2-architecture.md) §6 (truth_payload evolution) and [`docs/runbooks/timely-gittan-event-ledger-benchmark.md`](../runbooks/timely-gittan-event-ledger-benchmark.md) (same-day comparison procedure).
+
 ---
 
 ## GitHub Marketplace implications
@@ -121,7 +151,7 @@ For Gittan, the most compatible shape appears to be:
 
 ## Candidate next slices
 
-1. **Benchmark slice:** export same-day event ledgers from two trackers and classify differences as missed evidence, duplicate/overlap, session-gap policy, source coverage, or noise filtering. Do not optimize on total hours alone.
+1. **Benchmark slice:** export same-day event ledgers from two trackers and classify differences as missed evidence, duplicate/overlap, session-gap policy, source coverage, or noise filtering. Do not optimize on total hours alone. Procedure: [`docs/runbooks/timely-gittan-event-ledger-benchmark.md`](../runbooks/timely-gittan-event-ledger-benchmark.md).
 2. **AI-tool evidence benchmark:** compare Gittan collectors against Memory.app's Claude/Codex title+URL capture: specificity, privacy posture, source explainability, and project-attribution lift.
 3. **GitHub App source spec:** define required GitHub permissions/events, private repo handling, webhook vs polling, token storage, and how events map into Gittan's source model.
 4. **External link model:** ensure work units / report JSON can carry commit, PR, issue, and review URLs as structured links rather than only text detail.
@@ -137,3 +167,5 @@ For Gittan, the most compatible shape appears to be:
 - GitHub Marketplace listing requirements: <https://docs.github.com/en/apps/github-marketplace/creating-apps-for-github-marketplace/requirements-for-listing-an-app>
 - GitHub Apps vs OAuth Apps: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps>
 - [`docs/inspiration/similar-repos-checklist.md`](../inspiration/similar-repos-checklist.md) — commercial competitor index (Timely alternatives hub) and OSS repo scan log
+- [`docs/ideas/partner-briefs/`](../ideas/partner-briefs/) — working partner hypotheses (Timely, Harvest)
+- [`docs/runbooks/timely-gittan-event-ledger-benchmark.md`](../runbooks/timely-gittan-event-ledger-benchmark.md) — same-day ledger diff before partner outreach

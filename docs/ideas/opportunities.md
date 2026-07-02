@@ -41,6 +41,7 @@
 4. **Integrations (backlog):** **Calendar / CalDAV** and optional **ActivityWatch**-style ingest are **candidates**, not commitments—priority TBD against solo-founder value and maintenance cost.
 5. **Enterprise issue trackers** (Jira, Linear) are **later**; **solo / founder** workflows and honest reporting come first.
 6. **GitHub Marketplace is an aspirational distribution channel, not just a badge.** Timely's public Marketplace listing and API patterns are a useful benchmark for what GitHub-specific evidence users expect and what integration substance a credible listing would need. See `docs/ideas/timely-api-marketplace-benchmark.md`.
+7. **Partner hypotheses (full-time sustainability).** Working one-pagers for high-fit complements/OEM shapes — start with Timely and Harvest. See `docs/ideas/partner-briefs/`. Outreach copy, term sheets, and raw benchmark numbers stay in `private/`.
 
 ## Solo-first cloud delivery stance
 

@@ -25,7 +25,7 @@ Optional **`rabbit_handoff.sh --complete --issue N`** (name TBD):
 
 ## Relationship to #272
 
-#272 (agent↔task ownership) addresses **who** owns a branch. This idea addresses **when** the board reflects that manual verification finished — complementary, not duplicate.
+Issue `#272` (agent↔task ownership) addresses **who** owns a branch. This idea addresses **when** the board reflects that manual verification finished — complementary, not duplicate.
 
 ## Acceptance sketch (if built)
 

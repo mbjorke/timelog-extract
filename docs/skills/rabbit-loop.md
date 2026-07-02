@@ -175,7 +175,7 @@ the **`Needs manual testing`** Status column. It is *not* "things we forgot to t
 "the machine is done and confident, but this touches money/report-correctness, so a human does the
 last look." The board Status maps to the loop like this:
 
-```
+```text
 Backlog → Ready (prio now/next) → In progress (agent working)
         → In review (PR open, CodeRabbit)
               ├─ SAFE + CONVERGED ─────────────────────→ Done   (auto-merge)

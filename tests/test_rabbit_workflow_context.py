@@ -36,6 +36,19 @@ class RabbitWorkflowContextTests(unittest.TestCase):
             self.assertIn(key, data)
         self.assertIsInstance(data["questions"], list)
         self.assertGreaterEqual(len(data["questions"]), 1)
+        if str(data.get("branch", "")).startswith("task/"):
+            self.assertGreaterEqual(
+                len(data.get("local_task_lanes", [])),
+                1,
+                msg="task/* lane discovery should list at least the current branch",
+            )
+        worktrees = data.get("worktrees", [])
+        if len(worktrees) > 1:
+            self.assertEqual(
+                len(worktrees),
+                len({w for w in worktrees if w}),
+                msg="each worktree path should be its own JSON entry",
+            )
 
 
 if __name__ == "__main__":

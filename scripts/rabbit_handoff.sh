@@ -25,8 +25,9 @@
 #           does not need the column).
 # --dry-run print what would happen; make no board write and post no comment.
 #
-# Requires: gh (with the `project` scope — `gh auth refresh -s project`), and a
-# CONVERGED, committed branch. Exit codes: 0 = handed off (or dry-run), 2 = setup/
+# Requires: gh (with the `project` scope — `gh auth refresh -s project`), a
+# CONVERGED stamp (`.rabbit-loop/converged.ack` written by `rabbit_loop.sh` on
+# RABBIT_LOOP: CONVERGED), and a clean committed branch. Exit codes: 0 = handed
 # usage problem, 3 = refused (SAFE without --force).
 set -euo pipefail
 
@@ -75,6 +76,31 @@ fi
 
 LOOP="$REPO_ROOT/scripts/rabbit_loop.sh"
 [[ -x "$LOOP" ]] || { echo "rabbit_handoff: $LOOP not found/executable." >&2; exit 2; }
+
+# --- 0. gate: prove CONVERGED on this HEAD (findings=0 + tests=PASS) ----------
+# --classify-merge alone is not enough; refuse to park unless the loop converged.
+CONVERGED_ACK="$REPO_ROOT/.rabbit-loop/converged.ack"
+HEAD_NOW="$(git rev-parse HEAD)"
+BR_NOW="$(git branch --show-current)"
+if [[ ! -f "$CONVERGED_ACK" ]]; then
+  echo "rabbit_handoff: no converged.ack — run scripts/rabbit_loop.sh until" >&2
+  echo "  RABBIT_LOOP: CONVERGED (findings=0 tests=PASS) on this commit first." >&2
+  exit 2
+fi
+read -r ack_br ack_sha _ts <"$CONVERGED_ACK" || true
+if [[ "$ack_br" != "$BR_NOW" || "$ack_sha" != "$HEAD_NOW" ]]; then
+  echo "rabbit_handoff: converged.ack is stale ($ack_br @ ${ack_sha:0:7})." >&2
+  echo "  Re-run scripts/rabbit_loop.sh on $BR_NOW @ ${HEAD_NOW:0:7}." >&2
+  exit 2
+fi
+set +e
+bash scripts/run_autotests.sh >/dev/null 2>&1
+TESTS_RC=$?
+set -e
+if [[ $TESTS_RC -ne 0 ]]; then
+  echo "rabbit_handoff: autotests no longer pass — re-run the kanin-loop before handoff." >&2
+  exit 2
+fi
 
 # --- 1. gate: only NEEDS_HUMAN belongs in the manual-testing column -----------
 # Fail closed: proceed only on an explicit MERGE_CLASS verdict. A classifier error

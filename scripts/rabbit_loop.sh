@@ -281,6 +281,9 @@ if [[ $CR_EXIT -ne 0 || "$REVIEW_COMPLETED" != "1" ]]; then
 fi
 # CONVERGED is the ship signal — it requires green tests, never skipped ones.
 if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
+  printf '%s %s %s\n' "$(git branch --show-current 2>/dev/null || echo '')" \
+    "$(git rev-parse HEAD 2>/dev/null || echo '')" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$STATE_DIR/converged.ack"
   echo "RABBIT_LOOP: CONVERGED (findings=0 tests=PASS)"
   exit 0
 fi

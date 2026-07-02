@@ -71,16 +71,23 @@ if [[ $BUT_AVAILABLE -eq 1 && "$WORKFLOW_MODE" == "gitbutler" ]]; then
   BUT_APPLIED="$(printf '%s\n' "$BUT_STATUS" | awk '/^[[:space:]]*●|applied|Applied/{print}' | head -20 || true)"
 fi
 
-WORKTREES="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | paste -sd '|' - || true)"
+WORKTREES="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' || true)"
 
-# Local task/* lanes (last 14 days activity) — other agents may own these.
+# Local task/* lanes — other agents may own these.
 LOCAL_LANES=""
-while IFS= read -r line; do
-  [[ -z "$line" ]] && continue
-  LOCAL_LANES+="${line}"$'\n'
+while IFS='|' read -r bname date subj upstream; do
+  [[ -z "$bname" ]] && continue
+  ahead="0"
+  behind="0"
+  if [[ -n "$upstream" ]]; then
+    counts="$(git rev-list --left-right --count "${upstream}...${bname}" 2>/dev/null || echo "0	0")"
+    behind="${counts%%	*}"
+    ahead="${counts##*	}"
+  fi
+  LOCAL_LANES+="${bname}|${date}|${subj}|${upstream}|${ahead}|${behind}"$'\n'
 done < <(
   git for-each-ref --sort=-committerdate refs/heads/task/ \
-    --format='%(refname:short)|%(committerdate:iso8601)|%(subject)|%(upstream:short)|%(ahead)|%(behind)' 2>/dev/null \
+    --format='%(refname:short)|%(committerdate:iso8601)|%(subject)|%(upstream:short)' 2>/dev/null \
     | head -20 || true
 )
 
@@ -145,18 +152,27 @@ fi
 
 # --- acknowledgement ---------------------------------------------------------
 if [[ $DO_ACK -eq 1 ]]; then
-  if [[ -f "$JSON_FILE" ]]; then
-    BLOCKERS_CT="$(python3 - "$JSON_FILE" <<'PY'
+  [[ -f "$JSON_FILE" ]] || {
+    echo "rabbit_workflow_context: run preflight and review $HTML_FILE before --ack." >&2
+    exit 2
+  }
+  ACK_META="$(python3 - "$JSON_FILE" "$CURRENT" "$HEAD_SHA" <<'PY'
 import json, sys
-d = json.load(open(sys.argv[1]))
+path, current, head = sys.argv[1:4]
+d = json.load(open(path))
+if d.get("branch") != current or d.get("head") != head:
+    sys.exit(3)
 print(len(d.get("blockers", [])))
 PY
-)" || BLOCKERS_CT=0
-    if [[ "$BLOCKERS_CT" -gt 0 && $FORCE_ACK -eq 0 ]]; then
-      echo "rabbit_workflow_context: $BLOCKERS_CT blocker(s) — fix or pass --force after review." >&2
-      echo "  See $HTML_FILE" >&2
-      exit 2
-    fi
+)" || {
+    echo "rabbit_workflow_context: preflight is stale/unreadable; regenerate before --ack." >&2
+    exit 2
+  }
+  BLOCKERS_CT="$ACK_META"
+  if [[ "$BLOCKERS_CT" -gt 0 && $FORCE_ACK -eq 0 ]]; then
+    echo "rabbit_workflow_context: $BLOCKERS_CT blocker(s) — fix or pass --force after review." >&2
+    echo "  See $HTML_FILE" >&2
+    exit 2
   fi
   printf '%s %s %s\n' "$CURRENT" "$HEAD_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$ACK_FILE"
   echo "rabbit_workflow_context: acknowledged $CURRENT @ ${HEAD_SHA:0:7}"
@@ -207,9 +223,11 @@ for ln in lines(os.environ.get("WF_LOCAL_LANES", "")):
 
 blockers, warnings = [], []
 for ln in lines(os.environ.get("WF_COLLISIONS", "")):
-    kind, *rest = ln.split("|", 2)
-    detail = rest[-1] if rest else ln
-    entry = {"kind": kind, "detail": detail, "refs": rest[:-1] if len(rest) > 1 else rest}
+    parts = ln.split("|")
+    kind = parts[0]
+    detail = parts[-1] if len(parts) > 1 else ln
+    refs = parts[1:-1]
+    entry = {"kind": kind, "detail": detail, "refs": refs}
     if kind in ("diverged_history", "but_missing"):
         blockers.append(entry)
     else:

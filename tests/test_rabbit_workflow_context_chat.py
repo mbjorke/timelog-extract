@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,7 +56,7 @@ class RabbitWorkflowContextChatTests(unittest.TestCase):
             tmp.write(json.dumps(payload))
             tmp.flush()
             proc = subprocess.run(
-                ["python3", str(SCRIPT), tmp.name],
+                [sys.executable, str(SCRIPT), tmp.name],
                 cwd=REPO_ROOT,
                 capture_output=True,
                 text=True,

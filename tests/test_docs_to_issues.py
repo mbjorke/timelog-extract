@@ -54,6 +54,24 @@ class DocsToIssuesParseTests(unittest.TestCase):
         self.assertFalse(is_done("not yet implemented"))
         self.assertFalse(is_done("undone"))  # word-boundary: 'done' not a whole word here
 
+    def test_is_done_built_and_released(self):
+        # "built"/"released" are done states; #260/#261 leaked because "built" was missing
+        self.assertTrue(is_done("built"))
+        self.assertTrue(is_done("released"))
+        self.assertFalse(is_done("rebuilt"))  # word-boundary: not "built" as a whole word
+
+    def test_is_done_inline_backtick_value(self):
+        # backtick-wrapped lead token must not hide a later done-word (toggl spec case)
+        self.assertTrue(is_done("`now` items shipped"))
+
+    def test_field_backtick_wrapped_value_not_truncated(self):
+        # _field used to stop at the first backtick, dropping "shipped" → spec wrongly open
+        it = parse_task_prompt(
+            "# T\n## Traceability\n- implementation_status: `now` items shipped — Toggl push\n", "x"
+        )
+        self.assertEqual(it["impl_status"], "now items shipped — Toggl push")
+        self.assertTrue(is_done(it["impl_status"]))
+
     def test_build_body_includes_traceability_without_story(self):
         it = parse_task_prompt("# T\n## Traceability\n- implementation_status: in progress\n", "x")
         body = build_body(it, "docs/task-prompts/x.md")

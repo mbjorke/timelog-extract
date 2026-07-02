@@ -29,6 +29,11 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
+0b. Workflow scripts/rabbit_workflow_context.sh → review .rabbit-loop/preflight.html
+              (plain git vs GitButler, local task/* lanes, open PRs, collision hints).
+              Acknowledge: scripts/rabbit_workflow_context.sh --ack (or rabbit_loop.sh --ack-workflow).
+              Skipped automatically on re-run when HEAD matches .rabbit-loop/workflow.ack.
+              See docs/decisions/gitbutler-multi-editor-workflow.md and GitHub #240.
 1. Generate Implement the task. Commit.
 2. Critic   scripts/rabbit_loop.sh            # base defaults to origin/main
               → coderabbit review --agent  (structured findings)  + scripts/run_autotests.sh
@@ -67,10 +72,14 @@ trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 ## Running it
 
 ```bash
+scripts/rabbit_workflow_context.sh           # local lanes + HTML questions (issue #240)
+scripts/rabbit_workflow_context.sh --ack     # after reviewing preflight.html
 scripts/rabbit_loop.sh                    # review local changes vs origin/main + autotests
+scripts/rabbit_loop.sh --ack-workflow     # record workflow ack, then run loop
 scripts/rabbit_loop.sh --base origin/main # explicit base (default)
 scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
+scripts/rabbit_loop.sh --skip-workflow    # emergency: skip multi-agent preflight
 scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
 ```
 
@@ -158,6 +167,34 @@ The agent then **fills every step**:
 
 Post the completed checklist to the PR (or hand it over directly) and pause. Unknown/root files
 map conservatively to a behavior check — over-prompting beats missing a regression.
+
+### Board handoff — the "Needs manual testing" column
+
+The NEEDS_HUMAN pause has a home on your GitHub project board: the **`Needs manual testing`**
+Status column (configure with `rabbit_handoff.sh --project N --owner LOGIN`). It is *not* "things we forgot to test" — it means
+"the machine is done and confident, but this touches money/report-correctness, so a human does the
+last look." The board Status maps to the loop like this:
+
+```text
+Backlog → Ready (prio now/next) → In progress (agent working)
+        → In review (PR open, CodeRabbit)
+              ├─ SAFE + CONVERGED ─────────────────────→ Done   (auto-merge)
+              └─ NEEDS_HUMAN + CONVERGED → Needs manual testing → Done
+                     (checklist posted on the issue; human runs it, then merges)
+```
+
+Do the handoff with one command (it reuses the classify + checklist above, and is the **only**
+kanin-loop script that writes to GitHub — `rabbit_loop.sh` stays read-only):
+
+```bash
+scripts/rabbit_handoff.sh --issue N            # park #N in "Needs manual testing" + post the checklist
+scripts/rabbit_handoff.sh --issue N --dry-run  # preview: show the move + checklist, write nothing
+```
+
+It refuses a `SAFE` diff (those auto-merge — pass `--force` to override), resolves the board
+field/column **by name** (surviving renames), and needs the `project` gh scope
+(`gh auth refresh -s project`). After you complete and run the checklist, move the issue to
+**Done** and merge.
 
 ## When NOT to loop
 

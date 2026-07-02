@@ -11,7 +11,10 @@ Thin wrapper. The canonical, editor-agnostic workflow lives in
 "run the kanin loop / loop on the review".
 
 **Mechanics:**
-- Loop: implement → `scripts/rabbit_loop.sh` (CodeRabbit `--agent` + autotests) →
+- **Workflow preflight:** `scripts/rabbit_workflow_context.sh` → open `.rabbit-loop/preflight.html`
+  (GitButler vs plain git, local `task/*` lanes, open PRs — not just `git ls-remote`). Ack with
+  `--ack` before the loop runs CodeRabbit.
+- Loop: implement → `scripts/rabbit_loop.sh` (workflow gate + CodeRabbit `--agent` + autotests) →
   fix **within** `docs/decisions/agent-review-contract.md` → repeat until
   `RABBIT_LOOP: CONVERGED`. Iteration cap 3; escalate Critical / out-of-scope.
 - Ship gate (judgment, not file type): after converging, push + open/update the PR,

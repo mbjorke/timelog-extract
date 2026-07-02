@@ -13,11 +13,14 @@
 # Usage:
 #   scripts/rabbit_loop.sh [--base <branch>] [--light] [--no-tests] [--help]
 #   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
-#   scripts/rabbit_loop.sh --manual-test-plan [--base <branch>]
+#   scripts/rabbit_loop.sh --skip-workflow       # skip GitButler/multi-agent preflight
+#   scripts/rabbit_loop.sh --ack-workflow      # record workflow acknowledgement
 #
 # --manual-test-plan scaffolds a manual-test checklist from the committed diff:
 #   each changed AREA (collectors/outputs/core/cli/scripts/pkg/tests) maps to a
 #   concrete verification command for the maintainer to run at a NEEDS_HUMAN pause.
+#   To hand that pause to the project board (Status → "Needs manual testing") and
+#   post the checklist on the issue, use scripts/rabbit_handoff.sh --issue N.
 #
 # --classify-merge prints the ship gate for the committed diff vs base:
 #   MERGE_CLASS: SAFE        → no human-judgment surface touched; auto-merge when
@@ -37,6 +40,8 @@ LIGHT=""
 RUN_TESTS=1
 CLASSIFY=0
 MANUAL_PLAN=0
+SKIP_WORKFLOW=0
+ACK_WORKFLOW=0
 
 usage() {
   awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
@@ -137,6 +142,8 @@ while [[ $# -gt 0 ]]; do
     --no-tests) RUN_TESTS=0; shift ;;
     --classify-merge) CLASSIFY=1; shift ;;
     --manual-test-plan) MANUAL_PLAN=1; shift ;;
+    --skip-workflow) SKIP_WORKFLOW=1; shift ;;
+    --ack-workflow) ACK_WORKFLOW=1; shift ;;
     -h|--help) usage ;;
     *) echo "rabbit_loop: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
@@ -161,6 +168,43 @@ STATE_DIR="$REPO_ROOT/.rabbit-loop"
 mkdir -p "$STATE_DIR"
 FINDINGS_FILE="$STATE_DIR/findings.txt"
 TESTS_LOG="$STATE_DIR/autotests.log"
+WORKFLOW_CTX="$REPO_ROOT/scripts/rabbit_workflow_context.sh"
+
+# --- workflow preflight (GitButler / multi-agent) ----------------------------
+if [[ $SKIP_WORKFLOW -eq 0 ]]; then
+  if [[ ! -f "$WORKFLOW_CTX" ]]; then
+    echo "rabbit_loop: workflow preflight script missing: $WORKFLOW_CTX" >&2
+    exit 2
+  fi
+  echo "== kanin-loop: workflow preflight (git / GitButler / local lanes) =="
+  if [[ $ACK_WORKFLOW -eq 1 ]]; then
+    bash "$WORKFLOW_CTX" --ack || exit 2
+  fi
+  ACK_FILE="$STATE_DIR/workflow.ack"
+  HEAD_NOW="$(git rev-parse HEAD 2>/dev/null || true)"
+  BR_NOW="$(git branch --show-current 2>/dev/null || true)"
+  ACK_OK=0
+  if [[ -f "$ACK_FILE" ]]; then
+    read -r ack_br ack_sha _ts <"$ACK_FILE" || true
+    [[ "$ack_br" == "$BR_NOW" && "$ack_sha" == "$HEAD_NOW" ]] && ACK_OK=1
+  fi
+  if [[ $ACK_OK -eq 0 ]]; then
+    set +e
+    bash "$WORKFLOW_CTX"
+    WF_EXIT=$?
+    set -e
+    echo ""
+    echo "  Review .rabbit-loop/preflight.html (questions + local task/* lanes + open PRs)."
+    echo "  Then: scripts/rabbit_workflow_context.sh --ack   or   scripts/rabbit_loop.sh --ack-workflow"
+    if [[ $WF_EXIT -eq 2 ]]; then
+      echo "rabbit_loop: workflow BLOCKERS — resolve before CodeRabbit (or --skip-workflow)." >&2
+      exit 2
+    fi
+    echo "rabbit_loop: workflow acknowledgement required before CodeRabbit." >&2
+    exit 2
+  fi
+  echo ""
+fi
 
 # --- preflight -------------------------------------------------------------
 if ! command -v coderabbit >/dev/null 2>&1; then
@@ -241,6 +285,9 @@ if [[ $CR_EXIT -ne 0 || "$REVIEW_COMPLETED" != "1" ]]; then
 fi
 # CONVERGED is the ship signal — it requires green tests, never skipped ones.
 if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
+  printf '%s %s %s\n' "$(git branch --show-current 2>/dev/null || echo '')" \
+    "$(git rev-parse HEAD 2>/dev/null || echo '')" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$STATE_DIR/converged.ack"
   echo "RABBIT_LOOP: CONVERGED (findings=0 tests=PASS)"
   exit 0
 fi

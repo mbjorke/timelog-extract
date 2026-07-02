@@ -93,6 +93,14 @@ if [[ -n "$PIN_VERSION" ]]; then
   note "Requested version: ${PIN_VERSION}"
 fi
 
+# --- existing install? (re-running the installer is a supported upgrade path) ---
+EXISTING_BIN="$(command -v "$COMMAND" 2>/dev/null || true)"
+EXISTING_VERSION=""
+if [[ -n "$EXISTING_BIN" ]]; then
+  EXISTING_VERSION="$("$EXISTING_BIN" -V 2>/dev/null | awk '{print $NF}' || true)"
+  note "Found existing ${COMMAND}${EXISTING_VERSION:+ ${EXISTING_VERSION}} at ${EXISTING_BIN} — upgrading (reinstall)."
+fi
+
 # --- pipx preferred ---
 PIPX_CMD=()
 if command -v pipx >/dev/null 2>&1; then
@@ -133,7 +141,41 @@ fi
 
 # --- confirm ---
 note "Installed ${COMMAND}. Checking version…"
-if command -v "$COMMAND" >/dev/null 2>&1; then
+
+# Check the binary this run installed — not whatever PATH resolves first. An
+# older install earlier in PATH otherwise answers here and reports a stale
+# version right after a successful upgrade (gittan-home#8).
+INSTALLED_BIN=""
+if [[ "${#PIPX_CMD[@]}" -gt 0 ]]; then
+  pipx_bin_dir="$("${PIPX_CMD[@]}" environment --value PIPX_BIN_DIR 2>/dev/null || true)"
+  INSTALLED_BIN="${pipx_bin_dir:-${PIPX_BIN_DIR:-$HOME/.local/bin}}/${COMMAND}"
+else
+  user_base="$(python3 -m site --user-base 2>/dev/null || true)"
+  [[ -n "$user_base" ]] && INSTALLED_BIN="${user_base}/bin/${COMMAND}"
+fi
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  printf '   (dry-run) %s\n' "${INSTALLED_BIN:-$COMMAND} -V"
+elif [[ -n "$INSTALLED_BIN" && -x "$INSTALLED_BIN" ]]; then
+  "$INSTALLED_BIN" -V || warn "${COMMAND} -V did not succeed."
+  NEW_VERSION="$("$INSTALLED_BIN" -V 2>/dev/null | awk '{print $NF}' || true)"
+  if [[ -n "$EXISTING_VERSION" && -n "$NEW_VERSION" ]]; then
+    if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
+      note "Upgraded ${COMMAND} ${EXISTING_VERSION} → ${NEW_VERSION}"
+    else
+      note "Reinstalled ${COMMAND} (already at ${NEW_VERSION})."
+    fi
+  fi
+  RESOLVED="$(command -v "$COMMAND" 2>/dev/null || true)"
+  SAME="no"
+  if [[ -n "$RESOLVED" ]]; then
+    SAME="$(python3 -c 'import os,sys; print("yes" if os.path.realpath(sys.argv[1])==os.path.realpath(sys.argv[2]) else "no")' "$RESOLVED" "$INSTALLED_BIN" 2>/dev/null || echo no)"
+  fi
+  if [[ -n "$RESOLVED" && "$SAME" != "yes" ]]; then
+    warn "Your shell resolves '${COMMAND}' to ${RESOLVED} — an OLDER install that shadows the one just installed (${INSTALLED_BIN})."
+    warn "Fix: remove the old one (python3 -m pip uninstall ${PACKAGE}, using the Python that owns ${RESOLVED}), or put $(dirname "$INSTALLED_BIN") earlier in PATH. Then open a new terminal and re-run: ${COMMAND} -V"
+  fi
+elif command -v "$COMMAND" >/dev/null 2>&1; then
   "$COMMAND" -V || warn "${COMMAND} -V did not succeed."
 else
   warn "${COMMAND} is not on PATH in this shell yet."

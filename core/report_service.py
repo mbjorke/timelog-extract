@@ -29,12 +29,11 @@ from core.events import (
 from core.report_runtime import (
     build_run_context,
     collect_runtime_events,
-    collect_screen_time_status,
 )
 from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
-from core.screen_time import collect_screen_time as core_collect_screen_time
+from core.presence_sources import collect_presence_comparators
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
 from core.git_totals import compute_git_project_totals
@@ -46,7 +45,6 @@ from outputs import terminal as terminal_output
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOME = Path.home()
 LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
-APPLE_EPOCH = 978307200
 UNCATEGORIZED = "Uncategorized"
 LOGGER = logging.getLogger(__name__)
 
@@ -55,10 +53,6 @@ def _want_log(args: argparse.Namespace) -> bool:
     return not getattr(args, "quiet", False)
 
 
-SCREEN_TIME_DB_CANDIDATES = [
-    HOME / "Library" / "Application Support" / "Knowledge" / "knowledgeC.db",
-    HOME / "Library" / "Application Support" / "KnowledgeC" / "knowledgeC.db",
-]
 CURSOR_CHECKPOINTS_DIR = (
     HOME
     / "Library"
@@ -120,16 +114,6 @@ def _get_date_range(date_from: Optional[str], date_to: Optional[str]):
 def default_invoice_pdf_path(dt_to: datetime) -> Path:
     local_date = dt_to.astimezone(LOCAL_TZ).date().isoformat()
     return REPO_ROOT / "output" / "pdf" / f"timelog-invoice-{local_date}.pdf"
-
-
-def _collect_screen_time(dt_from: datetime, dt_to: datetime):
-    return core_collect_screen_time(
-        dt_from,
-        dt_to,
-        candidates=SCREEN_TIME_DB_CANDIDATES,
-        apple_epoch=APPLE_EPOCH,
-        local_tz=LOCAL_TZ,
-    )
 
 
 def _compute_sessions(entries: List[Dict[str, Any]], gap_minutes: int = 15):
@@ -325,12 +309,13 @@ def run_timelog_report(
     from core.evidence_store import maybe_replay
     all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
 
-    screen_time_days = collect_screen_time_status(
+    screen_time_days = collect_presence_comparators(
         args=args,
         dt_from=dt_from,
         dt_to=dt_to,
         collector_status=collector_status,
-        collect_screen_time_fn=_collect_screen_time,
+        home=HOME,
+        local_tz=LOCAL_TZ,
         want_log_fn=_want_log,
     )
 

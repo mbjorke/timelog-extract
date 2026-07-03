@@ -52,6 +52,7 @@ def map_workspace(
             "chrome_source": "off",
             "mail_source": "off",
             "calendar_source": "off",
+            "timely_memory_source": "off",
             "source_strategy": "balanced",
         },
     )

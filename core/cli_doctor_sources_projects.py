@@ -227,6 +227,24 @@ def doctor(
                     f"[{STYLE_MUTED}]{len(git_repos)} repo(s); pass --git on report for Git-only hours[/{STYLE_MUTED}]",
                 )
 
+        from collectors.timely_memory import detect_timely_memory_db, timely_memory_db_candidates
+        from core.sqlite_backup import sqlite_db_check_detail
+
+        memory_db = detect_timely_memory_db(timely_memory_db_candidates(home))
+        if memory_db:
+            table.add_row(
+                "Timely Memory (presence)",
+                OK_ICON,
+                f"[{STYLE_MUTED}]{sqlite_db_check_detail(memory_db, 'Local buffer readable')}; "
+                f"opt-in via --timely-memory-source on (read-only, timestamps only)[/{STYLE_MUTED}]",
+            )
+        else:
+            table.add_row(
+                "Timely Memory (presence)",
+                NA_ICON,
+                f"[{STYLE_MUTED}]No local Memory buffer found (source stays off; opt-in only)[/{STYLE_MUTED}]",
+            )
+
         add_collector_doctor_rows(
             table,
             home,

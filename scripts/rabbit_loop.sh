@@ -301,7 +301,7 @@ if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
     if command -v timeout >/dev/null 2>&1; then BOARD_TIMEOUT=(timeout 60)
     elif command -v gtimeout >/dev/null 2>&1; then BOARD_TIMEOUT=(gtimeout 60); fi
     set +e
-    BOARD_SYNC_OUT="$("${BOARD_TIMEOUT[@]}" bash "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "In review" 2>&1)"
+    BOARD_SYNC_OUT="$(${BOARD_TIMEOUT[@]+"${BOARD_TIMEOUT[@]}"} bash "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "In review" 2>&1)"
     BOARD_SYNC_RC=$?
     set -e
     [[ -n "$BOARD_SYNC_OUT" ]] && printf '%s\n' "$BOARD_SYNC_OUT" | sed 's/^/  board: /'

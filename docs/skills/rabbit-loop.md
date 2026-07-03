@@ -178,14 +178,21 @@ last look." The board Status maps to the loop like this:
 
 ```text
 Backlog → Ready (prio now/next) → In progress (agent working)
-        → In review (PR open, CodeRabbit)
+        → In review (PR on board — synced on CONVERGED via rabbit_board_sync.sh)
               ├─ SAFE + CONVERGED ─────────────────────→ Done   (auto-merge)
               └─ NEEDS_HUMAN + CONVERGED → Needs manual testing → Done
                      (checklist posted on the issue; human runs it, then merges)
 ```
 
-Do the handoff with one command (it reuses the classify + checklist above, and is the **only**
-kanin-loop script that writes to GitHub — `rabbit_loop.sh` stays read-only):
+When `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, it also runs
+`scripts/rabbit_board_sync.sh` (best-effort): the open PR for the current branch is added or
+updated on the project board with Status **In review**. No PR yet (exit 3) is normal before
+`gh pr create` — run `rabbit_board_sync.sh` manually after opening the PR. Pass
+`--skip-board-sync` to disable the automatic step.
+
+Do the NEEDS_HUMAN handoff with one command (it reuses the classify + checklist above, and is the **only**
+kanin-loop script that writes to GitHub besides board sync — `rabbit_loop.sh` itself stays read-only
+except for the CONVERGED PR sync):
 
 ```bash
 scripts/rabbit_handoff.sh --issue N            # park #N in "Needs manual testing" + post the checklist
@@ -193,8 +200,8 @@ scripts/rabbit_handoff.sh --issue N --dry-run  # preview: show the move + checkl
 ```
 
 It refuses a `SAFE` diff (those auto-merge — pass `--force` to override), resolves the board
-field/column **by name** (surviving renames), and needs the `project` gh scope
-(`gh auth refresh -s project`). After you complete and run the checklist, move the issue to
+field/column **by name** (survives renames), syncs the open PR to the same Status when one exists,
+and needs the `project` gh scope (`gh auth refresh -s project`). After you complete and run the checklist, move the issue to
 **Done** and merge.
 
 ## When NOT to loop

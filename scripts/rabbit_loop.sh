@@ -15,6 +15,7 @@
 #   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
 #   scripts/rabbit_loop.sh --skip-workflow       # skip GitButler/multi-agent preflight
 #   scripts/rabbit_loop.sh --ack-workflow      # record workflow acknowledgement
+#   scripts/rabbit_loop.sh --skip-board-sync   # skip project-board PR sync on CONVERGED
 #
 # --manual-test-plan scaffolds a manual-test checklist from the committed diff:
 #   each changed AREA (collectors/outputs/core/cli/scripts/pkg/tests) maps to a
@@ -42,6 +43,7 @@ CLASSIFY=0
 MANUAL_PLAN=0
 SKIP_WORKFLOW=0
 ACK_WORKFLOW=0
+SKIP_BOARD_SYNC=0
 
 usage() {
   awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
@@ -144,6 +146,7 @@ while [[ $# -gt 0 ]]; do
     --manual-test-plan) MANUAL_PLAN=1; shift ;;
     --skip-workflow) SKIP_WORKFLOW=1; shift ;;
     --ack-workflow) ACK_WORKFLOW=1; shift ;;
+    --skip-board-sync) SKIP_BOARD_SYNC=1; shift ;;
     -h|--help) usage ;;
     *) echo "rabbit_loop: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
@@ -289,6 +292,26 @@ if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "PASS" ]]; then
     "$(git rev-parse HEAD 2>/dev/null || echo '')" \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$STATE_DIR/converged.ack"
   echo "RABBIT_LOOP: CONVERGED (findings=0 tests=PASS)"
+  if [[ $SKIP_BOARD_SYNC -eq 0 && -f "$REPO_ROOT/scripts/rabbit_board_sync.sh" ]]; then
+    # Wrap in a wall-clock timeout so a hung gh/network call can never stall the
+    # loop's ship signal. timeout(1) is GNU coreutils (gtimeout on macOS/brew);
+    # fall back to no wrapper when neither is present (Python side caps each gh
+    # call at 30s regardless).
+    BOARD_TIMEOUT=()
+    if command -v timeout >/dev/null 2>&1; then BOARD_TIMEOUT=(timeout 60)
+    elif command -v gtimeout >/dev/null 2>&1; then BOARD_TIMEOUT=(gtimeout 60); fi
+    set +e
+    BOARD_SYNC_OUT="$(${BOARD_TIMEOUT[@]+"${BOARD_TIMEOUT[@]}"} bash "$REPO_ROOT/scripts/rabbit_board_sync.sh" --status "In review" 2>&1)"
+    BOARD_SYNC_RC=$?
+    set -e
+    [[ -n "$BOARD_SYNC_OUT" ]] && printf '%s\n' "$BOARD_SYNC_OUT" | sed 's/^/  board: /'
+    # exit 3 = no open PR yet (normal before gh pr create); 124 = timeout(1) expiry
+    if [[ $BOARD_SYNC_RC -eq 124 ]]; then
+      echo "  board: warning: sync timed out; continuing" >&2
+    elif [[ $BOARD_SYNC_RC -ne 0 && $BOARD_SYNC_RC -ne 3 ]]; then
+      echo "  board: warning: sync failed with exit $BOARD_SYNC_RC; continuing" >&2
+    fi
+  fi
   exit 0
 fi
 if [[ "$FINDINGS_COUNT" == "0" && "$TESTS_STATUS" == "SKIPPED" ]]; then

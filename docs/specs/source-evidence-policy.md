@@ -50,7 +50,7 @@ No source should silently promote classified time into approved invoice time.
 | Chrome / Lovable desktop history | `passive_context` | yes, cautiously | yes | no | Good for context and project hints; noisy for duration. |
 | Apple Mail | `passive_context` | yes, cautiously | yes | no | Communication context; permission-sensitive. |
 | Calendar | `scheduled_context` | no by default | yes, as support | no | Meeting context can support classification but should not inflate work alone. |
-| Screen Time | `coverage_comparator` | no | no | no | Use for gap analysis and coverage warnings, not as normal event evidence. |
+| Screen Time | `coverage_comparator` (presence/corroboration) | no | no | no | Use for gap analysis and coverage warnings, not as normal event evidence. Also bounds the display-only **presence-estimated hours** (`core/presence_estimated.py`, GH-146): the estimate never exceeds a day's Screen Time and is never mixed into observed/billable/truth-payload totals — see `docs/task-prompts/presence-estimated-hours-task.md`. Screen Time remains a non-billable, corroborating source only. |
 
 ## Weighting Guidance
 

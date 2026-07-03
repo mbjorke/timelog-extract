@@ -30,7 +30,15 @@
 #                              collectors, outputs, deps, CI, governance) → pause
 #
 # Exit codes: 0 = CONVERGED / SAFE, 1 = ITERATE or NEEDS_HUMAN,
-#             2 = preflight/setup problem (e.g. not authenticated).
+#             2 = preflight/setup problem (e.g. not authenticated, or the working
+#                 tree moved under the loop — WORKSPACE_MOVED, see below).
+#
+# GitButler / multi-agent note: this loop makes NO git writes and anchors to the
+# branch + HEAD it started on. If another agent or `but`/`git checkout` moves the
+# working tree mid-run (a real risk in a shared GitButler clone), the verdict is
+# VOIDED (RABBIT_LOOP: WORKSPACE_MOVED, exit 2) rather than shipping the wrong
+# branch. For parallel work, run the loop in an isolated worktree
+# (scripts/git_worktree.sh add <branch>).
 
 set -euo pipefail
 
@@ -173,6 +181,32 @@ FINDINGS_FILE="$STATE_DIR/findings.txt"
 TESTS_LOG="$STATE_DIR/autotests.log"
 WORKFLOW_CTX="$REPO_ROOT/scripts/rabbit_workflow_context.sh"
 
+# Anchor the whole run to the branch + HEAD we start on. The loop performs NO git
+# writes, so these must stay put for the entire review+test window. In a GitButler
+# workspace or any shared clone, another agent can `git checkout`/`but` the tree out
+# from under a multi-minute run — which would make CodeRabbit review branch A while
+# tests (and the CONVERGED verdict + board sync) land on branch B. We detect that and
+# void the verdict instead of shipping the wrong branch. (#240 multi-agent collision.)
+LOOP_START_BR="$(git branch --show-current 2>/dev/null || echo '')"
+LOOP_START_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+
+_assert_workspace_unmoved() {
+  local br sha
+  br="$(git branch --show-current 2>/dev/null || echo '')"
+  sha="$(git rev-parse HEAD 2>/dev/null || echo '')"
+  if [[ "$br" != "$LOOP_START_BR" || "$sha" != "$LOOP_START_SHA" ]]; then
+    echo "" >&2
+    echo "RABBIT_LOOP: WORKSPACE_MOVED — the working tree changed under the loop." >&2
+    echo "  started on: ${LOOP_START_BR:-<detached>} @ ${LOOP_START_SHA:0:12}" >&2
+    echo "  now on:     ${br:-<detached>} @ ${sha:0:12}" >&2
+    echo "  Another agent/tool (GitButler, a parallel checkout) moved HEAD mid-run;" >&2
+    echo "  the review/test result is not trustworthy for either branch. Verdict voided." >&2
+    echo "  Re-run in an isolated worktree: scripts/git_worktree.sh add $LOOP_START_BR" >&2
+    return 1
+  fi
+  return 0
+}
+
 # --- workflow preflight (GitButler / multi-agent) ----------------------------
 if [[ $SKIP_WORKFLOW -eq 0 ]]; then
   if [[ ! -f "$WORKFLOW_CTX" ]]; then
@@ -281,6 +315,12 @@ fi
 
 # --- verdict (fail closed) -------------------------------------------------
 echo ""
+# The review + tests only mean something if they ran against the branch we started
+# on. If a parallel agent/GitButler moved HEAD mid-run, void the verdict — never
+# write converged.ack or sync the board for a branch we did not actually review.
+if ! _assert_workspace_unmoved; then
+  exit 2
+fi
 # A review that did not complete cleanly must never read as CONVERGED.
 if [[ $CR_EXIT -ne 0 || "$REVIEW_COMPLETED" != "1" ]]; then
   echo "RABBIT_LOOP: REVIEW_INCOMPLETE (cr_exit=$CR_EXIT completed=$REVIEW_COMPLETED) — see $FINDINGS_FILE"

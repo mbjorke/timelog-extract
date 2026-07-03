@@ -26,7 +26,7 @@ def _git(cwd: Path, *args: str) -> str:
 
 def _classify(cwd: Path, start_branch: str, start_sha: str) -> str:
     proc = subprocess.run(
-        [str(SCRIPT), "--internal-classify-movement", start_branch, start_sha],
+        ["bash", str(SCRIPT), "--internal-classify-movement", start_branch, start_sha],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -42,7 +42,8 @@ class RabbitMovementTests(unittest.TestCase):
             self.skipTest("rabbit_loop.sh missing")
         self._tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self._tmp.name)
-        _git(self.repo, "init", "-q", "-b", "task/feature")
+        _git(self.repo, "init", "-q")
+        _git(self.repo, "checkout", "-q", "-b", "task/feature")
         _git(self.repo, "config", "user.email", "t@test")
         _git(self.repo, "config", "user.name", "t")
         (self.repo / "a.txt").write_text("1\n", encoding="utf-8")

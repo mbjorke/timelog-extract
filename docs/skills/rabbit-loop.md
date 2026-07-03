@@ -53,6 +53,18 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 — and exits 2 on a setup problem (e.g. not authenticated).
 
+### GitButler / multi-agent: isolate the run
+
+The loop makes **no git writes** and anchors to the branch + HEAD it starts on.
+In a shared GitButler clone another agent can `but`/`git checkout` the working
+tree out from under a multi-minute review — which would let CodeRabbit review
+branch A while the tests, the CONVERGED verdict, and the board sync land on
+branch B. The loop detects a moved HEAD and **voids the verdict**:
+`RABBIT_LOOP: WORKSPACE_MOVED` (exit 2) — it never writes `converged.ack` or
+syncs the board for a branch it did not actually review. For parallel work, run
+the loop in an **isolated worktree** (`scripts/git_worktree.sh add <branch>`) so
+no other agent shares your tree.
+
 ### Guardrails (stay engaged; avoid comprehension debt)
 
 - **Iteration cap: default 3.** Unattended loops compound mistakes and burn

@@ -31,7 +31,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. |
 | — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. |
 | — | `report` | Build detailed local evidence reports for a selected timeframe. |
-| — | `review` | Map URL hosts to projects (default). Use --uncategorized for legacy log-cluster cleanup. |
+| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. |
 | — | `search` | Search timeline quickly with all events shown (shares report execution path). |
 | — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. |
 | — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. |

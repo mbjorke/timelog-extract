@@ -11,6 +11,7 @@ import typer
 from core.cli_ab_rule_suggestions import _apply_timeframe_prompt
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
+from core.cli_review_gaps import run_gap_attribution_review
 from core.cli_review_uncategorized import run_uncategorized_cluster_review
 from core.cli_url_mapping import run_url_mapping_review
 from core.config import default_projects_config_option, resolve_projects_config_path
@@ -35,6 +36,16 @@ def review(
             help="Legacy: review uncategorized log-text clusters instead of URL mapping.",
         ),
     ] = False,
+    gaps: Annotated[
+        bool,
+        typer.Option(
+            "--gaps",
+            help=(
+                "Report-gap attribution: preview and attribute Uncategorized clusters to an "
+                "existing customer/project line (never creates a new project)."
+            ),
+        ),
+    ] = False,
     ab_suggestions: Annotated[
         bool,
         typer.Option(help="[deprecated] With --uncategorized only: A/B rule suggestions."),
@@ -56,7 +67,38 @@ def review(
         typer.Option("--json", help="Print read-only URL candidate JSON to stdout; never writes config"),
     ] = False,
 ):
-    """Map URL hosts to projects (default). Use --uncategorized for legacy log-cluster cleanup."""
+    """Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup."""
+    if gaps:
+        resolved = str(projects_config) if projects_config else str(resolve_projects_config_path())
+
+        def _date_str(value: Optional[datetime]) -> Optional[str]:
+            return value.strftime("%Y-%m-%d") if isinstance(value, datetime) else None
+
+        has_candidates = run_gap_attribution_review(
+            date_from=_date_str(date_from),
+            date_to=_date_str(date_to),
+            today=today,
+            yesterday=yesterday,
+            last_3_days=last_3_days,
+            last_week=last_week,
+            last_14_days=last_14_days,
+            last_month=last_month,
+            projects_config=resolved,
+            max_clusters=max_clusters,
+            samples_per_cluster=samples_per_cluster,
+            json_out=json_out,
+        )
+        if not json_out:
+            from rich.console import Console
+
+            finish_review_guidance(
+                Console(),
+                projects_config=resolved,
+                has_candidates=has_candidates,
+                uncategorized=True,
+            )
+        return
+
     if uncategorized:
         from rich.console import Console
 

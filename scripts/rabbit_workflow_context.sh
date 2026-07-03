@@ -13,6 +13,7 @@
 # Usage:
 #   scripts/rabbit_workflow_context.sh              # summary + artifacts
 #   scripts/rabbit_workflow_context.sh --json       # print JSON only
+#   scripts/rabbit_workflow_context.sh --chat-summary  # markdown for chat (agents)
 #   scripts/rabbit_workflow_context.sh --ack        # acknowledge (records HEAD)
 #   scripts/rabbit_workflow_context.sh --ack --force
 #
@@ -46,6 +47,7 @@ HTML_FILE="$STATE_DIR/preflight.html"
 ACK_FILE="$STATE_DIR/workflow.ack"
 
 JSON_ONLY=0
+CHAT_SUMMARY=0
 DO_ACK=0
 FORCE_ACK=0
 
@@ -57,6 +59,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --json) JSON_ONLY=1; shift ;;
+    --chat-summary) CHAT_SUMMARY=1; shift ;;
     --ack) DO_ACK=1; shift ;;
     --force) FORCE_ACK=1; shift ;;
     -h|--help) usage ;;
@@ -64,7 +67,45 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ $JSON_ONLY -eq 1 && $CHAT_SUMMARY -eq 1 ]]; then
+  echo "rabbit_workflow_context: use --json or --chat-summary, not both." >&2
+  exit 2
+fi
+
 mkdir -p "$STATE_DIR"
+
+_read_preflight_counts() {
+  python3 - "$1" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+except (OSError, json.JSONDecodeError) as exc:
+    print(f"rabbit_workflow_context: invalid preflight JSON {path}: {exc}", file=sys.stderr)
+    sys.exit(1)
+if not isinstance(data, dict):
+    print(
+        f"rabbit_workflow_context: preflight JSON root must be object, got {type(data).__name__}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+blockers = data.get("blockers")
+warnings = data.get("warnings")
+if blockers is None:
+    blockers = []
+elif not isinstance(blockers, list):
+    print("rabbit_workflow_context: preflight 'blockers' must be a list", file=sys.stderr)
+    sys.exit(1)
+if warnings is None:
+    warnings = []
+elif not isinstance(warnings, list):
+    print("rabbit_workflow_context: preflight 'warnings' must be a list", file=sys.stderr)
+    sys.exit(1)
+print(len(blockers), len(warnings))
+PY
+}
 
 CURRENT="$(git branch --show-current 2>/dev/null || echo "(detached)")"
 HEAD_SHA="$(git rev-parse HEAD 2>/dev/null || echo "")"
@@ -401,6 +442,14 @@ if [[ $JSON_ONLY -eq 1 ]]; then
   exit 0
 fi
 
+if [[ $CHAT_SUMMARY -eq 1 ]]; then
+  python3 "$REPO_ROOT/scripts/rabbit_workflow_context_chat.py" "$JSON_FILE"
+  read -r BLOCKERS WARNINGS < <(_read_preflight_counts "$JSON_FILE")
+  if [[ "$BLOCKERS" -gt 0 ]]; then exit 2; fi
+  if [[ "$WARNINGS" -gt 0 ]]; then exit 1; fi
+  exit 0
+fi
+
 # Human summary
 python3 - "$JSON_FILE" <<'PY'
 import json, sys
@@ -415,8 +464,7 @@ for w in d.get("warnings", []):
 print(f"  artifacts: .rabbit-loop/preflight.html")
 PY
 
-BLOCKERS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('blockers',[])))")"
-WARNINGS="$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('warnings',[])))")"
+read -r BLOCKERS WARNINGS < <(_read_preflight_counts "$JSON_FILE")
 
 # macOS: open HTML for visual review (best-effort).
 if [[ -f "$HTML_FILE" ]] && command -v open >/dev/null 2>&1; then

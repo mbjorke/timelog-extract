@@ -50,6 +50,23 @@ class RabbitWorkflowContextTests(unittest.TestCase):
                 msg="each worktree path should be its own JSON entry",
             )
 
+    def test_chat_summary_markdown(self):
+        if not SCRIPT.is_file():
+            self.skipTest("rabbit_workflow_context.sh missing")
+        proc = subprocess.run(
+            [str(SCRIPT), "--chat-summary"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertIn(proc.returncode, (0, 1, 2), msg=proc.stderr or proc.stdout)
+        out = proc.stdout
+        self.assertIn("## Kanin-loop workflow preflight", out)
+        self.assertIn("### Questions", out)
+        self.assertIn("scripts/rabbit_workflow_context.sh --ack", out)
+        self.assertIn("### Local task/* lanes", out)
+
 
 if __name__ == "__main__":
     unittest.main()

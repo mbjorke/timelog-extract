@@ -34,11 +34,14 @@
 #                 tree moved under the loop — WORKSPACE_MOVED, see below).
 #
 # GitButler / multi-agent note: this loop makes NO git writes and anchors to the
-# branch + HEAD it started on. If another agent or `but`/`git checkout` moves the
-# working tree mid-run (a real risk in a shared GitButler clone), the verdict is
-# VOIDED (RABBIT_LOOP: WORKSPACE_MOVED, exit 2) rather than shipping the wrong
-# branch. For parallel work, run the loop in an isolated worktree
-# (scripts/git_worktree.sh add <branch>).
+# branch + HEAD it started on, then classifies any movement at verdict time:
+#   - same branch, HEAD advanced (a CodeRabbit autofix or cloud-agent commit) →
+#     RABBIT_LOOP: HEAD_ADVANCED (exit 1): re-run to review the new commits.
+#   - branch switched / history diverged → RABBIT_LOOP: WORKSPACE_MOVED (exit 2):
+#     verdict voided rather than shipping the wrong branch.
+#   - gitbutler/* branch → lane churn is expected; the raw-HEAD guard is skipped
+#     (lane-scoped truth lives in `but`), so parallel lanes do not void the run.
+# For fully isolated parallel work, run in a worktree (scripts/git_worktree.sh add …).
 
 set -euo pipefail
 
@@ -52,6 +55,9 @@ MANUAL_PLAN=0
 SKIP_WORKFLOW=0
 ACK_WORKFLOW=0
 SKIP_BOARD_SYNC=0
+CLASSIFY_MOVE=0
+CLASSIFY_MOVE_BR=""
+CLASSIFY_MOVE_SHA=""
 
 usage() {
   awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
@@ -75,6 +81,27 @@ _judgment_required() {
     AGENTS.md|CLAUDE.md) return 0 ;;                       # governance
     *) return 1 ;;
   esac
+}
+
+# Classify how the working tree moved since LOOP start. Echoes exactly one of:
+#   STABLE    same branch, same HEAD — verdict is trustworthy
+#   ADVANCED  same branch, HEAD is a descendant of start (auto-commit landed) — re-review
+#   MOVED     branch switched, or HEAD diverged (rebase/reset) — verdict void
+#   WORKSPACE on gitbutler/* — the integration commit churns as any lane commits, so a
+#             raw-HEAD guard is meaningless; lane-scoped truth lives in `but`. We do not
+#             void on lane churn (that is the whole point of a GitButler workspace).
+_classify_movement() {
+  local sbr="$1" ssha="$2" cbr csha
+  cbr="$(git branch --show-current 2>/dev/null || echo '')"
+  csha="$(git rev-parse HEAD 2>/dev/null || echo '')"
+  if [[ "$cbr" == gitbutler/* || "$sbr" == gitbutler/* ]]; then echo "WORKSPACE"; return 0; fi
+  if [[ "$cbr" != "$sbr" ]]; then echo "MOVED"; return 0; fi
+  if [[ "$csha" == "$ssha" ]]; then echo "STABLE"; return 0; fi
+  if [[ -n "$ssha" ]] && git merge-base --is-ancestor "$ssha" "$csha" 2>/dev/null; then
+    echo "ADVANCED"
+  else
+    echo "MOVED"
+  fi
 }
 
 classify_merge() {
@@ -155,6 +182,11 @@ while [[ $# -gt 0 ]]; do
     --skip-workflow) SKIP_WORKFLOW=1; shift ;;
     --ack-workflow) ACK_WORKFLOW=1; shift ;;
     --skip-board-sync) SKIP_BOARD_SYNC=1; shift ;;
+    # Internal: print the movement class for <start-branch> <start-sha> and exit.
+    # Used by tests; not part of the public interface.
+    --internal-classify-movement)
+      [[ $# -ge 3 ]] || { echo "rabbit_loop: --internal-classify-movement needs <branch> <sha>" >&2; exit 2; }
+      CLASSIFY_MOVE_BR="$2"; CLASSIFY_MOVE_SHA="$3"; CLASSIFY_MOVE=1; shift 3 ;;
     -h|--help) usage ;;
     *) echo "rabbit_loop: unknown arg '$1' (try --help)" >&2; exit 2 ;;
   esac
@@ -164,6 +196,11 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   echo "rabbit_loop: not inside a git repository" >&2; exit 2
 }
 cd "$REPO_ROOT"
+
+# Internal movement classifier (pure git; used by tests). No CodeRabbit call needed.
+if [[ $CLASSIFY_MOVE -eq 1 ]]; then
+  _classify_movement "$CLASSIFY_MOVE_BR" "$CLASSIFY_MOVE_SHA"; exit 0
+fi
 
 # Ship-gate classification and the manual-test scaffold are pure git-diff checks;
 # no CodeRabbit call needed.
@@ -182,30 +219,15 @@ TESTS_LOG="$STATE_DIR/autotests.log"
 WORKFLOW_CTX="$REPO_ROOT/scripts/rabbit_workflow_context.sh"
 
 # Anchor the whole run to the branch + HEAD we start on. The loop performs NO git
-# writes, so these must stay put for the entire review+test window. In a GitButler
-# workspace or any shared clone, another agent can `git checkout`/`but` the tree out
-# from under a multi-minute run — which would make CodeRabbit review branch A while
-# tests (and the CONVERGED verdict + board sync) land on branch B. We detect that and
-# void the verdict instead of shipping the wrong branch. (#240 multi-agent collision.)
+# writes, so these should stay put for the entire review+test window. But a review
+# run takes minutes, and other actors legitimately or accidentally touch the tree:
+#   - a CodeRabbit autofix or cloud agent commits ON THE SAME BRANCH (HEAD advances)
+#   - a parallel agent `git checkout`s a DIFFERENT branch in a shared clone
+#   - someone rebases/resets under our feet (HEAD diverges)
+# These are NOT the same event and must not be handled the same way. Auto-commits are
+# normal and should trigger a re-review, not a scary "collision" void.
 LOOP_START_BR="$(git branch --show-current 2>/dev/null || echo '')"
 LOOP_START_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
-
-_assert_workspace_unmoved() {
-  local br sha
-  br="$(git branch --show-current 2>/dev/null || echo '')"
-  sha="$(git rev-parse HEAD 2>/dev/null || echo '')"
-  if [[ "$br" != "$LOOP_START_BR" || "$sha" != "$LOOP_START_SHA" ]]; then
-    echo "" >&2
-    echo "RABBIT_LOOP: WORKSPACE_MOVED — the working tree changed under the loop." >&2
-    echo "  started on: ${LOOP_START_BR:-<detached>} @ ${LOOP_START_SHA:0:12}" >&2
-    echo "  now on:     ${br:-<detached>} @ ${sha:0:12}" >&2
-    echo "  Another agent/tool (GitButler, a parallel checkout) moved HEAD mid-run;" >&2
-    echo "  the review/test result is not trustworthy for either branch. Verdict voided." >&2
-    echo "  Re-run in an isolated worktree: scripts/git_worktree.sh add $LOOP_START_BR" >&2
-    return 1
-  fi
-  return 0
-}
 
 # --- workflow preflight (GitButler / multi-agent) ----------------------------
 if [[ $SKIP_WORKFLOW -eq 0 ]]; then
@@ -315,12 +337,38 @@ fi
 
 # --- verdict (fail closed) -------------------------------------------------
 echo ""
-# The review + tests only mean something if they ran against the branch we started
-# on. If a parallel agent/GitButler moved HEAD mid-run, void the verdict — never
-# write converged.ack or sync the board for a branch we did not actually review.
-if ! _assert_workspace_unmoved; then
-  exit 2
-fi
+# The review + tests only mean something if they ran against the state we started on.
+# Classify what (if anything) moved and act accordingly — never write converged.ack or
+# sync the board for a branch we did not actually review.
+MOVE_CLASS="$(_classify_movement "$LOOP_START_BR" "$LOOP_START_SHA")"
+case "$MOVE_CLASS" in
+  STABLE) : ;;
+  WORKSPACE)
+    echo "  note: GitButler workspace detected — lane churn is expected; the raw-HEAD" >&2
+    echo "        guard is skipped. Lane-scoped verification lives in \`but\`; a re-run" >&2
+    echo "        picks up any lane commit. (Do not merge a lane you did not review.)" >&2
+    ;;
+  ADVANCED)
+    NOW_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+    echo "RABBIT_LOOP: HEAD_ADVANCED — new commits landed on $LOOP_START_BR since the review"
+    echo "  started ${LOOP_START_SHA:0:12} → now ${NOW_SHA:0:12} (e.g. a CodeRabbit autofix"
+    echo "  or cloud-agent commit). The review did not cover them — re-run to review the new"
+    echo "  HEAD before shipping. (Verdict withheld, not failed.)"
+    exit 1
+    ;;
+  MOVED|*)
+    NOW_BR="$(git branch --show-current 2>/dev/null || echo '')"
+    NOW_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+    echo "" >&2
+    echo "RABBIT_LOOP: WORKSPACE_MOVED — the working tree changed under the loop." >&2
+    echo "  started on: ${LOOP_START_BR:-<detached>} @ ${LOOP_START_SHA:0:12}" >&2
+    echo "  now on:     ${NOW_BR:-<detached>} @ ${NOW_SHA:0:12}" >&2
+    echo "  A parallel checkout or history rewrite moved HEAD to unrelated work; the" >&2
+    echo "  review/test result is not trustworthy for either branch. Verdict voided." >&2
+    echo "  Re-run in an isolated worktree: scripts/git_worktree.sh add ${LOOP_START_BR:-<branch>}" >&2
+    exit 2
+    ;;
+esac
 # A review that did not complete cleanly must never read as CONVERGED.
 if [[ $CR_EXIT -ne 0 || "$REVIEW_COMPLETED" != "1" ]]; then
   echo "RABBIT_LOOP: REVIEW_INCOMPLETE (cr_exit=$CR_EXIT completed=$REVIEW_COMPLETED) — see $FINDINGS_FILE"

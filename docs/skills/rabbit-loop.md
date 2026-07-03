@@ -53,17 +53,28 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 — and exits 2 on a setup problem (e.g. not authenticated).
 
-### GitButler / multi-agent: isolate the run
+### GitButler / multi-agent: how the loop handles a moving tree
 
 The loop makes **no git writes** and anchors to the branch + HEAD it starts on.
-In a shared GitButler clone another agent can `but`/`git checkout` the working
-tree out from under a multi-minute review — which would let CodeRabbit review
-branch A while the tests, the CONVERGED verdict, and the board sync land on
-branch B. The loop detects a moved HEAD and **voids the verdict**:
-`RABBIT_LOOP: WORKSPACE_MOVED` (exit 2) — it never writes `converged.ack` or
-syncs the board for a branch it did not actually review. For parallel work, run
-the loop in an **isolated worktree** (`scripts/git_worktree.sh add <branch>`) so
-no other agent shares your tree.
+A review takes minutes, and other actors touch the tree — so at verdict time the
+loop **classifies** what moved instead of treating every change as a collision:
+
+| What happened | Verdict | Why |
+| --- | --- | --- |
+| Same branch, same HEAD | proceed (`CONVERGED`/`ITERATE`) | trustworthy |
+| Same branch, HEAD **advanced** (CodeRabbit autofix / cloud-agent commit) | `HEAD_ADVANCED` (exit 1) | new commits weren't reviewed — **re-run** picks them up |
+| Branch **switched** or history **diverged** (rebase/reset) | `WORKSPACE_MOVED` (exit 2) | review is for the wrong code — **voided**, no `converged.ack`, no board sync |
+| On `gitbutler/*` | proceed, guard skipped | the integration commit churns as any lane commits; **lane churn is expected** and must not void — lane-scoped truth lives in `but` |
+
+So cloud/auto-commit agents (which don't use GitButler) are handled cleanly: an
+auto-commit on your branch just asks for a re-review rather than a scary void. In
+a **GitButler workspace** the loop stays out of the way of parallel lanes. Only a
+real branch switch or history rewrite voids the run. For fully isolated parallel
+work you can still run in a **worktree** (`scripts/git_worktree.sh add <branch>`).
+
+> Lane-**scoped review** in workspace mode (reviewing only one applied lane's diff
+> rather than the combined integration diff) is a follow-up — the current guard
+> only ensures workspace lane churn does not falsely void the verdict.
 
 ### Guardrails (stay engaged; avoid comprehension debt)
 

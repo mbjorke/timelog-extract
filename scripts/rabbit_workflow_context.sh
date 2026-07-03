@@ -77,9 +77,33 @@ mkdir -p "$STATE_DIR"
 _read_preflight_counts() {
   python3 - "$1" <<'PY'
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    d = json.load(f)
-print(len(d.get("blockers", [])), len(d.get("warnings", [])))
+
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+except (OSError, json.JSONDecodeError) as exc:
+    print(f"rabbit_workflow_context: invalid preflight JSON {path}: {exc}", file=sys.stderr)
+    sys.exit(1)
+if not isinstance(data, dict):
+    print(
+        f"rabbit_workflow_context: preflight JSON root must be object, got {type(data).__name__}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+blockers = data.get("blockers")
+warnings = data.get("warnings")
+if blockers is None:
+    blockers = []
+elif not isinstance(blockers, list):
+    print("rabbit_workflow_context: preflight 'blockers' must be a list", file=sys.stderr)
+    sys.exit(1)
+if warnings is None:
+    warnings = []
+elif not isinstance(warnings, list):
+    print("rabbit_workflow_context: preflight 'warnings' must be a list", file=sys.stderr)
+    sys.exit(1)
+print(len(blockers), len(warnings))
 PY
 }
 

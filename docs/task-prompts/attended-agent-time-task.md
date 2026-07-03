@@ -2,7 +2,7 @@
 
 ## Traceability
 
-- story_id: GH-pending
+- story_id: GH-284
 - spec_status: draft
 - implementation_status: not built
 - created_at: 2026-07-03

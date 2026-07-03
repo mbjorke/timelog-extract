@@ -97,8 +97,44 @@ For each bucket (or the day total narrative in private notes), assign primary ta
 | **source_coverage** | One tool has a collector the other lacks | Zed chat local DB vs no Timely source yet |
 | **noise_filter** | Gittan excluded; Timely included (or vice versa) | Extension-host heartbeat vs Memory title |
 | **attribution** | Same evidence, different project | AI suggestion vs `match_terms` |
+| **interpretation_drift** | Same evidence, different output across re-runs of the same tool | AutoSheet re-scan moves a 15-min block between categories |
 
 **Scoring rule:** prefer **event counts and tagged examples** over a single hours delta.
+
+## Step 4b — Repeat-scan determinism test (interpretation stability)
+
+The ledger diff (Steps 1–4) compares *coverage and attribution*. This test compares
+**interpretation stability**: does the other tool produce the same timesheet from the
+same evidence twice?
+
+Method (per closed day, N ≥ 3 scans):
+
+1. Scan the day in the tool's automatic-timesheet view. Record per scan:
+   - assigned total and per-project / per-category split,
+   - entry block boundaries (start/end of each assigned block),
+   - the description text of one fixed block (verbatim),
+   - draft/submitted state.
+2. If the tool requires it, unsubmit between scans. Note whether a previously
+   **submitted** total diverges from the regenerated draft — and whether the tool
+   warns about it.
+3. Re-scan without changing any underlying activity data. Repeat.
+
+Expected outcomes:
+
+- **Deterministic pipeline** (Gittan's contract, cf. `timelog-truth-check.md` and the
+  observed-cache keep-max rule): identical output every run; totals never decrease.
+- **Generative interpretation** (LLM re-run per scan): paraphrased descriptions,
+  shifting block boundaries, blocks flipping between categories or dropping to
+  unassigned — tag these rows `interpretation_drift`.
+
+Record the series (totals per scan, which blocks moved, verbatim description
+variants) in `private/benchmarks/rescan-drift-${DAY}.md`. Exact numbers stay in
+`private/`; the public claim is the *mechanism* (regeneration without versioning),
+not a headline hours delta.
+
+Why it matters for a partner/billing conversation: if a re-scan can silently lower a
+day that was already submitted or invoiced, the timesheet is not an audit trail. A
+deterministic evidence layer is the complement, not just a competing capture engine.
 
 ## Step 5 — Write the one-page summary (private)
 

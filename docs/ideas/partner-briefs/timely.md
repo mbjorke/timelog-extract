@@ -4,7 +4,7 @@
 
 **Relationship (draft):** Compete on the **evidence layer** (Memory.app / AI-tool capture) *and* potentially **partner** if Timely prefers to license or co-develop developer-grade collectors instead of rebuilding every AI/IDE source in-house.
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-03
 
 ---
 
@@ -32,6 +32,7 @@ Their **Memory.app** work on Claude/Codex/IDE context is direct overlap with Git
 | Project attribution | AI prediction on timeline | `match_terms`, anchors (dir, branch, repo slug), review flow |
 | Inspectability | Hosted timeline | `gittan report --format json`, source + detail per event |
 | Platform | Expanding (Windows/ChatGPT desktop on roadmap per their posts) | macOS-primary v1 — **honest boundary in any conversation** |
+| Reproducibility | AutoSheet regenerates per scan (LLM interpretation; totals, category splits, and block boundaries can change on re-scan of an unchanged day, incl. after submission — observed 2026-07-03, repeat-scan test, details in `private/`) | Deterministic pipeline; observed-cache keep-max guarantees re-runs never degrade a closed day |
 
 Do **not** open with “we already have what you need.” Open with a **classified same-day ledger diff** — see the benchmark runbook.
 

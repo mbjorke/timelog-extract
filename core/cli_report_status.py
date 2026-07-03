@@ -116,7 +116,7 @@ def report(
         ),
     ] = None,
     git_source: Annotated[bool, typer.Option("--git", help="Show Git-only column (requires git_repo in project config).")] = False,
-    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.")] = "off",
+    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off/auto: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. auto (default) uses the \"shadow_log\" setting in timelog_projects.json, else off; explicit on/off overrides it.")] = "auto",
     shadow_replay: Annotated[str, typer.Option("--shadow-replay", help="on/off (opt-in): for a closed (past) window, restore stored evidence whose upstream source has since rotated.")] = "off",
 ):
     """Build detailed local evidence reports for a selected timeframe.
@@ -296,7 +296,7 @@ def status(
         typer.Option("--lovable-noise-profile", "--lovable-profile", help="Lovable storage-signal filtering: normal, balanced, or strict."),
     ] = DEFAULT_LOVABLE_NOISE_PROFILE,
     anchor_nudge: Annotated[bool, typer.Option("--anchor-nudge/--no-anchor-nudge", help="Warn about unmapped activity anchors (dir/branch/title) and offer to map them (interactive).")] = True,
-    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off (opt-in): append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation.")] = "off",
+    shadow_log: Annotated[str, typer.Option("--shadow-log", help="on/off/auto: append observed evidence to a durable local store (~/.gittan/evidence/) that survives source-log rotation. auto (default) uses the \"shadow_log\" setting in timelog_projects.json, else off; explicit on/off overrides it.")] = "auto",
 ):
     """Quick hours snapshot with project totals and session counts.
 
@@ -371,7 +371,9 @@ def status(
         )
         # Capture before the empty-result early return so --shadow-log on still
         # records observed evidence even when nothing is categorized this period.
-        shadow_line = _capture_shadow_log_line(shadow_log, report.all_events)
+        shadow_line = _capture_shadow_log_line(
+            shadow_log, report.all_events, config_path=options.projects_config
+        )
 
         if not report.included_events:
             console.print(f"[{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")

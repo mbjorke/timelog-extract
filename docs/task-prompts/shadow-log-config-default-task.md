@@ -4,16 +4,17 @@
 
 - story_id: `GH-274`
 - spec_status: `approved`
-- implementation_status: `not built`
+- implementation_status: `built`
 - created_at: `2026-07-02`
 - last_updated_at: `2026-07-02`
-- implementation.pr: pending
-- implementation.branch: pending
+- implementation.pr: PR closing GH-274 (task/shadow-log-config-default)
+- implementation.branch: `task/shadow-log-config-default`
 - implementation.commits: []
 - validation.evidence: pending
 - validation.decision: NO-GO
 - changelog:
   - `2026-07-02: Initial spec from the empty-evidence-store finding (issue #274); maintainer prio-steer: high, but next — not same-day.`
+  - `2026-07-02: Items 1–2 built (config precedence + doctor row); re-prioritized to now in the post-0.3.0 planning pass.`
 
 ## Problem
 

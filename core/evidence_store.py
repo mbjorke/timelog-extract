@@ -147,14 +147,47 @@ def capture_events(
     }
 
 
+def shadow_log_config_setting(config_path: Any) -> str:
+    """Read the persistent ``"shadow_log"`` key from the projects config.
+
+    A durability feature must not depend on a per-run flag (GH-274: the store sat
+    empty for months because no run ever passed ``--shadow-log on``). Setting
+    ``"shadow_log": "on"`` top-level in ``timelog_projects.json`` opts in once.
+    Missing file, malformed JSON, or any value other than "on" reads as "off".
+    """
+    if not config_path:
+        return "off"
+    try:
+        from core.config import load_projects_config_payload
+
+        payload = load_projects_config_payload(Path(config_path))
+    except (OSError, ValueError):
+        return "off"
+    return "on" if str(payload.get("shadow_log", "off")).strip().lower() == "on" else "off"
+
+
+def resolve_shadow_log(shadow_log: Any, config_path: Any = None) -> str:
+    """Resolve the effective shadow-log state: CLI flag > config > default off.
+
+    An explicit "on"/"off" from the CLI always wins (so ``--shadow-log off`` can
+    suppress a config-enabled capture for one run). Anything else — the "auto"
+    default, None, empty — defers to :func:`shadow_log_config_setting`.
+    """
+    explicit = str(shadow_log or "").strip().lower()
+    if explicit in ("on", "off"):
+        return explicit
+    return shadow_log_config_setting(config_path)
+
+
 def capture_if_enabled(
     shadow_log: Any,
     events: Iterable[Dict[str, Any]],
     *,
     home: Optional[Path] = None,
+    config_path: Any = None,
 ) -> Optional[Dict[str, Any]]:
-    """Capture only when ``shadow_log`` is "on"; never raises into the report."""
-    if str(shadow_log or "off").strip().lower() != "on":
+    """Capture when the resolved state is "on"; never raises into the report."""
+    if resolve_shadow_log(shadow_log, config_path) != "on":
         return None
     try:
         return capture_events(events, home=home)

@@ -4,14 +4,14 @@
 
 - story_id: `GH-274`
 - spec_status: `approved`
-- implementation_status: `built`
+- implementation_status: `verified`
 - created_at: `2026-07-02`
 - last_updated_at: `2026-07-02`
-- implementation.pr: PR closing GH-274 (task/shadow-log-config-default)
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/281
 - implementation.branch: `task/shadow-log-config-default`
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: https://github.com/mbjorke/timelog-extract/issues/274 (manual test PASS 2026-07-03: capture +63 utan flagga; doctor-rad on; flag-off oförändrat 13219 poster)
+- validation.decision: GO
 - changelog:
   - `2026-07-02: Initial spec from the empty-evidence-store finding (issue #274); maintainer prio-steer: high, but next — not same-day.`
   - `2026-07-02: Items 1–2 built (config precedence + doctor row); re-prioritized to now in the post-0.3.0 planning pass.`

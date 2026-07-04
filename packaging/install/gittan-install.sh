@@ -12,7 +12,7 @@
 #   curl -fsSL https://gittan.sh/install | bash -s -- --help
 #
 # What it does:
-#   - verifies Python 3.9+ is available
+#   - verifies Python 3.10+ is available
 #   - installs gittan via pipx (preferred) or `pip install --user` as a fallback
 #   - prints `gittan -V` to confirm
 #
@@ -22,7 +22,7 @@ set -euo pipefail
 PACKAGE="timelog-extract"   # PyPI package name
 COMMAND="gittan"            # CLI command this puts on your PATH
 PY_MIN_MAJOR=3
-PY_MIN_MINOR=9
+PY_MIN_MINOR=10
 PYPI_BASE="https://pypi.org/project"
 
 DRY_RUN=0

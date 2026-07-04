@@ -145,18 +145,22 @@ def presence_minutes_by_local_hour(samples: Iterable[Sample], tz) -> dict[str, f
 
 def write_memories_tsv(path: Path, spans: Iterable[Span]) -> int:
     count = 0
-    with path.open("w", newline="") as fh:
+    with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh, delimiter="\t")
         writer.writerow(["start_utc", "end_utc", "seconds", "app_name", "window_title", "url"])
         for span in spans:
+            # Sanitize fields that might contain tabs or newlines for naive TSV consumers
+            app_clean = span.app.replace("\t", " ").replace("\n", " ").replace("\r", " ")
+            title_clean = span.title.replace("\t", " ").replace("\n", " ").replace("\r", " ")
+            url_clean = span.url.replace("\t", " ").replace("\n", " ").replace("\r", " ")
             writer.writerow(
                 [
                     span.start.strftime("%Y-%m-%d %H:%M:%S"),
                     span.end.strftime("%Y-%m-%d %H:%M:%S"),
                     int(span.seconds),
-                    span.app,
-                    span.title,
-                    span.url,
+                    app_clean,
+                    title_clean,
+                    url_clean,
                 ]
             )
             count += 1
@@ -164,7 +168,7 @@ def write_memories_tsv(path: Path, spans: Iterable[Span]) -> int:
 
 
 def write_presence_tsv(path: Path, minutes_by_hour: dict[str, float]) -> None:
-    with path.open("w", newline="") as fh:
+    with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh, delimiter="\t")
         writer.writerow(["local_hour", "presence_minutes"])
         for hour, minutes in minutes_by_hour.items():

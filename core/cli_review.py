@@ -68,6 +68,11 @@ def review(
     ] = False,
 ):
     """Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup."""
+    if gaps and (uncategorized or ab_suggestions):
+        # The gaps branch returns early; a mixed invocation would silently
+        # ignore the other mode instead of running it — refuse loudly.
+        typer.echo("Error: --gaps cannot be combined with --uncategorized/--ab-suggestions.", err=True)
+        raise typer.Exit(code=2)
     if gaps:
         resolved = str(projects_config) if projects_config else str(resolve_projects_config_path())
 

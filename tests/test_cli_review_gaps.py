@@ -200,6 +200,8 @@ class GapAttributionInteractiveTests(unittest.TestCase):
             save_projects_config_payload(cfg, {"projects": profiles})
 
             with mock.patch("core.report_service.run_timelog_report", return_value=fake_report), mock.patch(
+                "core.anchor_nudge.should_prompt", return_value=True
+            ), mock.patch(
                 "core.cli_review_gaps.questionary.select"
             ) as select_mock, mock.patch("core.cli_review_gaps.questionary.confirm") as confirm_mock, mock.patch(
                 "core.cli_review_gaps.save_projects_config_payload"

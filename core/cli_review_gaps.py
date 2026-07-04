@@ -303,7 +303,14 @@ def run_gap_attribution_review(
             rule_type=cluster.rule_type,
             rule_value=cluster.rule_value,
         )
-        assert not created  # existence checked above; defensive, never expected
+        if created:
+            # The never-create invariant is safety-critical for the invoice
+            # config — enforce it at runtime (an assert vanishes under -O).
+            console.print(
+                f"[red]Refusing write:[/red] applying this rule would have created a new "
+                f"project '{target}' — this surface only edits existing lines. Skipping."
+            )
+            continue
         backup = backup_projects_config_if_exists(config_path)
         try:
             save_projects_config_payload(config_path, payload)

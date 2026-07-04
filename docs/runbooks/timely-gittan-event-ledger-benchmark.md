@@ -57,11 +57,24 @@ Store a flat table in `private/benchmarks/gittan-${DAY}-events.tsv` with columns
 
 `timestamp_utc | source | project | detail | fingerprint`
 
-## Step 2 — Export Timely ledger (manual)
+## Step 2 — Export Timely ledger
 
-Timely's public API centers on **Hours** (approved time entries) and **entry_ids** (Memory timeline atoms linked to hours). There is no public `event_id` field.
+**Automated (preferred):** when the tracker keeps a local sample buffer on disk
+(Timely Memory does), export the day directly:
 
-For a fair **evidence-layer** comparison:
+```bash
+python scripts/run_timely_memory_benchmark_export.py --day "$DAY" --tz Europe/Stockholm
+```
+
+This reads the buffer **read-only** (WAL-safe copy) and writes
+`private/benchmarks/timely-${DAY}-memories.tsv` (spans: start/end/seconds/app/
+title/URL) plus `timely-${DAY}-presence.tsv` (presence minutes per local hour —
+feeds the gap table in Step 4). The script refuses to write outside `private/`,
+because titles/URLs must never land in committed paths.
+
+**Manual (fallback, no local buffer):** Timely's public API centers on **Hours**
+(approved time entries) and **entry_ids** (Memory timeline atoms linked to
+hours); there is no public `event_id` field.
 
 1. In Timely UI, open the same **DAY** timeline / memories view.
 2. Export or copy **memory entries** (apps, titles, URLs, duration) — use Timely's export if available, or structured notes.

@@ -38,6 +38,7 @@ from core.uncategorized_review import (
     format_cluster_rule_hint,
     format_cluster_sample,
 )
+from outputs.terminal_theme import CLR_VALUE_ORANGE
 
 UNCATEGORIZED = "Uncategorized"
 _SKIP = "Skip this gap"
@@ -66,7 +67,7 @@ def _project_exists(payload: dict[str, Any], project_name: str) -> bool:
 def _customer_for_project(profiles: list[dict[str, Any]], project_name: str) -> str:
     tnorm = project_name.strip().lower()
     for profile in profiles:
-        if str(profile.get("name", "")).strip().lower() == tnorm:
+        if isinstance(profile, dict) and str(profile.get("name", "")).strip().lower() == tnorm:
             customer = str(profile.get("customer", "")).strip()
             return customer or project_name
     return project_name
@@ -261,8 +262,9 @@ def run_gap_attribution_review(
 
         console.print(
             f"[bold]Preview[/bold] → customer [cyan]{customer}[/cyan] · line [cyan]{target}[/cyan]: "
-            f"[orange]+{matched_events} events[/orange], [orange]+{matched_hours:.2f}h[/orange], "
-            f"[orange]{uncategorized_delta} uncategorized[/orange]"
+            f"[{CLR_VALUE_ORANGE}]+{matched_events} events[/{CLR_VALUE_ORANGE}], "
+            f"[{CLR_VALUE_ORANGE}]+{matched_hours:.2f}h[/{CLR_VALUE_ORANGE}], "
+            f"[{CLR_VALUE_ORANGE}]{uncategorized_delta} uncategorized[/{CLR_VALUE_ORANGE}]"
         )
         confirmed = questionary.confirm(
             f"Apply {cluster.rule_type}={cluster.rule_value!r} to '{target}' now?",

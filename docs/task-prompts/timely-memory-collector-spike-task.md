@@ -14,6 +14,7 @@
 - validation.decision: NO-GO
 - changelog:
   - 2026-07-03: Initial draft from Memory.app local-artifact analysis.
+  - 2026-07-04: Slice 2 built — scripts/run_timely_memory_benchmark_export.py (runbook Step 2 automation: spans + per-hour presence TSVs, private/-only output guard, read-only access). Live-validated on 2026-07-03: 35310 samples -> 1244 spans, 9.81h presence. (Slice 1 status tracked on the #290 branch.)
 
 ## Problem
 

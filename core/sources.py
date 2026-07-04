@@ -89,6 +89,9 @@ SOURCE_ROLES = {
     "Apple Mail": PASSIVE_CONTEXT,
     CALENDAR_SOURCE: SCHEDULED_CONTEXT,
     "Screen Time": COVERAGE_COMPARATOR,
+    # Opt-in presence buffer (read-only, timestamps only); see
+    # core/timely_memory.py. Comparator context, never billable input.
+    "Timely Memory": COVERAGE_COMPARATOR,
 }
 
 

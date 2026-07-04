@@ -3,18 +3,19 @@
 ## Traceability
 
 - story_id: GH-285
-- spec_status: draft
-- implementation_status: not built
+- spec_status: approved
+- implementation_status: built
 - created_at: 2026-07-03
-- last_updated_at: 2026-07-03
+- last_updated_at: 2026-07-04
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/timely-memory-collector-spike
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: tests/test_timely_memory_collector.py (7 fixture tests covering all four Behavior Contract scenarios) + live smoke 2026-07-04 (presence_hours 9.05 for 2026-07-02; off mode reads nothing; doctor row visible)
+- validation.decision: GO (slice 1)
 - changelog:
   - 2026-07-03: Initial draft from Memory.app local-artifact analysis.
-  - 2026-07-04: Slice 2 built — scripts/run_timely_memory_benchmark_export.py (runbook Step 2 automation: spans + per-hour presence TSVs, private/-only output guard, read-only access). Live-validated on 2026-07-03: 35310 samples -> 1244 spans, 9.81h presence. (Slice 1 status tracked on the #290 branch.)
+  - 2026-07-04: Slice 1 built — timestamps-only read, coverage_comparator status path via core/presence_sources.py, --timely-memory-source flag (off default), doctor row, fixture tests.
+  - 2026-07-04: Slice 2 built — scripts/run_timely_memory_benchmark_export.py (runbook Step 2 automation: spans + per-hour presence TSVs, private/-only output guard, read-only access). Live-validated on 2026-07-03: 35310 samples -> 1244 spans, 9.81h presence.
 
 ## Problem
 

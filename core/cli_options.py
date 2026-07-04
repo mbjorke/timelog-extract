@@ -45,6 +45,7 @@ class TimelogRunOptions:
     attribution_mode: Optional[str] = None
     source_strategy: str = "auto"
     screen_time: str = "auto"
+    timely_memory_source: str = "off"
     include_uncategorized: bool = False
     only_project: Optional[str] = None
     customer: Optional[str] = None

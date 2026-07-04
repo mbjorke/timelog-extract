@@ -442,3 +442,46 @@ def collect_screen_time_status(
         "days": len(screen_time_days),
     }
     return screen_time_days
+
+
+def collect_timely_memory_status(
+    *,
+    args: argparse.Namespace,
+    dt_from: datetime,
+    dt_to: datetime,
+    collector_status: Dict[str, Dict[str, Any]],
+    collect_timely_memory_fn: Callable[[datetime, datetime], Any],
+) -> Optional[Dict[str, float]]:
+    """Opt-in presence comparator (coverage_comparator role, like Screen Time).
+
+    Off by default: nothing is read unless --timely-memory-source on. The
+    returned per-day presence seconds are context only — they never enter the
+    event pipeline, so they cannot create classified project time.
+    """
+    from core.timely_memory import TIMELY_MEMORY_SOURCE, timely_memory_source_enabled
+
+    enabled, reason = timely_memory_source_enabled(args)
+    if not enabled:
+        collector_status[TIMELY_MEMORY_SOURCE] = {
+            "enabled": False,
+            "reason": reason,
+            "days": 0,
+        }
+        return None
+
+    memory_days, memory_msg = collect_timely_memory_fn(dt_from, dt_to)
+    if memory_days is None:
+        collector_status[TIMELY_MEMORY_SOURCE] = {
+            "enabled": True,
+            "reason": memory_msg,
+            "days": 0,
+        }
+        return None
+
+    collector_status[TIMELY_MEMORY_SOURCE] = {
+        "enabled": True,
+        "reason": "",
+        "days": len(memory_days),
+        "presence_hours": round(sum(memory_days.values()) / 3600.0, 2),
+    }
+    return memory_days

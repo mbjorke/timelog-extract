@@ -458,7 +458,7 @@ def collect_timely_memory_status(
     returned per-day presence seconds are context only — they never enter the
     event pipeline, so they cannot create classified project time.
     """
-    from collectors.timely_memory import TIMELY_MEMORY_SOURCE, timely_memory_source_enabled
+    from core.timely_memory import TIMELY_MEMORY_SOURCE, timely_memory_source_enabled
 
     enabled, reason = timely_memory_source_enabled(args)
     if not enabled:

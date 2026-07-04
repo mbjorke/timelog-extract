@@ -16,7 +16,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from collectors.timely_memory import (
+from core.timely_memory import (
     TIMELY_MEMORY_SOURCE,
     collect_timely_memory,
     detect_timely_memory_db,

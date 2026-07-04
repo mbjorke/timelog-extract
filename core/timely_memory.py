@@ -1,4 +1,4 @@
-"""Timely Memory local-buffer presence collector (opt-in, read-only).
+"""Timely Memory local-buffer presence helpers (opt-in, read-only).
 
 The Timely Memory desktop tracker keeps a local SQLite buffer of foreground
 samples (~1 row/second) that persists on disk after its own cloud upload.
@@ -8,10 +8,15 @@ Evidence role: ``coverage_comparator`` (same class as Screen Time) — presence
 context for gap/coverage comparison. It never creates classified project time
 and never contributes toward billable hours.
 
-Privacy posture: this collector reads **timestamps only**. Window titles, app
-names, and URLs in the buffer are never read, and nothing leaves the machine.
-Access is WAL-safe read-only (SQLite backup of the file into a temp copy); the
-third-party database is never written to.
+This module lives under ``core/`` (not ``collectors/``) because it mirrors
+``core.screen_time.collect_screen_time``: a presence-summary read path wired
+through ``core.presence_sources`` and ``collector_status``, not the event
+pipeline that expects ``source``/``timestamp``/``detail``/``project`` dicts.
+
+Privacy posture: reads **timestamps only**. Window titles, app names, and URLs
+in the buffer are never read, and nothing leaves the machine. Access is
+WAL-safe read-only (SQLite backup of the file into a temp copy); the third-party
+database is never written to.
 """
 
 from __future__ import annotations
@@ -98,11 +103,14 @@ def collect_timely_memory(
     local_tz,
     gap_seconds: int = DEFAULT_SPAN_GAP_SECONDS,
 ):
-    """Return (daily presence seconds by local day, source detail) or (None, reason).
+    """Return per-day presence seconds for coverage comparison, not event dicts.
 
-    Mirrors the Screen Time collector contract: the caller owns enablement;
-    this function only reads. Only the timestamp column is queried — never
-    titles, app names, or URLs.
+    Success: ``(daily_seconds_by_local_day, detail)`` where ``detail`` is the
+    buffer path. Failure: ``(None, reason)``. Mirrors
+    ``core.screen_time.collect_screen_time``; wired via
+    ``collect_timely_memory_status`` in ``core.report_runtime``.
+
+    Only the timestamp column is queried — never titles, app names, or URLs.
     """
     db_path = detect_timely_memory_db(candidates)
     if not db_path:

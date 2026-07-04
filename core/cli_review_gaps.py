@@ -218,6 +218,19 @@ def run_gap_attribution_review(
         )
         return False
 
+    # The picker below reads stdin (questionary); without a real TTY that
+    # crashes deep in the event loop (kqueue EINVAL on piped stdin) instead of
+    # degrading. Same guard as the anchor flow: prompts only on a terminal.
+    from core.anchor_nudge import should_prompt
+
+    if not should_prompt():
+        console.print(
+            f"[yellow]Interactive gap attribution needs a terminal[/yellow] — "
+            f"{len(clusters)} gap candidate(s) found. Use `gittan review --gaps --json` "
+            "for the machine-readable list."
+        )
+        return False
+
     console.print(
         f"[bold]Report gaps[/bold] | {len(uncategorized_events)} uncategorized events | "
         f"{noise_events} tooling-noise hidden | {len(clusters)} candidates"

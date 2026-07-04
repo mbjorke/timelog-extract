@@ -112,6 +112,8 @@ class GapAttributionInteractiveTests(unittest.TestCase):
             save_projects_config_payload(cfg, {"projects": profiles})
 
             with mock.patch("core.report_service.run_timelog_report", return_value=fake_report), mock.patch(
+                "core.anchor_nudge.should_prompt", return_value=True
+            ), mock.patch(
                 "core.cli_review_gaps.questionary.select"
             ) as select_mock, mock.patch("core.cli_review_gaps.questionary.confirm") as confirm_mock, mock.patch(
                 "core.cli_review_gaps.backup_projects_config_if_exists"
@@ -143,6 +145,8 @@ class GapAttributionInteractiveTests(unittest.TestCase):
             save_projects_config_payload(cfg, {"projects": profiles})
 
             with mock.patch("core.report_service.run_timelog_report", return_value=fake_report), mock.patch(
+                "core.anchor_nudge.should_prompt", return_value=True
+            ), mock.patch(
                 "core.cli_review_gaps.questionary.select"
             ) as select_mock, mock.patch("core.cli_review_gaps.questionary.confirm") as confirm_mock:
                 select_mock.return_value.ask.return_value = "Stop reviewing gaps"
@@ -158,6 +162,30 @@ class GapAttributionInteractiveTests(unittest.TestCase):
             for choice in choices:
                 self.assertNotIn("Create new project", str(choice))
             self.assertIn("Acme", choices)
+
+    def test_non_tty_degrades_gracefully_instead_of_prompting(self):
+        """Without a real TTY the questionary picker crashes deep in the event
+        loop (kqueue EINVAL on piped stdin); the guard must return early with
+        guidance toward --json instead of ever reaching the prompt."""
+        profiles = [_prof("Acme", ["acme"])]
+        events = [_event("Worked on acme-feature implementation") for _ in range(3)]
+        fake_report = _fake_report(profiles, events)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            save_projects_config_payload(cfg, {"projects": profiles})
+
+            with mock.patch("core.report_service.run_timelog_report", return_value=fake_report), mock.patch(
+                "core.anchor_nudge.should_prompt", return_value=False
+            ), mock.patch("core.cli_review_gaps.questionary.select") as select_mock:
+                result = run_gap_attribution_review(
+                    today=True,
+                    projects_config=str(cfg),
+                    json_out=False,
+                )
+
+            self.assertFalse(result)
+            select_mock.assert_not_called()
 
     def test_refuses_write_if_target_project_no_longer_exists(self):
         """Defense-in-depth: if the config no longer has the selected project by

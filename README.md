@@ -8,7 +8,7 @@
 
 **Local time reports from how you actually work.**
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![PyPI package](https://img.shields.io/badge/pypi-timelog--extract-006DAD?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/timelog-extract/)
 
@@ -21,7 +21,7 @@ Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns 
 
 ## Install
 
-You need **Python 3.9+**. The fastest path is the one-line installer — it uses [pipx](https://pypa.github.io/pipx/) under the hood (falling back to `pip install --user` if pipx is missing) so `gittan` lands on your PATH:
+You need **Python 3.10+**. The fastest path is the one-line installer — it uses [pipx](https://pypa.github.io/pipx/) under the hood (falling back to `pip install --user` if pipx is missing) so `gittan` lands on your PATH:
 
 ```bash
 curl -fsSL https://gittan.sh/install | bash

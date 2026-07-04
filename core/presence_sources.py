@@ -13,9 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from core.timely_memory import collect_timely_memory, timely_memory_db_candidates
 from core.report_runtime import collect_screen_time_status, collect_timely_memory_status
 from core.screen_time import collect_screen_time
+from core.timely_memory import collect_timely_memory, timely_memory_db_candidates
 
 APPLE_EPOCH = 978307200
 

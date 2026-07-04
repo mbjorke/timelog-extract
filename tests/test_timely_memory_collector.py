@@ -16,6 +16,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
+from core.report_runtime import collect_timely_memory_status
+from core.sources import COVERAGE_COMPARATOR, get_source_role
 from core.timely_memory import (
     TIMELY_MEMORY_SOURCE,
     collect_timely_memory,
@@ -23,8 +25,6 @@ from core.timely_memory import (
     timely_memory_db_candidates,
     timely_memory_source_enabled,
 )
-from core.report_runtime import collect_timely_memory_status
-from core.sources import COVERAGE_COMPARATOR, get_source_role
 
 TZ = ZoneInfo("Europe/Mariehamn")
 

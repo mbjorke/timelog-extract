@@ -227,8 +227,8 @@ def doctor(
                     f"[{STYLE_MUTED}]{len(git_repos)} repo(s); pass --git on report for Git-only hours[/{STYLE_MUTED}]",
                 )
 
-        from core.timely_memory import detect_timely_memory_db, timely_memory_db_candidates
         from core.sqlite_backup import sqlite_db_check_detail
+        from core.timely_memory import detect_timely_memory_db, timely_memory_db_candidates
 
         memory_db = detect_timely_memory_db(timely_memory_db_candidates(home))
         if memory_db:

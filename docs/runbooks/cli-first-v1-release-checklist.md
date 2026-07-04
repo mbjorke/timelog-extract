@@ -30,7 +30,7 @@ It assumes CLI and script workflows are the primary user path, while the Cursor 
 ## 3) Installation + Onboarding
 
 - README has one "use it now" command that succeeds on first try.
-- Install instructions are tested in a clean Python 3.9+ environment.
+- Install instructions are tested in a clean Python 3.10+ environment.
 - Worklog path/default behavior is explicitly documented and accurate.
 - Troubleshooting section includes 3 common failures:
   - missing Python deps

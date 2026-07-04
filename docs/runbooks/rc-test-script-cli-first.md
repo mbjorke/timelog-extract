@@ -8,7 +8,7 @@ Validate that the CLI-first path works end-to-end without IDE/extension setup.
 
 ## Preconditions
 
-- Python 3.9+ installed.
+- Python 3.10+ installed.
 - Git installed.
 - No assumptions about prior local timelog tooling.
 

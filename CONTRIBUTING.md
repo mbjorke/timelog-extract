@@ -39,7 +39,7 @@ Naming notes:
 
 ## Development setup
 
-- Python **3.9+** (CI uses 3.11).
+- Python **3.10+** (CI uses 3.11).
 - Install in editable mode from the repository root:
 
   ```bash

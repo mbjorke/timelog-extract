@@ -171,6 +171,17 @@ fi
 COMMENT="$(printf '%s\n\n%s\n\n---\n_Parked in **%s** by the kanin-loop NEEDS_HUMAN handoff (`scripts/rabbit_handoff.sh`). Complete each step with a real command + a judgeable expected outcome, run it, then move to **Done**._\n' \
   "🔎 **Manual testing needed before merge** — this change is CONVERGED (CodeRabbit clean, tests green) but touches a human-judgment surface." \
   "$PLAN" "$STATUS")"
+
+# Path/privacy hygiene (AGENTS.md § Documentation privacy and path hygiene):
+# GitHub artifacts must not leak absolute machine paths or private worktree dirs.
+# Checklists must tell the maintainer to run from the repo root with gittan-dev.
+if grep -Eq '/Users/|/home/[^ ]|\.claude/worktrees/' <<<"$COMMENT"; then
+  echo "rabbit_handoff: refusing to post — the checklist contains an absolute machine" >&2
+  echo "  path or private worktree dir. Rewrite it to run from the repo root with" >&2
+  echo "  gittan-dev (use ~/.gittan, not the expanded home). Nothing was posted." >&2
+  grep -nE '/Users/|/home/[^ ]|\.claude/worktrees/' <<<"$COMMENT" | sed 's/^/    /' >&2
+  exit 2
+fi
 gh issue comment "$ISSUE" --body "$COMMENT" >/dev/null
 
 echo ""

@@ -148,6 +148,7 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 ## Pull requests (language)
 
 - **PR title and PR description must be written in English.** That includes the initial post on GitHub and any edits before merge. Code comments may follow normal project language, but anything reviewers and bots read in the PR thread should be English-only.
+- **This applies to every GitHub artifact, not just PRs** — issue bodies and comments, and **manual-test / handoff checklists** posted by `scripts/rabbit_handoff.sh` or by hand, are English-only. Chat replies to the maintainer may use his language; anything published to GitHub is English.
 
 ## Documentation paths in code (CLI, errors, `console.print`)
 
@@ -160,7 +161,13 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - In docs/specs/prompts, use **repo-relative paths** (for example
 `docs/task-prompts/example.md`) instead of absolute local paths.
 - Never include local home paths or user-identifying filesystem segments (for
-example `/Users/<name>/...`) in committed documentation.
+example `/Users/<name>/...`) in committed documentation **or in any GitHub
+artifact** — issue/PR bodies and comments, and manual-test / handoff checklists.
+Tell the maintainer to run tools from the **repo root** with `gittan-dev` (or the
+installed `gittan`); never a private worktree path such as `.claude/worktrees/...`.
+Use `~/.gittan` (tilde), not the expanded home. This is why `scripts/rabbit_handoff.sh`
+should refuse to post a checklist body containing `/Users/`, `/home/`, or
+`.claude/worktrees/`.
 - Keep attribution neutral in specs (for example `Owner: Maintainer`) and avoid
 personal identifiers unless explicitly required for a formal incident record.
 

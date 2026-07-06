@@ -105,7 +105,7 @@ def classify_project(text, profiles, fallback):
 
         for url in profile.get("tracked_urls") or []:
             fragment = str(url).strip().lower()
-            if fragment and fragment in haystack_with_variants:
+            if fragment and _matches_term(fragment, haystack_with_variants):
                 weighted_score += 2.0
                 specific_hits += 1
                 match_len += len(fragment)

@@ -54,5 +54,31 @@ class DomainClassificationBugTests(unittest.TestCase):
         # "worklog" should match "Worklog" project, not "Log"
         self.assertEqual(classify_project("writing a worklog entry", profiles, "Default"), "Worklog")
 
+    def test_tracked_url_fragments_respect_word_boundaries(self):
+        """Tracked URL fragments should not over-match mid-word."""
+        profiles = [
+            {
+                "name": "Supabase",
+                "match_terms": [],
+                "tracked_urls": ["supabase"]
+            }
+        ]
+        # "supabase" as a word should match
+        self.assertEqual(classify_project("https://supabase.com/dashboard", profiles, "Default"), "Supabase")
+        # "supabase" inside another word should NOT match
+        self.assertEqual(classify_project("Using the insupabase-tool", profiles, "Default"), "Default")
+
+    def test_swedish_word_boundaries(self):
+        """Swedish terms with non-ASCII characters should still respect word boundaries."""
+        profiles = [
+            {
+                "name": "ÅSS",
+                "match_terms": ["åss"],
+                "tracked_urls": []
+            }
+        ]
+        self.assertEqual(classify_project("Jobbar med ÅSS idag", profiles, "Default"), "ÅSS")
+        self.assertEqual(classify_project("Måsar i blåsväder", profiles, "Default"), "Default")
+
 if __name__ == "__main__":
     unittest.main()

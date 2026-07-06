@@ -68,6 +68,11 @@ def _is_noise_detail(text: str) -> bool:
     # Cursor marketplace internals are not actionable project signals.
     if "loadfrommarketplacesource" in lower:
         return True
+    # Claude Desktop <scheduled-task …> XML are scheduler/config definitions, not
+    # project work — they otherwise cluster on the token "scheduled-task" and bury
+    # real unattributed evidence (GH-300).
+    if "<scheduled-task" in lower:
+        return True
     # Extension metadata churn tends to create misleading uncategorized clusters.
     if "extensions.json" in lower and ("install" in lower or "update" in lower):
         return True

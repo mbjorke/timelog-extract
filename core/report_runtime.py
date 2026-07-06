@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import atexit
 import os
+import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -278,7 +279,7 @@ def build_run_context(
             cwd=Path.cwd(),
             profiles=profiles,
         ):
-            print(f"[Warning] {warning}")
+            print(f"[Warning] {warning}", file=sys.stderr)
         if has_implicit_base_worklog:
             print(f"Worklog: {worklog_path}")
         else:

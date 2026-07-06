@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from datetime import timezone
 from email import message_from_binary_file
 from email.header import decode_header as email_decode_header
@@ -47,7 +48,7 @@ def collect_apple_mail(
     results = []
     mail_dir, status = detect_mail_root(home)
     if mail_dir is None:
-        print(f"  [Warning] {status}")
+        print(f"  [Warning] {status}", file=sys.stderr)
         return results
 
     sent_patterns: Sequence[str] = [
@@ -69,7 +70,7 @@ def collect_apple_mail(
                 seen_paths.add(resolved)
                 emlx_files.append(path)
     except PermissionError:
-        print("  [Warning] Access denied to Mail folders.")
+        print("  [Warning] Access denied to Mail folders.", file=sys.stderr)
         return results
 
     def _decode_header(value):
@@ -121,7 +122,7 @@ def collect_apple_mail(
             anchors = _anchors(label=page_label) if page_label else None
             results.append(make_event("Apple Mail", ts, detail, project, anchors=anchors))
         except PermissionError:
-            print("  [Warning] Cannot read individual message — check Full Disk Access.")
+            print("  [Warning] Cannot read individual message — check Full Disk Access.", file=sys.stderr)
             break
         except Exception:
             continue

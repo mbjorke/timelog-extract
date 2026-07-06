@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import sqlite3
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -95,7 +96,7 @@ def query_chrome(history_path, where_clause, dt_from_cu, dt_to_cu, params=()):
         rows = cursor.fetchall()
         conn.close()
     except Exception as exc:
-        print(f"  [Warning] Chrome history: {exc}")
+        print(f"  [Warning] Chrome history: {exc}", file=sys.stderr)
     finally:
         try:
             os.unlink(tmp.name)

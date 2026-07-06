@@ -170,6 +170,15 @@ should refuse to post a checklist body containing `/Users/`, `/home/`, or
 `.claude/worktrees/`.
 - Keep attribution neutral in specs (for example `Owner: Maintainer`) and avoid
 personal identifiers unless explicitly required for a formal incident record.
+- **Never publish the maintainer's real business data in any GitHub artifact.**
+That includes **real hours/amounts per project or client**, **client/project
+names tied to those numbers**, invoice/ledger figures, and **live config values**
+(profile `match_terms`, `tracked_urls`, customer repos/usernames from
+`timelog_projects.json`). Real-data validation (e.g. a before/after report diff to
+check an attribution change) is valuable, but its **numbers and names stay in chat
+with the maintainer only** — on GitHub, describe it in the abstract ("shifts small
+amounts across a few profiles"), with no figures, client names, or config values.
+When in doubt, anonymize or omit.
 
 ## Test and fixture data hygiene (mandatory)
 

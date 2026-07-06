@@ -77,8 +77,13 @@ class DomainClassificationBugTests(unittest.TestCase):
                 "tracked_urls": []
             }
         ]
+        # Whole-word Swedish match is accepted.
         self.assertEqual(classify_project("Jobbar med ÅSS idag", profiles, "Default"), "ÅSS")
-        self.assertEqual(classify_project("Måsar i blåsväder", profiles, "Default"), "Default")
+        # Rejection path: "åss" appears as a substring *inside* "påssjuka" but is
+        # not a whole word there, so the word boundary must reject it. (The prior
+        # "Måsar i blåsväder" example did not contain "åss" at all, so it passed
+        # even with the old substring logic — it tested nothing. CodeRabbit, #301.)
+        self.assertEqual(classify_project("Barn med påssjuka hemma", profiles, "Default"), "Default")
 
 if __name__ == "__main__":
     unittest.main()

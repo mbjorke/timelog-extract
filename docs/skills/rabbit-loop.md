@@ -171,6 +171,21 @@ Adjust `_judgment_required()` in `scripts/rabbit_loop.sh` deliberately.
 **Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
 not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.
 
+**Resolve open review threads before merging.** Before `gh pr merge`, every unresolved
+CodeRabbit (or human) review thread on the PR must be **fixed, or replied to with a reason and
+resolved** — a merge should not leave dangling review conversations. Check and resolve them:
+
+```bash
+# list unresolved threads
+gh api graphql -f query='{repository(owner:"OWNER",name:"REPO"){pullRequest(number:N){reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{path author{login}}}}}}}}'
+# resolve one (after the finding is fixed or skipped-with-reason)
+gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID"}){thread{isResolved}}}'
+```
+
+The CLI loop's local findings never reach these GitHub threads, so this is a manual close-out step
+the merging agent owns. If a finding is a verified false positive or out-of-contract, reply on the
+thread with the reason (English), then resolve — don't silently dismiss.
+
 ### Manual-test checklist (the NEEDS_HUMAN handoff)
 
 A pause is only useful if you know *what* to test. The loop **must** hand you a concrete,

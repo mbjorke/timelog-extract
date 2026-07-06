@@ -50,6 +50,32 @@ class UncategorizedReviewClusterTests(unittest.TestCase):
         cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
         self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
 
+    def test_build_clusters_excludes_scheduled_task_xml_surfaces_real_work(self):
+        # Claude Desktop <scheduled-task …> XML is scheduler config, not project
+        # work; filtering it lets a real unattributed cluster surface (GH-300).
+        events = [
+            {
+                "source": "Claude Desktop",
+                "detail": '<scheduled-task name="weekly-status-update" file="/x/a.md">',
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Claude Desktop",
+                "detail": '<scheduled-task name="weekday-morning-brief" file="/x/b.md">',
+                "project": "Uncategorized",
+            },
+            {
+                "source": "Lovable (desktop)",
+                "detail": "acme-feature Lovable project work",
+                "project": "Uncategorized",
+            },
+        ]
+
+        clusters = build_uncategorized_clusters(events, max_clusters=10, samples_per_cluster=2)
+        cluster_keys = {(cluster.rule_type, cluster.rule_value) for cluster in clusters}
+        self.assertNotIn(("match_terms", "scheduled-task"), cluster_keys)
+        self.assertEqual(cluster_keys, {("match_terms", "acme-feature")})
+
     def test_build_clusters_excludes_extension_lifecycle_lines_and_tokens(self):
         events = [
             {

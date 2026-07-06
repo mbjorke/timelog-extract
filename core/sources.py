@@ -103,3 +103,38 @@ def get_source_role(source_name: str) -> str:
 PASSIVE_DURATION_SOURCES = frozenset(
     name for name, role in SOURCE_ROLES.items() if role == PASSIVE_CONTEXT
 )
+
+# Attendance categories per GH-284.
+# Attended: user is present (IDE focus, browser, manual logs, meetings).
+# Agent: autonomous work (GitHub merges, AI CLI loops, agent-mode IDE turns).
+ATTENDED_SOURCES = {
+    "Cursor",
+    "Antigravity",
+    "Windsurf",
+    "Codex IDE",
+    "Zed",
+    "Chrome",
+    "Apple Mail",
+    "Claude.ai (web)",
+    "Gemini (web)",
+    "Claude Desktop",
+    WORKLOG_SOURCE,
+    TOGGL_SOURCE,
+    CALENDAR_SOURCE,
+    "Screen Time",
+    "Timely Memory",
+}
+
+AGENT_SOURCES = {
+    "Claude Code CLI",
+    "Claude Desktop (Code)",
+    "GitHub",
+    GIT_COMMITS_SOURCE,
+    JIRA_SOURCE,
+    "Cursor (agent)",
+    "GitHub Copilot CLI",
+    "Gemini CLI",
+    "Conductor",
+    "Lovable (desktop)",
+    CURSOR_CHECKPOINTS_SOURCE,
+}

@@ -56,19 +56,37 @@ def _normalized_url_variants(text: str) -> str:
     return " ".join(variants)
 
 
+def _matches_term(term: str, haystack: str) -> bool:
+    """True when term appears in haystack, respecting word boundaries for plain terms."""
+    clean = str(term).strip().lower()
+    if not clean or clean not in haystack:
+        return False
+    # If it's a path or contains special characters (hyphens, dots, spaces, etc.),
+    # it's likely a specific code, domain, or multi-word phrase that we can
+    # safely match anywhere.
+    if _is_path_like_term(clean) or not clean.isalnum():
+        return True
+    # Plain alphanumeric words must respect word boundaries to avoid 'cat' matching 'category'.
+    pattern = rf"\b{re.escape(clean)}\b"
+    return bool(re.search(pattern, haystack))
+
+
 def classify_project(text, profiles, fallback):
     haystack = (text or "").lower()
     normalized_variants = _normalized_url_variants(text or "")
     haystack_with_variants = f"{haystack} {normalized_variants}".strip()
     best_name = fallback
-    best_rank = (0.0, 0, 0, 0)
+    # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
+    best_rank = (0.0, 0, 0, 0, 0)
     for profile in profiles:
-        matched = {term for term in profile["match_terms"] if term and term in haystack_with_variants}
+        matched = {term for term in profile["match_terms"] if _matches_term(term, haystack_with_variants)}
         weighted_score = 0.0
         specific_hits = 0
         generic_hits = 0
+        match_len = 0
         for term in matched:
             clean = str(term).strip().lower()
+            match_len += len(clean)
             if clean in GENERIC_TOOL_TERMS:
                 weighted_score += 0.25
                 generic_hits += 1
@@ -78,15 +96,21 @@ def classify_project(text, profiles, fallback):
             else:
                 weighted_score += 1.0
                 specific_hits += 1
-        if profile["name"].lower() in haystack_with_variants:
+
+        name_lower = profile["name"].lower()
+        if _matches_term(name_lower, haystack_with_variants):
             weighted_score += 1.0
             specific_hits += 1
+            match_len += len(name_lower)
+
         for url in profile.get("tracked_urls") or []:
             fragment = str(url).strip().lower()
-            if fragment and fragment in haystack_with_variants:
+            if fragment and _matches_term(fragment, haystack_with_variants):
                 weighted_score += 2.0
                 specific_hits += 1
-        rank = (weighted_score, specific_hits, -generic_hits, len(matched))
+                match_len += len(fragment)
+
+        rank = (weighted_score, specific_hits, match_len, -generic_hits, len(matched))
         if (specific_hits > 0 or weighted_score >= 1.0) and rank > best_rank:
             best_rank = rank
             best_name = profile["name"]
@@ -146,3 +170,23 @@ def billable_total_hours(raw_hours, unit):
     q = raw_hours / unit
     eps = 1e-12
     return math.ceil(q - eps) * unit
+
+
+def classify_attendance(events: list[dict]) -> str:
+    """Categorize a collection of events as attended, agent, or mixed (GH-284)."""
+    from core.sources import AGENT_SOURCES, ATTENDED_SOURCES
+
+    has_attended = False
+    has_agent = False
+    for event in events:
+        source = str(event.get("source") or "")
+        if source in ATTENDED_SOURCES:
+            has_attended = True
+        elif source in AGENT_SOURCES:
+            has_agent = True
+
+    if has_attended and has_agent:
+        return "mixed"
+    if has_agent:
+        return "agent"
+    return "attended"

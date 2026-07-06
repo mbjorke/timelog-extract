@@ -154,6 +154,7 @@ def _estimate_hours_by_day(
         min_session_passive_minutes=min_session_passive_minutes,
         compute_sessions_fn=_compute_sessions,
         session_duration_hours_fn=_session_duration_hours,
+        classify_attendance_fn=core_domain.classify_attendance,
     )
 
 

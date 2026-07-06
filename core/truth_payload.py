@@ -77,6 +77,11 @@ def _serialize_session(
     )
     projects = sorted({e.get("project", "") for e in session_events})
     sources = sorted({e.get("source", "") for e in session_events})
+    attendance = session_events[0].get("attendance") if session_events and "attendance" in session_events[0] else None
+    if attendance is None:
+        from core.domain import classify_attendance
+        attendance = classify_attendance(session_events)
+
     events_out = []
     for ev in session_events:
         lt = ev.get("local_ts")
@@ -95,6 +100,7 @@ def _serialize_session(
         "event_count": len(session_events),
         "projects": projects,
         "sources": sources,
+        "attendance": attendance,
         "events": events_out,
     }
 
@@ -127,7 +133,8 @@ def build_truth_payload(
         sessions_raw: List[Tuple[datetime, datetime, List[Dict[str, Any]]]] = payload["sessions"]
         sessions_out = []
         redact = bool(chrome_raw)
-        for idx, (start_ts, end_ts, session_events) in enumerate(sessions_raw, start=1):
+        for idx, s_tuple in enumerate(sessions_raw, start=1):
+            start_ts, end_ts, session_events = s_tuple[:3]
             sessions_out.append(
                 _serialize_session(
                     start_ts,
@@ -151,6 +158,9 @@ def build_truth_payload(
                 events_flat.append(_serialize_event(ev, redact_chrome_raw_json=redact))
         days_out[day] = {
             "hours_estimated": round(float(payload["hours"]), 6),
+            "attended_hours": round(float(payload.get("attended_hours", 0.0)), 6),
+            "mixed_hours": round(float(payload.get("mixed_hours", 0.0)), 6),
+            "agent_hours": round(float(payload.get("agent_hours", 0.0)), 6),
             "session_count": len(sessions_out),
             "sessions": sessions_out,
             "events": events_flat,
@@ -207,6 +217,9 @@ def build_truth_payload(
         "screen_time_hours_by_day": screen_block,
         "totals": {
             "hours_estimated": round(sum(d["hours_estimated"] for d in days_out.values()), 6),
+            "attended_hours": round(sum(d["attended_hours"] for d in days_out.values()), 6),
+            "mixed_hours": round(sum(d["mixed_hours"] for d in days_out.values()), 6),
+            "agent_hours": round(sum(d["agent_hours"] for d in days_out.values()), 6),
             "days_with_activity": len(days_out),
             "event_count": len(included_events),
         },

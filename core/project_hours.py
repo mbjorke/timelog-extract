@@ -156,7 +156,9 @@ def build_project_reports_from_sessions(
         lambda: defaultdict(lambda: {"hours": 0.0})
     )
     for day, payload in overall_days.items():
-        for start_ts, end_ts, session_events in payload.get("sessions", []):
+        for s_tuple in payload.get("sessions", []):
+            start_ts, end_ts, session_events = s_tuple[:3]
+            attendance = s_tuple[3] if len(s_tuple) > 3 else "attended"
             hours = session_duration_hours_fn(
                 session_events,
                 start_ts,
@@ -173,6 +175,12 @@ def build_project_reports_from_sessions(
                 min_session_passive_minutes=min_session_passive_minutes,
             ).items():
                 reports[project][day]["hours"] += chunk
+                if attendance == "attended":
+                    reports[project][day]["attended_hours"] = reports[project][day].get("attended_hours", 0.0) + chunk
+                elif attendance == "agent":
+                    reports[project][day]["agent_hours"] = reports[project][day].get("agent_hours", 0.0) + chunk
+                elif attendance == "mixed":
+                    reports[project][day]["mixed_hours"] = reports[project][day].get("mixed_hours", 0.0) + chunk
     return {project: dict(days) for project, days in reports.items()}
 
 

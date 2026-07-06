@@ -38,6 +38,7 @@ from core.onboarding_guidance import (
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
+    CLR_VALUE_ORANGE,
     FAIL_ICON,
     NA_ICON,
     OK_ICON,
@@ -337,7 +338,12 @@ def sources():
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
 
     if not report.all_events:
-        console.print("[yellow]No data found for this period to analyze.[/yellow]")
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
+        )
         return
 
     source_counts = defaultdict(int)

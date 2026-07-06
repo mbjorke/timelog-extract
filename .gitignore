@@ -38,6 +38,9 @@ private/
 # CodeRabbit kanin-loop per-run state (scripts/rabbit_loop.sh)
 .rabbit-loop/
 
+# Jules agent local prompt + journal (copy prompt to Jules config; do not commit)
+.Jules/
+
 # Generated reports/artifacts
 output/
 # CLI default report dir (`gittan report --json-file out/...`, reconciliation scripts, CI uploads under out/cli-experiments/)

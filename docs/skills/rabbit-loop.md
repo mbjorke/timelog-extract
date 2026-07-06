@@ -186,6 +186,22 @@ The CLI loop's local findings never reach these GitHub threads, so this is a man
 the merging agent owns. If a finding is a verified false positive or out-of-contract, reply on the
 thread with the reason (English), then resolve — don't silently dismiss.
 
+### Invoice-engine changes: run the real-data differential
+
+For any change to the attribution/invoice engine (`core/domain.py`, aggregation, `truth_payload`),
+passing synthetic tests is **necessary but not sufficient** — a reclassification can silently move
+billable hours. Before merge, check whether it moves the maintainer's real hours:
+
+```bash
+scripts/attribution_diff.sh --head <branch-or-ref> --from YYYY-MM-DD --to YYYY-MM-DD
+```
+
+It reports the per-project hour delta between `origin/main` and the change on a real window. **Its
+output is the maintainer's real client data — keep it local; never paste figures into a GitHub
+artifact** (AGENTS.md § privacy). On GitHub, describe it in the abstract ("shifts small amounts
+across a few profiles"). A moved hour is either a correction (was mis-attributed) or a regression
+(real work dropped) — that judgement is the maintainer's.
+
 ### Manual-test checklist (the NEEDS_HUMAN handoff)
 
 A pause is only useful if you know *what* to test. The loop **must** hand you a concrete,

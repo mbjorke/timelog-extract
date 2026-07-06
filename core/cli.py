@@ -25,9 +25,6 @@ from core import (
     cli_toggl_sync,  # noqa: F401
     cli_triage,  # noqa: F401
     cli_triage_apply,  # noqa: F401
-    cli_triage_domains,  # noqa: F401
-    cli_triage_guided,  # noqa: F401
-    cli_triage_map,  # noqa: F401
     cli_ux,  # noqa: F401
 )
 from core.cli_app import app

@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 33 |
+| Commands | 30 |
 | Command groups | 2 |
 | Collectors | 21 |
 | Per-project config fields | 18 |
@@ -41,9 +41,6 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). |
 | — | `triage` | Guided loop: confirm/correct project mapping on top unexplained days. |
 | — | `triage-apply` | Apply categorization decisions from mobile to timelog_projects.json. |
-| — | `triage-domains` | Aggregate domain->project candidates and apply only explicit selections. |
-| — | `triage-guided` | Guide triage flow: evidence -> dry-run preview -> explicit apply confirm. |
-| — | `triage-map` | [deprecated] Use `gittan review` — map URL-level candidates to projects. |
 | — | `ux-heroes` | Preview hero sections only for key CLI commands. |
 | **config** | _(group)_ | Inspect active config paths. |
 | config | `path` | Print active projects-config path and source. |

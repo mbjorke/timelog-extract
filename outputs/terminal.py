@@ -217,7 +217,7 @@ def print_report(
             ("  ", ""),
             (f"{day_payload['hours']:.1f}h", f"bold {CLR_VALUE_ORANGE}"),
         )
-        if day_agent_h > 0:
+        if day_agent_h > 0 or day_payload.get("mixed_hours", 0.0) > 0:
             day_title.append(f" ({day_attended_h:.1f} + {day_agent_h:.1f})", STYLE_META)
         day_title.append(" | ", STYLE_META)
         day_title.append(f"{len(day_payload['sessions'])} sessions", STYLE_LABEL)
@@ -312,7 +312,8 @@ def print_report(
     if getattr(args, "only_project", None):
         flat_events: List[Dict[str, Any]] = []
         for day_payload in overall_days.values():
-            for _start_ts, _end_ts, session_events in day_payload.get("sessions", []):
+            for s_tuple in day_payload.get("sessions", []):
+                session_events = s_tuple[2]
                 flat_events.extend(session_events)
         print_project_source_mix(
             events=flat_events,

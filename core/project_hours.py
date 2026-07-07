@@ -193,7 +193,7 @@ def count_project_sessions_from_overall_days(
         for session in day_data.get("sessions", []):
             if not isinstance(session, (list, tuple)) or len(session) < 3:
                 continue
-            _start_ts, _end_ts, session_events = session
+            session_events = session[2]
             projects = {
                 str(event.get("project") or "").strip() or "Uncategorized"
                 for event in session_events

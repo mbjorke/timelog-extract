@@ -90,12 +90,13 @@ def print_review_summary_section(
         f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
     )
 
-    attended_h = sum(float(d.get("attended_hours", 0.0)) + float(d.get("mixed_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
+    attended_h = sum(float(d.get("attended_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
+    mixed_h = sum(float(d.get("mixed_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
     agent_h = sum(float(d.get("agent_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
-    if agent_h > 0:
+    if agent_h > 0 or mixed_h > 0:
         summary_table.add_row(
             "  · Attended / Mixed",
-            f"[{STYLE_META}]{attended_h:.1f}h[/{STYLE_META}]",
+            f"[{STYLE_META}]{attended_h + mixed_h:.1f}h[/{STYLE_META}]",
         )
         summary_table.add_row(
             "  · Agent (autonomous)",

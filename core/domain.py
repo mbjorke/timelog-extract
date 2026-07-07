@@ -4,6 +4,8 @@ import math
 import re
 from urllib.parse import urlparse, urlunparse
 
+from core.sources import AGENT_SOURCES, ATTENDED_SOURCES
+
 GENERIC_TOOL_TERMS = {
     "cloudflare",
     "jira",
@@ -174,8 +176,6 @@ def billable_total_hours(raw_hours, unit):
 
 def classify_attendance(events: list[dict]) -> str:
     """Categorize a collection of events as attended, agent, or mixed (GH-284)."""
-    from core.sources import AGENT_SOURCES, ATTENDED_SOURCES
-
     has_attended = False
     has_agent = False
     for event in events:

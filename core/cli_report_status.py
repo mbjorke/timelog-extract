@@ -320,9 +320,11 @@ def status(
         CLR_GREEN,
         CLR_TEXT_SOFT,
         CLR_VALUE_ORANGE,
+        OK_ICON,
         STYLE_BORDER,
         STYLE_LABEL,
         STYLE_MUTED,
+        WARN_ICON,
     )
 
     df_s, dt_s = resolve_date_window(
@@ -361,7 +363,6 @@ def status(
 
     print_command_hero(console, "status")
     console.print(f"[bold {CLR_TEXT_SOFT}]Gittan Status — {title_date}[/bold {CLR_TEXT_SOFT}]\n")
-
     try:
         report = _run_status_timelog_report(
             console,
@@ -378,7 +379,7 @@ def status(
         )
 
         if not report.included_events:
-            console.print(f"[{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
+            console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
             console.print(
                 f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
                 f"`gittan report --today --source-summary` to inspect collection.[/{STYLE_MUTED}]"
@@ -386,7 +387,6 @@ def status(
             if shadow_line:
                 console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
             return
-
         title_suffix = " — additive (primary project per session)" if additive else ""
         table = Table(title=f"Hours Summary ({title_date}){title_suffix}", box=box.ROUNDED)
         table.border_style = STYLE_BORDER
@@ -494,7 +494,7 @@ def status(
             )
         if shadow_line:
             console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
-        console.print(f"[{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
+        console.print(f"{OK_ICON} [{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
     except Exception as e:
         console.print(f"[red]Error fetching status: {e}[/red]")
         raise typer.Exit(code=1) from e

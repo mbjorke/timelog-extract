@@ -131,20 +131,25 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         return
 
     if not report.included_events:
+        from outputs.terminal_theme import CLR_VALUE_ORANGE, STYLE_MUTED, WARN_ICON
         if report.args.only_project:
             ambiguous = getattr(report.args, "only_project_ambiguous", None) or []
             if ambiguous:
-                print(
-                    f"Project filter {report.args.only_project!r} is ambiguous. "
-                    f"Did you mean one of: {', '.join(repr(name) for name in ambiguous)}?"
+                report_console.print(
+                    f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Project filter {report.args.only_project!r} is ambiguous.[/{CLR_VALUE_ORANGE}]"
+                )
+                report_console.print(
+                    f"[{STYLE_MUTED}]Did you mean one of: {', '.join(repr(name) for name in ambiguous)}?[/{STYLE_MUTED}]"
                 )
                 return
-            print(f"No events for project {report.args.only_project!r} in selected range.")
+            report_console.print(
+                f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events for project {report.args.only_project!r} in selected range.[/{CLR_VALUE_ORANGE}]"
+            )
         else:
-            print("No events found.")
-            print(
-                "Tip: run 'gittan doctor' to verify source access, then "
-                "'gittan report --today --source-summary' to inspect collected evidence."
+            report_console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events found.[/{CLR_VALUE_ORANGE}]")
+            report_console.print(
+                f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
+                f"`gittan report --today --source-summary` to inspect collected evidence.[/{STYLE_MUTED}]"
             )
         if report.args.invoice_pdf:
             try:

@@ -36,7 +36,8 @@ def find_implausible_sessions(
     """
     flagged: List[Tuple[str, float]] = []
     for day, payload in overall_days.items():
-        for start_ts, end_ts, events in payload.get("sessions", []):
+        for session in payload.get("sessions", []):
+            start_ts, end_ts, events = session[:3]
             hours = session_duration_hours_fn(
                 events,
                 start_ts,

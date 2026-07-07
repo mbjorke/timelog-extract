@@ -153,7 +153,8 @@ def build_toggl_entry_candidates(
 
     for day, day_data in report.overall_days.items():
         sessions = day_data.get("sessions", [])
-        for start, end, session_events in sessions:
+        for session in sessions:
+            start, end, session_events = session[:3]
             project_name = _dominant_project(session_events)
             project_id = project_ids.get(project_name)
             if project_id is None:

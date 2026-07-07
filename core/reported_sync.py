@@ -82,7 +82,8 @@ def build_reported_proposals(
     resolve_issue = _git_issue_resolver(report, repo_path) if repo_path else None
     buckets: Dict[Tuple[str, str, Optional[str]], Dict[str, Any]] = {}
     for day, day_data in report.overall_days.items():
-        for start, end, session_events in day_data.get("sessions", []):
+        for session in day_data.get("sessions", []):
+            start, end, session_events = session[:3]
             project = _dominant_project(session_events)
             issue_key = resolve_issue(start, end) if resolve_issue else None
             seconds = max(0, _session_seconds(session_events, start, end, report.args))

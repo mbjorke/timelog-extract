@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 
 from core.anchor_nudge import should_prompt
 from outputs.terminal_theme import (
@@ -89,6 +90,19 @@ def print_review_summary_section(
         f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
     )
 
+    attended_h = sum(float(d.get("attended_hours", 0.0)) for d in overall_days.values())
+    mixed_h = sum(float(d.get("mixed_hours", 0.0)) for d in overall_days.values())
+    agent_h = sum(float(d.get("agent_hours", 0.0)) for d in overall_days.values())
+    if agent_h > 0 or mixed_h > 0:
+        summary_table.add_row(
+            "  · Attended / Mixed",
+            f"[{STYLE_META}]{attended_h + mixed_h:.1f}h[/{STYLE_META}]",
+        )
+        summary_table.add_row(
+            "  · Agent (autonomous)",
+            f"[{STYLE_META}]{agent_h:.1f}h[/{STYLE_META}]",
+        )
+
     if presence_estimated is not None and getattr(presence_estimated, "available", False):
         est_total = float(getattr(presence_estimated, "total_hours", 0.0) or 0.0)
         summary_table.add_row(
@@ -168,7 +182,8 @@ def print_project_hour_review_section(
         per_project_hours = defaultdict(float)
         per_project_days = defaultdict(set)
         for day, day_payload in overall_days.items():
-            for start_ts, end_ts, session_events in day_payload["sessions"]:
+            for session in day_payload["sessions"]:
+                start_ts, end_ts, session_events = session[:3]
                 counts = defaultdict(int)
                 for event in session_events:
                     project_name = str(event.get("project", "")).strip()
@@ -241,9 +256,37 @@ def print_project_hour_review_section(
             )
             cust_b_text = f"{cust_b:.2f}h"
 
+        cust_hours_text = Text.assemble(
+            (f"{customer_hours:.1f}h", f"bold {CLR_VALUE_ORANGE}")
+        )
+        if not additive_summary:
+            cust_attended_h = sum(
+                sum(
+                    float(day_payload.get("attended_hours", 0.0)) + float(day_payload.get("mixed_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            cust_agent_h = sum(
+                sum(
+                    float(day_payload.get("agent_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            cust_mixed_h = sum(
+                sum(
+                    float(day_payload.get("mixed_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            if cust_agent_h > 0 or cust_mixed_h > 0:
+                cust_hours_text.append(f" ({cust_attended_h:.1f} + {cust_agent_h:.1f})", STYLE_META)
+
         cust_row = [
             f"[bold {STYLE_BODY}]{customer_name}[/bold {STYLE_BODY}]",
-            f"[bold {CLR_VALUE_ORANGE}]{customer_hours:.1f}h[/bold {CLR_VALUE_ORANGE}]",
+            cust_hours_text,
         ]
         if show_totals:
             cust_total = sum((timelog_project_totals or {}).get(p, 0.0) for p in customer_projects)

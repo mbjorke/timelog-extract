@@ -171,6 +171,41 @@ class TruthPayloadTests(unittest.TestCase):
         self.assertEqual(payload["totals"]["hours_estimated"], payload["days"][day]["hours_estimated"])
         self.assertGreater(payload["presence_estimated_hours"]["total_hours"], 1.0)
 
+    def test_session_attendance_from_overall_days_tuple(self):
+        base = datetime(2026, 7, 2, 10, 0, tzinfo=timezone.utc)
+        end = base + timedelta(hours=1)
+        events = [
+            {"source": "Claude Code CLI", "timestamp": base, "detail": "x", "project": "P"},
+            {"source": "Cursor", "timestamp": end, "detail": "y", "project": "P"},
+        ]
+        day = base.date().isoformat()
+        overall_days = {
+            day: {
+                "entries": events,
+                "sessions": [(base, end, events, "mixed")],
+                "hours": 1.0,
+                "attended_hours": 0.0,
+                "mixed_hours": 1.0,
+                "agent_hours": 0.0,
+            }
+        }
+        payload = build_truth_payload(
+            overall_days=overall_days,
+            project_reports={"P": {day: {"hours": 1.0}}},
+            included_events=events,
+            collector_status={},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=end,
+            worklog_path="/tmp/TIMELOG.md",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            session_duration_hours_fn=_fake_session_duration,
+        )
+        self.assertEqual(payload["days"][day]["sessions"][0]["attendance"], "mixed")
+
 
 if __name__ == "__main__":
     unittest.main()

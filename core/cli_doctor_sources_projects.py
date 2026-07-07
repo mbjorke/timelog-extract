@@ -365,7 +365,8 @@ def sources():
     uncategorized_count = defaultdict(int)
     uncategorized_samples = defaultdict(list)
     for day_data in raw_overall.values():
-        for start, end, session_events in day_data["sessions"]:
+        for session in day_data["sessions"]:
+            start, end, session_events = session[:3]
             dur = session_duration_hours(session_events, start, end, 15, 5, AI_SOURCES)
 
             session_counts = defaultdict(int)

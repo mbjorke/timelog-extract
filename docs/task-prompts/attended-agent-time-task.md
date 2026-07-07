@@ -4,11 +4,11 @@
 
 - story_id: GH-284
 - spec_status: draft
-- implementation_status: not built
+- implementation_status: in progress
 - created_at: 2026-07-03
-- last_updated_at: 2026-07-03
+- last_updated_at: 2026-07-06
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/attended-vs-agent-time-slice1
 - implementation.commits: []
 - validation.evidence: pending
 - validation.decision: NO-GO

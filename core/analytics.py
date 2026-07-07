@@ -45,15 +45,39 @@ def estimate_hours_by_day(
     min_session_passive_minutes,
     compute_sessions_fn,
     session_duration_hours_fn,
+    classify_attendance_fn=None,
 ):
     per_day = {}
     for day, entries in days.items():
         sessions = compute_sessions_fn(entries, gap_minutes=gap_minutes)
         total_h = 0.0
+        attended_h = 0.0
+        mixed_h = 0.0
+        agent_h = 0.0
+        session_data = []
         for start, end, events in sessions:
             raw = session_duration_hours_fn(
                 events, start, end, min_session_minutes, min_session_passive_minutes
             )
             total_h += raw
-        per_day[day] = {"entries": entries, "sessions": sessions, "hours": total_h}
+            if classify_attendance_fn:
+                attendance = classify_attendance_fn(events)
+                session_data.append((start, end, events, attendance))
+                if attendance == "attended":
+                    attended_h += raw
+                elif attendance == "mixed":
+                    mixed_h += raw
+                elif attendance == "agent":
+                    agent_h += raw
+            else:
+                session_data.append((start, end, events))
+
+        per_day[day] = {
+            "entries": entries,
+            "sessions": session_data,
+            "hours": total_h,
+            "attended_hours": attended_h,
+            "mixed_hours": mixed_h,
+            "agent_hours": agent_h,
+        }
     return per_day

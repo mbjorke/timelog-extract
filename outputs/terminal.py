@@ -209,17 +209,23 @@ def print_report(
         total_h += day_payload["hours"]
 
         # Day header: date plus hours and session count on the tree root label
+        day_attended_h = day_payload.get("attended_hours", 0.0) + day_payload.get("mixed_hours", 0.0)
+        day_agent_h = day_payload.get("agent_hours", 0.0)
         day_title = Text.assemble(
             ("● ", STYLE_META),
             (day, STYLE_HEADING),
             ("  ", ""),
             (f"{day_payload['hours']:.1f}h", f"bold {CLR_VALUE_ORANGE}"),
-            (" | ", STYLE_META),
-            (f"{len(day_payload['sessions'])} sessions", STYLE_LABEL),
         )
+        if day_agent_h > 0 or day_payload.get("mixed_hours", 0.0) > 0:
+            day_title.append(f" ({day_attended_h:.1f} + {day_agent_h:.1f})", STYLE_META)
+        day_title.append(" | ", STYLE_META)
+        day_title.append(f"{len(day_payload['sessions'])} sessions", STYLE_LABEL)
         day_tree = Tree(day_title, guide_style=STYLE_META)
 
-        for idx, (start_ts, end_ts, session_events) in enumerate(day_payload["sessions"], 1):
+        for idx, s_tuple in enumerate(day_payload["sessions"], 1):
+            start_ts, end_ts, session_events = s_tuple[:3]
+            attendance = s_tuple[3] if len(s_tuple) > 3 else None
             raw_dur = session_duration_hours_fn(
                 session_events, start_ts, end_ts, args.min_session, args.min_session_passive
             )
@@ -229,8 +235,10 @@ def print_report(
                 (f"[{idx}] ", STYLE_META),
                 (f"{start_ts.strftime('%H:%M')}-{end_ts.strftime('%H:%M')} ", f"bold {STYLE_POSITIVE}"),
                 (f"({raw_dur:.1f}h) ", f"bold {CLR_VALUE_ORANGE}"),
-                (", ".join(session_projects), f"italic {STYLE_META}"),
             )
+            if attendance and attendance != "attended":
+                session_text.append(f"[{attendance}] ", f"italic {STYLE_META}")
+            session_text.append(", ".join(session_projects), f"italic {STYLE_META}")
 
             session_node = day_tree.add(session_text)
 
@@ -304,7 +312,8 @@ def print_report(
     if getattr(args, "only_project", None):
         flat_events: List[Dict[str, Any]] = []
         for day_payload in overall_days.values():
-            for _start_ts, _end_ts, session_events in day_payload.get("sessions", []):
+            for s_tuple in day_payload.get("sessions", []):
+                session_events = s_tuple[2]
                 flat_events.extend(session_events)
         print_project_source_mix(
             events=flat_events,

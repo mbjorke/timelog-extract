@@ -53,6 +53,18 @@ class SanityBoundsTests(unittest.TestCase):
         )
         self.assertEqual(flagged, [])
 
+    def test_attendance_tuple_suffix_does_not_break_flagging(self):
+        overall = _day(0, 23.98)
+        day = "2026-05-29"
+        start, end, events = overall[day]["sessions"][0]
+        overall[day]["sessions"] = [(start, end, events, "mixed")]
+        flagged = find_implausible_sessions(
+            overall,
+            _span_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertEqual(len(flagged), 1)
     def test_day_exceeding_24h_is_a_hard_violation(self):
         project_reports = {
             "Alpha": {"2026-05-29": {"hours": 13.0}},

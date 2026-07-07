@@ -187,6 +187,7 @@ gh api graphql -f query='query($owner:String!, $repo:String!, $pr:Int!, $after:S
     }
   }
 }' -f owner="OWNER" -f repo="REPO" -F pr=N
+# repeat with `-f after="$endCursor"` while `pageInfo.hasNextPage` is true
 # resolve one (after the finding is fixed or skipped-with-reason)
 gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID"}){thread{isResolved}}}'
 ```

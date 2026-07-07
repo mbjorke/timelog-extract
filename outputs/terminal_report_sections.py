@@ -90,9 +90,9 @@ def print_review_summary_section(
         f"[bold {CLR_VALUE_ORANGE}]{total_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
     )
 
-    attended_h = sum(float(d.get("attended_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
-    mixed_h = sum(float(d.get("mixed_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
-    agent_h = sum(float(d.get("agent_hours", 0.0)) for day_data in overall_days.values() for d in [day_data])
+    attended_h = sum(float(d.get("attended_hours", 0.0)) for d in overall_days.values())
+    mixed_h = sum(float(d.get("mixed_hours", 0.0)) for d in overall_days.values())
+    agent_h = sum(float(d.get("agent_hours", 0.0)) for d in overall_days.values())
     if agent_h > 0 or mixed_h > 0:
         summary_table.add_row(
             "  · Attended / Mixed",
@@ -274,7 +274,14 @@ def print_project_hour_review_section(
                 )
                 for p in customer_projects
             )
-            if cust_agent_h > 0:
+            cust_mixed_h = sum(
+                sum(
+                    float(day_payload.get("mixed_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            if cust_agent_h > 0 or cust_mixed_h > 0:
                 cust_hours_text.append(f" ({cust_attended_h:.1f} + {cust_agent_h:.1f})", STYLE_META)
 
         cust_row = [

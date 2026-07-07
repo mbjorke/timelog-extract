@@ -67,6 +67,7 @@ def _serialize_session(
     session_index: int,
     day: str,
     redact_chrome_raw_json: bool = False,
+    attendance: str | None = None,
 ) -> Dict[str, Any]:
     raw_hours = session_duration_hours_fn(
         session_events,
@@ -77,9 +78,11 @@ def _serialize_session(
     )
     projects = sorted({e.get("project", "") for e in session_events})
     sources = sorted({e.get("source", "") for e in session_events})
-    attendance = session_events[0].get("attendance") if session_events and "attendance" in session_events[0] else None
+    if attendance is None:
+        attendance = session_events[0].get("attendance") if session_events and "attendance" in session_events[0] else None
     if attendance is None:
         from core.domain import classify_attendance
+
         attendance = classify_attendance(session_events)
 
     events_out = []
@@ -135,6 +138,7 @@ def build_truth_payload(
         redact = bool(chrome_raw)
         for idx, s_tuple in enumerate(sessions_raw, start=1):
             start_ts, end_ts, session_events = s_tuple[:3]
+            attendance = s_tuple[3] if len(s_tuple) > 3 else None
             sessions_out.append(
                 _serialize_session(
                     start_ts,
@@ -146,6 +150,7 @@ def build_truth_payload(
                     session_index=idx,
                     day=day,
                     redact_chrome_raw_json=redact,
+                    attendance=attendance,
                 )
             )
         entries = payload.get("entries") or []

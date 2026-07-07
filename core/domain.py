@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import math
 import re
 from urllib.parse import urlparse, urlunparse
@@ -18,6 +19,7 @@ GENERIC_TOOL_TERMS = {
 }
 
 
+@functools.lru_cache(maxsize=1024)
 def _is_path_like_term(term: str) -> bool:
     t = (term or "").strip().lower()
     return "/" in t or "\\" in t or t.startswith("users/") or t.startswith("workspace/")
@@ -50,17 +52,19 @@ def _normalize_lovable_url_token(url: str) -> str:
 
 
 def _normalized_url_variants(text: str) -> str:
+    # Fast path: skip regex if no http(s) protocol is mentioned (GH-284).
+    if not text or "http" not in text.lower():
+        return ""
     variants = []
-    for token in _URL_TOKEN_RE.findall(text or ""):
+    for token in _URL_TOKEN_RE.findall(text):
         normalized = _normalize_lovable_url_token(token)
         if normalized:
             variants.append(normalized)
     return " ".join(variants)
 
 
-def _matches_term(term: str, haystack: str) -> bool:
-    """True when term appears in haystack, respecting word boundaries for plain terms."""
-    clean = str(term).strip().lower()
+def _matches_term_clean(clean: str, haystack: str, word_set: set[str] | None = None) -> bool:
+    """True when pre-normalized term appears in haystack, respecting word boundaries."""
     if not clean or clean not in haystack:
         return False
     # If it's a path or contains special characters (hyphens, dots, spaces, etc.),
@@ -68,51 +72,88 @@ def _matches_term(term: str, haystack: str) -> bool:
     # safely match anywhere.
     if _is_path_like_term(clean) or not clean.isalnum():
         return True
+
+    # Fast-path for alphanumeric words: use pre-calculated word set if available (GH-284).
+    if word_set is not None:
+        return clean in word_set
+
     # Plain alphanumeric words must respect word boundaries to avoid 'cat' matching 'category'.
     pattern = rf"\b{re.escape(clean)}\b"
     return bool(re.search(pattern, haystack))
 
 
+def _matches_term(term: str, haystack: str) -> bool:
+    """True when term appears in haystack, respecting word boundaries for plain terms."""
+    clean = str(term).strip().lower()
+    return _matches_term_clean(clean, haystack)
+
+
 def classify_project(text, profiles, fallback):
-    haystack = (text or "").lower()
-    normalized_variants = _normalized_url_variants(text or "")
-    haystack_with_variants = f"{haystack} {normalized_variants}".strip()
+    if not profiles or not text:
+        return fallback
+
+    haystack = text.lower()
+    # Fast path check for URLs in the already-lowered haystack.
+    if "http" not in haystack:
+        normalized_variants = ""
+    else:
+        normalized_variants = _normalized_url_variants(text)
+
+    haystack_with_variants = f"{haystack} {normalized_variants}".strip() if normalized_variants else haystack
+
+    # Pre-calculate word set for fast alphanumeric boundary checks (GH-284).
+    word_set = set(re.findall(r"\w+", haystack_with_variants))
+    # Local cache for term results within this call to avoid redundant regex/set lookups.
+    # match_cache maps raw_term -> (clean_term, matches)
+    match_cache = {}
+
+    def _get_match(term: str) -> tuple[str, bool]:
+        if term not in match_cache:
+            clean = str(term).strip().lower()
+            match_cache[term] = (clean, _matches_term_clean(clean, haystack_with_variants, word_set))
+        return match_cache[term]
+
     best_name = fallback
     # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
     best_rank = (0.0, 0, 0, 0, 0)
     for profile in profiles:
-        matched = {term for term in profile["match_terms"] if _matches_term(term, haystack_with_variants)}
         weighted_score = 0.0
         specific_hits = 0
         generic_hits = 0
         match_len = 0
-        for term in matched:
-            clean = str(term).strip().lower()
-            match_len += len(clean)
-            if clean in GENERIC_TOOL_TERMS:
-                weighted_score += 0.25
-                generic_hits += 1
-            elif _is_path_like_term(clean):
-                weighted_score += 2.0
-                specific_hits += 1
-            else:
+        num_matches = 0
+        for term in profile.get("match_terms", []):
+            clean, matches = _get_match(term)
+            if matches:
+                num_matches += 1
+                match_len += len(clean)
+                if clean in GENERIC_TOOL_TERMS:
+                    weighted_score += 0.25
+                    generic_hits += 1
+                elif _is_path_like_term(clean):
+                    weighted_score += 2.0
+                    specific_hits += 1
+                else:
+                    weighted_score += 1.0
+                    specific_hits += 1
+
+        name_raw = profile.get("name")
+        if name_raw:
+            clean_name, matches_name = _get_match(name_raw)
+            if matches_name:
                 weighted_score += 1.0
                 specific_hits += 1
-
-        name_lower = profile["name"].lower()
-        if _matches_term(name_lower, haystack_with_variants):
-            weighted_score += 1.0
-            specific_hits += 1
-            match_len += len(name_lower)
+                match_len += len(clean_name)
 
         for url in profile.get("tracked_urls") or []:
-            fragment = str(url).strip().lower()
-            if fragment and _matches_term(fragment, haystack_with_variants):
-                weighted_score += 2.0
-                specific_hits += 1
-                match_len += len(fragment)
+            if url:
+                clean_url, matches_url = _get_match(url)
+                if matches_url:
+                    weighted_score += 2.0
+                    specific_hits += 1
+                    match_len += len(clean_url)
 
-        rank = (weighted_score, specific_hits, match_len, -generic_hits, len(matched))
+        rank = (weighted_score, specific_hits, match_len, -generic_hits, num_matches)
         if (specific_hits > 0 or weighted_score >= 1.0) and rank > best_rank:
             best_rank = rank
             best_name = profile["name"]

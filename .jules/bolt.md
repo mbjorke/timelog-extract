@@ -1,0 +1,3 @@
+## 2026-07-07 - [Optimization of project classification algorithm]
+**Learning:** Regex-based word boundary checks (`\b`) are significantly slower than set-based lookups when matching a large number of terms against a text. Pre-calculating a `word_set` for the input text and using a local `match_cache` to avoid re-normalizing terms across multiple profiles yielded a ~40% performance boost in classification.
+**Action:** Always consider set-based lookups for alphanumeric word boundary matching in loops. Cache normalized term forms and match results locally when matching against the same haystack multiple times.

@@ -182,7 +182,8 @@ def print_project_hour_review_section(
         per_project_hours = defaultdict(float)
         per_project_days = defaultdict(set)
         for day, day_payload in overall_days.items():
-            for start_ts, end_ts, session_events in day_payload["sessions"]:
+            for session in day_payload["sessions"]:
+                start_ts, end_ts, session_events = session[:3]
                 counts = defaultdict(int)
                 for event in session_events:
                     project_name = str(event.get("project", "")).strip()

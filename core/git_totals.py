@@ -72,7 +72,8 @@ def compute_git_project_totals(
 
     totals: Dict[str, float] = defaultdict(float)
     for day_payload in daily.values():
-        for start_ts, end_ts, session_events in day_payload.get("sessions", []):
+        for session in day_payload.get("sessions", []):
+            start_ts, end_ts, session_events = session[:3]
             project_counts: Dict[str, int] = defaultdict(int)
             for event in session_events:
                 pname = str(event.get("project", "")).strip()

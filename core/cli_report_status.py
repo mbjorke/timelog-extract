@@ -402,7 +402,8 @@ def status(
             project_hours: dict[str, float] = defaultdict(float)
             project_sessions: dict[str, int] = defaultdict(int)
             for day_data in report.overall_days.values():
-                for start_ts, end_ts, session_events in day_data.get("sessions", []):
+                for session in day_data.get("sessions", []):
+                    start_ts, end_ts, session_events = session[:3]
                     weighted_counts: dict[str, float] = defaultdict(float)
                     for event in session_events:
                         name = str(event.get("project") or "").strip()

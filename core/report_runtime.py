@@ -195,10 +195,11 @@ def build_run_context(
     args.attribution_mode = attribution_mode or None
 
     has_explicit_base_worklog = args.worklog is not None or bool(workspace_worklog)
+    per_project_worklog_mode = bool(profile_worklog_paths) and not has_explicit_base_worklog
 
     # In per-project mode (profile worklogs configured without an explicit base),
     # do not implicitly inject legacy repo TIMELOG.md into the active worklog set.
-    if profile_worklog_paths and not has_explicit_base_worklog:
+    if per_project_worklog_mode:
         worklog_paths = list(profile_worklog_paths)
         worklog_path = worklog_paths[0]
         has_implicit_base_worklog = False
@@ -221,7 +222,9 @@ def build_run_context(
     worklog_exists = (
         worklog_path.exists() and worklog_path.is_file() and os.access(worklog_path, os.R_OK)
     )
-    if chosen_strategy == "balanced":
+    if per_project_worklog_mode:
+        source_strategy_effective = "per-project"
+    elif chosen_strategy == "balanced":
         source_strategy_effective = "balanced"
     elif chosen_strategy == "worklog-first":
         source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
@@ -229,9 +232,13 @@ def build_run_context(
         source_strategy_effective = "worklog-first" if worklog_exists else "balanced"
     args.source_strategy = chosen_strategy
     args.source_strategy_effective = source_strategy_effective
-    args.primary_source = (
-        worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
-    )
+    if per_project_worklog_mode:
+        args.primary_source = "per-project"
+    else:
+        args.primary_source = (
+            worklog_path.name if source_strategy_effective == "worklog-first" else "balanced"
+        )
+    args.per_project_worklog_mode = per_project_worklog_mode
     noise_profile = (
         str(getattr(args, "noise_profile", DEFAULT_NOISE_PROFILE) or DEFAULT_NOISE_PROFILE)
         .strip()

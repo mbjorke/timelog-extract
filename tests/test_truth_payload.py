@@ -206,6 +206,35 @@ class TruthPayloadTests(unittest.TestCase):
         )
         self.assertEqual(payload["days"][day]["sessions"][0]["attendance"], "mixed")
 
+    def test_per_project_worklog_metadata(self):
+        base = datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc)
+        payload = build_truth_payload(
+            overall_days={},
+            project_reports={},
+            included_events=[],
+            collector_status={},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=base + timedelta(hours=1),
+            worklog_path="/tmp/should-not-win.md",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            source_strategy_requested="auto",
+            source_strategy_effective="per-project",
+            primary_source="per-project",
+            worklog_paths=["/tmp/client-a.md", "/tmp/client-b.md"],
+            session_duration_hours_fn=_fake_session_duration,
+        )
+        self.assertEqual(payload["source_roles"]["mode"], "per-project")
+        self.assertEqual(payload["source_roles"]["primary_source"], "per-project")
+        self.assertEqual(payload["paths"]["worklog"], "")
+        self.assertEqual(
+            payload["paths"]["worklogs"],
+            ["/tmp/client-a.md", "/tmp/client-b.md"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

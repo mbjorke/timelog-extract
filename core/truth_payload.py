@@ -126,6 +126,7 @@ def build_truth_payload(
     source_strategy_requested: str = "auto",
     source_strategy_effective: str = "balanced",
     primary_source: str = "balanced",
+    worklog_paths: list[str] | None = None,
     session_duration_hours_fn,
     chrome_raw: bool = False,
 ) -> Dict[str, Any]:
@@ -194,6 +195,19 @@ def build_truth_payload(
             "note": "Screen-Time-bounded estimate between evidenced events; not billable.",
         }
 
+    paths_block: Dict[str, Any] = {
+        "projects_config": config_path or "",
+    }
+    resolved_worklogs = list(worklog_paths or [])
+    if source_strategy_effective == "per-project":
+        if resolved_worklogs:
+            paths_block["worklogs"] = resolved_worklogs
+        paths_block["worklog"] = ""
+    else:
+        paths_block["worklog"] = worklog_path
+        if len(resolved_worklogs) > 1:
+            paths_block["worklogs"] = resolved_worklogs
+
     out: Dict[str, Any] = {
         "schema": "timelog_extract.truth_payload",
         "version": TRUTH_PAYLOAD_VERSION,
@@ -214,10 +228,7 @@ def build_truth_payload(
             "primary_source": primary_source,
             "mode": source_strategy_effective,
         },
-        "paths": {
-            "worklog": worklog_path,
-            "projects_config": config_path or "",
-        },
+        "paths": paths_block,
         "collector_status": collector_status,
         "screen_time_hours_by_day": screen_block,
         "totals": {

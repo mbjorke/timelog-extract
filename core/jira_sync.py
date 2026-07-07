@@ -238,7 +238,8 @@ def build_jira_worklog_candidates(
 
     for day, day_data in report.overall_days.items():
         sessions = day_data.get("sessions", [])
-        for start, end, session_events in sessions:
+        for s_tuple in sessions:
+            start, end, session_events = s_tuple[:3]
             issue_key, source = _issue_key_for_session(start, end, commits, branch_key)
             if not issue_key:
                 unresolved_sessions += 1

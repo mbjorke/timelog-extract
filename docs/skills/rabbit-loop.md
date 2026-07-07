@@ -176,8 +176,17 @@ CodeRabbit (or human) review thread on the PR must be **fixed, or replied to wit
 resolved** — a merge should not leave dangling review conversations. Check and resolve them:
 
 ```bash
-# list unresolved threads
-gh api graphql -f query='{repository(owner:"OWNER",name:"REPO"){pullRequest(number:N){reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{path author{login}}}}}}}}'
+# list unresolved threads (paginated)
+gh api graphql -f query='query($owner:String!, $repo:String!, $pr:Int!, $after:String) {
+  repository(owner:$owner, name:$repo) {
+    pullRequest(number:$pr) {
+      reviewThreads(first:50, after:$after) {
+        nodes { id isResolved comments(first:1){nodes{path author{login}}} }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}' -f owner="OWNER" -f repo="REPO" -F pr=N
 # resolve one (after the finding is fixed or skipped-with-reason)
 gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID"}){thread{isResolved}}}'
 ```

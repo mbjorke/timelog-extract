@@ -254,26 +254,26 @@ def print_project_hour_review_section(
             )
             cust_b_text = f"{cust_b:.2f}h"
 
-        cust_attended_h = sum(
-            sum(
-                float(day_payload.get("attended_hours", 0.0)) + float(day_payload.get("mixed_hours", 0.0))
-                for day_payload in project_reports[p].values()
-            )
-            for p in customer_projects
-        )
-        cust_agent_h = sum(
-            sum(
-                float(day_payload.get("agent_hours", 0.0))
-                for day_payload in project_reports[p].values()
-            )
-            for p in customer_projects
-        )
-
         cust_hours_text = Text.assemble(
             (f"{customer_hours:.1f}h", f"bold {CLR_VALUE_ORANGE}")
         )
-        if not additive_summary and cust_agent_h > 0:
-            cust_hours_text.append(f" ({cust_attended_h:.1f} + {cust_agent_h:.1f})", STYLE_META)
+        if not additive_summary:
+            cust_attended_h = sum(
+                sum(
+                    float(day_payload.get("attended_hours", 0.0)) + float(day_payload.get("mixed_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            cust_agent_h = sum(
+                sum(
+                    float(day_payload.get("agent_hours", 0.0))
+                    for day_payload in project_reports[p].values()
+                )
+                for p in customer_projects
+            )
+            if cust_agent_h > 0:
+                cust_hours_text.append(f" ({cust_attended_h:.1f} + {cust_agent_h:.1f})", STYLE_META)
 
         cust_row = [
             f"[bold {STYLE_BODY}]{customer_name}[/bold {STYLE_BODY}]",

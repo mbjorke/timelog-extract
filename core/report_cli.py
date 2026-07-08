@@ -46,6 +46,7 @@ def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
         source_strategy_requested=getattr(report.args, "source_strategy", "auto"),
         source_strategy_effective=getattr(report.args, "source_strategy_effective", "balanced"),
         primary_source=getattr(report.args, "primary_source", "balanced"),
+        worklog_paths=list(getattr(report.args, "worklog_paths", []) or []),
         session_duration_hours_fn=_session_duration_hours,
         chrome_raw=bool(getattr(report.args, "chrome_raw", False)),
     )

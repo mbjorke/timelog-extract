@@ -121,6 +121,44 @@ class SourceStrategyTests(unittest.TestCase):
             )
             self.assertEqual(ctx.worklog_path, project_log.resolve())
             self.assertEqual(ctx.worklog_paths, [project_log.resolve()])
+            self.assertEqual(ctx.source_strategy_effective, "per-project")
+            self.assertEqual(ctx.args.primary_source, "per-project")
+
+    def test_per_project_mode_with_two_profiles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            cfg = repo / "timelog_projects.json"
+            log_a = repo / "client-a.md"
+            log_b = repo / "client-b.md"
+            log_a.write_text("# a\n", encoding="utf-8")
+            log_b.write_text("# b\n", encoding="utf-8")
+
+            ctx = build_run_context(
+                config_path="timelog_projects.json",
+                date_from="2026-04-01",
+                date_to="2026-04-01",
+                options=self._options("auto", None),
+                local_tz=timezone.utc,
+                repo_root=repo,
+                as_run_options_fn=lambda o: o,
+                get_date_range_fn=lambda _f, _t: (
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                    datetime(2026, 4, 1, tzinfo=timezone.utc),
+                ),
+                load_profiles_fn=lambda _cfg, _args: (
+                    [
+                        {"name": "client-a", "worklog": str(log_a)},
+                        {"name": "client-b", "worklog": str(log_b)},
+                    ],
+                    cfg,
+                    {},
+                ),
+                resolve_worklog_path_fn=lambda _cli, _cfg, _ws, _root: repo / "TIMELOG.md",
+                want_log_fn=lambda _a: False,
+            )
+            self.assertEqual(ctx.source_strategy_effective, "per-project")
+            self.assertEqual(ctx.args.primary_source, "per-project")
+            self.assertEqual(len(ctx.worklog_paths), 2)
 
     def test_explicit_worklog_flag_keeps_single_worklog_behavior(self):
         with tempfile.TemporaryDirectory() as tmp:

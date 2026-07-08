@@ -150,6 +150,27 @@ No need to memorize git; an agent can prepare the branch. The maintainer usually
 - **PR title and PR description must be written in English.** That includes the initial post on GitHub and any edits before merge. Code comments may follow normal project language, but anything reviewers and bots read in the PR thread should be English-only.
 - **This applies to every GitHub artifact, not just PRs** — issue bodies and comments, and **manual-test / handoff checklists** posted by `scripts/rabbit_handoff.sh` or by hand, are English-only. Chat replies to the maintainer may use his language; anything published to GitHub is English.
 
+## Pull requests (issue linking — keep the board in sync)
+
+Story status on the GitHub board drifts because PRs reference issues in the
+**title** (`GH-284`, `#238`) but rarely give GitHub a closing keyword to act on.
+Fix it at the source — every PR body must link its issue with a keyword GitHub
+parses:
+
+- **Fully delivers the issue** → `Closes #<github-issue-number>` (auto-closes on
+  merge). Use the **GitHub issue number** (`#263`), not the story id (`GH-186`).
+- **One slice/phase of a larger issue** → `Part of #<number>` (keeps it open; the
+  issue stays as the running tracker). Never `Closes` a multi-slice issue from a
+  single slice.
+- **Story id vs issue number:** `GH-NNN` is the *story id* (lives in the spec under
+  `docs/task-prompts/`); `#NNN` is the *GitHub issue/PR number*. They do **not**
+  match 1:1 (e.g. story `GH-186` is issue `#263`). Put the story id in the title
+  for humans **and** the `Closes/Part of #NNN` line in the body for GitHub.
+- **Slices leave a trail:** when a PR ships slice N of M, its body states what
+  remains (`Deferred to slice N+1: …`) so the still-open issue reflects reality.
+- **When no keyword fits** (pure docs/tooling with no issue), that's fine — but if
+  an issue exists, link it.
+
 ## Documentation paths in code (CLI, errors, `console.print`)
 
 - **Do not** point user-facing code (Python CLI output, error helpers, extension copy) at `docs/legacy/`. Those files are not maintained as operational truth.

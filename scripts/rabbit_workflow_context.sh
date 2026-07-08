@@ -143,9 +143,13 @@ for m in re.finditer(r"\[((?:task|release)/[^\]]+)\]", text):
         print(name)
 PY
 )"
-  _run_timeout 20 git fetch origin main 2>/dev/null || true
+  fetch_ok=1
+  _run_timeout 20 git fetch origin main 2>/dev/null || fetch_ok=0
   if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
     GB_COMMON_BASE="$(printf '%s\n' "$BUT_STATUS" | sed -n 's/^.*┴ \([0-9a-f]\{7,40\}\) (common base).*/\1/p' | head -1)"
+    if [[ "$fetch_ok" -eq 0 ]]; then
+      GB_COMMON_BASE=""
+    fi
     if [[ -n "$GB_COMMON_BASE" ]]; then
       GB_MAIN_BEHIND="$(git rev-list --count "${GB_COMMON_BASE}..origin/main" 2>/dev/null || echo 0)"
     fi

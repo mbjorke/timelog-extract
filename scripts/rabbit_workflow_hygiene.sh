@@ -7,6 +7,7 @@
 # Usage:
 #   scripts/rabbit_workflow_hygiene.sh --dry-run
 #   scripts/rabbit_workflow_hygiene.sh --apply
+#   scripts/rabbit_workflow_hygiene.sh --dry-run --preflight /path/to/preflight.json
 #
 # Exit: 0 = done or dry-run listed actions, 2 = setup/refuse
 set -euo pipefail
@@ -18,10 +19,15 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 cd "$REPO_ROOT"
 
 APPLY=0
+PREFLIGHT_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) APPLY=0; shift ;;
     --apply) APPLY=1; shift ;;
+    --preflight)
+      PREFLIGHT_OVERRIDE="${2:?--preflight needs a path}"
+      shift 2
+      ;;
     -h|--help)
       awk 'NR>=2 && /^#/{sub(/^# ?/,""); print; next} NR>=2{exit}' "$0"
       exit 0
@@ -30,7 +36,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-PREFLIGHT="$REPO_ROOT/.rabbit-loop/preflight.json"
+PREFLIGHT="${PREFLIGHT_OVERRIDE:-$REPO_ROOT/.rabbit-loop/preflight.json}"
 [[ -f "$PREFLIGHT" ]] || {
   echo "rabbit_workflow_hygiene: missing $PREFLIGHT — run scripts/rabbit_workflow_context.sh first." >&2
   exit 2
@@ -77,7 +83,7 @@ _lane_has_unpushed_commits() {
   local upstream ahead
   upstream="$(git rev-parse --abbrev-ref "$br@{upstream}" 2>/dev/null || true)"
   if [[ -n "$upstream" ]]; then
-    ahead="$(git rev-list --left-right --count "${upstream}...${br}" 2>/dev/null | awk '{print $1}')"
+    ahead="$(git rev-list --left-right --count "${upstream}...${br}" 2>/dev/null | awk '{print $2}')"
     if [[ "${ahead:-0}" -gt 0 ]]; then
       echo "rabbit_workflow_hygiene: refuse — $br has ${ahead} unpushed commit(s) on $upstream." >&2
       return 0
@@ -101,6 +107,19 @@ _lane_has_unpushed_commits() {
 }
 
 ACTIONS=()
+DEAD_LANES="$(
+  python3 - "$PREFLIGHT" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+for lane in data.get("gitbutler_sync", {}).get("dead_lanes", []):
+    br = lane.get("branch", "")
+    if br:
+        print(br)
+PY
+)" || {
+  echo "rabbit_workflow_hygiene: failed to parse $PREFLIGHT — refusing (fail-closed)." >&2
+  exit 2
+}
 while IFS= read -r br; do
   [[ -z "$br" ]] && continue
   if ! _lane_has_open_pr "$br"; then
@@ -111,15 +130,7 @@ while IFS= read -r br; do
     exit 2
   fi
   ACTIONS+=("but unapply $br")
-done < <(python3 - "$PREFLIGHT" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-for lane in data.get("gitbutler_sync", {}).get("dead_lanes", []):
-    br = lane.get("branch", "")
-    if br:
-        print(br)
-PY
-)
+done <<< "$DEAD_LANES"
 
 ACTIONS+=("but clean")
 ACTIONS+=("but pull")

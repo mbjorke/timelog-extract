@@ -23,11 +23,6 @@ class CliHelpTextTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Local-first CLI for reviewable project-hour evidence", result.output)
 
-    def test_suggest_rules_help_mentions_project_prompt_behavior(self):
-        result = self.runner.invoke(app, ["suggest-rules", "--help"])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("prompts for project if omitted", result.output)
-
     def test_review_help_describes_url_mapping_default(self):
         result = self.runner.invoke(app, ["review", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)

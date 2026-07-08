@@ -1,13 +1,16 @@
-"""Tests for the triage-apply command (core/cli_triage_apply.py)."""
+"""Tests for apply_triage_decisions_payload and helpers (core/cli_triage_apply.py).
+
+The `triage-apply` CLI command was removed in GH-238 slice 2; these exercise the
+surviving helper (still used by `gittan review` / url-mapping) directly.
+"""
 
 from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
 import tempfile
 import unittest
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,10 +20,10 @@ from core.cli_triage_apply import (
     _project_exists,
     _render_plan_preview,
     _validate_decision,
+    apply_triage_decisions_payload,
 )
 
-REPO = Path(__file__).resolve().parent.parent
-CLI = [sys.executable, str(REPO / "timelog_extract.py")]
+_Result = namedtuple("_Result", ["returncode", "stdout", "stderr"])
 
 _EXAMPLE_PROJECT = {
     "name": "Demo",
@@ -50,29 +53,23 @@ def _decisions(decisions: list[dict]) -> str:
     return json.dumps({"schema_version": 1, "decisions": decisions})
 
 
-def _run(args: list[str], stdin: str | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [*CLI, *args],
-        cwd=str(REPO),
-        input=stdin,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-
-
 class TriageApplyTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.cfg = _write_config(self.tmp, [dict(_EXAMPLE_PROJECT)])
 
-    def _run_apply(self, decisions: list[dict], extra_args: list[str] | None = None) -> subprocess.CompletedProcess:
-        d_file = Path(self.tmp) / "decisions.json"
-        d_file.write_text(_decisions(decisions), encoding="utf-8")
-        args = ["triage-apply", "--input", str(d_file), "--projects-config", str(self.cfg)]
-        if extra_args:
-            args.extend(extra_args)
-        return _run(args)
+    def _run_apply(self, decisions: list[dict], extra_args: list[str] | None = None) -> _Result:
+        """Call the helper directly, mapping the old CLI flags to kwargs and
+        returning a CompletedProcess-shaped result so the assertions read the same."""
+        extra_args = extra_args or []
+        result = apply_triage_decisions_payload(
+            decisions=decisions,
+            projects_config=str(self.cfg),
+            allow_create="--allow-create" in extra_args,
+            dry_run="--dry-run" in extra_args,
+        )
+        returncode = 1 if result.get("errors") else 0
+        return _Result(returncode, json.dumps(result), "")
 
     def test_apply_writes_match_terms(self):
         r = self._run_apply([{"day": "2026-04-15", "project_name": "Demo", "rule_type": "match_terms", "rule_value": "newterm"}])
@@ -204,23 +201,6 @@ class TriageApplyTests(unittest.TestCase):
         out = json.loads(r.stdout)
         self.assertEqual(out["applied"], 1)
 
-    def test_apply_invalid_json_input(self):
-        """Passing a file with invalid JSON should exit with error JSON on stdout."""
-        bad_file = Path(self.tmp) / "bad.json"
-        bad_file.write_text("{not valid json}", encoding="utf-8")
-        r = _run(["triage-apply", "--input", str(bad_file), "--projects-config", str(self.cfg)])
-        self.assertNotEqual(r.returncode, 0)
-        out = json.loads(r.stdout)
-        self.assertIn("error", out)
-
-    def test_apply_non_dict_json_input(self):
-        """Passing a JSON array (not object) as top-level should produce an error."""
-        arr_file = Path(self.tmp) / "array.json"
-        arr_file.write_text(json.dumps([{"project_name": "Demo", "rule_type": "match_terms", "rule_value": "x"}]), encoding="utf-8")
-        r = _run(["triage-apply", "--input", str(arr_file), "--projects-config", str(self.cfg)])
-        self.assertNotEqual(r.returncode, 0)
-        out = json.loads(r.stdout)
-        self.assertIn("error", out)
 
 
 class TriageApplyHelpersTests(unittest.TestCase):

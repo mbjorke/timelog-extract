@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 30 |
+| Commands | 26 |
 | Command groups | 2 |
 | Collectors | 21 |
 | Per-project config fields | 18 |
@@ -17,7 +17,6 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Group | Command | Help |
 | --- | --- | --- |
-| — | `apply-suggestions` | Apply a saved A/B suggestion bundle after explicit confirmation. |
 | — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). |
 | — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. |
 | — | `doctor` | Check source access and local integration health, then print a diagnostic table. |
@@ -37,10 +36,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. |
 | — | `sources` | Analyze which data sources are contributing the most to your reports. |
 | — | `status` | Quick hours snapshot with project totals and session counts. |
-| — | `suggest-rules` | Suggest A/B mapping rules with preview; prompts for project if omitted. |
 | — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). |
-| — | `triage` | Guided loop: confirm/correct project mapping on top unexplained days. |
-| — | `triage-apply` | Apply categorization decisions from mobile to timelog_projects.json. |
 | — | `ux-heroes` | Preview hero sections only for key CLI commands. |
 | **config** | _(group)_ | Inspect active config paths. |
 | config | `path` | Print active projects-config path and source. |

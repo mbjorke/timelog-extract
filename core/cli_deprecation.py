@@ -22,13 +22,3 @@ def warn_deprecated_command(
     if extra:
         message = f"{message} {extra}"
     Console(stderr=True).print(message)
-
-
-def warn_deprecated_triage_command(
-    command: str,
-    *,
-    replacement: str = TRIAGE_MAP_REPLACEMENT,
-    extra: str | None = None,
-) -> None:
-    """Backward-compatible alias for triage-family deprecations."""
-    warn_deprecated_command(command, replacement=replacement, extra=extra)

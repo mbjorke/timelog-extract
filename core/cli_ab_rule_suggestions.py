@@ -3,30 +3,22 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
 
 import questionary
 import typer
 
-from core.cli_app import app
-from core.cli_deprecation import warn_deprecated_command
-from core.cli_options import TimelogRunOptions
 from core.cli_prompts import prompt_for_timeframe
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
-    default_projects_config_option,
     load_projects_config_payload,
     save_projects_config_payload,
 )
 from core.rule_suggestions import (
     ab_suggestions_state_path,
-    load_suggestions_state,
     normalize_payload_projects_list,
     preview_suggestion_impact,
-    rules_from_state_option,
     split_ab_suggestions,
     write_suggestions_state,
 )
@@ -237,174 +229,3 @@ def prompt_optional_apply(console, config_path: Path, project_name: str, opt_a, 
     console.print(f"[green]Applied[/green] option {bundle} ({len(rules)} rules) to {config_path}.")
 
 
-class SuggestionBundle(str, Enum):
-    A = "A"
-    B = "B"
-
-
-@app.command("suggest-rules")
-def suggest_rules(
-    project: Annotated[
-        Optional[str],
-        typer.Option(
-            "--project",
-            help="Target project to attach suggested rules to. If omitted, you will be prompted.",
-        ),
-    ] = None,
-    date_from: Annotated[Optional[str], typer.Option("--from", help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD)")] = None,
-    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
-    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
-    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
-    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
-    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
-    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
-):
-    """Suggest A/B mapping rules with preview; prompts for project if omitted."""
-    from rich.console import Console
-
-    from core.report_service import run_timelog_report
-
-    warn_deprecated_command(
-        "gittan suggest-rules",
-        extra="Prefer `gittan review` for URL mapping or `gittan review --uncategorized` for cluster cleanup.",
-    )
-    console = Console()
-    date_from, date_to, today, yesterday, last_3_days, last_week, last_14_days, last_month = _apply_timeframe_prompt(
-        date_from,
-        date_to,
-        today,
-        yesterday,
-        last_3_days,
-        last_week,
-        last_14_days,
-        last_month,
-    )
-    options = TimelogRunOptions(
-        date_from=date_from,
-        date_to=date_to,
-        today=today,
-        yesterday=yesterday,
-        last_3_days=last_3_days,
-        last_week=last_week,
-        last_14_days=last_14_days,
-        last_month=last_month,
-        projects_config=projects_config,
-        include_uncategorized=True,
-        quiet=True,
-    )
-    report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-    uncategorized_events = [e for e in report.included_events if e.get("project") == UNCATEGORIZED]
-    if not uncategorized_events:
-        console.print("[green]No uncategorized events in range; nothing to suggest.[/green]")
-        raise typer.Exit(code=0)
-
-    config_path = Path(projects_config)
-    _load_projects_payload(console, config_path)
-
-    pname = (project or "").strip()
-    if not pname:
-        pname = (questionary.text("Target project for suggestions:").ask() or "").strip()
-    if not pname:
-        console.print(
-            "[red]Project name is required.[/red] "
-            "Use [bold]--project <name>[/bold] or provide a name when prompted."
-        )
-        raise typer.Exit(code=1)
-
-    opt_a, opt_b, prev_a, prev_b = gather_ab_suggestions(report, uncategorized_events, pname)
-    print_ab_suggestion_preview(console, pname, opt_a, opt_b, prev_a, prev_b)
-    state_path = persist_suggestion_state(
-        config_path,
-        pname,
-        len(uncategorized_events),
-        opt_a,
-        opt_b,
-        prev_a,
-        prev_b,
-    )
-    console.print(
-        f"\n[dim]Saved suggestion state to {state_path}. "
-        f"(Deprecated) Apply with: gittan apply-suggestions --option A --confirm — prefer gittan review.[/dim]"
-    )
-
-
-@app.command("apply-suggestions")
-def apply_suggestions(
-    suggestion_option: Annotated[
-        SuggestionBundle,
-        typer.Option("--option", help="Which bundle to apply (A=safe, B=broad)."),
-    ],
-    confirm: Annotated[bool, typer.Option(help="Acknowledge write; use in non-interactive mode.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
-    state_file: Annotated[
-        Optional[Path],
-        typer.Option(help="Override path to suggestion state JSON."),
-    ] = None,
-):
-    """Apply a saved A/B suggestion bundle after explicit confirmation."""
-    from rich.console import Console
-
-    warn_deprecated_command(
-        "gittan apply-suggestions",
-        extra="Prefer `gittan review` for interactive mapping with preview/confirm.",
-    )
-    console = Console()
-    config_path = Path(projects_config)
-    path = state_file or ab_suggestions_state_path(config_path)
-    if not path.is_file():
-        console.print(
-            f"[red]No state file at {path}.[/red] "
-            "(Deprecated path — run `gittan review` instead of suggest-rules/apply-suggestions.)"
-        )
-        raise typer.Exit(code=1)
-
-    try:
-        state = load_suggestions_state(path)
-    except (json.JSONDecodeError, OSError) as exc:
-        console.print(f"[red]Cannot read suggestion state:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
-
-    if int(state.get("version", 0)) != 1:
-        console.print("[red]Unsupported suggestion state version.[/red]")
-        raise typer.Exit(code=1)
-
-    bundle_key = suggestion_option.value
-    rules = rules_from_state_option(state, bundle_key)
-    if not rules:
-        console.print(f"[yellow]Option {bundle_key} has no rules to apply.[/yellow]")
-        raise typer.Exit(code=0)
-
-    preview = state.get("options", {}).get(bundle_key, {}).get("preview", {})
-    console.print(
-        f"Applying option [bold]{bundle_key}[/bold] ({len(rules)} rules) "
-        f"→ project [cyan]{state['target_project']}[/cyan]\n"
-        f"  Preview: +{preview.get('matched_events', 0)} events, "
-        f"+{preview.get('matched_hours', 0)} h, "
-        f"{preview.get('uncategorized_delta', 0)} uncategorized"
-    )
-
-    if not confirm:
-        if not questionary.confirm(f"Write rules to {config_path} now?", default=False).ask():
-            raise typer.Exit(code=0)
-
-    payload = _load_projects_payload(console, config_path)
-    backup = backup_projects_config_if_exists(config_path)
-    if backup:
-        console.print(f"[dim]Backup: {backup}[/dim]")
-
-    project_name = str(state["target_project"])
-    for suggestion in rules:
-        apply_rule_to_project(
-            payload,
-            project_name=project_name,
-            rule_type=suggestion.rule_type,
-            rule_value=suggestion.rule_value,
-        )
-    try:
-        save_projects_config_payload(config_path, payload)
-    except OSError as exc:
-        console.print(f"[red]Cannot save config:[/red] {exc}")
-        raise typer.Exit(code=1) from exc
-    console.print(f"[green]Wrote[/green] {len(rules)} rule(s) for {project_name!r}.")

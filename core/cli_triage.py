@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Annotated, Any, Optional
+from datetime import timedelta
+from typing import Any, Optional
 
-import questionary
-import typer
 
 from collectors.chrome import chrome_ts
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
-from core.cli_app import app
-from core.cli_deprecation import warn_deprecated_triage_command
-from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
-from core.config import as_list, default_projects_config_option, load_projects_config_payload, normalize_profile
+from core.config import load_projects_config_payload, normalize_profile
 from core.calibration.screen_time_gap import analyze_screen_time_gaps
 from core.cli_prompts import prompt_for_timeframe
 from core.guided_project_config import build_guided_config_plan
@@ -26,7 +20,6 @@ from core.triage_code_repos import build_code_repo_candidates
 from core.triage_domain_signals import domain_project_counts_from_events, github_repo_hint
 from core.triage_site_scoring import DayTopSite, ProjectSuggestion, score_projects_for_sites
 from scripts.calibration.gap_day_triage import (
-    apply_domain_mappings,
     fetch_chrome_rows_for_day,
     summarize_day_sites,
 )
@@ -334,19 +327,6 @@ def resolve_target_project_name(profiles: list[dict], canonical: str) -> str:
     return canonical
 
 
-def _render_day_summary(row: dict, top_sites: list[DayTopSite]) -> str:
-    lines = [
-        f"Day: {row.get('day')}",
-        f"  Estimated: {float(row.get('estimated_hours', 0.0)):.2f}h",
-        f"  Screen: {float(row.get('screen_time_hours', 0.0)):.2f}h",
-        f"  Unexplained: {float(row.get('unexplained_screen_time_hours', 0.0)):.2f}h",
-        "  Top sites:",
-    ]
-    for site in top_sites:
-        lines.append(f"    - {site.domain} ({site.visits} visits)")
-    return "\n".join(lines)
-
-
 def _render_triage_next_steps(projects_config: str) -> str:
     return (
         "[bold]Next steps:[/bold]\n"
@@ -355,143 +335,4 @@ def _render_triage_next_steps(projects_config: str) -> str:
         "  3. For rule hygiene (zero-hit terms), use [cyan]gittan projects-audit[/cyan] and [cyan]gittan projects-trim[/cyan]."
     )
 
-
-@app.command("triage")
-def triage(
-    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
-    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
-    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
-    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
-    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
-    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
-    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
-    max_days: Annotated[int, typer.Option(help="Max unexplained days to review")] = 3,
-    max_sites: Annotated[int, typer.Option(help="Top sites shown/mappable per day")] = 5,
-    scoring_mode: Annotated[str, typer.Option(help="balanced or site-first")] = "site-first",
-    yes: Annotated[bool, typer.Option(help="Deprecated: heuristic auto-apply is disabled")] = False,
-    json_out: Annotated[
-        bool,
-        typer.Option("--json", help="Print read-only JSON plan to stdout; never writes config"),
-    ] = False,
-):
-    """Guided loop: confirm/correct project mapping on top unexplained days."""
-    from rich.console import Console
-    from core.report_service import run_timelog_report
-
-    warn_deprecated_triage_command("gittan triage", extra="Use `gittan review --json` for URL candidates.")
-    console = Console()
-    if json_out and yes:
-        console.print("[red]Cannot combine --json with --yes.[/red] Use --json alone for a read-only plan.")
-        raise typer.Exit(code=1)
-    if scoring_mode not in {"balanced", "site-first"}:
-        console.print(f"[red]Invalid --scoring-mode:[/red] {scoring_mode!r} (use balanced or site-first)")
-        raise typer.Exit(code=1)
-    if int(max_days) < 1:
-        console.print(f"[red]Invalid --max-days:[/red] must be at least 1, got {max_days}")
-        raise typer.Exit(code=1)
-    if yes:
-        console.print(
-            "[yellow]`gittan triage --yes` no longer applies heuristic mappings.[/yellow] "
-            "Use `gittan review` to map and apply URL hosts."
-        )
-        console.print(_render_triage_next_steps(projects_config))
-        raise typer.Exit(code=1)
-    date_from_s, date_to_s = resolve_date_window(
-        date_from=date_from,
-        date_to=date_to,
-        today=today,
-        yesterday=yesterday,
-        last_3_days=last_3_days,
-        last_week=last_week,
-        last_14_days=last_14_days,
-        last_month=last_month,
-        prompt_if_missing=sys.stdin.isatty(),
-    )
-    if json_out:
-        stderr_console = Console(stderr=True)
-        stderr_console.print("[dim]Producing read-only triage JSON evidence (no config changes)...[/dim]")
-        with stderr_console.status("[bold blue]Producing triage evidence JSON...[/bold blue]", spinner="dots"):
-            plan = build_triage_plan_dict(
-                date_from=date_from_s,
-                date_to=date_to_s,
-                projects_config=projects_config,
-                max_days=max_days,
-                max_sites=max_sites,
-                scoring_mode=scoring_mode,
-            )
-        print(json.dumps(plan, indent=2, ensure_ascii=False))
-        raise typer.Exit(code=0)
-
-    options = TimelogRunOptions(
-        date_from=date_from_s,
-        date_to=date_to_s,
-        projects_config=projects_config,
-        include_uncategorized=True,
-        quiet=True,
-        screen_time="on",
-    )
-    report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-    payload = analyze_screen_time_gaps(report)
-    days = select_triage_days(payload, max_days=max_days)
-    if not days:
-        console.print("[green]No unexplained days to triage in this range.[/green]")
-        raise typer.Exit(code=0)
-
-    profiles = load_triage_profiles(projects_config)
-    all_names = sorted(
-        {
-            str(profile.get("name", "")).strip()
-            for profile in profiles
-            if str(profile.get("name", "")).strip()
-        }
-    )
-    applied_total = 0
-    for row in days:
-        day = str(row.get("day"))
-        chrome_rows = fetch_chrome_rows_for_day(day, home=Path.home())
-        signal_rows, noise_rows_filtered = _filter_triage_noise_rows(chrome_rows)
-        top_sites = summarize_day_sites(signal_rows, limit=max_sites)
-        suggestions = score_projects_for_sites(profiles, top_sites, scoring_mode=scoring_mode)
-        console.print("")
-        if noise_rows_filtered:
-            console.print(
-                f"[dim]Noise pre-pass filtered {noise_rows_filtered} row(s) before scoring.[/dim]"
-            )
-        console.print(_render_day_summary(row, top_sites))
-        if not top_sites:
-            continue
-        if not suggestions:
-            console.print("[yellow]No project suggestions found; skipping day.[/yellow]")
-            continue
-        suggested_project = resolve_target_project_name(profiles, suggestions[0].canonical)
-        project_choice = questionary.select(
-            f"{day}: choose project",
-            choices=[*all_names, "Skip day"],
-            default=suggested_project if suggested_project in all_names else None,
-        ).ask()
-        if not project_choice or project_choice == "Skip day":
-            continue
-        target = project_choice
-        selected_domains = questionary.checkbox(
-            f"{day}: pick domains to map to '{target}'",
-            choices=[site.domain for site in top_sites],
-            validate=lambda value: True if value else "Select at least one domain or skip day.",
-        ).ask()
-        if not selected_domains:
-            continue
-        assignments = [(domain, target) for domain in as_list(selected_domains)]
-        if not assignments:
-            continue
-        applied, _created = apply_domain_mappings(
-            Path(projects_config),
-            assignments,
-            allow_create_projects=False,
-        )
-        applied_total += applied
-        console.print(f"[green]Applied[/green] {applied} mapping(s) for {day} -> {target}")
-        profiles = load_triage_profiles(projects_config)
-    console.print(f"\n[bold]Triage complete.[/bold] applied mappings: {applied_total}")
-    console.print(_render_triage_next_steps(projects_config))
 

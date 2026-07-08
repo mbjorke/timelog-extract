@@ -111,15 +111,19 @@ def print_review_summary_section(
         )
 
     if args.billable_unit and args.billable_unit > 0:
+        from core.domain import project_billable_raw_hours
+
+        include_agent = bool(getattr(args, "include_agent_billable", False))
         grand_billable = sum(
             billable_total_hours_fn(
-                sum(day_payload["hours"] for day_payload in project_reports[pn].values()),
+                project_billable_raw_hours(project_reports[pn], include_agent=include_agent),
                 args.billable_unit,
             )
             for pn in project_reports
         )
+        agent_note = "" if include_agent else " · agent excluded"
         summary_table.add_row(
-            f"Billable Total (up to {args.billable_unit:g}h)",
+            f"Billable Total (up to {args.billable_unit:g}h{agent_note})",
             f"[bold {CLR_VALUE_ORANGE}]{grand_billable:.2f}h[/bold {CLR_VALUE_ORANGE}]",
         )
 

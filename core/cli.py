@@ -22,6 +22,7 @@ from core import (
     cli_report_status,  # noqa: F401
     cli_reported,  # noqa: F401
     cli_review,  # noqa: F401
+    cli_search,  # noqa: F401
     cli_toggl_sync,  # noqa: F401
     cli_triage,  # noqa: F401
     cli_triage_apply,  # noqa: F401

@@ -4,19 +4,22 @@
 
 - story_id: GH-284
 - spec_status: draft
-- implementation_status: in progress
+- implementation_status: verified
 - created_at: 2026-07-03
 - last_updated_at: 2026-07-08
-- implementation.pr: pending
-- implementation.branch: task/attended-vs-agent-time-slice1
+- implementation.pr: #310 (slice 1), #319 (billable slice), #324 (GH-313 Lovable)
+- implementation.branch: task/attended-vs-agent-time-slice1, task/attended-billable-284-slice2 (merged)
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: tests/test_attendance_classification.py; billable+invoice via #319; Lovable parity #324
+- validation.decision: GO
 - changelog:
   - 2026-07-03: Initial draft from Timely benchmark findings (2026-07-02/03).
   - 2026-07-08: GH-313 taxonomy fix — `Lovable (desktop)` reclassified attended
     (interactive AI builder, same tier as Cursor/Claude Desktop); the agent bucket
     is reserved for cloud/background/delegated evidence, not interactive IDE tools.
+  - 2026-07-08: PO sync — slice 1 (#310) + billable/invoice slice (#319) + #313 (#324)
+    ship the issue acceptance criteria; #284 closed. Spec slices 2 (review UI) and 3
+    (narrative) remain `next`/`later` in this doc only.
 
 ## Problem
 
@@ -88,7 +91,7 @@ Feature: Sessions are labeled attended, agent, or mixed
 
 ## Slices
 
-### Slice 1 — attendance classifier + report label (priority: now)
+### Slice 1 — attendance classifier + report label — **built** (#310)
 
 - Classify each session (or sub-span) as `attended | agent | mixed` from
   existing evidence: user-authored prompt events, browser/editor activity, and
@@ -100,6 +103,12 @@ Feature: Sessions are labeled attended, agent, or mixed
   2026-07-02 (night agent run, morning mixed session, unattended merges).
 - validation: fixture test + one real-day manual comparison recorded in
   `private/benchmarks/`.
+
+### Billable + invoice (backlog slice 2) — **built** (#319)
+
+- Agent hours excluded from default billable; `--include-agent-billable` opt-in;
+  invoice PDF shows the attended/agent split. Meets the billable scenarios in the
+  issue acceptance criteria.
 
 ### Slice 2 — per-customer attended/agent split in review (priority: next)
 

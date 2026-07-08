@@ -47,6 +47,9 @@ output/
 out/
 *.cast
 
+# Sibling git worktrees created under the repo (e.g. Cursor's .worktrees/wt-*)
+.worktrees/
+
 # Extension dependencies
 cursor-extension/node_modules/
 

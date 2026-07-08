@@ -366,18 +366,18 @@ Scenario: Rollback a regretted push
 
 - story_id: GH-175 (tracked by PR #175)
 - spec_status: draft (partially shipped)
-- implementation_status: `now` items shipped — Toggl push + unified onboarding
-  (PR #175, merged), Jira idempotency (PR #178, merged); onboarding
-  verify-before-save (PR #179, in review). `next`/`later` items not built.
+- implementation_status: `now` MVP shipped (#175, #178, #179); Phase 3 reported-read shipped (#194).
+  **Op-log + rollback + description seam:** parked on `task/toggl-oplog-265` (PO 2026-07-08:
+  stay `next` until #284 slice 2 + #263 Phase 4 land). Other `next`/`later` items not built.
 - created_at: 2026-06-23
-- last_updated_at: 2026-06-24
-- implementation.pr: #175 (merged), #178 (merged), #179 (open)
-- implementation.branch: task/toggl-posting, task/onboarding-verify
+- last_updated_at: 2026-07-08
+- implementation.pr: #175 (merged), #178 (merged), #179 (merged), #194 (merged); op-log slice pending
+- implementation.branch: task/toggl-posting (merged), task/toggl-oplog-265 (parked, local only)
 - implementation.commits: []
 - validation.evidence: full suite green (970); Toggl/Jira/onboarding all
   live-verified against real APIs (toggl-sync post+dedup; jira-sync post+dedup;
   credential verification accepts good / rejects bad creds)
-- validation.decision: GO for shipped `now` items; `next`/`later` pending
+- validation.decision: GO for shipped MVP + reported-read; op-log slice **NO-GO until promoted** (PO 2026-07-08)
 - related:
   - mirrors `gittan jira-sync` (`core/jira_sync.py`, `core/cli_jira_sync.py`)
   - product model: [`simple-invoicing-model.md`](../ideas/simple-invoicing-model.md)
@@ -397,3 +397,6 @@ Scenario: Rollback a regretted push
     maintainer UX feedback (don't ask humans to eyeball/count a token).
   - 2026-06-24: Backlogged OS-keychain storage (`next`) and real OAuth login
     (`do not build yet`, until hosted).
+  - 2026-07-08: PO pass — #265 (op-log slice) **parked** at `next`; invoice surface
+    (#284 slice 2 → #263 Phase 4) is `now`. Agent work on `task/toggl-oplog-265` must not
+    ship until re-promoted; issue #265 comment documents the gate.

@@ -182,6 +182,8 @@ def print_report(
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Any = None,
+    billable_raw_by_project: Optional[Dict[str, float]] = None,
+    reported_billing: bool = False,
 ):
     print_command_hero(console, "report")
     console.print()
@@ -306,6 +308,8 @@ def print_report(
             overall_days=overall_days,
             session_duration_hours_fn=session_duration_hours_fn,
             billable_total_hours_fn=billable_total_hours_fn,
+            billable_raw_by_project=billable_raw_by_project,
+            reported_billing=reported_billing,
         )
 
     console.print()

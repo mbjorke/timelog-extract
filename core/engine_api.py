@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from core.cli import TimelogRunOptions
+from core.report_invoice import generate_invoice_pdf
 from core.report_service import (
     _session_duration_hours,
-    generate_invoice_pdf,
     run_timelog_report,
 )
 from core.truth_payload import build_truth_payload

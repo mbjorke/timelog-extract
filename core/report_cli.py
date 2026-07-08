@@ -8,10 +8,14 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from core.report_invoice import (
+    _build_invoice_pdf,
+    compute_billable_by_project,
+    generate_invoice_pdf,
+)
 from core.report_postamble import run_post_report_followups
 from core.report_service import (
     ReportPayload,
-    _build_invoice_pdf,
     _print_narrative,
     _print_report,
     _print_source_summary,
@@ -19,7 +23,6 @@ from core.report_service import (
     _session_duration_hours,
     _want_log,
     default_invoice_pdf_path,
-    generate_invoice_pdf,
     run_timelog_report,
 )
 from core.truth_payload import build_truth_payload
@@ -182,6 +185,10 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
     if report.args.source_summary:
         _print_source_summary(report.included_events)
 
+    billable_by_project = None
+    reported_billing = False
+    if getattr(report.args, "billable_unit", 0.0):
+        billable_by_project, reported_billing = compute_billable_by_project(report)
     _print_report(
         report.overall_days,
         report.project_reports,
@@ -192,6 +199,8 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.timelog_project_totals or None,
         report.git_project_totals or None,
         report.presence_estimated,
+        billable_raw_by_project=billable_by_project,
+        reported_billing=reported_billing,
     )
     run_post_report_followups(report_console, report)
     if getattr(report.args, "weekly", False):

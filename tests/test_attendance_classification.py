@@ -170,5 +170,47 @@ class TestBillableExcludesAgent(unittest.TestCase):
         self.assertIn("opted in", included)
 
 
+class TestBillableReportedLayer(unittest.TestCase):
+    """GH-186 Phase 4: invoice/billable prefers confirmed reported_time."""
+
+    def _reports(self):
+        return {
+            "Project Alpha": {
+                "2026-07-02": {"hours": 4.0, "attended_hours": 3.0, "mixed_hours": 0.0, "agent_hours": 1.0},
+            },
+            "Project Beta": {
+                "2026-07-02": {"hours": 2.0, "attended_hours": 2.0, "mixed_hours": 0.0, "agent_hours": 0.0},
+            },
+        }
+
+    def test_fallback_to_observed_when_no_reported(self):
+        from core.domain import billable_raw_by_project
+
+        # No reported_time -> observed with agent excluded (Alpha 4-1=3, Beta 2).
+        result = billable_raw_by_project(self._reports(), reported_hours=None)
+        self.assertAlmostEqual(result["Project Alpha"], 3.0)
+        self.assertAlmostEqual(result["Project Beta"], 2.0)
+
+    def test_confirmed_reported_supersedes_observed(self):
+        from core.domain import billable_raw_by_project
+
+        # Human confirmed 5h for Alpha (incl. a manual addition) -> that wins, as-is.
+        reported = {("Project Alpha", "2026-07-02"): 5.0}
+        result = billable_raw_by_project(self._reports(), reported_hours=reported)
+        self.assertAlmostEqual(result["Project Alpha"], 5.0)
+        # Beta has no confirmed record in reported mode -> bills 0 (adoption switch).
+        self.assertAlmostEqual(result["Project Beta"], 0.0)
+
+    def test_reported_mode_ignores_agent_flag(self):
+        from core.domain import billable_raw_by_project
+
+        reported = {("Project Alpha", "2026-07-02"): 5.0}
+        # include_agent_billable is irrelevant once confirmed hours are used.
+        result = billable_raw_by_project(
+            self._reports(), reported_hours=reported, include_agent_billable=True
+        )
+        self.assertAlmostEqual(result["Project Alpha"], 5.0)
+
+
 if __name__ == "__main__":
     unittest.main()

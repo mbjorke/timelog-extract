@@ -6,16 +6,13 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
 
 import questionary
-import typer
 
-from core.cli_app import app
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
-    default_projects_config_option,
     load_projects_config_payload,
     save_projects_config_payload,
 )
@@ -189,46 +186,3 @@ def apply_triage_decisions_payload(
     }
 
 
-@app.command("triage-apply")
-def triage_apply(
-    input_path: Annotated[
-        Optional[str],
-        typer.Option("--input", "-i", help="Path to decisions JSON file (or - for stdin)"),
-    ] = None,
-    projects_config: Annotated[str, typer.Option(help="JSON config file")] = default_projects_config_option(),
-    allow_create: Annotated[bool, typer.Option(help="Create unknown projects")] = False,
-    dry_run: Annotated[bool, typer.Option(help="Print what would be applied; do not write")] = False,
-    interactive_review: Annotated[
-        bool,
-        typer.Option(help="Review each validated decision before apply"),
-    ] = False,
-):
-    """Apply categorization decisions from mobile to timelog_projects.json."""
-    from core.cli_deprecation import warn_deprecated_triage_command
-
-    warn_deprecated_triage_command(
-        "gittan triage-apply",
-        extra="Prefer interactive `gittan review`; keep this only for external decisions JSON.",
-    )
-    try:
-        decisions = _load_decisions(input_path)
-    except (ValueError, OSError) as e:
-        typer.echo(json.dumps({"error": str(e)}))
-        raise typer.Exit(code=1) from e
-
-    try:
-        result = apply_triage_decisions_payload(
-            decisions=decisions,
-            projects_config=projects_config,
-            allow_create=allow_create,
-            dry_run=dry_run,
-            interactive_review=interactive_review,
-        )
-    except (OSError, ValueError) as e:
-        typer.echo(json.dumps({"error": f"Cannot apply decisions: {e}"}))
-        raise typer.Exit(code=1) from e
-
-    if result.get("errors"):
-        typer.echo(json.dumps(result))
-        raise typer.Exit(code=1)
-    typer.echo(json.dumps(result))

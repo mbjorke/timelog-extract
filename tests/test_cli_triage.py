@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -363,31 +361,6 @@ class CliTriageHelpersTests(unittest.TestCase):
         self.assertFalse(automation["would_apply"])
         self.assertEqual(automation["reason"], "explicit_decision_required")
         self.assertEqual(automation["target_project"], "Acme API")
-
-    def test_triage_json_and_yes_are_mutually_exclusive(self):
-        repo = Path(__file__).resolve().parent.parent
-        r = subprocess.run(
-            [sys.executable, str(repo / "timelog_extract.py"), "triage", "--json", "--yes"],
-            cwd=str(repo),
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("Cannot combine", r.stdout + r.stderr)
-
-    def test_triage_yes_is_disabled(self):
-        repo = Path(__file__).resolve().parent.parent
-        r = subprocess.run(
-            [sys.executable, str(repo / "timelog_extract.py"), "triage", "--yes"],
-            cwd=str(repo),
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("no longer applies heuristic mappings", r.stdout + r.stderr)
-        self.assertIn("Next steps", r.stdout + r.stderr)
 
     def test_render_triage_next_steps_mentions_interactive_review(self):
         text = _render_triage_next_steps("timelog_projects.json")

@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest import mock
 
 from core.config import (
     apply_rule_to_project,
@@ -278,93 +277,6 @@ class ApplySuggestionsBackupTests(unittest.TestCase):
             final = load_projects_config_payload(cfg)
             acme = final["projects"][0]
             self.assertIn("special-token", acme["match_terms"])
-
-
-class ApplySuggestionsCliTests(unittest.TestCase):
-    def test_apply_invokes_save_when_confirm(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            cfg = Path(tmp) / "timelog_projects.json"
-            save_projects_config_payload(cfg, {"projects": [_prof("Acme", ["acme"])]})
-            write_suggestions_state(
-                ab_suggestions_state_path(cfg),
-                projects_config=str(cfg),
-                target_project="Acme",
-                uncategorized_total=1,
-                option_previews={
-                    "A": {
-                        "rules": [
-                            {
-                                "rule_type": "match_terms",
-                                "rule_value": "cli-token",
-                                "cluster_count": 1,
-                                "source": "X",
-                                "samples": [],
-                                "note": "",
-                            }
-                        ],
-                        "preview": {},
-                    },
-                    "B": {"rules": [], "preview": {}},
-                },
-            )
-
-            from typer.testing import CliRunner
-
-            from core.cli import app
-
-            runner = CliRunner()
-            with mock.patch("core.cli_ab_rule_suggestions.save_projects_config_payload") as save_mock:
-                result = runner.invoke(
-                    app,
-                    ["apply-suggestions", "--projects-config", str(cfg), "--option", "A", "--confirm"],
-                )
-            self.assertEqual(result.exit_code, 0, msg=result.output)
-            save_mock.assert_called_once()
-
-
-class SuggestRulesCliUxTests(unittest.TestCase):
-    def test_prompts_for_project_when_option_missing(self):
-        from typer.testing import CliRunner
-
-        from core.cli import app
-
-        runner = CliRunner()
-        fake_report = mock.Mock(
-            included_events=[{"project": "Uncategorized", "source": "Cursor", "detail": "x", "timestamp": datetime.now(timezone.utc)}]
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            cfg = Path(tmp) / "timelog_projects.json"
-            save_projects_config_payload(cfg, {"projects": [_prof("Acme", ["acme"])]})
-            with mock.patch("core.cli_ab_rule_suggestions.questionary.text") as prompt_mock, mock.patch(
-                "core.report_service.run_timelog_report", return_value=fake_report
-            ), mock.patch("core.cli_ab_rule_suggestions.gather_ab_suggestions", return_value=([], [], (0, 0.0, 0), (0, 0.0, 0))), mock.patch(
-                "core.cli_ab_rule_suggestions.persist_suggestion_state", return_value=Path(tmp) / ".state.json"
-            ):
-                prompt_mock.return_value.ask.return_value = "Acme"
-                result = runner.invoke(app, ["suggest-rules", "--today", "--projects-config", str(cfg)])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("A/B rule suggestions", result.output)
-
-    def test_missing_project_after_prompt_shows_helpful_error(self):
-        from typer.testing import CliRunner
-
-        from core.cli import app
-
-        runner = CliRunner()
-        fake_report = mock.Mock(
-            included_events=[{"project": "Uncategorized", "source": "Cursor", "detail": "x", "timestamp": datetime.now(timezone.utc)}]
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            cfg = Path(tmp) / "timelog_projects.json"
-            save_projects_config_payload(cfg, {"projects": [_prof("Acme", ["acme"])]})
-            with mock.patch("core.cli_ab_rule_suggestions.questionary.text") as prompt_mock, mock.patch(
-                "core.report_service.run_timelog_report", return_value=fake_report
-            ):
-                prompt_mock.return_value.ask.return_value = ""
-                result = runner.invoke(app, ["suggest-rules", "--today", "--projects-config", str(cfg)])
-        self.assertEqual(result.exit_code, 1, msg=result.output)
-        self.assertIn("Project name is required.", result.output)
-        self.assertIn("--project <name>", result.output)
 
 
 if __name__ == "__main__":

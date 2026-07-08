@@ -34,6 +34,11 @@ class RabbitWorkflowContextTests(unittest.TestCase):
             "questions",
         ):
             self.assertIn(key, data)
+        if data.get("workflow_mode") == "gitbutler":
+            self.assertIn("gitbutler_sync", data)
+            sync = data["gitbutler_sync"]
+            for sync_key in ("common_base", "main_behind", "dead_lanes", "pull_check_ok"):
+                self.assertIn(sync_key, sync)
         self.assertIsInstance(data["questions"], list)
         self.assertGreaterEqual(len(data["questions"]), 1)
         if str(data.get("branch", "")).startswith("task/"):

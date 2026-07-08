@@ -211,6 +211,21 @@ class TestBillableReportedLayer(unittest.TestCase):
         )
         self.assertAlmostEqual(result["Project Alpha"], 5.0)
 
+    def test_reported_only_project_is_not_underbilled(self):
+        from core.domain import billable_raw_by_project
+
+        # "Manual Only" has confirmed/manual reported time but NO observed sessions,
+        # so it is absent from project_reports. It must still appear in the billing
+        # set (invoice/terminal iterate these values), never dropped.
+        reported = {
+            ("Project Alpha", "2026-07-02"): 4.0,
+            ("Manual Only", "2026-07-03"): 1.5,
+        }
+        result = billable_raw_by_project(self._reports(), reported_hours=reported)
+        self.assertAlmostEqual(result["Project Alpha"], 4.0)
+        self.assertAlmostEqual(result["Manual Only"], 1.5)
+        self.assertAlmostEqual(sum(result.values()), 5.5)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -119,9 +119,11 @@ def print_review_summary_section(
         raw_by_project = billable_raw_by_project
         if raw_by_project is None:
             raw_by_project = _billable_by_project(project_reports, include_agent_billable=include_agent)
+        # Sum the canonical billing set (incl. manual reported-only projects), not
+        # just project_reports, so the total matches the invoice.
         grand_billable = sum(
-            billable_total_hours_fn(raw_by_project.get(pn, 0.0), args.billable_unit)
-            for pn in project_reports
+            billable_total_hours_fn(hours, args.billable_unit)
+            for hours in raw_by_project.values()
         )
         if reported_billing:
             note = " · from confirmed reported time"

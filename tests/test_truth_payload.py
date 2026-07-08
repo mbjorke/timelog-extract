@@ -235,6 +235,29 @@ class TruthPayloadTests(unittest.TestCase):
             ["/tmp/client-a.md", "/tmp/client-b.md"],
         )
 
+    def test_per_project_worklog_metadata_empty_worklogs(self):
+        base = datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc)
+        payload = build_truth_payload(
+            overall_days={},
+            project_reports={},
+            included_events=[],
+            collector_status={},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=base + timedelta(hours=1),
+            worklog_path="",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            source_strategy_effective="per-project",
+            primary_source="per-project",
+            worklog_paths=[],
+            session_duration_hours_fn=_fake_session_duration,
+        )
+        self.assertEqual(payload["paths"]["worklogs"], [])
+        self.assertEqual(payload["paths"]["worklog"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

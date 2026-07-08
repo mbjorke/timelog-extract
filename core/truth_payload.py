@@ -200,8 +200,7 @@ def build_truth_payload(
     }
     resolved_worklogs = list(worklog_paths or [])
     if source_strategy_effective == "per-project":
-        if resolved_worklogs:
-            paths_block["worklogs"] = resolved_worklogs
+        paths_block["worklogs"] = resolved_worklogs
         paths_block["worklog"] = ""
     else:
         paths_block["worklog"] = worklog_path

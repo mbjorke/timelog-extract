@@ -78,6 +78,8 @@ def print_review_summary_section(
     overall_days: Dict[str, Any],
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
+    billable_raw_by_project: Optional[Dict[str, float]] = None,
+    reported_billing: bool = False,
 ) -> None:
     """Print the Review summary block and sanity warnings."""
     console.print(f"[{STYLE_HEADING}]Review summary{period_heading_suffix(args)}[/{STYLE_HEADING}]")
@@ -111,19 +113,26 @@ def print_review_summary_section(
         )
 
     if args.billable_unit and args.billable_unit > 0:
-        from core.domain import project_billable_raw_hours
+        from core.domain import billable_raw_by_project as _billable_by_project
 
         include_agent = bool(getattr(args, "include_agent_billable", False))
+        raw_by_project = billable_raw_by_project
+        if raw_by_project is None:
+            raw_by_project = _billable_by_project(project_reports, include_agent_billable=include_agent)
+        # Sum the canonical billing set (incl. manual reported-only projects), not
+        # just project_reports, so the total matches the invoice.
         grand_billable = sum(
-            billable_total_hours_fn(
-                project_billable_raw_hours(project_reports[pn], include_agent=include_agent),
-                args.billable_unit,
-            )
-            for pn in project_reports
+            billable_total_hours_fn(hours, args.billable_unit)
+            for hours in raw_by_project.values()
         )
-        agent_note = "" if include_agent else " · agent excluded"
+        if reported_billing:
+            note = " · from confirmed reported time"
+        elif not include_agent:
+            note = " · agent excluded"
+        else:
+            note = ""
         summary_table.add_row(
-            f"Billable Total (up to {args.billable_unit:g}h{agent_note})",
+            f"Billable Total (up to {args.billable_unit:g}h{note})",
             f"[bold {CLR_VALUE_ORANGE}]{grand_billable:.2f}h[/bold {CLR_VALUE_ORANGE}]",
         )
 

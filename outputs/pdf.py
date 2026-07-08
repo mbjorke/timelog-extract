@@ -74,6 +74,8 @@ def build_invoice_pdf(
     customer_name=None,
     billable_unit=0.0,
     include_agent_billable=False,
+    billable_raw_by_project=None,
+    reported_billing=False,
 ):
     try:
         from reportlab.lib import colors
@@ -112,25 +114,26 @@ def build_invoice_pdf(
         bottomMargin=54,
     )
 
-    from core.domain import project_billable_raw_hours
+    from core.domain import billable_raw_by_project as _billable_by_project
 
     total_raw_hours = sum(day_payload["hours"] for day_payload in overall_days.values())
     total_agent_hours = sum(
         float(day_payload.get("agent_hours", 0.0)) for day_payload in overall_days.values()
     )
+    raw_by_project = billable_raw_by_project
+    if raw_by_project is None:
+        raw_by_project = _billable_by_project(
+            project_reports, include_agent_billable=include_agent_billable
+        )
+    # Canonical billing set: projects with observed sessions plus any that exist
+    # only in confirmed/manual reported_time (no observed sessions). Iterating this
+    # rather than project_reports keeps manual-only projects from being underbilled.
     if billable_unit and billable_unit > 0:
         invoice_total_billable = sum(
-            billable_total_hours_fn(
-                project_billable_raw_hours(project_reports[pn], include_agent=include_agent_billable),
-                billable_unit,
-            )
-            for pn in project_reports
+            billable_total_hours_fn(hours, billable_unit) for hours in raw_by_project.values()
         )
     else:
-        invoice_total_billable = sum(
-            project_billable_raw_hours(project_reports[pn], include_agent=include_agent_billable)
-            for pn in project_reports
-        )
+        invoice_total_billable = sum(raw_by_project.values())
     profile_by_name = {profile["name"]: profile for profile in profiles}
     period_text = f"{dt_from.astimezone(local_tz).date()} to {dt_to.astimezone(local_tz).date()}"
     projects_text = invoice_projects_line(profiles, project_reports, customer_name)
@@ -143,7 +146,12 @@ def build_invoice_pdf(
         elements.append(
             Paragraph(f"<b>{PDF_LABEL_CUSTOMER}:</b> {html_escape(customer_name.strip())}", body_style)
         )
-    attendance_note = agent_attendance_note(total_agent_hours, include_agent_billable)
+    if reported_billing:
+        attendance_note = (
+            "<i>Billed from confirmed reported time (observed evidence superseded).</i>"
+        )
+    else:
+        attendance_note = agent_attendance_note(total_agent_hours, include_agent_billable)
     if billable_unit and billable_unit > 0:
         elements.extend(
             [
@@ -172,9 +180,9 @@ def build_invoice_pdf(
         Paragraph(f"<b>{PDF_TABLE_HEADER_SERVICE}</b>", body_style),
         Paragraph(f"<b>{PDF_TABLE_HEADER_SCOPE}</b>", body_style),
     ]]
-    for project_name in sorted(project_reports):
-        day_payloads = project_reports[project_name]
-        hours = project_billable_raw_hours(day_payloads, include_agent=include_agent_billable)
+    for project_name in sorted(raw_by_project):
+        day_payloads = project_reports.get(project_name, {})
+        hours = raw_by_project.get(project_name, 0.0)
         if hours <= 0:
             continue
         display_hours = billable_total_hours_fn(hours, billable_unit)

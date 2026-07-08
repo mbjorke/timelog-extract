@@ -234,6 +234,34 @@ def project_billable_raw_hours(day_payloads, include_agent: bool = False) -> flo
     return total
 
 
+def billable_raw_by_project(
+    project_reports,
+    *,
+    reported_hours=None,
+    include_agent_billable: bool = False,
+) -> dict:
+    """Raw billable hours per project for invoice/report (GH-186 Phase 4 + GH-284 slice 2).
+
+    When ``confirmed``/``edited`` reported_time covers the window
+    (``reported_hours`` is a ``{(project, day): hours}`` dict, not ``None``), bill
+    those human-approved hours — including manual additions — and ignore observed
+    evidence (the D4 adoption switch, matching toggl-/jira-sync). Projects in the
+    report but absent from the confirmed set bill 0 in reported mode.
+
+    Before adoption (``reported_hours is None``) fall back to observed hours with
+    autonomous agent time excluded by default (slice 2).
+    """
+    if reported_hours is not None:
+        result = {project: 0.0 for project in project_reports}
+        for (project, _day), hours in reported_hours.items():
+            result[project] = result.get(project, 0.0) + float(hours)
+        return result
+    return {
+        project: project_billable_raw_hours(days, include_agent=include_agent_billable)
+        for project, days in project_reports.items()
+    }
+
+
 def classify_attendance(events: list[dict]) -> str:
     """Categorize a collection of events as attended, agent, or mixed (GH-284)."""
     has_attended = False

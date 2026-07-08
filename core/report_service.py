@@ -39,7 +39,6 @@ from core.calibration.reconciliation import evaluate_reconciliation
 from core.git_totals import compute_git_project_totals
 from collectors.git_commits import git_commits_collector_status
 from outputs import narrative as narrative_output
-from outputs import pdf as pdf_output
 from outputs import terminal as terminal_output
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -202,6 +201,8 @@ def _print_report(
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Optional[PresenceEstimatedResult] = None,
+    billable_raw_by_project: Optional[Dict[str, float]] = None,
+    reported_billing: bool = False,
 ) -> None:
     terminal_output.print_report(
         overall_days=overall_days,
@@ -218,6 +219,8 @@ def _print_report(
         timelog_project_totals=timelog_project_totals,
         git_project_totals=git_project_totals,
         presence_estimated=presence_estimated,
+        billable_raw_by_project=billable_raw_by_project,
+        reported_billing=reported_billing,
     )
 
 
@@ -238,35 +241,6 @@ def _print_narrative(
         dt_to,
     )
     narrative_output.print_executive_narrative(lines)
-
-
-def _build_invoice_pdf(
-    overall_days: Dict[str, Any],
-    project_reports: Dict[str, Any],
-    profiles: List[Dict[str, Any]],
-    dt_from: datetime,
-    dt_to: datetime,
-    output_path: Path,
-    *,
-    empty_note: Optional[str] = None,
-    customer_name: Optional[str] = None,
-    billable_unit: float = 0.0,
-    include_agent_billable: bool = False,
-) -> Path:
-    return pdf_output.build_invoice_pdf(
-        overall_days=overall_days,
-        project_reports=project_reports,
-        profiles=profiles,
-        dt_from=dt_from,
-        dt_to=dt_to,
-        output_path=output_path,
-        local_tz=LOCAL_TZ,
-        billable_total_hours_fn=_billable_total_hours,
-        empty_note=empty_note,
-        customer_name=customer_name,
-        billable_unit=billable_unit,
-        include_agent_billable=include_agent_billable,
-    )
 
 
 def run_timelog_report(
@@ -458,32 +432,3 @@ def _apply_invoice_calibration_if_requested(
         return agg
 
 
-def generate_invoice_pdf(
-    report_payload: ReportPayload,
-    output_path: Optional[Path] = None,
-    options: Optional[Union[argparse.Namespace, TimelogRunOptions, Dict[str, Any]]] = None,
-) -> Path:
-    if options is None:
-        args = report_payload.args
-    elif isinstance(options, dict):
-        merged = {**vars(report_payload.args), **options}
-        args = argparse.Namespace(**vars(as_run_options(merged)))
-    else:
-        args = argparse.Namespace(**vars(as_run_options(options)))
-    if output_path is None:
-        output_path = (
-            Path(args.invoice_pdf_file).expanduser()
-            if args.invoice_pdf_file
-            else default_invoice_pdf_path(report_payload.dt_to)
-        )
-    return _build_invoice_pdf(
-        report_payload.overall_days,
-        report_payload.project_reports,
-        report_payload.profiles,
-        report_payload.dt_from,
-        report_payload.dt_to,
-        output_path,
-        customer_name=args.customer,
-        billable_unit=args.billable_unit,
-        include_agent_billable=getattr(args, "include_agent_billable", False),
-    )

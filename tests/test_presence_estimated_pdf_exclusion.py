@@ -16,7 +16,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core import report_service
+from core import report_invoice, report_service
 from core.presence_estimated import compute_presence_estimated
 from outputs import pdf as pdf_output
 
@@ -51,13 +51,13 @@ class PresenceEstimatedPdfExclusionTests(unittest.TestCase):
             self.assertNotIn("presence", name)
 
     def test_internal_build_invoice_pdf_signature_has_no_presence_parameter(self):
-        params = inspect.signature(report_service._build_invoice_pdf).parameters
+        params = inspect.signature(report_invoice._build_invoice_pdf).parameters
         self.assertNotIn("presence_estimated", params)
         for name in params:
             self.assertNotIn("presence", name)
 
     def test_generate_invoice_pdf_signature_has_no_presence_parameter(self):
-        params = inspect.signature(report_service.generate_invoice_pdf).parameters
+        params = inspect.signature(report_invoice.generate_invoice_pdf).parameters
         self.assertNotIn("presence_estimated", params)
         for name in params:
             self.assertNotIn("presence", name)

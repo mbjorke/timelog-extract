@@ -45,7 +45,9 @@ class DocsToIssuesParseTests(unittest.TestCase):
     def test_is_done_detection(self):
         self.assertTrue(is_done("shipped"))
         self.assertTrue(is_done("Done — merged in #212"))
+        self.assertTrue(is_done("verified"))  # template's final status (Qodo on #331)
         self.assertFalse(is_done("not built"))
+        self.assertFalse(is_done("not verified"))
         self.assertFalse(is_done("in progress"))
 
     def test_is_done_negation_not_misclassified(self):

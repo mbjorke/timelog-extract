@@ -27,7 +27,7 @@ TASK_PROMPTS = REPO_ROOT / "docs" / "task-prompts"
 
 # implementation_status values that mean "already built" → skip by default.
 _DONE_WORDS = ("shipped", "done", "implemented", "complete", "landed", "merged", "closed",
-               "built", "released")
+               "built", "released", "verified")
 
 # task-prompt files that are meta, not actionable tasks → never ticket.
 _SKIP_STEMS = {"implementation-status", "task-traceability-template"}

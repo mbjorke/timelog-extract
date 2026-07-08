@@ -54,6 +54,19 @@ class TestAttendanceClassification(unittest.TestCase):
         ]
         self.assertEqual(classify_attendance(events), "mixed")
 
+    def test_classify_attendance_lovable_is_attended(self):
+        # GH-313: Lovable (desktop) is an interactive AI builder -> attended,
+        # not a cloud/background agent.
+        events = [
+            _make_event(
+                "Lovable (desktop)",
+                datetime(2026, 7, 2, 14, 0, tzinfo=timezone.utc),
+                "Building the landing page",
+                "P1",
+            ),
+        ]
+        self.assertEqual(classify_attendance(events), "attended")
+
     def test_classify_attendance_uncertain_defaults_to_attended(self):
         # Source not in either AGENT_SOURCES or ATTENDED_SOURCES
         events = [

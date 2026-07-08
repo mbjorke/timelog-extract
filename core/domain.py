@@ -29,6 +29,7 @@ def _is_path_like_term(term: str) -> bool:
 _URL_TOKEN_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 
 
+@functools.lru_cache(maxsize=2048)
 def _normalize_lovable_url_token(url: str) -> str:
     raw = (url or "").strip().rstrip(".,;)")
     if not raw:
@@ -52,6 +53,7 @@ def _normalize_lovable_url_token(url: str) -> str:
     return rebuilt.lower()
 
 
+@functools.lru_cache(maxsize=1024)
 def _normalized_url_variants(text: str) -> str:
     if not text or "http" not in text:
         return ""
@@ -61,6 +63,15 @@ def _normalized_url_variants(text: str) -> str:
         if normalized:
             variants.append(normalized)
     return " ".join(variants)
+
+
+@functools.lru_cache(maxsize=1024)
+def _prepare_haystack_and_word_set(text_lower: str) -> tuple[str, Set[str]]:
+    """Pre-calculate combined text and word set for fast O(1) word boundary checks."""
+    normalized_variants = _normalized_url_variants(text_lower)
+    haystack_with_variants = f"{text_lower} {normalized_variants}".strip()
+    word_set = frozenset(re.findall(r"\w+", haystack_with_variants))
+    return haystack_with_variants, word_set
 
 
 def _matches_term(term: str, haystack: str, word_set: Optional[Set[str]] = None) -> bool:
@@ -84,80 +95,81 @@ def _matches_term(term: str, haystack: str, word_set: Optional[Set[str]] = None)
 def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -> str:
     if not text:
         return fallback
-    haystack = text.lower()
-    normalized_variants = _normalized_url_variants(haystack)
-    haystack_with_variants = f"{haystack} {normalized_variants}".strip()
 
-    # Pre-calculate word set for fast alphanumeric matching (bypassing re.search)
-    word_set = set(re.findall(r"\w+", haystack_with_variants))
-
-    # Pre-calculate match cache for all unique terms across all profiles.
-    # Terms must be normalized to lowercase for the match check to be correct.
-    match_cache: Dict[str, bool] = {}
-    for profile in profiles:
-        for term in profile.get("match_terms") or []:
-            clean = str(term).strip().lower()
-            if clean and clean not in match_cache and clean in haystack_with_variants:
-                match_cache[clean] = _matches_term(clean, haystack_with_variants, word_set=word_set)
-
-        name_lower = profile["name"].lower()
-        if name_lower and name_lower not in match_cache and name_lower in haystack_with_variants:
-            match_cache[name_lower] = _matches_term(
-                name_lower, haystack_with_variants, word_set=word_set
-            )
-
-        for url in profile.get("tracked_urls") or []:
-            fragment = str(url).strip().lower()
-            if fragment and fragment not in match_cache and fragment in haystack_with_variants:
-                match_cache[fragment] = _matches_term(
-                    fragment, haystack_with_variants, word_set=word_set
-                )
+    haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
 
     best_name = fallback
     # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
     best_rank = (0.0, 0, 0, 0, 0)
 
-    for profile in profiles:
-        match_terms = profile.get("match_terms") or []
-        matched_terms = []
-        for term in match_terms:
-            clean = str(term).strip().lower()
-            if match_cache.get(clean):
-                matched_terms.append(clean)
+    # Use match_cache to avoid re-evaluating the same term across different profiles.
+    match_cache: Dict[str, bool] = {}
 
+    for profile in profiles:
         weighted_score = 0.0
         specific_hits = 0
         generic_hits = 0
         match_len = 0
-        for clean in matched_terms:
-            match_len += len(clean)
-            if clean in GENERIC_TOOL_TERMS:
-                weighted_score += 0.25
-                generic_hits += 1
-            elif _is_path_like_term(clean):
-                weighted_score += 2.0
-                specific_hits += 1
-            else:
-                weighted_score += 1.0
-                specific_hits += 1
+        num_matches = 0
+
+        for term in profile.get("match_terms") or []:
+            clean = str(term).strip().lower()
+            if not clean:
+                continue
+
+            if clean not in match_cache:
+                if clean in haystack_with_variants:
+                    match_cache[clean] = _matches_term(clean, haystack_with_variants, word_set=word_set)
+                else:
+                    match_cache[clean] = False
+
+            if match_cache[clean]:
+                num_matches += 1
+                match_len += len(clean)
+                if clean in GENERIC_TOOL_TERMS:
+                    weighted_score += 0.25
+                    generic_hits += 1
+                elif _is_path_like_term(clean):
+                    weighted_score += 2.0
+                    specific_hits += 1
+                else:
+                    weighted_score += 1.0
+                    specific_hits += 1
 
         name_lower = profile["name"].lower()
-        if name_lower and match_cache.get(name_lower):
-            weighted_score += 1.0
-            specific_hits += 1
-            match_len += len(name_lower)
+        if name_lower:
+            if name_lower not in match_cache:
+                if name_lower in haystack_with_variants:
+                    match_cache[name_lower] = _matches_term(name_lower, haystack_with_variants, word_set=word_set)
+                else:
+                    match_cache[name_lower] = False
+
+            if match_cache[name_lower]:
+                weighted_score += 1.0
+                specific_hits += 1
+                match_len += len(name_lower)
 
         for url in profile.get("tracked_urls") or []:
             fragment = str(url).strip().lower()
-            if fragment and match_cache.get(fragment):
+            if not fragment:
+                continue
+
+            if fragment not in match_cache:
+                if fragment in haystack_with_variants:
+                    match_cache[fragment] = _matches_term(fragment, haystack_with_variants, word_set=word_set)
+                else:
+                    match_cache[fragment] = False
+
+            if match_cache[fragment]:
                 weighted_score += 2.0
                 specific_hits += 1
                 match_len += len(fragment)
 
-        rank = (weighted_score, specific_hits, match_len, -generic_hits, len(matched_terms))
+        rank = (weighted_score, specific_hits, match_len, -generic_hits, num_matches)
         if (specific_hits > 0 or weighted_score >= 1.0) and rank > best_rank:
             best_rank = rank
             best_name = profile["name"]
+
     return best_name
 
 

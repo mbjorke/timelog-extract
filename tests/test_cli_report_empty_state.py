@@ -42,7 +42,8 @@ class ReportEmptyStateUxTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("No events found.", result.output)
         self.assertIn("gittan doctor", result.output)
-        self.assertIn("gittan report --today --source-summary", result.output)
+        flat = " ".join(result.output.split())
+        self.assertIn("gittan report --today --source-summary", flat)
 
     def test_report_ambiguous_project_message_unchanged(self):
         report = _FakeReport(only_project="Ax", ambiguous=["AX Finans", "Axon"])

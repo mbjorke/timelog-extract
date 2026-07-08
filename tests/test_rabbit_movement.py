@@ -46,6 +46,7 @@ class RabbitMovementTests(unittest.TestCase):
         _git(self.repo, "checkout", "-q", "-b", "task/feature")
         _git(self.repo, "config", "user.email", "t@test")
         _git(self.repo, "config", "user.name", "t")
+        _git(self.repo, "config", "core.hooksPath", "/dev/null")
         (self.repo / "a.txt").write_text("1\n", encoding="utf-8")
         _git(self.repo, "add", "a.txt")
         _git(self.repo, "commit", "-q", "-m", "c1")

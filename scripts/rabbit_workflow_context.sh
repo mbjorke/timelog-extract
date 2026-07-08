@@ -125,9 +125,45 @@ command -v but >/dev/null 2>&1 && BUT_AVAILABLE=1
 
 BUT_STATUS=""
 BUT_APPLIED=""
+GB_COMMON_BASE=""
+GB_MAIN_BEHIND="0"
+GB_DEAD_LANES=""
+GB_PULL_CHECK_OK="1"
+GB_PULL_CHECK_EXCERPT=""
 if [[ $BUT_AVAILABLE -eq 1 && "$WORKFLOW_MODE" == "gitbutler" ]]; then
-  BUT_STATUS="$(but status 2>&1 || true)"
-  BUT_APPLIED="$(printf '%s\n' "$BUT_STATUS" | awk '/^[[:space:]]*●|applied|Applied/{print}' | head -20 || true)"
+  BUT_STATUS="$(but status -fv 2>&1 || true)"
+  BUT_APPLIED="$(printf '%s\n' "$BUT_STATUS" | python3 - <<'PY' || true
+import re, sys
+text = sys.stdin.read()
+seen = []
+for m in re.finditer(r"\[((?:task|release)/[^\]]+)\]", text):
+    name = m.group(1)
+    if name not in seen:
+        seen.append(name)
+        print(name)
+PY
+)"
+  _run_timeout 20 git fetch origin main 2>/dev/null || true
+  if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+    GB_COMMON_BASE="$(printf '%s\n' "$BUT_STATUS" | sed -n 's/^.*┴ \([0-9a-f]\{7,40\}\) (common base).*/\1/p' | head -1)"
+    if [[ -n "$GB_COMMON_BASE" ]]; then
+      GB_MAIN_BEHIND="$(git rev-list --count "${GB_COMMON_BASE}..origin/main" 2>/dev/null || echo 0)"
+    fi
+  fi
+  if command -v gh >/dev/null 2>&1; then
+    while IFS= read -r gb_br; do
+      [[ -z "$gb_br" ]] && continue
+      pr_state="$(_run_timeout 15 gh pr list --head "$gb_br" --state all --limit 1 --json state -q '.[0].state' 2>/dev/null || true)"
+      if [[ "$pr_state" == "MERGED" || "$pr_state" == "CLOSED" ]]; then
+        GB_DEAD_LANES+="${gb_br}${LANE_SEP}${pr_state}"$'\n'
+      fi
+    done <<< "$BUT_APPLIED"
+  fi
+  pull_out="$(_run_timeout 60 but pull --check 2>&1 || true)"
+  GB_PULL_CHECK_EXCERPT="$(printf '%s' "$pull_out" | head -20)"
+  if printf '%s' "$pull_out" | grep -qiE 'conflict|blocked|cannot pull'; then
+    GB_PULL_CHECK_OK="0"
+  fi
 fi
 
 WORKTREES="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' || true)"
@@ -206,6 +242,21 @@ if [[ "$WORKFLOW_MODE" == "gitbutler" && $BUT_AVAILABLE -eq 0 ]]; then
   _add_collision "but_missing|gitbutler_branch|no_cli|On $CURRENT but 'but' CLI not found."
 fi
 
+if [[ "$WORKFLOW_MODE" == "gitbutler" && $BUT_AVAILABLE -eq 1 ]]; then
+  if [[ "${GB_MAIN_BEHIND:-0}" -gt 0 ]]; then
+    _add_collision "gitbutler_base_stale|${GB_MAIN_BEHIND}|origin/main|GitButler common base is ${GB_MAIN_BEHIND} commit(s) behind origin/main — run \`but pull\` before kanin-loop."
+  fi
+  while IFS= read -r dl_line; do
+    [[ -z "$dl_line" ]] && continue
+    IFS="$LANE_SEP" read -r gb_br pr_state <<< "$dl_line"
+    [[ -z "$gb_br" ]] && continue
+    _add_collision "dead_lane|${gb_br}|${pr_state}|Applied lane has a ${pr_state} PR — unapply before \`but pull\` (retire candidate)."
+  done <<< "$GB_DEAD_LANES"
+  if [[ "$GB_PULL_CHECK_OK" == "0" ]]; then
+    _add_collision "but_pull_blocked|check|but pull|but pull --check reports problems — unapply dead lanes or resolve conflicts, then \`but pull\`."
+  fi
+fi
+
 OPEN_PRS=""
 if command -v gh >/dev/null 2>&1; then
   OPEN_PRS="$(python3 - <<'PY' 2>/dev/null || true
@@ -263,6 +314,9 @@ export WF_DIRTY="$DIRTY" WF_WORKTREES="$WORKTREES"
 export WF_LOCAL_LANES="$LOCAL_LANES" WF_COLLISIONS="$COLLISIONS"
 export WF_OPEN_PRS="$OPEN_PRS" WF_BUT_STATUS="$BUT_STATUS" WF_BUT_APPLIED="$BUT_APPLIED"
 export WF_LANE_SEP="$LANE_SEP"
+export WF_GB_COMMON_BASE="$GB_COMMON_BASE" WF_GB_MAIN_BEHIND="$GB_MAIN_BEHIND"
+export WF_GB_DEAD_LANES="$GB_DEAD_LANES" WF_GB_PULL_CHECK_OK="$GB_PULL_CHECK_OK"
+export WF_GB_PULL_CHECK_EXCERPT="$GB_PULL_CHECK_EXCERPT"
 
 python3 - "$JSON_FILE" "$HTML_FILE" <<'PY'
 import html
@@ -307,10 +361,33 @@ for ln in lines(os.environ.get("WF_COLLISIONS", "")):
     detail = parts[-1] if len(parts) > 1 else ln
     refs = parts[1:-1]
     entry = {"kind": kind, "detail": detail, "refs": refs}
-    if kind in ("diverged_history", "but_missing"):
+    if kind in ("diverged_history", "but_missing", "but_pull_blocked"):
         blockers.append(entry)
+    elif kind in ("gitbutler_base_stale", "dead_lane"):
+        warnings.append(entry)
     else:
         warnings.append(entry)
+
+dead_lanes = []
+dl_sep = os.environ.get("WF_LANE_SEP", "\x1f")
+for ln in lines(os.environ.get("WF_GB_DEAD_LANES", "")):
+    parts = ln.split(dl_sep, 1)
+    if parts and parts[0]:
+        dead_lanes.append({"branch": parts[0], "pr_state": parts[1] if len(parts) > 1 else ""})
+
+gb_main_behind = 0
+try:
+    gb_main_behind = int(os.environ.get("WF_GB_MAIN_BEHIND") or "0")
+except ValueError:
+    gb_main_behind = 0
+gitbutler_sync = {
+    "common_base": os.environ.get("WF_GB_COMMON_BASE") or "",
+    "main_behind": gb_main_behind,
+    "dead_lanes": dead_lanes,
+    "pull_check_ok": os.environ.get("WF_GB_PULL_CHECK_OK", "1") == "1",
+    "pull_check_excerpt": (os.environ.get("WF_GB_PULL_CHECK_EXCERPT") or "")[:2000],
+    "hygiene_command": "scripts/rabbit_workflow_hygiene.sh --dry-run",
+}
 
 open_prs = []
 pr_sep = "\x1f"
@@ -363,6 +440,7 @@ payload = {
     "questions": questions,
     "but_status_excerpt": (os.environ.get("WF_BUT_STATUS") or "")[:4000],
     "but_applied": lines(os.environ.get("WF_BUT_APPLIED", "")),
+    "gitbutler_sync": gitbutler_sync,
     "ack_command": "scripts/rabbit_workflow_context.sh --ack",
 }
 

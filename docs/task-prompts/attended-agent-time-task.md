@@ -6,7 +6,7 @@
 - spec_status: draft
 - implementation_status: in progress
 - created_at: 2026-07-03
-- last_updated_at: 2026-07-06
+- last_updated_at: 2026-07-08
 - implementation.pr: pending
 - implementation.branch: task/attended-vs-agent-time-slice1
 - implementation.commits: []
@@ -14,6 +14,9 @@
 - validation.decision: NO-GO
 - changelog:
   - 2026-07-03: Initial draft from Timely benchmark findings (2026-07-02/03).
+  - 2026-07-08: GH-313 taxonomy fix — `Lovable (desktop)` reclassified attended
+    (interactive AI builder, same tier as Cursor/Claude Desktop); the agent bucket
+    is reserved for cloud/background/delegated evidence, not interactive IDE tools.
 
 ## Problem
 

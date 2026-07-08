@@ -113,6 +113,9 @@ ATTENDED_SOURCES = {
     "Windsurf",
     "Codex IDE",
     "Zed",
+    # Lovable (desktop) is an interactive AI builder — actively building in it is
+    # attended work, same tier as Cursor/Claude Desktop (GH-313, not a cloud agent).
+    "Lovable (desktop)",
     "Chrome",
     "Apple Mail",
     "Claude.ai (web)",
@@ -135,6 +138,5 @@ AGENT_SOURCES = {
     "GitHub Copilot CLI",
     "Gemini CLI",
     "Conductor",
-    "Lovable (desktop)",
     CURSOR_CHECKPOINTS_SOURCE,
 }

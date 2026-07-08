@@ -1,0 +1,33 @@
+name: Add to project board
+
+# Auto-adds every new issue and PR to the Gittan project board (Project 3),
+# so the board stops drifting behind reality (nothing added them before — see
+# docs/task-prompts/backlog-priority-2026-07-08-task.md).
+#
+# One-time setup: create a fine-grained PAT with `project` (read+write) and
+# `repo` scope, then add it as the repo secret ADD_TO_PROJECT_PAT. Until that
+# secret exists the job skips cleanly (green, not red). The default GITHUB_TOKEN
+# cannot write user-owned Projects v2, which is why a PAT is required.
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue/PR to Project 3
+        env:
+          PAT: ${{ secrets.ADD_TO_PROJECT_PAT }}
+        if: env.PAT != ''
+        # Pinned to the v1.0.2 commit SHA: the step runs external code with a PAT,
+        # so a mutable tag would be a supply-chain risk.
+        uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
+        with:
+          project-url: https://github.com/users/${{ github.repository_owner }}/projects/3
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}

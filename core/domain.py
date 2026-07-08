@@ -216,6 +216,24 @@ def billable_total_hours(raw_hours, unit):
     return math.ceil(q - eps) * unit
 
 
+def project_billable_raw_hours(day_payloads, include_agent: bool = False) -> float:
+    """Raw hours eligible for billing across a project's day payloads (GH-284 slice 2).
+
+    Agent (autonomous) hours are excluded by default: they require the same
+    explicit approval as any other time before they can be billed. Pass
+    ``include_agent=True`` to opt them back in. Mixed sessions (user + agent
+    interleaved) stay billable, matching the attended/agent split the report shows.
+    Uncertain attendance is classified ``attended`` upstream, so it stays billable.
+    """
+    total = 0.0
+    for day_payload in day_payloads.values():
+        hours = float(day_payload.get("hours", 0.0))
+        if not include_agent:
+            hours -= float(day_payload.get("agent_hours", 0.0))
+        total += max(hours, 0.0)
+    return total
+
+
 def classify_attendance(events: list[dict]) -> str:
     """Categorize a collection of events as attended, agent, or mixed (GH-284)."""
     has_attended = False

@@ -251,6 +251,7 @@ def _build_invoice_pdf(
     empty_note: Optional[str] = None,
     customer_name: Optional[str] = None,
     billable_unit: float = 0.0,
+    include_agent_billable: bool = False,
 ) -> Path:
     return pdf_output.build_invoice_pdf(
         overall_days=overall_days,
@@ -264,6 +265,7 @@ def _build_invoice_pdf(
         empty_note=empty_note,
         customer_name=customer_name,
         billable_unit=billable_unit,
+        include_agent_billable=include_agent_billable,
     )
 
 
@@ -483,4 +485,5 @@ def generate_invoice_pdf(
         output_path,
         customer_name=args.customer,
         billable_unit=args.billable_unit,
+        include_agent_billable=getattr(args, "include_agent_billable", False),
     )

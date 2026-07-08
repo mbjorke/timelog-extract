@@ -2,7 +2,13 @@ import unittest
 from datetime import datetime, timezone
 
 from core.analytics import estimate_hours_by_day
-from core.domain import classify_attendance, compute_sessions, session_duration_hours
+from core.domain import (
+    billable_total_hours,
+    classify_attendance,
+    compute_sessions,
+    project_billable_raw_hours,
+    session_duration_hours,
+)
 from core.sources import AI_SOURCES, GITHUB_SOURCE
 
 
@@ -115,6 +121,53 @@ class TestAttendanceClassification(unittest.TestCase):
         self.assertAlmostEqual(day_data["attended_hours"], 0.0833333333333, places=4)
         self.assertAlmostEqual(day_data["mixed_hours"], 0.25, places=4)
         self.assertAlmostEqual(day_data["hours"], 0.583333333, places=4)
+
+
+class TestBillableExcludesAgent(unittest.TestCase):
+    """GH-284 slice 2: agent hours are not billable by default."""
+
+    def _project(self):
+        # One project, two days, with an attended/mixed/agent split.
+        return {
+            "2026-07-02": {"hours": 4.0, "attended_hours": 2.0, "mixed_hours": 1.0, "agent_hours": 1.0},
+            "2026-07-03": {"hours": 2.0, "attended_hours": 1.0, "mixed_hours": 0.0, "agent_hours": 1.0},
+        }
+
+    def test_agent_hours_excluded_by_default(self):
+        # total = 6.0, agent = 2.0 -> billable eligible = 4.0 (attended + mixed)
+        self.assertAlmostEqual(project_billable_raw_hours(self._project()), 4.0)
+
+    def test_agent_hours_included_when_opted_in(self):
+        self.assertAlmostEqual(
+            project_billable_raw_hours(self._project(), include_agent=True), 6.0
+        )
+
+    def test_all_agent_project_is_zero_billable(self):
+        days = {"2026-07-02": {"hours": 3.0, "agent_hours": 3.0}}
+        self.assertEqual(project_billable_raw_hours(days), 0.0)
+        # ...but fully billable when opted in.
+        self.assertAlmostEqual(project_billable_raw_hours(days, include_agent=True), 3.0)
+
+    def test_missing_agent_key_stays_billable(self):
+        # Uncertain/attended days have no agent_hours key -> full hours bill.
+        days = {"2026-07-02": {"hours": 2.5}}
+        self.assertAlmostEqual(project_billable_raw_hours(days), 2.5)
+
+    def test_billable_rounding_applies_after_exclusion(self):
+        # eligible 4.0h, unit 0.5 -> 4.0; eligible 4.0h with a 15-min unit stays 4.0
+        eligible = project_billable_raw_hours(self._project())
+        self.assertAlmostEqual(billable_total_hours(eligible, 0.5), 4.0)
+
+    def test_invoice_note_makes_split_visible(self):
+        from outputs.pdf import agent_attendance_note
+
+        self.assertEqual(agent_attendance_note(0.0, False), "")
+        excluded = agent_attendance_note(1.5, include_agent_billable=False)
+        self.assertIn("Excludes 1.50 h", excluded)
+        self.assertIn("not billable by default", excluded)
+        included = agent_attendance_note(1.5, include_agent_billable=True)
+        self.assertIn("Includes 1.50 h", included)
+        self.assertIn("opted in", included)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,14 @@ from core.sources import GITHUB_SOURCE, WORKLOG_SOURCE
 
 _COMMIT_DETAIL_RE = re.compile(r"^Commit:\s*", re.IGNORECASE)
 
+# Glass PR-tab titles (and sticky Multitask paint) look like ``PR #347`` /
+# ``PR #347: …``. Those are unsafe as session titles and must not bleed onto
+# GitHub/worklog delivery rows (GH-351).
+_PR_NUMBER_SESSION_LABEL_RE = re.compile(
+    r"^\s*PR\s*#\s*\d+(?:\s*:.*)?\s*$",
+    re.IGNORECASE,
+)
+
 # Chat/IDE sources that carry human-meaningful session titles.
 _SESSION_LABEL_SOURCES = frozenset(
     {
@@ -23,6 +31,18 @@ _SESSION_LABEL_SOURCES = frozenset(
 )
 
 _DEFAULT_LOOKBACK_SECONDS = 2 * 60 * 60
+
+
+def is_pr_number_session_label(label: str | None) -> bool:
+    """True when ``label`` is a PR-number-shaped session title (GH-351).
+
+    Matches whole-string ``PR #<digits>`` with optional ``: …`` suffix.
+    Titles that merely mention a PR in prose do not match.
+    """
+    text = str(label or "").strip()
+    if not text:
+        return False
+    return bool(_PR_NUMBER_SESSION_LABEL_RE.match(text))
 
 
 def is_commit_worklog_detail(detail: str) -> bool:
@@ -128,6 +148,7 @@ def _nearest_session_label(
         if str(prev.get("source") or "") not in _SESSION_LABEL_SOURCES:
             continue
         label = str(event_anchors(prev).get("label") or "").strip()
-        if label:
-            return label
+        if not label or is_pr_number_session_label(label):
+            continue
+        return label
     return None

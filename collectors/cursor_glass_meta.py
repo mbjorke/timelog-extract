@@ -15,6 +15,7 @@ from pathlib import Path
 
 from collectors.ai_logs import _GENERIC_BRANCHES
 from collectors.cursor_composer import cursor_state_db_path
+from core.worklog_enrich import is_pr_number_session_label
 
 _GLASS_TABS_KEY_PREFIX = "cursor/glass.tabs.v2/"
 
@@ -28,12 +29,13 @@ def _branch_name_leaf(branch: str | None) -> str | None:
 
 
 def git_branch_leaf_at_path(repo_path: str) -> str | None:
-    """Current HEAD branch leaf under ``workspace_roots``, or None if unavailable."""
+    """Current HEAD branch leaf under ``workspace_roots``, or None if unavailable.
+
+    ``workspace_roots`` may be a subdirectory inside a git work tree; rely on
+    ``git -C`` discovery rather than requiring ``<path>/.git`` to exist.
+    """
     path = Path(repo_path)
     if not repo_path or not path.is_dir():
-        return None
-    # Cheap reject before spawning git (fixtures / non-repos).
-    if not (path / ".git").exists():
         return None
     try:
         result = subprocess.run(
@@ -90,6 +92,10 @@ def load_glass_agent_tab_meta(home: Path) -> dict[str, dict[str, str]]:
                 if not agent_id:
                     continue
                 label = str(tab.get("label") or "").strip()
+                # GH-351: PR-tab titles like ``PR #347: …`` overpaint Multitask
+                # sessions; keep branchName / git fallback, drop the label.
+                if is_pr_number_session_label(label):
+                    label = ""
                 branch = _branch_name_leaf(str(props.get("branchName") or ""))
                 prev = out.get(agent_id, {})
                 merged: dict[str, str] = dict(prev)

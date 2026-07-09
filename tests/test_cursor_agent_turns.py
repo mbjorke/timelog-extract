@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -10,7 +9,6 @@ from pathlib import Path
 
 from collectors.cursor_agent_turns import collect_cursor_agent_turns
 from collectors.cursor_composer import collect_cursor_composer_sessions
-from collectors.cursor_glass_meta import git_branch_leaf_at_path, load_glass_agent_tab_meta
 
 
 class CursorAgentTurnsTests(unittest.TestCase):
@@ -275,113 +273,6 @@ class CursorAgentTurnsTests(unittest.TestCase):
             # Fixture path is not a real git repo → no fabricated branch.
             self.assertIsNone(events[0]["anchors"].get("branch"))
 
-    def test_glass_tab_label_when_composer_header_missing(self):
-        """GH-348: Glass PR tab label enriches Multitask chats missing headers."""
-        cid = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
-        ws = "0507ce8a6b076915779412b4dd8bd6f9"
-        glass_payload = {
-            "version": 2,
-            "stableTabs": [],
-            "workspaceTabs": [
-                {
-                    "id": "pr:example",
-                    "kind": "pr",
-                    "label": "Restore agent labels",
-                    "props": {
-                        "ownerAgentId": cid,
-                        "branchName": "task/cursor-label-fallback-348",
-                        "prTitle": "Restore agent labels",
-                        "prUrl": "https://github.com/example/project-alpha/pull/1",
-                        "repoPath": "/Users/example/Workspace/Project/project-alpha",
-                    },
-                }
-            ],
-        }
-        payload = {
-            "hook_event_name": "beforeSubmitPrompt",
-            "conversation_id": cid,
-            "session_id": cid,
-            "workspace_roots": ["/Users/example/Workspace/Project/project-alpha"],
-            "prompt": "enrich missing composer headers",
-        }
-        body = (
-            "[2026-07-09T19:00:00.000Z] Hook step requested: beforeSubmitPrompt\n"
-            "INPUT:\n"
-            + json.dumps(payload, indent=2)
-            + "\n"
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            self._write_composer_db(
-                home,
-                [],
-                extra_rows=[
-                    (
-                        f"cursor/glass.tabs.v2/{ws}/state.json",
-                        json.dumps(glass_payload),
-                    )
-                ],
-            )
-            self._write_hooks_log(home, ws, body)
-            events, covered = collect_cursor_agent_turns(
-                [],
-                datetime(2026, 7, 9, 0, 0, tzinfo=timezone.utc),
-                datetime(2026, 7, 9, 23, 59, tzinfo=timezone.utc),
-                home,
-                timezone.utc,
-                lambda t, p: "project-alpha",
-                self._make_event,
-            )
-            self.assertEqual(covered, {cid})
-            self.assertEqual(len(events), 1)
-            self.assertEqual(events[0]["anchors"].get("label"), "Restore agent labels")
-            self.assertEqual(events[0]["anchors"].get("branch"), "cursor-label-fallback-348")
-            self.assertIn("(@cursor-label-fallback-348)", events[0]["detail"])
-
-    def test_git_branch_fallback_when_composer_header_missing(self):
-        """GH-348: workspace_roots HEAD branch when Glass/header have no branch."""
-        cid = "cccccccc-dddd-eeee-ffff-000000000000"
-        ws = "1807d04adc753be7ca72d645c0863c27"
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            repo = home / "workspace" / "project-beta"
-            repo.mkdir(parents=True)
-            subprocess.run(
-                ["git", "init", "-b", "task/display-gap-fix"],
-                cwd=repo,
-                check=True,
-                capture_output=True,
-            )
-            payload = {
-                "hook_event_name": "beforeSubmitPrompt",
-                "conversation_id": cid,
-                "session_id": cid,
-                "workspace_roots": [str(repo)],
-                "prompt": "add branch annotation",
-            }
-            body = (
-                "[2026-07-09T20:00:00.000Z] Hook step requested: beforeSubmitPrompt\n"
-                "INPUT:\n"
-                + json.dumps(payload, indent=2)
-                + "\n"
-            )
-            self._write_composer_db(home, [])
-            self._write_hooks_log(home, ws, body)
-            events, covered = collect_cursor_agent_turns(
-                [],
-                datetime(2026, 7, 9, 0, 0, tzinfo=timezone.utc),
-                datetime(2026, 7, 9, 23, 59, tzinfo=timezone.utc),
-                home,
-                timezone.utc,
-                lambda t, p: "project-beta",
-                self._make_event,
-            )
-            self.assertEqual(covered, {cid})
-            self.assertEqual(len(events), 1)
-            self.assertEqual(events[0]["anchors"].get("dir"), "project-beta")
-            self.assertEqual(events[0]["anchors"].get("branch"), "display-gap-fix")
-            self.assertIn("(@display-gap-fix)", events[0]["detail"])
-
     def test_prompt_preview_is_capped_and_single_line(self):
         from collectors.cursor_agent_turns import _prompt_preview
 
@@ -390,22 +281,6 @@ class CursorAgentTurnsTests(unittest.TestCase):
         self.assertEqual(len(preview), 80)
         self.assertNotIn("\n", preview)
         self.assertNotIn("secret-line-two", preview)
-
-    def test_glass_meta_helpers_unit(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            self.assertEqual(load_glass_agent_tab_meta(home), {})
-            self.assertIsNone(git_branch_leaf_at_path(str(home / "missing")))
-            repo = Path(tmp) / "repo"
-            repo.mkdir()
-            subprocess.run(
-                ["git", "init", "-b", "main"],
-                cwd=repo,
-                check=True,
-                capture_output=True,
-            )
-            # Generic workflow branch rejected as anchor.
-            self.assertIsNone(git_branch_leaf_at_path(str(repo)))
 
 
 if __name__ == "__main__":

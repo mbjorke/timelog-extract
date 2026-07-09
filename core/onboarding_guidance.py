@@ -177,7 +177,9 @@ def build_review_next_steps(
     if has_candidates:
         if uncategorized:
             steps.append(
-                "Use `gittan map` to anchor session titles, working dirs, or branches when clusters need match_terms."
+                "Use `gittan map` to attach git repos / working dirs to an existing "
+                "customer/line (branch/session-title hits are context — not permanent "
+                "match_terms)."
             )
         steps.append(
             "Run `gittan projects-audit` to check match_terms and tracked_urls hit rates before trimming rules."

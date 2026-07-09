@@ -22,15 +22,17 @@ from core.config import (
     remove_rule_from_project,
     save_projects_config_payload,
 )
-from core.projects_audit import (
+from core.anchor_plan import (
     ANCHOR_PLAN_APPLY_MIN_HITS,
     ANCHOR_PLAN_SCHEMA_VERSION,
+    build_anchor_plan_from_audit,
+    is_ephemeral_anchor_kind,
+)
+from core.projects_audit import (
     SIGNAL_KIND_LABELS,
     TRIM_PLAN_SCHEMA_VERSION,
-    build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
-    is_ephemeral_anchor_kind,
 )
 
 
@@ -98,14 +100,23 @@ def projects_audit(
             ),
         ),
     ] = False,
+    min_hits: Annotated[
+        int,
+        typer.Option(
+            "--min-hits",
+            help=(
+                f"Minimum hits for apply candidates (default {ANCHOR_PLAN_APPLY_MIN_HITS}). "
+                "Values below the default print a warning."
+            ),
+        ),
+    ] = ANCHOR_PLAN_APPLY_MIN_HITS,
     unsafe_low_floor: Annotated[
         bool,
         typer.Option(
             "--unsafe-low-floor",
             help=(
-                f"Allow min_hits=1 for apply candidates (default floor is "
-                f"{ANCHOR_PLAN_APPLY_MIN_HITS}). Prints a warning; one-off noise becomes "
-                "easy to promote into config."
+                "Shortcut for --min-hits=1 with an explicit warning. Prefer --min-hits "
+                "when you need a conscious override."
             ),
         ),
     ] = False,
@@ -163,11 +174,12 @@ def projects_audit(
             )
 
     if write_anchor_plan:
-        floor = 1 if unsafe_low_floor else ANCHOR_PLAN_APPLY_MIN_HITS
-        if unsafe_low_floor and not json_out:
+        floor = 1 if unsafe_low_floor else max(1, int(min_hits))
+        if floor < ANCHOR_PLAN_APPLY_MIN_HITS and not json_out:
             console.print(
-                "[yellow]Warning:[/yellow] --unsafe-low-floor sets min_hits=1; "
-                "one-off branch/label/dir noise can become permanent match_terms."
+                f"[yellow]Warning:[/yellow] min_hits={floor} is below the safe floor "
+                f"({ANCHOR_PLAN_APPLY_MIN_HITS}); one-off noise can become permanent "
+                "match_terms."
             )
         plan = build_anchor_plan_from_audit(
             payload,
@@ -335,6 +347,15 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
         rt = str(item.get("rule_type", "match_terms")).strip() or "match_terms"
         rv = str(item.get("rule_value", "")).strip()
         kind = str(item.get("anchor_kind", "")).strip()
+        hits_raw = item.get("hits")
+        hits: int | None
+        if hits_raw is None or hits_raw == "":
+            hits = None
+        else:
+            try:
+                hits = int(hits_raw)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"additions[{idx}]: hits must be an integer") from exc
         if not pn or not rv:
             raise ValueError(f"additions[{idx}]: project_name and rule_value required")
         if rt not in {"match_terms", "tracked_urls"}:
@@ -345,6 +366,7 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
                 "rule_type": rt,
                 "rule_value": rv,
                 "anchor_kind": kind,
+                "hits": hits,
             }
         )
     return out
@@ -369,6 +391,16 @@ def projects_anchor(
             ),
         ),
     ] = False,
+    min_hits: Annotated[
+        int,
+        typer.Option(
+            "--min-hits",
+            help=(
+                f"Skip rows whose hits are below this floor when hits are present "
+                f"(default {ANCHOR_PLAN_APPLY_MIN_HITS}). Rows without hits still apply."
+            ),
+        ),
+    ] = ANCHOR_PLAN_APPLY_MIN_HITS,
 ) -> None:
     """Add rules from an anchor plan (stable signals: hosts, repos, dirs by default)."""
     from rich.console import Console
@@ -384,6 +416,7 @@ def projects_anchor(
         console.print("[yellow]No additions in input; nothing to do.[/yellow]")
         raise typer.Exit(code=0)
 
+    floor = max(1, int(min_hits))
     skipped: list[str] = []
     apply_rows: list[dict[str, Any]] = []
     for item in additions:
@@ -394,17 +427,26 @@ def projects_anchor(
                 f"{item['rule_type']}={item['rule_value']!r}"
             )
             continue
+        hits = item.get("hits")
+        if hits is not None and int(hits) < floor:
+            skipped.append(
+                f"skip low-hit ({hits}<{floor}): {item['project_name']} "
+                f"{item['rule_type']}={item['rule_value']!r}"
+            )
+            continue
         apply_rows.append(item)
 
+    if skipped:
+        console.print(f"[dim]skipped {len(skipped)} ephemeral/low-hit candidate(s)[/dim]")
     for line in skipped:
         console.print(f"[dim]{line}[/dim]")
 
     if not apply_rows:
         console.print(
             "[yellow]No apply candidates left "
-            "(plan was only ephemeral branch/label rows, or empty after filter). "
-            "Re-run with --include-ephemeral-kinds only if you intentionally want "
-            "permanent match_terms from session context.[/yellow]"
+            "(plan was only ephemeral/low-hit rows, or empty after filter). "
+            "Re-run with --include-ephemeral-kinds and/or a lower --min-hits only if "
+            "you intentionally want those rows as permanent rules.[/yellow]"
         )
         raise typer.Exit(code=1)
 

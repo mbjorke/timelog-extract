@@ -121,6 +121,7 @@ def build_truth_payload(
     screen_time_days: Dict[str, float] | None,
     presence_estimated: Any | None = None,
     presence_edge_gaps: Any | None = None,
+    presence_bracketing: Any | None = None,
     dt_from: datetime,
     dt_to: datetime,
     worklog_path: str,
@@ -172,6 +173,10 @@ def build_truth_payload(
             "attended_hours": round(float(payload.get("attended_hours", 0.0)), 6),
             "mixed_hours": round(float(payload.get("mixed_hours", 0.0)), 6),
             "agent_hours": round(float(payload.get("agent_hours", 0.0)), 6),
+            "bracketed_hours": round(float(payload.get("bracketed_hours", 0.0)), 6),
+            "evidenced_hours": round(
+                float(payload.get("evidenced_hours", payload["hours"])), 6
+            ),
             "session_count": len(sessions_out),
             "sessions": sessions_out,
             "events": events_flat,
@@ -203,6 +208,10 @@ def build_truth_payload(
     edge_block: Dict[str, Any] | None = None
     if presence_edge_gaps is not None and hasattr(presence_edge_gaps, "to_dict"):
         edge_block = presence_edge_gaps.to_dict()
+
+    bracket_block: Dict[str, Any] | None = None
+    if presence_bracketing is not None and hasattr(presence_bracketing, "to_dict"):
+        bracket_block = presence_bracketing.to_dict()
 
     paths_block: Dict[str, Any] = {
         "projects_config": config_path or "",
@@ -244,6 +253,7 @@ def build_truth_payload(
             "attended_hours": round(sum(d["attended_hours"] for d in days_out.values()), 6),
             "mixed_hours": round(sum(d["mixed_hours"] for d in days_out.values()), 6),
             "agent_hours": round(sum(d["agent_hours"] for d in days_out.values()), 6),
+            "bracketed_hours": round(sum(d.get("bracketed_hours", 0.0) for d in days_out.values()), 6),
             "days_with_activity": len(days_out),
             "event_count": len(included_events),
         },
@@ -254,4 +264,6 @@ def build_truth_payload(
         out["presence_estimated_hours"] = presence_block
     if edge_block is not None:
         out["presence_edge_gaps"] = edge_block
+    if bracket_block is not None:
+        out["presence_bracketing"] = bracket_block
     return out

@@ -40,6 +40,7 @@ def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
         screen_time_days=report.screen_time_days,
         presence_estimated=report.presence_estimated,
         presence_edge_gaps=report.presence_edge_gaps,
+        presence_bracketing=report.presence_bracketing,
         dt_from=report.dt_from,
         dt_to=report.dt_to,
         worklog_path=str(report.worklog_path),
@@ -201,6 +202,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.git_project_totals or None,
         report.presence_estimated,
         presence_edge_gaps=report.presence_edge_gaps,
+        presence_bracketing=report.presence_bracketing,
         billable_raw_by_project=billable_by_project,
         reported_billing=reported_billing,
     )

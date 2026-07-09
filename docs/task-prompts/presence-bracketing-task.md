@@ -20,15 +20,16 @@ Timely Memory local buffer is an ingested source since #285/#290
 - created_at: `2026-07-08`
 - last_updated_at: `2026-07-09`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/339
-- implementation.branch: `task/presence-edge-gap-measure`
-- implementation.commits: `[a6c96ba, 6e4362d, a7973fa]`
-- validation.evidence: operator report with `--timely-memory-source on` — Edge gap row + Bracketable preview; observed hours unchanged; unique edge gap materially smaller than naive per-session sum. Slice 1 measures only; Slice 2 (bracket) not built.
+- implementation.branch: `task/presence-bracketing-slice2`
+- implementation.commits: pending Slice 2 PR
+- validation.evidence: Slice 1 merged (#339). Slice 2: `--presence-bracket on` extends observed hours with capped edges; `bracketed_hours` labeled in Review summary + truth payload.
 - validation.decision: `conditional GO`
 - changelog:
   - `2026-07-08: Initial draft from maintainer composition-time concern + Timely benchmark.`
   - `2026-07-09: Slice 1 started — Timely Memory spans + edge-gap diagnostic (no hour changes).`
   - `2026-07-09: Unique wall-clock totals + capped bracketable preview; PR #339.`
   - `2026-07-09: Canonical traceability enums (Qodo); exclusive-end presence containment.`
+  - `2026-07-09: Slice 1 merged (#339). Slice 2 started — capped bracketing + labeled hours.`
 
 ## Problem
 
@@ -95,10 +96,15 @@ Scenario: No presence source, no change
   truth payload key `presence_edge_gaps`. Requires `--timely-memory-source on`.
   Screen Time remains day-totals only (no span edges yet).
 
-### Slice 2 — bracket with cap + label (priority: next, after slice-1 data)
-- Extend session spans into adjacent presence, capped (default e.g. 10 min/edge,
-  configurable). Bracketed minutes labeled in terminal/JSON (`bracketed_hours`).
-- Billable treatment decided together with #327 (presence-only tier).
+### Slice 2 — bracket with cap + label (priority: now)
+- Extend session spans into adjacent presence, capped (default 10 min/edge,
+  `--presence-bracket-cap-minutes`). Bracketed minutes labeled in terminal/JSON
+  (`bracketed_hours` / Review summary **Bracketed hours**).
+- Opt-in: `--presence-bracket on` (requires `--timely-memory-source on`).
+- Billable treatment still follows GH-327 (nothing billable until approved);
+  bracketing only changes observed wall-clock, not billable defaults.
+- Implementation: `core/presence_bracketing.py`; rebuilds project reports from
+  extended sessions so attribution inherits evidence events only.
 
 ### Slice 3 — native presence source (priority: later)
 - Promote ActivityWatch integration; Timely Memory demoted to optional comparator.

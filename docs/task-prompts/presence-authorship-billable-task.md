@@ -7,14 +7,15 @@
 - implementation_status: `in progress`
 - created_at: `2026-07-09`
 - last_updated_at: `2026-07-09`
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/341
 - implementation.branch: `task/presence-authorship-billable-327`
-- implementation.commits: []
-- validation.evidence: pending
-- validation.decision: `NO-GO`
+- implementation.commits: `[d6c9a09]`
+- validation.evidence: `tests/test_attendance_classification.py` (TestBillableExcludesPresence); `tests/test_presence_bracketing.py`
+- validation.decision: `conditional GO`
 - changelog:
   - `2026-07-09: Decision — option 1 (presence-only tier). Attended for reporting; not default-billable.`
   - `2026-07-09: Slice 1 started — taxonomy + billable gate + labeled surface.`
+  - `2026-07-09: Slice 1 PR #341 — PRESENCE_SIGNAL_SOURCES (Lovable + comparators); Chrome/WP deferred to Slice 2.`
 
 ## Decision (PO, 2026-07-09)
 

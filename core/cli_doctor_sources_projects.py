@@ -276,8 +276,8 @@ def doctor(
             f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT}[/{STYLE_MUTED}]"
         )
     console.print(
-        "\n[#8f86ad]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
-        "for your Terminal in System Settings > Privacy & Security.[/#8f86ad]\n"
+        f"\n[{STYLE_MUTED}]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
+        f"for your Terminal in System Settings > Privacy & Security.[/{STYLE_MUTED}]\n"
     )
     config_valid = project_config_ok and loaded_config_path is not None
     print_next_steps(

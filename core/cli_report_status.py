@@ -245,6 +245,7 @@ def status(
         CLR_GREEN,
         CLR_TEXT_SOFT,
         CLR_VALUE_ORANGE,
+        FAIL_ICON,
         OK_ICON,
         STYLE_BORDER,
         STYLE_LABEL,
@@ -421,5 +422,6 @@ def status(
             console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
         console.print(f"{OK_ICON} [{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
     except Exception as e:
-        console.print(f"[red]Error fetching status: {e}[/red]")
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error fetching status: {e}[/{CLR_VALUE_ORANGE}]")
+        console.print(f"[{STYLE_MUTED}]Next: try `gittan doctor` or check your configuration.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from e

@@ -209,6 +209,8 @@ def finish_review_guidance(
 
 
 def print_next_steps(console, steps: list[str]) -> None:
-    console.print("[bold]Next steps[/bold]")
+    from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
+
+    console.print(f"[{STYLE_LABEL}]Next steps[/{STYLE_LABEL}]")
     for step in steps:
-        console.print(f"- {step}")
+        console.print(f"[{STYLE_MUTED}]- {step}[/{STYLE_MUTED}]")

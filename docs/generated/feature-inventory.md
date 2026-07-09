@@ -54,8 +54,6 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Apple Mail | mail |
 | Calendar | events |
 | Chrome | visits |
-| WordPress | visits (derived from Chrome) |
-| Lovable (web) | visits (derived from Chrome) |
 | Claude Code CLI | events |
 | Claude Desktop | events |
 | Claude Desktop (Code) | events |

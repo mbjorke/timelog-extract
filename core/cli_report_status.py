@@ -91,6 +91,16 @@ def report(
             help="Count autonomous agent hours as billable (default: excluded, approve like any other time).",
         ),
     ] = False,
+    include_presence_billable: Annotated[
+        bool,
+        typer.Option(
+            "--include-presence-billable",
+            help=(
+                "Count presence-signal hours (Lovable cache-mtime, bracketed edges) "
+                "as billable (default: excluded; GH-327)."
+            ),
+        ),
+    ] = False,
     output_format: Annotated[str, typer.Option("--format", help="terminal/json")] = "terminal",
     quiet: Annotated[bool, typer.Option(help="Suppress progress")] = False,
     json_file: Annotated[Optional[str], typer.Option(help="Write JSON to path")] = None,
@@ -189,6 +199,7 @@ def report(
             "invoice_pdf_file": invoice_pdf_file,
             "billable_unit": billable_unit,
             "include_agent_billable": include_agent_billable,
+            "include_presence_billable": include_presence_billable,
             "chrome_source": chrome_source,
             "mail_source": mail_source,
             "github_source": github_source,

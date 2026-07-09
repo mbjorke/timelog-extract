@@ -130,6 +130,9 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
                         customer_name=report.args.customer,
                         billable_unit=report.args.billable_unit,
                         include_agent_billable=getattr(report.args, "include_agent_billable", False),
+                        include_presence_billable=getattr(
+                            report.args, "include_presence_billable", False
+                        ),
                     )
                 if _want_log(args):
                     print(f"PDF created: {built}")
@@ -178,6 +181,9 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
                     customer_name=report.args.customer,
                     billable_unit=report.args.billable_unit,
                     include_agent_billable=getattr(report.args, "include_agent_billable", False),
+                    include_presence_billable=getattr(
+                        report.args, "include_presence_billable", False
+                    ),
                 )
                 print(f"PDF created: {built}")
             except Exception as exc:

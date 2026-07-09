@@ -228,20 +228,28 @@ def billable_total_hours(raw_hours, unit):
     return math.ceil(q - eps) * unit
 
 
-def project_billable_raw_hours(day_payloads, include_agent: bool = False) -> float:
-    """Raw hours eligible for billing across a project's day payloads (GH-284 slice 2).
+def project_billable_raw_hours(
+    day_payloads,
+    include_agent: bool = False,
+    include_presence: bool = False,
+) -> float:
+    """Raw hours eligible for billing across a project's day payloads.
 
-    Agent (autonomous) hours are excluded by default: they require the same
-    explicit approval as any other time before they can be billed. Pass
-    ``include_agent=True`` to opt them back in. Mixed sessions (user + agent
-    interleaved) stay billable, matching the attended/agent split the report shows.
-    Uncertain attendance is classified ``attended`` upstream, so it stays billable.
+    Exclusions by default (opt-in restores them):
+    - ``agent_hours`` — autonomous work (GH-284 slice 2)
+    - ``presence_hours`` — presence-signal / bracketed time (GH-327)
+
+    Mixed attended+agent sessions stay billable (authorship/attendance present).
+    Mixed authorship+presence sessions stay billable in Slice 1 except the
+    bracketed edge share already folded into ``presence_hours``.
     """
     total = 0.0
     for day_payload in day_payloads.values():
         hours = float(day_payload.get("hours", 0.0))
         if not include_agent:
             hours -= float(day_payload.get("agent_hours", 0.0))
+        if not include_presence:
+            hours -= float(day_payload.get("presence_hours", 0.0))
         total += max(hours, 0.0)
     return total
 
@@ -251,8 +259,9 @@ def billable_raw_by_project(
     *,
     reported_hours=None,
     include_agent_billable: bool = False,
+    include_presence_billable: bool = False,
 ) -> dict:
-    """Raw billable hours per project for invoice/report (GH-186 Phase 4 + GH-284 slice 2).
+    """Raw billable hours per project for invoice/report (GH-186 / GH-284 / GH-327).
 
     When ``confirmed``/``edited`` reported_time covers the window
     (``reported_hours`` is a ``{(project, day): hours}`` dict, not ``None``), bill
@@ -261,7 +270,7 @@ def billable_raw_by_project(
     report but absent from the confirmed set bill 0 in reported mode.
 
     Before adoption (``reported_hours is None``) fall back to observed hours with
-    autonomous agent time excluded by default (slice 2).
+    autonomous agent and presence-signal time excluded by default.
     """
     if reported_hours is not None:
         result = {project: 0.0 for project in project_reports}
@@ -269,7 +278,11 @@ def billable_raw_by_project(
             result[project] = result.get(project, 0.0) + float(hours)
         return result
     return {
-        project: project_billable_raw_hours(days, include_agent=include_agent_billable)
+        project: project_billable_raw_hours(
+            days,
+            include_agent=include_agent_billable,
+            include_presence=include_presence_billable,
+        )
         for project, days in project_reports.items()
     }
 

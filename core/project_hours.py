@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict
 
 from core.domain import compute_sessions
 from core.events import event_anchors
-from core.sources import AI_SOURCES
+from core.sources import AI_SOURCES, session_is_presence_signal_only
 
 # Floor for Tier A (high-signal) sub-span claims in allocate_session_hours_by_project.
 # Weights at/above this own wall-clock from their own events first; below this they
@@ -317,6 +317,10 @@ def build_project_reports_from_sessions(
                     reports[project][day]["agent_hours"] = reports[project][day].get("agent_hours", 0.0) + chunk
                 elif attendance == "mixed":
                     reports[project][day]["mixed_hours"] = reports[project][day].get("mixed_hours", 0.0) + chunk
+                if session_is_presence_signal_only(session_events):
+                    reports[project][day]["presence_hours"] = (
+                        reports[project][day].get("presence_hours", 0.0) + chunk
+                    )
     return {project: dict(days) for project, days in reports.items()}
 
 
@@ -337,3 +341,67 @@ def count_project_sessions_from_overall_days(
             for project in projects:
                 counts[project] += 1
     return dict(counts)
+
+
+def fold_authorship_brackets_into_presence(
+    project_reports: Dict[str, Dict[str, Dict[str, float]]],
+    overall_days: Dict[str, Any],
+    bracketed_sessions: list,
+    *,
+    session_duration_hours_fn: Callable[..., float],
+    min_session_minutes: int,
+    min_session_passive_minutes: int,
+    gap_minutes: int = 15,
+) -> None:
+    """Add authorship-session bracketed hours into project presence_hours (GH-327).
+
+    Presence-only sessions already land in ``presence_hours`` via
+    ``build_project_reports_from_sessions``. Authorship sessions only need the
+    capped edge extension attributed as presence.
+
+    Bracketed amount matches ``apply_presence_bracketing``: floored
+    ``session_duration_hours(bracketed) - session_duration_hours(evidence)``,
+    not raw lead+trail wall-clock (floors can collapse the delta to 0).
+    """
+    for meta in bracketed_sessions or []:
+        day = meta.day
+        idx = int(meta.session_index) - 1
+        day_payload = overall_days.get(day) or {}
+        sessions = list(day_payload.get("sessions") or [])
+        if idx < 0 or idx >= len(sessions):
+            continue
+        s_tuple = sessions[idx]
+        events = s_tuple[2]
+        if session_is_presence_signal_only(events):
+            continue
+        bracketed_window_h = session_duration_hours_fn(
+            events,
+            meta.bracketed_start,
+            meta.bracketed_end,
+            min_session_minutes,
+            min_session_passive_minutes,
+            AI_SOURCES,
+        )
+        evidence_window_h = session_duration_hours_fn(
+            events,
+            meta.evidence_start,
+            meta.evidence_end,
+            min_session_minutes,
+            min_session_passive_minutes,
+            AI_SOURCES,
+        )
+        bracketed_h = max(0.0, float(bracketed_window_h) - float(evidence_window_h))
+        if bracketed_h <= 0:
+            continue
+        for project, chunk in allocate_session_hours_by_project(
+            events,
+            bracketed_h,
+            session_duration_hours_fn=session_duration_hours_fn,
+            min_session_minutes=min_session_minutes,
+            min_session_passive_minutes=min_session_passive_minutes,
+            gap_minutes=gap_minutes,
+        ).items():
+            day_map = project_reports.setdefault(project, {}).setdefault(
+                day, {"hours": 0.0}
+            )
+            day_map["presence_hours"] = float(day_map.get("presence_hours", 0.0)) + chunk

@@ -97,6 +97,7 @@ def print_review_summary_section(
     attended_h = sum(float(d.get("attended_hours", 0.0)) for d in overall_days.values())
     mixed_h = sum(float(d.get("mixed_hours", 0.0)) for d in overall_days.values())
     agent_h = sum(float(d.get("agent_hours", 0.0)) for d in overall_days.values())
+    presence_h = sum(float(d.get("presence_hours", 0.0)) for d in overall_days.values())
     if agent_h > 0 or mixed_h > 0:
         summary_table.add_row(
             "  · Attended / Mixed",
@@ -105,6 +106,11 @@ def print_review_summary_section(
         summary_table.add_row(
             "  · Agent (autonomous)",
             f"[{STYLE_META}]{agent_h:.1f}h[/{STYLE_META}]",
+        )
+    if presence_h > 0:
+        summary_table.add_row(
+            "  · Presence-signal",
+            f"[{STYLE_META}]{presence_h:.1f}h[/{STYLE_META}]",
         )
 
     if presence_estimated is not None and getattr(presence_estimated, "available", False):
@@ -153,9 +159,14 @@ def print_review_summary_section(
         from core.domain import billable_raw_by_project as _billable_by_project
 
         include_agent = bool(getattr(args, "include_agent_billable", False))
+        include_presence = bool(getattr(args, "include_presence_billable", False))
         raw_by_project = billable_raw_by_project
         if raw_by_project is None:
-            raw_by_project = _billable_by_project(project_reports, include_agent_billable=include_agent)
+            raw_by_project = _billable_by_project(
+                project_reports,
+                include_agent_billable=include_agent,
+                include_presence_billable=include_presence,
+            )
         # Sum the canonical billing set (incl. manual reported-only projects), not
         # just project_reports, so the total matches the invoice.
         grand_billable = sum(
@@ -164,10 +175,13 @@ def print_review_summary_section(
         )
         if reported_billing:
             note = " · from confirmed reported time"
-        elif not include_agent:
-            note = " · agent excluded"
         else:
-            note = ""
+            parts = []
+            if not include_agent:
+                parts.append("agent excluded")
+            if not include_presence:
+                parts.append("presence excluded")
+            note = f" · {', '.join(parts)}" if parts else ""
         summary_table.add_row(
             f"Billable Total (up to {args.billable_unit:g}h{note})",
             f"[bold {CLR_VALUE_ORANGE}]{grand_billable:.2f}h[/bold {CLR_VALUE_ORANGE}]",
@@ -218,7 +232,15 @@ def print_review_summary_section(
         console.print(
             f"[{STYLE_META}]Bracketed hours: observed timeline already includes capped "
             f"presence at session edges (--presence-bracket on). Project identity still "
-            f"comes from evidence only (GH-332 Slice 2).[/{STYLE_META}]"
+            f"comes from evidence only (GH-332 Slice 2). Presence-signal / bracketed "
+            f"hours are excluded from default billable unless --include-presence-billable "
+            f"(GH-327).[/{STYLE_META}]"
+        )
+    elif presence_h > 0:
+        console.print(
+            f"[{STYLE_META}]Presence-signal hours: attended for reporting, but evidence is "
+            f"Lovable cache-mtime / brackets — excluded from default billable unless "
+            f"--include-presence-billable (GH-327).[/{STYLE_META}]"
         )
 
     print_report_warnings(

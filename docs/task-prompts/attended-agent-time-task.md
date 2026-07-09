@@ -130,3 +130,7 @@ Feature: Sessions are labeled attended, agent, or mixed
   blocker; Screen Time + event-type heuristics suffice for slice 1.
 - Decision needed: minimum span granularity for sub-session labeling (proposal:
   the existing session gap unit, no finer).
+- **GH-327 (presence ≠ authorship):** orthogonal billable axis. Attended
+  presence-signal sources (Lovable cache-mtime, browser-only, GH-332 brackets)
+  stay attended in the report but are confirm-gated for default billable — see
+  `docs/task-prompts/presence-authorship-billable-task.md`.

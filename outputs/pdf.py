@@ -61,6 +61,24 @@ def agent_attendance_note(total_agent_hours: float, include_agent_billable: bool
     )
 
 
+def presence_billable_note(
+    total_presence_hours: float, include_presence_billable: bool
+) -> str:
+    """Invoice note for presence-signal / bracketed hours (GH-327)."""
+    if total_presence_hours <= 0:
+        return ""
+    if include_presence_billable:
+        return (
+            f"<i>Includes {total_presence_hours:.2f} h presence-signal time "
+            f"(opted in).</i>"
+        )
+    return (
+        f"<i>Excludes {total_presence_hours:.2f} h presence-signal time "
+        f"(Lovable cache-mtime / brackets — not billable by default; "
+        f"approve to include).</i>"
+    )
+
+
 def build_invoice_pdf(
     overall_days,
     project_reports,
@@ -74,6 +92,7 @@ def build_invoice_pdf(
     customer_name=None,
     billable_unit=0.0,
     include_agent_billable=False,
+    include_presence_billable=False,
     billable_raw_by_project=None,
     reported_billing=False,
 ):
@@ -120,10 +139,16 @@ def build_invoice_pdf(
     total_agent_hours = sum(
         float(day_payload.get("agent_hours", 0.0)) for day_payload in overall_days.values()
     )
+    total_presence_hours = sum(
+        float(day_payload.get("presence_hours", 0.0))
+        for day_payload in overall_days.values()
+    )
     raw_by_project = billable_raw_by_project
     if raw_by_project is None:
         raw_by_project = _billable_by_project(
-            project_reports, include_agent_billable=include_agent_billable
+            project_reports,
+            include_agent_billable=include_agent_billable,
+            include_presence_billable=include_presence_billable,
         )
     # Canonical billing set: projects with observed sessions plus any that exist
     # only in confirmed/manual reported_time (no observed sessions). Iterating this
@@ -151,7 +176,11 @@ def build_invoice_pdf(
             "<i>Billed from confirmed reported time (observed evidence superseded).</i>"
         )
     else:
-        attendance_note = agent_attendance_note(total_agent_hours, include_agent_billable)
+        notes = [
+            agent_attendance_note(total_agent_hours, include_agent_billable),
+            presence_billable_note(total_presence_hours, include_presence_billable),
+        ]
+        attendance_note = " ".join(n for n in notes if n)
     if billable_unit and billable_unit > 0:
         elements.extend(
             [

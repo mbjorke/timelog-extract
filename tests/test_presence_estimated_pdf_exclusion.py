@@ -42,25 +42,38 @@ def _fixture(day: str):
 
 
 class PresenceEstimatedPdfExclusionTests(unittest.TestCase):
+    # GH-146: presence-*estimated* data must never be a PDF builder input.
+    # GH-327's ``include_presence_billable`` is an opt-in *flag* (not estimate
+    # data) and is allowed on the billable path.
+    _FORBIDDEN_PRESENCE_DATA_PARAMS = frozenset(
+        {
+            "presence_estimated",
+            "presence_estimate",
+            "presence_hours",
+            "presence_estimated_hours",
+        }
+    )
+
+    def _assert_no_presence_estimate_param(self, fn):
+        params = inspect.signature(fn).parameters
+        for name in params:
+            self.assertNotIn(name, self._FORBIDDEN_PRESENCE_DATA_PARAMS)
+            if "presence" in name and name != "include_presence_billable":
+                self.fail(
+                    f"Unexpected presence-related PDF parameter {name!r}; "
+                    f"only include_presence_billable (GH-327) is allowed"
+                )
+
     def test_build_invoice_pdf_signature_has_no_presence_parameter(self):
         """Codify the exclusion contract: the PDF builder cannot accept presence
-        data even if a caller tried to pass it."""
-        params = inspect.signature(pdf_output.build_invoice_pdf).parameters
-        self.assertNotIn("presence_estimated", params)
-        for name in params:
-            self.assertNotIn("presence", name)
+        *estimate* data even if a caller tried to pass it."""
+        self._assert_no_presence_estimate_param(pdf_output.build_invoice_pdf)
 
     def test_internal_build_invoice_pdf_signature_has_no_presence_parameter(self):
-        params = inspect.signature(report_invoice._build_invoice_pdf).parameters
-        self.assertNotIn("presence_estimated", params)
-        for name in params:
-            self.assertNotIn("presence", name)
+        self._assert_no_presence_estimate_param(report_invoice._build_invoice_pdf)
 
     def test_generate_invoice_pdf_signature_has_no_presence_parameter(self):
-        params = inspect.signature(report_invoice.generate_invoice_pdf).parameters
-        self.assertNotIn("presence_estimated", params)
-        for name in params:
-            self.assertNotIn("presence", name)
+        self._assert_no_presence_estimate_param(report_invoice.generate_invoice_pdf)
 
     def test_invoice_pdf_total_matches_evidenced_not_presence(self):
         """Build a real invoice PDF from a fixture where presence-estimated

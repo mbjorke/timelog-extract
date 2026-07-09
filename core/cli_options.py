@@ -63,6 +63,7 @@ class TimelogRunOptions:
     billable_unit: float = 0.0
     billable_round: str = "ceil"
     include_agent_billable: bool = False
+    include_presence_billable: bool = False
     chrome_source: str = "on"
     mail_source: str = "auto"
     github_source: str = "auto"

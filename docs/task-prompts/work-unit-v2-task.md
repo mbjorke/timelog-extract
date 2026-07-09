@@ -27,20 +27,22 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
 
 - story_id: `GH-222`
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `in progress`
 - created_at: `2026-06-30`
 - last_updated_at: `2026-07-09`
-- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/225
-- implementation.branch: `task/work-unit-v2-docs`
-- implementation.commits: []
-- validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); spike report diff; `bash scripts/run_autotests.sh` on implementation slices
-- validation.decision: `conditional GO`
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/347
+- implementation.branch: `task/work-unit-v2-spike-267`
+- implementation.commits: [`907fc84`]
+- validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); `scripts/calibration/run_work_unit_spike.py`; `tests/test_work_unit_spike.py`; `bash scripts/run_autotests.sh`; operator acceptance run still required before GO
+- validation.decision: `NO-GO`
 - changelog:
   - `2026-06-30: Canonical PO backlog for report-first work-unit v2; supersedes map-first GH-222 implementation specs.`
   - `2026-06-30: Operator acceptance tables stay operator-local (outside repo) per config hygiene.`
   - `2026-06-30: Open PR disposition decided — close #221–#224; land v2 docs via new PR.`
   - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
   - `2026-07-09: PO pass — guardrail spec (anchor-plan-apply-guardrail-task.md) is a hard dependency before spike; #267 stays next until guardrail lands.`
+  - `2026-07-09: Spike slice — work_unit_v2 classifier + acceptance evaluator + calibration script (item 1 scaffolding); operator GO still pending. PR #347.`
+  - `2026-07-09: Qodo/CodeRabbit #347 — validation.decision literal only; engine_api calibration entry; unknown classifier raises; thin collapse uses URL richness; empty acceptance table is NO-GO.`
 
 ## Product framing
 

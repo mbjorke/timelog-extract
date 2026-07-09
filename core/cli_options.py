@@ -88,6 +88,10 @@ class TimelogRunOptions:
     # Opt-in replay of stored evidence for closed windows (restores events whose
     # upstream source has rotated). "off" by default.
     shadow_replay: str = "off"
+    # Spike / experiment: which attribution classifier stamps event["project"].
+    # "v1" = match_terms classify_project (default). "work_unit_v2" = signals →
+    # WorkUnit → customer_ref (docs/task-prompts/work-unit-v2-task.md item 1).
+    attribution_classifier: str = "v1"
 
 
 def split_comma_separated_list(value: Optional[str]) -> List[str]:

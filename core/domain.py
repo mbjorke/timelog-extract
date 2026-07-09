@@ -142,8 +142,9 @@ _LAST_PROFILES_DATA: tuple[Any, Any, Any] | None = None
 def _get_compiled_index(profiles: List[Dict[str, Any]]) -> Any:
     """Caching wrapper to avoid re-compiling the index for the same profiles list."""
     global _LAST_PROFILES_DATA
-    # Fingerprint to detect mutation of the same list object (common in tests)
-    fingerprint = (len(profiles), profiles[0].get("name") if profiles else None)
+    # Fingerprint to detect mutation of the same list object (common in tests).
+    # We include all profile names to catch renames or project swaps in the same list.
+    fingerprint = (len(profiles), tuple(p.get("name") for p in profiles))
     if (
         _LAST_PROFILES_DATA is None
         or _LAST_PROFILES_DATA[0] is not profiles

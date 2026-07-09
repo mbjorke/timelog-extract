@@ -93,6 +93,47 @@ class PresenceBracketingTests(unittest.TestCase):
         )
         self.assertFalse(result.applied)
 
+    def test_bracketing_does_not_cross_owning_day_midnight(self):
+        """Lead/trail must stay inside the day bucket even when presence spans midnight."""
+        session_start = datetime(2026, 7, 9, 0, 5, tzinfo=timezone.utc)
+        session_end = datetime(2026, 7, 9, 23, 55, tzinfo=timezone.utc)
+        events = [{"source": "WordPress", "project": "acme", "local_ts": session_start}]
+        overall = {
+            "2026-07-09": {
+                "sessions": [(session_start, session_end, events, "attended")],
+                "hours": (session_end - session_start).total_seconds() / 3600.0,
+            }
+        }
+        presence = [
+            (
+                datetime(2026, 7, 8, 22, 0, tzinfo=timezone.utc),
+                datetime(2026, 7, 10, 2, 0, tzinfo=timezone.utc),
+            )
+        ]
+        result = apply_presence_bracketing(
+            overall,
+            presence,
+            session_duration_hours_fn=_duration,
+            min_session_minutes=5,
+            min_session_passive_minutes=5,
+            edge_cap_minutes=10,
+        )
+        self.assertTrue(result.applied)
+        assert result.overall_days is not None
+        day_start = datetime(2026, 7, 9, 0, 0, tzinfo=timezone.utc)
+        day_end = datetime(2026, 7, 10, 0, 0, tzinfo=timezone.utc)
+        new_start, new_end, *_rest = result.overall_days["2026-07-09"]["sessions"][0]
+        self.assertEqual(new_start, day_start)
+        self.assertEqual(new_end, day_end)
+        self.assertGreaterEqual(new_start, day_start)
+        self.assertLessEqual(new_end, day_end)
+        meta = next(s for s in (result.sessions or []) if s.bracketed_seconds > 0)
+        self.assertEqual(meta.bracketed_start, day_start)
+        self.assertEqual(meta.bracketed_end, day_end)
+        # Cap would allow 10m each side; day clamp leaves only 5m lead + 5m trail.
+        self.assertAlmostEqual(meta.lead_seconds, 5 * 60, places=3)
+        self.assertAlmostEqual(meta.trail_seconds, 5 * 60, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

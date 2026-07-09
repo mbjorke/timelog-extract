@@ -96,6 +96,17 @@ class BracketingResult:
         }
 
 
+def _owning_day_bounds(day: str, ref: datetime) -> tuple[datetime, datetime]:
+    """Return [day_start, day_end) for the day-bucket key in ``ref``'s timezone.
+
+    Sessions are stored under ``group_by_day`` keys (local date ISO). Bracketing
+    must not extend wall-clock outside that bucket or minutes leak into another day.
+    """
+    year, month, day_n = (int(part) for part in day.split("-", 2))
+    day_start = datetime(year, month, day_n, tzinfo=ref.tzinfo)
+    return day_start, day_start + timedelta(days=1)
+
+
 def _capped_lead_trail(
     start_ts: datetime,
     end_ts: datetime,
@@ -104,10 +115,17 @@ def _capped_lead_trail(
     next_start: datetime | None,
     merged_presence: Sequence[tuple[datetime, datetime]],
     cap: timedelta,
+    day_start: datetime | None = None,
+    day_end: datetime | None = None,
 ) -> tuple[float, float]:
-    """Return (lead_seconds, trail_seconds) clipped to neighbors and edge cap."""
+    """Return (lead_seconds, trail_seconds) clipped to neighbors, day, and edge cap."""
     lead_seconds = 0.0
     trail_seconds = 0.0
+
+    # Lead floor is the later of previous session end and owning-day midnight.
+    lead_floor = prev_end
+    if day_start is not None:
+        lead_floor = day_start if lead_floor is None else max(lead_floor, day_start)
 
     covering_start = _covering_presence(start_ts, merged_presence)
     if covering_start is not None:
@@ -116,7 +134,7 @@ def _capped_lead_trail(
             clipped_lead = None
         else:
             clipped_lead = _clip_edge_interval(
-                p_start, start_ts, floor=prev_end, ceiling=start_ts
+                p_start, start_ts, floor=lead_floor, ceiling=start_ts
             )
         if clipped_lead is not None:
             capped = _clip_edge_interval(
@@ -125,10 +143,19 @@ def _capped_lead_trail(
             if capped is not None:
                 lead_seconds = (capped[1] - capped[0]).total_seconds()
 
+    # Trail ceiling is the earlier of next session start and next local midnight.
+    trail_ceiling = next_start
+    if day_end is not None:
+        trail_ceiling = (
+            day_end if trail_ceiling is None else min(trail_ceiling, day_end)
+        )
+
     covering_end = _covering_presence(end_ts, merged_presence)
     if covering_end is not None:
         _p_start, p_end = covering_end
-        clipped = _clip_edge_interval(end_ts, p_end, floor=end_ts, ceiling=next_start)
+        clipped = _clip_edge_interval(
+            end_ts, p_end, floor=end_ts, ceiling=trail_ceiling
+        )
         if clipped is not None:
             capped = _clip_edge_interval(
                 end_ts, end_ts + cap, floor=end_ts, ceiling=clipped[1]
@@ -190,6 +217,7 @@ def apply_presence_bracketing(
     for i, (day, idx, start_ts, end_ts) in enumerate(sessions):
         prev_end = sessions[i - 1][3] if i > 0 else None
         next_start = sessions[i + 1][2] if i + 1 < len(sessions) else None
+        day_start, day_end = _owning_day_bounds(day, start_ts)
         lead_s, trail_s = _capped_lead_trail(
             start_ts,
             end_ts,
@@ -197,10 +225,19 @@ def apply_presence_bracketing(
             next_start=next_start,
             merged_presence=merged,
             cap=cap,
+            day_start=day_start,
+            day_end=day_end,
         )
-        extensions[(day, idx)] = (lead_s, trail_s)
         new_start = start_ts - timedelta(seconds=lead_s)
         new_end = end_ts + timedelta(seconds=trail_s)
+        # Defensive clamp: keep bracketed wall-clock inside the owning day bucket.
+        if new_start < day_start:
+            new_start = day_start
+            lead_s = max(0.0, (start_ts - new_start).total_seconds())
+        if new_end > day_end:
+            new_end = day_end
+            trail_s = max(0.0, (new_end - end_ts).total_seconds())
+        extensions[(day, idx)] = (lead_s, trail_s)
         bracketed_meta.append(
             BracketedSession(
                 day=day,

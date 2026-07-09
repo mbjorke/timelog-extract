@@ -57,6 +57,19 @@ def report(
     source_strategy: Annotated[str, typer.Option(help="auto/worklog-first/balanced")] = "auto",
     screen_time: Annotated[str, typer.Option(help="auto/on/off")] = "auto",
     timely_memory_source: Annotated[str, typer.Option(help="on/off (opt-in; local Timely Memory buffer, read-only, timestamps only)")] = "off",
+    presence_bracket: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "on/off (opt-in GH-332 Slice 2: extend session edges into adjacent "
+                "Timely Memory presence, capped; requires --timely-memory-source on)"
+            ),
+        ),
+    ] = "off",
+    presence_bracket_cap_minutes: Annotated[
+        int,
+        typer.Option(help="Max minutes to extend each session edge when --presence-bracket on"),
+    ] = 10,
     include_uncategorized: Annotated[bool, typer.Option(help="Show uncategorized")] = False,
     only_project: Annotated[Optional[str], typer.Option(help="Filter by project")] = None,
     customer: Annotated[Optional[str], typer.Option(help="Filter by customer")] = None,
@@ -162,6 +175,8 @@ def report(
             "source_strategy": source_strategy,
             "screen_time": screen_time,
             "timely_memory_source": timely_memory_source,
+            "presence_bracket": presence_bracket,
+            "presence_bracket_cap_minutes": presence_bracket_cap_minutes,
             "include_uncategorized": include_uncategorized,
             "only_project": only_project,
             "customer": customer,

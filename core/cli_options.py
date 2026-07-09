@@ -46,6 +46,10 @@ class TimelogRunOptions:
     source_strategy: str = "auto"
     screen_time: str = "auto"
     timely_memory_source: str = "off"
+    # GH-332 Slice 2: extend evidenced sessions into adjacent Timely Memory
+    # presence (capped). Requires timely_memory_source=on. Off by default.
+    presence_bracket: str = "off"
+    presence_bracket_cap_minutes: int = 10
     include_uncategorized: bool = False
     only_project: Optional[str] = None
     customer: Optional[str] = None

@@ -81,6 +81,7 @@ def print_review_summary_section(
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
     presence_edge_gaps: Any = None,
+    presence_bracketing: Any = None,
 ) -> None:
     """Print the Review summary block and sanity warnings."""
     console.print(f"[{STYLE_HEADING}]Review summary{period_heading_suffix(args)}[/{STYLE_HEADING}]")
@@ -134,6 +135,18 @@ def print_review_summary_section(
         summary_table.add_row(
             f"  · Bracketable (≤{cap_min}m/edge)",
             f"[{STYLE_META}]{capped_h:.1f}h[/{STYLE_META}]",
+        )
+
+    if (
+        presence_bracketing is not None
+        and getattr(presence_bracketing, "applied", False)
+        and float(getattr(presence_bracketing, "total_bracketed_hours", 0.0) or 0.0) > 0
+    ):
+        br_h = float(presence_bracketing.total_bracketed_hours)
+        cap_min = int(getattr(presence_bracketing, "edge_cap_minutes", 10) or 10)
+        summary_table.add_row(
+            f"Bracketed hours (≤{cap_min}m/edge)",
+            f"[bold {CLR_VALUE_ORANGE}]{br_h:.1f}h[/bold {CLR_VALUE_ORANGE}]",
         )
 
     if args.billable_unit and args.billable_unit > 0:
@@ -196,6 +209,16 @@ def print_review_summary_section(
             f"Memory adjacent to session edges (lead before first event / trail after "
             f"last). Bracketable applies the Slice 2 default per-edge cap. Diagnostic "
             f"only — does not change observed hours (GH-332 Slice 1).[/{STYLE_META}]"
+        )
+    if (
+        presence_bracketing is not None
+        and getattr(presence_bracketing, "applied", False)
+        and float(getattr(presence_bracketing, "total_bracketed_hours", 0.0) or 0.0) > 0
+    ):
+        console.print(
+            f"[{STYLE_META}]Bracketed hours: observed timeline already includes capped "
+            f"presence at session edges (--presence-bracket on). Project identity still "
+            f"comes from evidence only (GH-332 Slice 2).[/{STYLE_META}]"
         )
 
     print_report_warnings(

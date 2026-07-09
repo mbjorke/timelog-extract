@@ -34,6 +34,13 @@ from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
 from core.presence_edge_gaps import EdgeGapReport, measure_session_edge_gaps
+from core.presence_bracketing import (
+    BracketingResult,
+    apply_presence_bracketing,
+    presence_bracket_cap_minutes,
+    presence_bracketing_enabled,
+)
+from core.project_hours import build_project_reports_from_sessions
 from core.presence_sources import collect_presence_comparators
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
@@ -88,6 +95,7 @@ class ReportPayload:
         default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
     )
     presence_edge_gaps: EdgeGapReport = field(default_factory=EdgeGapReport)
+    presence_bracketing: BracketingResult = field(default_factory=BracketingResult)
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -204,6 +212,7 @@ def _print_report(
     git_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Optional[PresenceEstimatedResult] = None,
     presence_edge_gaps: Optional[EdgeGapReport] = None,
+    presence_bracketing: Optional[BracketingResult] = None,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ) -> None:
@@ -223,6 +232,7 @@ def _print_report(
         git_project_totals=git_project_totals,
         presence_estimated=presence_estimated,
         presence_edge_gaps=presence_edge_gaps,
+        presence_bracketing=presence_bracketing,
         billable_raw_by_project=billable_raw_by_project,
         reported_billing=reported_billing,
     )
@@ -356,7 +366,35 @@ def run_timelog_report(
         agg.overall_days,
         timely_memory_spans,
         presence_source="Timely Memory",
+        edge_cap_minutes=presence_bracket_cap_minutes(args),
     )
+
+    # GH-332 Slice 2: optionally stretch sessions into capped adjacent presence.
+    bracketing = BracketingResult()
+    if presence_bracketing_enabled(args):
+        bracketing = apply_presence_bracketing(
+            agg.overall_days,
+            timely_memory_spans,
+            session_duration_hours_fn=_session_duration_hours,
+            min_session_minutes=args.min_session,
+            min_session_passive_minutes=args.min_session_passive,
+            edge_cap_minutes=presence_bracket_cap_minutes(args),
+        )
+        if bracketing.applied and bracketing.overall_days is not None:
+            project_reports = build_project_reports_from_sessions(
+                bracketing.overall_days,
+                session_duration_hours_fn=core_domain.session_duration_hours,
+                min_session_minutes=args.min_session,
+                min_session_passive_minutes=args.min_session_passive,
+                gap_minutes=args.gap_minutes,
+            )
+            agg = AggregationResult(
+                all_events=agg.all_events,
+                included_events=agg.included_events,
+                grouped=agg.grouped,
+                overall_days=bracketing.overall_days,
+                project_reports=project_reports,
+            )
 
     presence_estimated = compute_presence_estimated(
         agg.overall_days,
@@ -384,6 +422,7 @@ def run_timelog_report(
         git_project_totals=git_totals,
         presence_estimated=presence_estimated,
         presence_edge_gaps=presence_edge_gaps,
+        presence_bracketing=bracketing,
     )
 
 

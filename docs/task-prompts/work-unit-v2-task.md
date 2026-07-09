@@ -33,8 +33,8 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/347
 - implementation.branch: `task/work-unit-v2-spike-267`
 - implementation.commits: [`907fc84`]
-- validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); `scripts/calibration/run_work_unit_spike.py`; `tests/test_work_unit_spike.py`; `bash scripts/run_autotests.sh`
-- validation.decision: `NO-GO` (operator acceptance run still required)
+- validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); `scripts/calibration/run_work_unit_spike.py`; `tests/test_work_unit_spike.py`; `bash scripts/run_autotests.sh`; operator acceptance run still required before GO
+- validation.decision: `NO-GO`
 - changelog:
   - `2026-06-30: Canonical PO backlog for report-first work-unit v2; supersedes map-first GH-222 implementation specs.`
   - `2026-06-30: Operator acceptance tables stay operator-local (outside repo) per config hygiene.`
@@ -42,6 +42,7 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
   - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
   - `2026-07-09: PO pass — guardrail spec (anchor-plan-apply-guardrail-task.md) is a hard dependency before spike; #267 stays next until guardrail lands.`
   - `2026-07-09: Spike slice — work_unit_v2 classifier + acceptance evaluator + calibration script (item 1 scaffolding); operator GO still pending. PR #347.`
+  - `2026-07-09: Qodo #347 — validation.decision literal only; engine_api calibration entry; unknown classifier raises; thin collapse uses URL richness.`
 
 ## Product framing
 

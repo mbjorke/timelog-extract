@@ -10,12 +10,41 @@ from core.domain import compute_sessions
 from core.events import event_anchors
 from core.sources import AI_SOURCES
 
+# Floor for Tier A (high-signal) sub-span claims in allocate_session_hours_by_project.
+# Weights at/above this own wall-clock from their own events first; below this they
+# only compete in the weighted remainder / span fallback. Raising a source across
+# this line changes *who* gets hours, not the session total.
 _HIGH_SIGNAL_MIN_WEIGHT = 5.0
 _BROWSER_TAB_SOURCES = frozenset({"Chrome", "WordPress", "Lovable (web)"})
 
 
 def event_attribution_weight(event: dict) -> float:
-    """Higher weight = stronger signal that session time belongs to this project."""
+    """Relative claim strength for splitting one session across projects.
+
+    These numbers are **not hours** and do not change observed session totals.
+    They only decide the share of an already-computed session duration.
+
+    Allocation uses them in two ways (see ``allocate_session_hours_by_project``):
+
+    1. **Tier A / high-signal** — weight >= ``_HIGH_SIGNAL_MIN_WEIGHT`` (5):
+       that project's events may claim their own sub-span wall-clock first.
+    2. **Weighted remainder** — positive weights below the floor compete
+       proportionally for leftover time; weight 0 (generic Chrome) never claims.
+
+    Tuned ladder (keep Lovable desktop **below** the floor so cache pings cannot
+    Tier-A-claim a multi-hour WordPress/Chrome day):
+
+    ======  =====================  ===========================================
+    Weight  Sources                Role
+    ======  =====================  ===========================================
+    10      label anchor, worklog  Explicit operator intent
+    5       GitHub                 Delivery evidence; at the high-signal floor
+    4       Lovable (desktop)      Strong but not Tier A (idle Electron pings)
+    3       WordPress, AI tools    Span-capable browser / agent context
+    2       Lovable (web), other   Weaker browser signal than WP / desktop
+    0       Chrome                 Project hint only; never owns duration
+    ======  =====================  ===========================================
+    """
     if str(event_anchors(event).get("label") or "").strip():
         return 10.0
     source = str(event.get("source") or "")
@@ -23,14 +52,10 @@ def event_attribution_weight(event: dict) -> float:
         return 10.0
     if source == "GitHub":
         return 5.0
-    # Below high-signal floor so lone Lovable cache hits do not Tier-A-claim
-    # multi-hour mixed sessions (WordPress/Chrome days).
     if source == "Lovable (desktop)":
         return 4.0
     if source == "WordPress":
         return 3.0
-    # Browser Lovable (lovable.dev) — stronger than generic Chrome, weaker than
-    # the Electron desktop app's local history/cache signals.
     if source == "Lovable (web)":
         return 2.0
     if source in AI_SOURCES:

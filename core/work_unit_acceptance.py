@@ -98,8 +98,24 @@ class SpikeVerdict:
 
 
 def hours_by_project(report: Any) -> dict[str, float]:
-    """Sum day hours per project/line from a ReportPayload-like object."""
-    project_reports = getattr(report, "project_reports", None) or {}
+    """Sum day hours per project/line from a ReportPayload or truth payload dict.
+
+    Accepts:
+    - ReportPayload-like objects with ``project_reports``
+    - truth payload dicts from ``core.engine_api.run_report_payload`` (``projects`` totals)
+    """
+    if isinstance(report, Mapping):
+        projects = report.get("projects")
+        if isinstance(projects, Mapping) and projects:
+            sample = next(iter(projects.values()))
+            if isinstance(sample, (int, float)):
+                return {
+                    str(name): round(float(hours or 0.0), 6)
+                    for name, hours in projects.items()
+                }
+        project_reports = report.get("project_reports") or {}
+    else:
+        project_reports = getattr(report, "project_reports", None) or {}
     out: dict[str, float] = {}
     for name, days in project_reports.items():
         total = 0.0
@@ -287,7 +303,9 @@ def evaluate_spike(
                 f"{row.expected_hours:.2f} (tol {tolerance})"
             )
 
-    lines_ok = all(s.within_tolerance for s in scores) if scores else True
+    if not scores:
+        reasons.append("acceptance table has no target lines")
+    lines_ok = bool(scores) and all(s.within_tolerance for s in scores)
     unc = float(hours.get(UNCATEGORIZED, 0.0) or 0.0)
     unc_ok = True
     if acceptance.primary_uncategorized_max is not None:

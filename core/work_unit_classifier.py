@@ -84,6 +84,17 @@ def _term_count(profile: Dict[str, Any]) -> int:
     return len([t for t in (profile.get("match_terms") or []) if str(t).strip()])
 
 
+def _richness_score(profile: Dict[str, Any]) -> int:
+    """Classifier signal richness excluding the profile name (every profile has one).
+
+    Counts distinct ``match_terms`` and ``tracked_urls`` the same way
+    ``_profile_signals`` builds the unit, so URL-only richness can beat a
+    thin slug that only has equal term count.
+    """
+    name = str(profile.get("name") or "").strip().lower()
+    return len([sig for sig in _profile_signals(profile) if sig != name])
+
+
 def _profile_covers_slug(profile: Dict[str, Any], slug: str) -> bool:
     slug_lc = slug.lower()
     terms = [str(t).strip().lower() for t in (profile.get("match_terms") or []) if str(t).strip()]
@@ -100,23 +111,23 @@ def _find_canonical_for_thin(
     slug = str(thin.get("name") or "").strip()
     if not _looks_like_slug(slug) or _term_count(thin) > THIN_TERM_MAX:
         return None
-    thin_count = _term_count(thin)
+    thin_score = _richness_score(thin)
     best: Optional[Dict[str, Any]] = None
-    best_count = thin_count
+    best_score = thin_score
     for other in profiles:
         if other is thin:
             continue
         other_name = str(other.get("name") or "").strip()
         if other_name.lower() == slug.lower():
             continue
-        count = _term_count(other)
-        if count <= thin_count:
+        score = _richness_score(other)
+        if score <= thin_score:
             continue
         if not _profile_covers_slug(other, slug):
             continue
-        if count > best_count:
+        if score > best_score:
             best = other
-            best_count = count
+            best_score = score
     return best
 
 
@@ -263,6 +274,16 @@ def make_work_unit_classify_fn(
 # Public alias used by TimelogRunOptions / report_service.
 ATTRIBUTION_CLASSIFIER_V1 = "v1"
 ATTRIBUTION_CLASSIFIER_WORK_UNIT_V2 = "work_unit_v2"
+_WORK_UNIT_V2_ALIASES = frozenset(
+    {
+        ATTRIBUTION_CLASSIFIER_WORK_UNIT_V2,
+        "work-unit-v2",
+        "v2",
+    }
+)
+_ALLOWED_ATTRIBUTION_CLASSIFIERS = frozenset(
+    {ATTRIBUTION_CLASSIFIER_V1} | _WORK_UNIT_V2_ALIASES
+)
 
 
 def resolve_attribution_classify_fn(
@@ -271,20 +292,27 @@ def resolve_attribution_classify_fn(
     fallback: str = "Uncategorized",
     v1_fn: Callable[[str, List[Dict[str, Any]]], str] | None = None,
 ) -> Callable[[str, List[Dict[str, Any]]], str]:
-    """Select v1 or work_unit_v2 classify callable from a mode string."""
-    normalized = str(mode or ATTRIBUTION_CLASSIFIER_V1).strip().lower()
-    if normalized in {
-        ATTRIBUTION_CLASSIFIER_WORK_UNIT_V2,
-        "work-unit-v2",
-        "v2",
-    }:
+    """Select v1 or work_unit_v2 classify callable from a mode string.
+
+    Empty / missing mode defaults to v1. Unknown non-empty values raise
+    ``ValueError`` so typos cannot silently disable the spike classifier.
+    """
+    normalized = str(mode or ATTRIBUTION_CLASSIFIER_V1).strip().lower() or (
+        ATTRIBUTION_CLASSIFIER_V1
+    )
+    if normalized in _WORK_UNIT_V2_ALIASES:
         return make_work_unit_classify_fn(fallback)
-    if v1_fn is not None:
-        return v1_fn
+    if normalized == ATTRIBUTION_CLASSIFIER_V1:
+        if v1_fn is not None:
+            return v1_fn
 
-    def _v1(text: str, profiles: List[Dict[str, Any]]) -> str:
-        from core.domain import classify_project
+        def _v1(text: str, profiles: List[Dict[str, Any]]) -> str:
+            from core.domain import classify_project
 
-        return classify_project(text, profiles, fallback)
+            return classify_project(text, profiles, fallback)
 
-    return _v1
+        return _v1
+    allowed = ", ".join(sorted(_ALLOWED_ATTRIBUTION_CLASSIFIERS))
+    raise ValueError(
+        f"Unknown attribution_classifier {mode!r}; expected one of: {allowed}"
+    )

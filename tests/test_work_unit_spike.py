@@ -71,7 +71,7 @@ class TestWorkUnitClassifier(unittest.TestCase):
     def test_classify_maps_slug_evidence_to_canonical_line(self):
         units = build_work_units(_profiles_with_thin_duplicate())
         line = classify_work_unit(
-            "working in /Users/dev/Workspace/acme/portal-repo on a fix",
+            "working in /path/to/acme/portal-repo on a fix",
             units,
             "Uncategorized",
         )
@@ -80,6 +80,29 @@ class TestWorkUnitClassifier(unittest.TestCase):
             customer_for_line(units, line),
             "customer-a.example",
         )
+
+    def test_build_collapses_thin_when_canonical_richer_via_tracked_urls(self):
+        """Equal match_terms count still collapses when canonical has tracked_urls."""
+        profiles = [
+            {
+                "name": "portal-engagement",
+                "customer": "customer-a.example",
+                "match_terms": ["portal-repo"],
+                "tracked_urls": ["https://portal.customer-a.example"],
+            },
+            {
+                "name": "portal-repo",
+                "customer": "portal-repo",
+                "match_terms": ["portal-repo"],
+                "tracked_urls": [],
+            },
+        ]
+        units = build_work_units(profiles)
+        keys = {u.line_key for u in units}
+        self.assertIn("portal-engagement", keys)
+        self.assertNotIn("portal-repo", keys)
+        portal = next(u for u in units if u.line_key == "portal-engagement")
+        self.assertIn("portal-repo", portal.source_names)
 
     def test_classify_fn_seam_matches_profiles_shape(self):
         classify = make_work_unit_classify_fn("Uncategorized")
@@ -139,7 +162,7 @@ primary_uncategorized_max: 1.0
         self.assertEqual(verdict.decision, "GO")
         self.assertTrue(verdict.no_slug_only_created)
 
-    def test_evaluate_nogo_on_slug_only_hours(self):
+    def test_evaluate_nogo_on_empty_acceptance_lines(self):
         acceptance = acceptance_from_dict(
             {
                 "date_from": "2026-06-01",
@@ -147,6 +170,34 @@ primary_uncategorized_max: 1.0
                 "tolerance_hours": 5.0,
                 "primary_uncategorized_max": 10.0,
                 "lines": [],
+            }
+        )
+        report = SimpleNamespace(
+            project_reports={
+                "portal-engagement": {"2026-06-02": {"hours": 1.0}},
+                "Uncategorized": {},
+            },
+            profiles=_profiles_with_thin_duplicate(),
+        )
+        verdict = evaluate_spike(report, acceptance, profiles=report.profiles)
+        self.assertEqual(verdict.decision, "NO-GO")
+        self.assertFalse(verdict.lines_ok)
+        self.assertIn("acceptance table has no target lines", verdict.reasons)
+
+    def test_evaluate_nogo_on_slug_only_hours(self):
+        acceptance = acceptance_from_dict(
+            {
+                "date_from": "2026-06-01",
+                "date_to": "2026-06-30",
+                "tolerance_hours": 5.0,
+                "primary_uncategorized_max": 10.0,
+                "lines": [
+                    {
+                        "customer": "customer-a.example",
+                        "line": "portal-engagement",
+                        "expected_hours": 3.0,
+                    }
+                ],
             }
         )
         # Simulate v1 report where thin slug still owns hours.
@@ -199,6 +250,14 @@ class TestAttributionClassifierOption(unittest.TestCase):
         # v1 still prefers the thin slug profile when it matches first by score.
         result = fn("portal-repo only", profiles)
         self.assertIn(result, {"portal-repo", "portal-engagement"})
+
+    def test_unknown_mode_raises(self):
+        from core.work_unit_classifier import resolve_attribution_classify_fn
+
+        with self.assertRaises(ValueError) as ctx:
+            resolve_attribution_classify_fn("work_unit-v2")
+        self.assertIn("Unknown attribution_classifier", str(ctx.exception))
+        self.assertIn("work_unit_v2", str(ctx.exception))
 
 
 if __name__ == "__main__":

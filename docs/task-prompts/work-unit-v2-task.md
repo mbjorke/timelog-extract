@@ -42,7 +42,7 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
   - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
   - `2026-07-09: PO pass — guardrail spec (anchor-plan-apply-guardrail-task.md) is a hard dependency before spike; #267 stays next until guardrail lands.`
   - `2026-07-09: Spike slice — work_unit_v2 classifier + acceptance evaluator + calibration script (item 1 scaffolding); operator GO still pending. PR #347.`
-  - `2026-07-09: Qodo #347 — validation.decision literal only; engine_api calibration entry; unknown classifier raises; thin collapse uses URL richness.`
+  - `2026-07-09: Qodo/CodeRabbit #347 — validation.decision literal only; engine_api calibration entry; unknown classifier raises; thin collapse uses URL richness; empty acceptance table is NO-GO.`
 
 ## Product framing
 

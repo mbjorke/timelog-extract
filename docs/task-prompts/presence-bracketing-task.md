@@ -16,18 +16,19 @@ Timely Memory local buffer is an ingested source since #285/#290
 
 - story_id: `GH-332`
 - spec_status: `draft`
-- implementation_status: `slice 1 in progress`
+- implementation_status: `in progress`
 - created_at: `2026-07-08`
 - last_updated_at: `2026-07-09`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/339
 - implementation.branch: `task/presence-edge-gap-measure`
-- implementation.commits: `[4037710]`
-- validation.evidence: operator report with `--timely-memory-source on` — Edge gap row + Bracketable preview; observed hours unchanged; unique edge gap materially smaller than naive per-session sum
-- validation.decision: `conditional GO` (slice 1 measures; slice 2 not built)
+- implementation.commits: `[a6c96ba, 6e4362d, a7973fa]`
+- validation.evidence: operator report with `--timely-memory-source on` — Edge gap row + Bracketable preview; observed hours unchanged; unique edge gap materially smaller than naive per-session sum. Slice 1 measures only; Slice 2 (bracket) not built.
+- validation.decision: `conditional GO`
 - changelog:
   - `2026-07-08: Initial draft from maintainer composition-time concern + Timely benchmark.`
   - `2026-07-09: Slice 1 started — Timely Memory spans + edge-gap diagnostic (no hour changes).`
   - `2026-07-09: Unique wall-clock totals + capped bracketable preview; PR #339.`
+  - `2026-07-09: Canonical traceability enums (Qodo); exclusive-end presence containment.`
 
 ## Problem
 

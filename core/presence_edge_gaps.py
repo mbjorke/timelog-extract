@@ -158,8 +158,12 @@ def _covering_presence(
     ts: datetime,
     presence_spans: Sequence[tuple[datetime, datetime]],
 ) -> tuple[datetime, datetime] | None:
+    """Return the presence span covering ``ts``, if any.
+
+    Spans are ``(start, end_exclusive)`` — same contract as Timely Memory.
+    """
     for p_start, p_end in presence_spans:
-        if p_start <= ts <= p_end:
+        if p_start <= ts < p_end:
             return p_start, p_end
     return None
 
@@ -234,7 +238,7 @@ def measure_session_edge_gaps(
             p_start, p_end = covering_start
             # Continuous presence across the previous session: the between-gap is
             # that session's trail — do not also count it as this session's lead.
-            if prev_end is not None and p_start <= prev_end <= p_end:
+            if prev_end is not None and p_start <= prev_end < p_end:
                 clipped_lead = None
             else:
                 clipped_lead = _clip_edge_interval(

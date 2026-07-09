@@ -109,6 +109,56 @@ class PresenceEdgeGapTests(unittest.TestCase):
         report = measure_session_edge_gaps(overall, presence)
         self.assertAlmostEqual(report.total_edge_hours, 0.0, places=6)
 
+    def test_exclusive_end_does_not_cover_boundary(self):
+        """session_start == end_exclusive is outside the presence span."""
+        end_exclusive = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+        presence = [
+            (end_exclusive - timedelta(minutes=30), end_exclusive),
+        ]
+        overall = {
+            "2026-07-09": {
+                "sessions": [
+                    (
+                        end_exclusive,
+                        end_exclusive + timedelta(hours=1),
+                        [],
+                    )
+                ],
+            }
+        }
+        report = measure_session_edge_gaps(overall, presence)
+        self.assertAlmostEqual(report.total_lead_hours, 0.0, places=6)
+        self.assertAlmostEqual(report.total_edge_hours, 0.0, places=6)
+
+    def test_per_session_edges_clamped_to_neighbors(self):
+        """Per-session lead/trail must not include time belonging to other sessions."""
+        presence = [
+            (
+                datetime(2026, 7, 9, 8, 0, tzinfo=timezone.utc),
+                datetime(2026, 7, 9, 18, 0, tzinfo=timezone.utc),
+            )
+        ]
+        s1_start = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+        s1_end = datetime(2026, 7, 9, 11, 0, tzinfo=timezone.utc)
+        s2_start = datetime(2026, 7, 9, 13, 0, tzinfo=timezone.utc)
+        s2_end = datetime(2026, 7, 9, 14, 0, tzinfo=timezone.utc)
+        overall = {
+            "2026-07-09": {
+                "sessions": [
+                    (s1_start, s1_end, []),
+                    (s2_start, s2_end, []),
+                ],
+            }
+        }
+        report = measure_session_edge_gaps(overall, presence)
+        by_idx = {s.session_index: s for s in report.sessions}
+        # s1: lead from 08:00, trail only to s2 start (not through s2).
+        self.assertAlmostEqual(by_idx[1].lead_seconds, 2 * 3600, places=1)
+        self.assertAlmostEqual(by_idx[1].trail_seconds, 2 * 3600, places=1)
+        # s2: no lead (between-gap owned by s1 trail); trail to 18:00.
+        self.assertAlmostEqual(by_idx[2].lead_seconds, 0.0, places=1)
+        self.assertAlmostEqual(by_idx[2].trail_seconds, 4 * 3600, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()

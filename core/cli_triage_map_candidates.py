@@ -22,7 +22,7 @@ _LOVABLE_UUID_PROJECT_HOST_RE = re.compile(
     re.IGNORECASE,
 )
 UNCATEGORIZED = "Uncategorized"
-URL_FIRST_SOURCES = {"Chrome", "Lovable (desktop)"}
+URL_FIRST_SOURCES = {"Chrome", "WordPress", "Lovable (web)", "Lovable (desktop)"}
 
 
 @dataclass

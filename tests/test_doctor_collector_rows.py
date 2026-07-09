@@ -68,6 +68,8 @@ class DoctorCollectorRowsTests(unittest.TestCase):
             }
             self.assertEqual(rows["Claude.ai (web)"], "Requires Chrome History")
             self.assertEqual(rows["Gemini (web)"], "Requires Chrome History")
+            self.assertEqual(rows["WordPress"], "Requires Chrome History")
+            self.assertEqual(rows["Lovable (web)"], "Requires Chrome History")
 
     def test_web_url_sources_follow_chrome_db_probe(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -79,6 +81,8 @@ class DoctorCollectorRowsTests(unittest.TestCase):
             probe.assert_called()
             self.assertEqual(rows["Claude.ai (web)"], "Chrome History readable")
             self.assertEqual(rows["Gemini (web)"], "Chrome History readable")
+            self.assertEqual(rows["WordPress"], "Chrome History readable")
+            self.assertEqual(rows["Lovable (web)"], "Chrome History readable")
 
     def test_cursor_missing_reads_not_installed(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -12,6 +12,47 @@ from urllib.parse import urlparse
 
 from collectors.ai_logs import _anchors
 
+WORDPRESS_SOURCE = "WordPress"
+LOVABLE_WEB_SOURCE = "Lovable (web)"
+
+
+def is_wordpress_visit(title: str, url: str = "") -> bool:
+    """True when a Chrome history row is WordPress admin or WP-branded UI."""
+    title_l = (title or "").lower()
+    url_l = (url or "").lower()
+    if "/wp-admin" in url_l or "/wp-login.php" in url_l:
+        return True
+    # Admin chrome: "Dashboard ‹ Acme News — WordPress"
+    if "wordpress" in title_l and ("—" in (title or "") or "–" in (title or "") or "‹" in (title or "")):
+        return True
+    if title_l.endswith("— wordpress") or title_l.endswith("– wordpress"):
+        return True
+    return False
+
+
+def is_lovable_web_visit(title: str, url: str = "") -> bool:
+    """True when a Chrome history row is Lovable in the browser (not the Electron app)."""
+    _ = title
+    host = (urlparse(url or "").hostname or "").lower().rstrip(".")
+    if not host:
+        return False
+    if host in {"lovable.dev", "www.lovable.dev", "lovable.app", "www.lovable.app"}:
+        return True
+    if host.endswith(".lovable.dev") or host.endswith(".lovable.app"):
+        return True
+    if host == "lovableproject.com" or host.endswith(".lovableproject.com"):
+        return True
+    return False
+
+
+def _chrome_derived_source(title: str, url: str) -> str:
+    """Relabel Chrome visits that belong to a derived browser source."""
+    if is_wordpress_visit(title, url):
+        return WORDPRESS_SOURCE
+    if is_lovable_web_visit(title, url):
+        return LOVABLE_WEB_SOURCE
+    return "Chrome"
+
 
 def split_chrome_tab_title(title: str, *, url: str = "") -> tuple[str | None, str]:
     """Split GitHub tab titles: ``Pull requests · owner/repo``."""
@@ -329,5 +370,6 @@ def collect_chrome(
             detail = (page_tail or url or "")[:240]
         project = classify_project(f"{url} {title}", profiles)
         anchors = _anchors(label=page_label) if page_label else None
-        results.append(make_event("Chrome", ts, detail, project, anchors=anchors))
+        source = _chrome_derived_source(title or "", url or "")
+        results.append(make_event(source, ts, detail, project, anchors=anchors))
     return results

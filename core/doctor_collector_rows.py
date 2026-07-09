@@ -306,6 +306,8 @@ def add_collector_doctor_rows(
     # --- Passive context ---
     _add_apple_mail_row(ctx)
     doctor_check_db(table, chrome_path, "Chrome", "urls", check_style)
+    _row_web_url_source(ctx, "WordPress", chrome_ok)
+    _row_web_url_source(ctx, "Lovable (web)", chrome_ok)
     _add_lovable_row(ctx, codec_blocked)
 
     # --- Opt-in scheduled ---

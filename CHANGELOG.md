@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Cursor (agent): when Multitask/Glass chats are missing from
+  `composer.composerHeaders`, enrich labels from Glass PR tabs and/or the git
+  branch under `workspace_roots` so detail can show `(@branch)` again ([#348](https://github.com/mbjorke/timelog-extract/issues/348)).
+
 ## 0.3.1 - 2026-07-04
 
 - Packaging (#291): **Python floor raised to 3.10** (`requires-python >=3.10`). Released 0.3.0 crashed at CLI startup on Python 3.9 — PEP 604 unions (`str | None`) in Typer command signatures are evaluated at runtime, which 3.9 cannot do; the declared 3.9 support was already broken in practice (3.9 is EOL). Installer now requires 3.10+; CI's python job runs on the floor version (3.10) with a CLI smoke so the floor stays enforced.

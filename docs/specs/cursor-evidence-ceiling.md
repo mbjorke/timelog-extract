@@ -172,6 +172,9 @@ Fallback order for display/anchors (composer header still wins when present):
 1. Glass PR tabs in global `state.vscdb` (`cursor/glass.tabs.v2/*/…`) —
    `ownerAgentId` = conversation_id; tab `label` and optional `props.branchName`
    (coverage is **partial** — PR tabs only; many Multitask chats have no tab).
+   Labels matching `PR #<digits>` (optional `: …`) are **rejected** as session
+   titles (GH-351) so an open PR tab does not sticky-paint Multitask rows;
+   `branchName` / git HEAD fallback still apply.
 2. Current git branch under `workspace_roots` (`git branch --show-current`),
    privacy-leafed like other branch anchors (generic `main`/`develop` rejected).
 

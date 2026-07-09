@@ -166,6 +166,69 @@ class PresenceBracketingTests(unittest.TestCase):
         self.assertAlmostEqual(meta.lead_seconds, 5 * 60, places=3)
         self.assertAlmostEqual(meta.trail_seconds, 5 * 60, places=3)
 
+    def test_fold_uses_floored_bracket_delta_not_raw_wall_clock(self):
+        """Short authorship session: floors collapse day bracketed to 0; fold must match."""
+        from core.project_hours import (
+            build_project_reports_from_sessions,
+            fold_authorship_brackets_into_presence,
+        )
+
+        # Claude Desktop is AI_SOURCES → 15m floor. Evidence 2m and bracketed 12m
+        # both floor to 15m → day bracketed/presence = 0; raw edges are still 10m.
+        session_start = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+        session_end = datetime(2026, 7, 9, 10, 2, tzinfo=timezone.utc)
+        events = [
+            {"source": "Claude Desktop", "project": "acme", "local_ts": session_start}
+        ]
+        overall = {
+            "2026-07-09": {
+                "sessions": [(session_start, session_end, events, "attended")],
+                "hours": 2.0 / 60.0,
+            }
+        }
+        presence = [
+            (
+                session_start - timedelta(minutes=30),
+                session_end + timedelta(minutes=30),
+            )
+        ]
+        result = apply_presence_bracketing(
+            overall,
+            presence,
+            session_duration_hours_fn=_duration,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            edge_cap_minutes=5,
+        )
+        self.assertTrue(result.applied)
+        day = result.overall_days["2026-07-09"]
+        self.assertAlmostEqual(day["bracketed_hours"], 0.0, places=6)
+        self.assertAlmostEqual(day["presence_hours"], 0.0, places=6)
+        # Raw geometric edges are still 10 minutes — must not inflate project presence.
+        meta = next(s for s in (result.sessions or []) if s.bracketed_seconds > 0)
+        self.assertAlmostEqual(meta.bracketed_seconds, 10 * 60, places=3)
+
+        reports = build_project_reports_from_sessions(
+            result.overall_days,
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        fold_authorship_brackets_into_presence(
+            reports,
+            result.overall_days,
+            result.sessions or [],
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        project_presence = sum(
+            float(d.get("presence_hours", 0.0))
+            for d in reports.get("acme", {}).values()
+        )
+        self.assertAlmostEqual(project_presence, day["presence_hours"], places=6)
+        self.assertAlmostEqual(project_presence, 0.0, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()

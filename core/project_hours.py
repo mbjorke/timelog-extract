@@ -358,11 +358,12 @@ def fold_authorship_brackets_into_presence(
     Presence-only sessions already land in ``presence_hours`` via
     ``build_project_reports_from_sessions``. Authorship sessions only need the
     capped edge extension attributed as presence.
+
+    Bracketed amount matches ``apply_presence_bracketing``: floored
+    ``session_duration_hours(bracketed) - session_duration_hours(evidence)``,
+    not raw lead+trail wall-clock (floors can collapse the delta to 0).
     """
     for meta in bracketed_sessions or []:
-        bracketed_h = float(getattr(meta, "bracketed_seconds", 0.0) or 0.0) / 3600.0
-        if bracketed_h <= 0:
-            continue
         day = meta.day
         idx = int(meta.session_index) - 1
         day_payload = overall_days.get(day) or {}
@@ -372,6 +373,25 @@ def fold_authorship_brackets_into_presence(
         s_tuple = sessions[idx]
         events = s_tuple[2]
         if session_is_presence_signal_only(events):
+            continue
+        bracketed_window_h = session_duration_hours_fn(
+            events,
+            meta.bracketed_start,
+            meta.bracketed_end,
+            min_session_minutes,
+            min_session_passive_minutes,
+            AI_SOURCES,
+        )
+        evidence_window_h = session_duration_hours_fn(
+            events,
+            meta.evidence_start,
+            meta.evidence_end,
+            min_session_minutes,
+            min_session_passive_minutes,
+            AI_SOURCES,
+        )
+        bracketed_h = max(0.0, float(bracketed_window_h) - float(evidence_window_h))
+        if bracketed_h <= 0:
             continue
         for project, chunk in allocate_session_hours_by_project(
             events,

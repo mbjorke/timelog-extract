@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 from collectors.ai_logs import _anchors
 
-
 WORDPRESS_SOURCE = "WordPress"
 LOVABLE_WEB_SOURCE = "Lovable (web)"
 

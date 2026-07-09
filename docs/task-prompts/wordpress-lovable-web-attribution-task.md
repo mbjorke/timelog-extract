@@ -14,19 +14,20 @@ Presence bracketing remains the follow-up for total hours.
 
 ## Traceability
 
-- story_id: `pending` — create via `/docs-to-issues` (priority:now)
+- story_id: `GH-338`
 - spec_status: `draft`
 - implementation_status: `in progress`
 - created_at: `2026-07-09`
 - last_updated_at: `2026-07-09`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/337
 - implementation.branch: `task/wordpress-lovable-web-attribution`
-- implementation.commits: `[008680f]`
+- implementation.commits: `[008680f, 70bcafd]`
 - validation.evidence: operator `gittan-dev report --from 2026-07-09 --to 2026-07-09` — WordPress in legend; client WordPress hours 1.2h → 3.5h; idle Lovable client 1.2h → 0.0h; observed still 5.4h (presence gap → GH-332)
 - validation.decision: `conditional GO` — attribution slice verified locally; presence undercount out of scope
 - changelog:
   - `2026-07-09: Initial draft from unplanned WordPress-day incident + Timely comparison.`
   - `2026-07-09: PR #337 opened; implementation.branch + commits recorded.`
+  - `2026-07-09: Issue #338 created with priority:now; story_id set.`
 
 ## Problem
 

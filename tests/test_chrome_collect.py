@@ -18,6 +18,8 @@ from collectors.chrome import (
     collect_chrome,
     collect_claude_ai_urls,
     collect_gemini_web_urls,
+    is_lovable_web_visit,
+    is_wordpress_visit,
     split_chrome_tab_title,
 )
 
@@ -302,6 +304,83 @@ class CollectChromeTests(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["anchors"]["label"], "Pull requests")
         self.assertEqual(results[0]["detail"], "owner-a/project-alpha")
+
+    def test_wordpress_admin_title_emits_wordpress_source(self):
+        ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
+        insert_visit(
+            self.db_path,
+            "https://www.example-news.test/wp-admin/edit.php",
+            "Posts ‹ Acme News — WordPress",
+            ts,
+        )
+        profiles = [{"name": "acme-news", "match_terms": ["Acme News", "example-news.test"]}]
+        results = self._call(profiles)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "WordPress")
+        self.assertIn("Acme News", results[0]["detail"])
+
+    def test_normal_chrome_tab_stays_chrome(self):
+        ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
+        insert_visit(
+            self.db_path,
+            "https://example.com/docs",
+            "Project docs",
+            ts,
+        )
+        profiles = [{"name": "Proj", "match_terms": ["example.com"]}]
+        results = self._call(profiles)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Chrome")
+
+    def test_is_wordpress_visit_helper(self):
+        self.assertTrue(
+            is_wordpress_visit(
+                "Dashboard ‹ Acme News — WordPress",
+                "https://www.example-news.test/wp-admin/",
+            )
+        )
+        self.assertTrue(
+            is_wordpress_visit("Log in", "https://www.example-news.test/wp-admin/"),
+        )
+        self.assertFalse(is_wordpress_visit("Messenger", "https://www.facebook.com/messages"))
+        self.assertFalse(is_wordpress_visit("WordPress.com pricing", "https://wordpress.com/pricing"))
+
+    def test_lovable_web_url_emits_lovable_web_source(self):
+        ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
+        insert_visit(
+            self.db_path,
+            "https://lovable.dev/projects/d948eea4-83ee-41f7-b8a0-f50e91660950",
+            "Demo Project",
+            ts,
+        )
+        profiles = [{"name": "client-alpha", "match_terms": ["demo", "lovable.dev"]}]
+        results = self._call(profiles)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Lovable (web)")
+
+    def test_lovableproject_host_emits_lovable_web_source(self):
+        ts = datetime(2026, 4, 10, 14, 0, tzinfo=timezone.utc)
+        insert_visit(
+            self.db_path,
+            "https://121726c8-b8f3-4a58-8b27-08104baf8fa5.lovableproject.com/",
+            "Demo Flow",
+            ts,
+        )
+        profiles = [{"name": "Proj", "match_terms": ["lovableproject", "demo"]}]
+        results = self._call(profiles)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source"], "Lovable (web)")
+
+    def test_is_lovable_web_visit_helper(self):
+        self.assertTrue(is_lovable_web_visit("", "https://lovable.dev/projects/abc"))
+        self.assertTrue(
+            is_lovable_web_visit(
+                "",
+                "https://93be36fa-0cb1-4113-9d77-af5a6a1625a0.lovableproject.com/",
+            )
+        )
+        self.assertFalse(is_lovable_web_visit("", "https://example.com/lovable.dev"))
+        self.assertFalse(is_lovable_web_visit("Demo", "https://demo.example"))
 
     def test_split_chrome_tab_title_helper(self):
         self.assertEqual(

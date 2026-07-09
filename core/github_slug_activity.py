@@ -20,6 +20,8 @@ from core.github_slug_match import (
 _SOURCE_WEIGHT: dict[str, int] = {
     "GitHub": 4,
     "Chrome": 3,
+    "WordPress": 3,
+    "Lovable (web)": 2,
     "Lovable (desktop)": 2,
     "Cursor": 1,
     "Cursor checkpoints": 1,

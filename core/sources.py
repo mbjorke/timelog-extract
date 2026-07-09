@@ -27,6 +27,8 @@ SOURCE_ORDER = [
     WORKLOG_SOURCE,
     "Apple Mail",
     "Chrome",
+    "WordPress",
+    "Lovable (web)",
     "Lovable (desktop)",
     GITHUB_SOURCE,
     GIT_COMMITS_SOURCE,
@@ -82,9 +84,13 @@ SOURCE_ROLES = {
     GITHUB_SOURCE: DELIVERY_EVIDENCE,
     GIT_COMMITS_SOURCE: DELIVERY_EVIDENCE,
     JIRA_SOURCE: DELIVERY_EVIDENCE,
-    # Policy groups Chrome and Lovable-desktop history as passive context:
+    # Policy groups Chrome and Lovable history as passive context:
     # good for project hints, noisy as duration proof on their own.
+    # WordPress / Lovable (web) are derived from Chrome; still passive_context,
+    # but project_hours may give them span-capable weight.
     "Chrome": PASSIVE_CONTEXT,
+    "WordPress": PASSIVE_CONTEXT,
+    "Lovable (web)": PASSIVE_CONTEXT,
     "Lovable (desktop)": PASSIVE_CONTEXT,
     "Apple Mail": PASSIVE_CONTEXT,
     CALENDAR_SOURCE: SCHEDULED_CONTEXT,
@@ -116,7 +122,10 @@ ATTENDED_SOURCES = {
     # Lovable (desktop) is an interactive AI builder — actively building in it is
     # attended work, same tier as Cursor/Claude Desktop (GH-313, not a cloud agent).
     "Lovable (desktop)",
+    # Lovable (web) is the same product in Chrome (lovable.dev / *.lovableproject.com).
+    "Lovable (web)",
     "Chrome",
+    "WordPress",
     "Apple Mail",
     "Claude.ai (web)",
     "Gemini (web)",

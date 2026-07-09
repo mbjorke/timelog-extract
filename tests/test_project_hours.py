@@ -145,6 +145,101 @@ class ProjectHoursTests(unittest.TestCase):
             event_attribution_weight({"source": "Chrome", "project": "timelog-extract", "detail": "docs"}),
         )
 
+    def test_wordpress_weight_above_chrome_below_github(self):
+        self.assertGreater(
+            event_attribution_weight({"source": "WordPress", "project": "acme-news", "detail": "wp-admin"}),
+            event_attribution_weight({"source": "Chrome", "project": "acme-news", "detail": "tab"}),
+        )
+        self.assertLess(
+            event_attribution_weight({"source": "WordPress", "project": "acme-news", "detail": "wp-admin"}),
+            event_attribution_weight({"source": "GitHub", "project": "acme-news", "detail": "push"}),
+        )
+        self.assertLess(
+            event_attribution_weight({"source": "Lovable (desktop)", "project": "x", "detail": "ping"}),
+            5.0,
+        )
+        self.assertGreater(
+            event_attribution_weight({"source": "Lovable (desktop)", "project": "x", "detail": "ping"}),
+            event_attribution_weight({"source": "Lovable (web)", "project": "x", "detail": "lovable.dev"}),
+        )
+        self.assertGreater(
+            event_attribution_weight({"source": "Lovable (web)", "project": "x", "detail": "lovable.dev"}),
+            event_attribution_weight({"source": "Chrome", "project": "x", "detail": "tab"}),
+        )
+
+    def test_wordpress_dense_session_beats_lone_lovable_ping(self):
+        """WordPress sub-span owns the block; Lovable cache hit must not steal half."""
+        session_start = datetime(2026, 7, 9, 13, 20, tzinfo=timezone.utc)
+        session_end = datetime(2026, 7, 9, 14, 38, tzinfo=timezone.utc)
+        events = [
+            {
+                "source": "Lovable (desktop)",
+                "project": "client-alpha",
+                "detail": "client-alpha — demo project",
+                "local_ts": session_start,
+            },
+        ]
+        ts = datetime(2026, 7, 9, 13, 33, tzinfo=timezone.utc)
+        while ts <= session_end:
+            events.append(
+                {
+                    "source": "WordPress",
+                    "project": "acme-news",
+                    "detail": "Dashboard ‹ Acme News — WordPress",
+                    "local_ts": ts,
+                }
+            )
+            ts += timedelta(minutes=5)
+        session_hours = session_duration_hours(
+            events, session_start, session_end, 15, 5, AI_SOURCES
+        )
+        split = allocate_session_hours_by_project(
+            events,
+            session_hours,
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertAlmostEqual(sum(split.values()), session_hours, places=2)
+        self.assertGreater(split["acme-news"], split.get("client-alpha", 0.0) * 4)
+        self.assertLessEqual(split.get("client-alpha", 0.0), 0.25)
+
+    def test_messenger_ping_does_not_equal_split_wordpress_block(self):
+        """A short Messenger Chrome event must not take an equal share of a WP session."""
+        session_start = datetime(2026, 7, 9, 7, 17, tzinfo=timezone.utc)
+        session_end = datetime(2026, 7, 9, 8, 1, tzinfo=timezone.utc)
+        events = [
+            {
+                "source": "Chrome",
+                "project": "client-alpha",
+                "detail": "(1) Client Alpha | Messenger",
+                "local_ts": session_start,
+            },
+        ]
+        ts = datetime(2026, 7, 9, 7, 25, tzinfo=timezone.utc)
+        while ts <= session_end:
+            events.append(
+                {
+                    "source": "WordPress",
+                    "project": "acme-news",
+                    "detail": "Plugins ‹ Acme News — WordPress",
+                    "local_ts": ts,
+                }
+            )
+            ts += timedelta(minutes=4)
+        session_hours = session_duration_hours(
+            events, session_start, session_end, 15, 5, AI_SOURCES
+        )
+        split = allocate_session_hours_by_project(
+            events,
+            session_hours,
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        self.assertGreater(split["acme-news"], split.get("client-alpha", 0.0) * 3)
+        self.assertLessEqual(split.get("client-alpha", 0.0), 0.3)
+
     def test_session_duration_with_ai_sources(self):
         base = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
         end = base + timedelta(minutes=30)

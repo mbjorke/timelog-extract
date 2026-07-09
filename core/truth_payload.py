@@ -41,7 +41,11 @@ def _serialize_event(
     if not isinstance(ts, datetime):
         raise TypeError("event['timestamp'] must be datetime")
     detail_raw = str(event.get("detail", "") or "")
-    if redact_chrome_raw_json and str(event.get("source", "")) == "Chrome":
+    if redact_chrome_raw_json and str(event.get("source", "")) in {
+        "Chrome",
+        "WordPress",
+        "Lovable (web)",
+    }:
         detail_out = _redact_chrome_detail_for_json(detail_raw)
     else:
         detail_out = detail_raw

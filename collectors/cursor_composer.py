@@ -8,11 +8,11 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+from urllib.parse import unquote, urlparse
 
 from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
 
 SOURCE_NAME = "Cursor"
-from urllib.parse import unquote, urlparse
 
 _COMPOSER_HEADERS_KEY = "composer.composerHeaders"
 # Stay below default session gap (15 min in core.domain.compute_sessions).

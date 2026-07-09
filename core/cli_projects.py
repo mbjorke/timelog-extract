@@ -14,6 +14,16 @@ from core.cli_app import app
 from core.cli_options import split_comma_separated_list
 from core.config import default_projects_config_option
 from core.projects_lint import lint_projects_config
+from outputs.terminal_theme import (
+    CLR_GREEN,
+    CLR_VALUE_ORANGE,
+    FAIL_ICON,
+    OK_ICON,
+    STYLE_BORDER,
+    STYLE_LABEL,
+    STYLE_MUTED,
+    WARN_ICON,
+)
 
 
 def _match_terms_prompt_message(default_terms: list[str]) -> str:
@@ -62,7 +72,7 @@ def projects(
             if isinstance(data, list):
                 data = {"projects": data}
         except Exception as e:
-            console.print(f"[red]Error reading config: {e}[/red]")
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error reading config: {e}[/{CLR_VALUE_ORANGE}]")
             raise typer.Exit(code=1) from e
     else:
         data = {"projects": [], "worklog": "TIMELOG.md"}
@@ -72,9 +82,9 @@ def projects(
             config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         except OSError as exc:
-            console.print(f"[red]Error writing config:[/red] {exc}")
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error writing config:[/{CLR_VALUE_ORANGE}] {exc}")
             raise typer.Exit(code=1) from exc
-        console.print(f"[green]Saved to {config_path}[/green]")
+        console.print(f"{OK_ICON} [{CLR_GREEN}]Saved to {config_path}[/{CLR_GREEN}]")
 
     while True:
         action = questionary.select(
@@ -98,10 +108,13 @@ def projects(
             break
 
         if action == "List Projects":
-            table = Table(title="Project Profiles")
-            table.add_column("Name (ID)", style="cyan")
-            table.add_column("Customer", style="magenta")
-            table.add_column("Match Terms", style="dim")
+            from rich import box
+            table = Table(title="Project Profiles", box=box.ROUNDED)
+            table.border_style = STYLE_BORDER
+            table.header_style = f"bold {STYLE_LABEL}"
+            table.add_column("Name (ID)", style=STYLE_LABEL)
+            table.add_column("Customer", style=STYLE_LABEL)
+            table.add_column("Match Terms", style=STYLE_MUTED)
 
             for p in data.get("projects", []):
                 table.add_row(
@@ -124,14 +137,14 @@ def projects(
             if is_edit:
                 names = [p["name"] for p in data.get("projects", [])]
                 if not names:
-                    console.print("[yellow]No projects to edit.[/yellow]")
+                    console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No projects to edit.[/{CLR_VALUE_ORANGE}]")
                     continue
                 target_name = questionary.select("Select project to edit:", choices=names).ask()
                 if not target_name:
                     continue
                 project = next((p for p in data["projects"] if p["name"] == target_name), {})
                 if not project:
-                    console.print("[yellow]Selected project was not found.[/yellow]")
+                    console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Selected project was not found.[/{CLR_VALUE_ORANGE}]")
                     continue
 
             name = project.get("name", "")
@@ -192,12 +205,13 @@ def projects(
                     data["projects"] = []
                 data["projects"].append(new_project)
 
-            console.print("[green]Project updated in memory. Remember to 'Save & Exit'.[/green]")
+            console.print(f"{OK_ICON} [{CLR_GREEN}]Project updated in memory.[/{CLR_GREEN}]")
+            console.print(f"[{STYLE_MUTED}]Next: Select 'Save & Exit' to persist changes to disk.[/{STYLE_MUTED}]")
 
         if action == "Remove Project":
             names = [p["name"] for p in data.get("projects", [])]
             if not names:
-                console.print("[yellow]No projects to remove.[/yellow]")
+                console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No projects to remove.[/{CLR_VALUE_ORANGE}]")
                 continue
             target_name = questionary.select("Select project to remove:", choices=names).ask()
             if not target_name:
@@ -205,7 +219,8 @@ def projects(
             should_remove = questionary.confirm(f"Are you sure you want to remove '{target_name}'?").ask()
             if should_remove is True:
                 data["projects"] = [p for p in data["projects"] if p["name"] != target_name]
-                console.print("[red]Project removed from memory.[/red]")
+                console.print(f"{OK_ICON} [{CLR_GREEN}]Project removed from memory.[/{CLR_GREEN}]")
+                console.print(f"[{STYLE_MUTED}]Next: Select 'Save & Exit' to persist changes to disk.[/{STYLE_MUTED}]")
 
 
 @app.command("projects-lint")
@@ -221,14 +236,14 @@ def projects_lint(
     try:
         warnings = lint_projects_config(config_path)
     except Exception as exc:
-        console.print(f"[red]Error reading config:[/red] {exc}")
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error reading config:[/{CLR_VALUE_ORANGE}] {exc}")
         raise typer.Exit(code=1) from exc
 
     if not warnings:
-        console.print("[green]projects-lint: PASS[/green] no overlap/high-risk warnings.")
+        console.print(f"{OK_ICON} [{CLR_GREEN}]projects-lint: PASS[/{CLR_GREEN}] no overlap/high-risk warnings.")
         return
 
-    console.print(f"[yellow]projects-lint: WARN[/yellow] {len(warnings)} warning(s)")
+    console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]projects-lint: WARN[/{CLR_VALUE_ORANGE}] {len(warnings)} warning(s)")
     for idx, warning in enumerate(warnings, start=1):
         console.print(f"{idx}. [{warning.severity}/{warning.code}] {warning.message}")
 

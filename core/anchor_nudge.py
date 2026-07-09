@@ -13,13 +13,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from core.anchor_plan import is_ephemeral_anchor_kind
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
     load_projects_config_payload,
     save_projects_config_payload,
 )
-from core.anchor_plan import is_ephemeral_anchor_kind
 from core.projects_audit import ANCHOR_KIND_LABELS
 
 _CREATE_PREFIX = "Create new project: "

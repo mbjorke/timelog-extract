@@ -15,7 +15,6 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
-    AUDIT_SCHEMA_VERSION,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,

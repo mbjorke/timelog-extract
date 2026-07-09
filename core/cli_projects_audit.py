@@ -11,6 +11,12 @@ from typing import Annotated, Any, Optional
 
 import typer
 
+from core.anchor_plan import (
+    ANCHOR_PLAN_APPLY_MIN_HITS,
+    ANCHOR_PLAN_SCHEMA_VERSION,
+    build_anchor_plan_from_audit,
+    is_ephemeral_anchor_kind,
+)
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
@@ -21,12 +27,6 @@ from core.config import (
     load_projects_config_payload,
     remove_rule_from_project,
     save_projects_config_payload,
-)
-from core.anchor_plan import (
-    ANCHOR_PLAN_APPLY_MIN_HITS,
-    ANCHOR_PLAN_SCHEMA_VERSION,
-    build_anchor_plan_from_audit,
-    is_ephemeral_anchor_kind,
 )
 from core.projects_audit import (
     SIGNAL_KIND_LABELS,

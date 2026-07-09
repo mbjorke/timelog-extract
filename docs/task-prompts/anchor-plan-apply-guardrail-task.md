@@ -25,7 +25,7 @@ sacred — see [`work-unit-config-v2.md`](../decisions/work-unit-config-v2.md).
 ~96 candidates at `min_hits: 1`, treating `repo` / `dir` / `branch` / `label`
 equally. Applying that plan would have written hundreds of permanent
 `match_terms` (`head`, `pull requests`, every feature branch) and made config
-unmaintainable. Magkänslan stämmer: **anchor-plan is an inventory, not a config
+unmaintainable. Gut check: **anchor-plan is an inventory, not a config
 to apply.**
 
 This is the same failure mode GH-222 / work-unit v2 already named — "the fix is

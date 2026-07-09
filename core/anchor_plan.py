@@ -14,6 +14,9 @@ ANCHOR_PLAN_SCHEMA_VERSION = 1
 # branch/label are inventory, not default apply targets. Repo/dir/host may become
 # permanent rules; feature branches and session titles must not (GH-342).
 EPHEMERAL_ANCHOR_KINDS = frozenset({"branch", "label"})
+# Kinds accepted on apply plans (generated or hand-edited). Missing/unknown kinds
+# must not silently bypass the ephemeral filter (GH-342 / PR #344 review).
+KNOWN_ANCHOR_KINDS = frozenset({"host", "repo", "dir", "branch", "label"})
 # Default floor for apply candidates — matches UNANCHORED_ANCHOR_NUDGE_MIN_HITS.
 ANCHOR_PLAN_APPLY_MIN_HITS = 20
 
@@ -21,6 +24,15 @@ ANCHOR_PLAN_APPLY_MIN_HITS = 20
 def is_ephemeral_anchor_kind(kind: str) -> bool:
     """True for branch/label — session context, not default match_terms material."""
     return str(kind or "").strip().lower() in EPHEMERAL_ANCHOR_KINDS
+
+
+def normalize_anchor_kind(kind: str) -> str:
+    """Return a known lowercase kind, or raise ValueError."""
+    normalized = str(kind or "").strip().lower()
+    if normalized not in KNOWN_ANCHOR_KINDS:
+        allowed = "/".join(sorted(KNOWN_ANCHOR_KINDS))
+        raise ValueError(f"anchor_kind required ({allowed})")
+    return normalized
 
 
 def build_anchor_plan_from_audit(
@@ -90,7 +102,9 @@ def build_anchor_plan_from_audit(
             "anchor_candidates": len(additions),
             "inventory_candidates": len(inventory),
             "include_ephemeral_kinds": bool(include_ephemeral_kinds),
-            "ephemeral_kinds_excluded_from_apply": sorted(EPHEMERAL_ANCHOR_KINDS),
+            "ephemeral_kinds_excluded_from_apply": (
+                sorted(EPHEMERAL_ANCHOR_KINDS) if not include_ephemeral_kinds else []
+            ),
             "default_apply_kinds": ["host", "repo", "dir"],
         },
     }

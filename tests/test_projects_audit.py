@@ -252,7 +252,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "tracked_urls", "rule_value": "other.test"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "tracked_urls",
+                    "rule_value": "other.test",
+                    "anchor_kind": "host",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
@@ -277,7 +282,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "timelog-extract"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "timelog-extract",
+                    "anchor_kind": "dir",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
@@ -304,7 +314,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "newterm"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "newterm",
+                    "anchor_kind": "dir",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")

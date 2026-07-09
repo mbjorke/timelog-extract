@@ -16,6 +16,7 @@ from core.anchor_plan import (
     ANCHOR_PLAN_SCHEMA_VERSION,
     build_anchor_plan_from_audit,
     is_ephemeral_anchor_kind,
+    normalize_anchor_kind,
 )
 from core.cli_app import app
 from core.cli_date_range import resolve_date_window
@@ -346,7 +347,10 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
         pn = str(item.get("project_name", "")).strip()
         rt = str(item.get("rule_type", "match_terms")).strip() or "match_terms"
         rv = str(item.get("rule_value", "")).strip()
-        kind = str(item.get("anchor_kind", "")).strip()
+        try:
+            kind = normalize_anchor_kind(str(item.get("anchor_kind", "")))
+        except ValueError as exc:
+            raise ValueError(f"additions[{idx}]: {exc}") from exc
         hits_raw = item.get("hits")
         hits: int | None
         if hits_raw is None or hits_raw == "":

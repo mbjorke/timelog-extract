@@ -261,6 +261,86 @@ class AnchorPlanGuardrailTests(unittest.TestCase):
         proj = next(p for p in data["projects"] if p["name"] == "existing")
         self.assertEqual(proj["match_terms"], ["keep"])
 
+    def test_anchor_plan_meta_excludes_ephemeral_list_when_included(self) -> None:
+        audit = {
+            "schema_version": AUDIT_SCHEMA_VERSION,
+            "command": "gittan projects-audit",
+            "options": {},
+            "top_signals": [
+                {
+                    "kind": "branch",
+                    "value": "feature-x",
+                    "hits": 40,
+                    "anchored": False,
+                    "rule_type": "match_terms",
+                },
+            ],
+        }
+        plan = build_anchor_plan_from_audit(audit, include_ephemeral_kinds=True)
+        self.assertTrue(plan["meta"]["include_ephemeral_kinds"])
+        self.assertEqual(plan["meta"]["ephemeral_kinds_excluded_from_apply"], [])
+        self.assertEqual({a["anchor_kind"] for a in plan["additions"]}, {"branch"})
+
+    def test_projects_anchor_rejects_missing_anchor_kind(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        plan = {
+            "schema_version": 1,
+            "additions": [
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "sneaky-branch",
+                    "hits": 40,
+                },
+            ],
+        }
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        result = self.runner.invoke(
+            app,
+            ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+        )
+        self.assertEqual(result.exit_code, 1, msg=result.output)
+        self.assertIn("anchor_kind required", result.output)
+        data = load_projects_config_payload(cfg_path)
+        proj = next(p for p in data["projects"] if p["name"] == "existing")
+        self.assertEqual(proj["match_terms"], ["keep"])
+
+    def test_projects_anchor_rejects_unknown_anchor_kind(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        plan = {
+            "schema_version": 1,
+            "additions": [
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "typo-kind",
+                    "anchor_kind": "brnach",
+                    "hits": 40,
+                },
+            ],
+        }
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        result = self.runner.invoke(
+            app,
+            ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+        )
+        self.assertEqual(result.exit_code, 1, msg=result.output)
+        self.assertIn("anchor_kind required", result.output)
+
 
 if __name__ == "__main__":
     unittest.main()

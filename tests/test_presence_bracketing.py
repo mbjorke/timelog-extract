@@ -41,7 +41,7 @@ class PresenceBracketingTests(unittest.TestCase):
     def test_extends_edges_with_cap_and_labels_hours(self):
         session_start = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
         session_end = datetime(2026, 7, 9, 11, 0, tzinfo=timezone.utc)
-        events = [{"source": "WordPress", "project": "acme", "local_ts": session_start}]
+        events = [{"source": "Lovable (desktop)", "project": "acme", "local_ts": session_start}]
         overall = {
             "2026-07-09": {
                 "sessions": [(session_start, session_end, events, "attended")],
@@ -74,7 +74,39 @@ class PresenceBracketingTests(unittest.TestCase):
         self.assertEqual(new_end, session_end + timedelta(minutes=10))
         self.assertAlmostEqual(day["bracketed_hours"], 20.0 / 60.0, places=3)
         self.assertAlmostEqual(day["hours"], 1.0 + 20.0 / 60.0, places=3)
+        # Lovable-only session: full wall-clock is presence-gated (GH-327).
+        self.assertAlmostEqual(day["presence_hours"], 1.0 + 20.0 / 60.0, places=3)
         self.assertAlmostEqual(result.total_bracketed_hours, 20.0 / 60.0, places=3)
+
+    def test_authorship_session_only_gates_bracketed_share(self):
+        session_start = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+        session_end = datetime(2026, 7, 9, 11, 0, tzinfo=timezone.utc)
+        events = [{"source": "Cursor", "project": "acme", "local_ts": session_start}]
+        overall = {
+            "2026-07-09": {
+                "sessions": [(session_start, session_end, events, "attended")],
+                "hours": 1.0,
+            }
+        }
+        presence = [
+            (
+                session_start - timedelta(minutes=30),
+                session_end + timedelta(minutes=30),
+            )
+        ]
+        result = apply_presence_bracketing(
+            overall,
+            presence,
+            session_duration_hours_fn=_duration,
+            min_session_minutes=5,
+            min_session_passive_minutes=5,
+            edge_cap_minutes=10,
+        )
+        self.assertTrue(result.applied)
+        day = result.overall_days["2026-07-09"]
+        self.assertAlmostEqual(day["bracketed_hours"], 20.0 / 60.0, places=3)
+        # Authorship body stays billable; only the capped edges are presence.
+        self.assertAlmostEqual(day["presence_hours"], 20.0 / 60.0, places=3)
 
     def test_does_not_invent_sessions_from_presence_alone(self):
         overall = {"2026-07-09": {"sessions": [], "hours": 0.0}}

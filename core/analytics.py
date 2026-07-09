@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from core.sources import session_is_presence_signal_only
+
 
 def get_date_range(date_from, date_to, local_tz):
     now_local = datetime.now(local_tz)
@@ -54,12 +56,15 @@ def estimate_hours_by_day(
         attended_h = 0.0
         mixed_h = 0.0
         agent_h = 0.0
+        presence_h = 0.0
         session_data = []
         for start, end, events in sessions:
             raw = session_duration_hours_fn(
                 events, start, end, min_session_minutes, min_session_passive_minutes
             )
             total_h += raw
+            if session_is_presence_signal_only(events):
+                presence_h += raw
             if classify_attendance_fn:
                 attendance = classify_attendance_fn(events)
                 session_data.append((start, end, events, attendance))
@@ -79,5 +84,6 @@ def estimate_hours_by_day(
             "attended_hours": attended_h,
             "mixed_hours": mixed_h,
             "agent_hours": agent_h,
+            "presence_hours": presence_h,
         }
     return per_day

@@ -149,3 +149,41 @@ AGENT_SOURCES = {
     "Conductor",
     CURSOR_CHECKPOINTS_SOURCE,
 }
+
+# Billable-signal axis (GH-327), orthogonal to attendance (GH-284).
+# Presence-signal sources can be ATTENDED for reporting honesty, but their
+# evidence is ambient presence (cache-mtime, coverage comparators) — not active
+# authorship. Default billable excludes them unless --include-presence-billable
+# (mirrors agent gating).
+#
+# Slice 1 scope (issue examples): Lovable cache-mtime + coverage comparators.
+# Chrome / WordPress / Mail stay default-billable for now — they are
+# passive_context on the evidence-role axis but are the primary claim for many
+# client days; weighted split inside mixed sessions is Slice 2.
+PRESENCE_SIGNAL_SOURCES = frozenset(
+    {
+        "Lovable (desktop)",  # Chromium cache-mtime on the operator's machine
+        "Lovable (web)",  # same product via Chrome history
+        "Screen Time",  # coverage comparator; rarely a session event
+        "Timely Memory",  # coverage comparator / bracketing input
+    }
+)
+
+
+def is_presence_signal_source(source_name: str) -> bool:
+    """True when the source's evidence is presence, not authorship (GH-327)."""
+    return str(source_name or "") in PRESENCE_SIGNAL_SOURCES
+
+
+def session_is_presence_signal_only(events: list) -> bool:
+    """True when every event source is a presence signal (or the session is empty).
+
+    Empty sessions are treated as presence-only so bracket-only extensions stay
+    confirm-gated. Mixed authorship + presence sessions return False (Slice 1:
+    authorship present → whole session stays default-billable except brackets).
+    """
+    sources = {str(event.get("source") or "") for event in (events or [])}
+    sources.discard("")
+    if not sources:
+        return True
+    return sources <= PRESENCE_SIGNAL_SOURCES

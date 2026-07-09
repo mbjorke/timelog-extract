@@ -25,6 +25,7 @@ from core.presence_edge_gaps import (
     _merge_presence_spans,
     _session_bounds,
 )
+from core.sources import session_is_presence_signal_only
 
 
 @dataclass(frozen=True)
@@ -270,6 +271,7 @@ def apply_presence_bracketing(
         attended_h = 0.0
         mixed_h = 0.0
         agent_h = 0.0
+        presence_h = 0.0
         for idx, s_tuple in enumerate(raw_sessions, start=1):
             start_ts, end_ts, events = s_tuple[0], s_tuple[1], s_tuple[2]
             attendance = s_tuple[3] if len(s_tuple) > 3 else None
@@ -293,6 +295,12 @@ def apply_presence_bracketing(
             bracketed = max(0.0, hours - evidence_hours)
             day_bracketed += bracketed
             day_hours += hours
+            # GH-327: presence-only sessions are fully presence-gated; authorship
+            # sessions only gate the bracketed edge share.
+            if session_is_presence_signal_only(events):
+                presence_h += hours
+            else:
+                presence_h += bracketed
             if attendance == "attended":
                 attended_h += hours
             elif attendance == "mixed":
@@ -308,6 +316,7 @@ def apply_presence_bracketing(
         payload["hours"] = day_hours
         payload["bracketed_hours"] = day_bracketed
         payload["evidenced_hours"] = max(0.0, day_hours - day_bracketed)
+        payload["presence_hours"] = presence_h
         if attended_h or mixed_h or agent_h:
             payload["attended_hours"] = attended_h
             payload["mixed_hours"] = mixed_h

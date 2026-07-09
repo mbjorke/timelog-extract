@@ -173,6 +173,7 @@ def build_truth_payload(
             "attended_hours": round(float(payload.get("attended_hours", 0.0)), 6),
             "mixed_hours": round(float(payload.get("mixed_hours", 0.0)), 6),
             "agent_hours": round(float(payload.get("agent_hours", 0.0)), 6),
+            "presence_hours": round(float(payload.get("presence_hours", 0.0)), 6),
             "bracketed_hours": round(float(payload.get("bracketed_hours", 0.0)), 6),
             "evidenced_hours": round(
                 float(payload.get("evidenced_hours", payload["hours"])), 6
@@ -253,6 +254,9 @@ def build_truth_payload(
             "attended_hours": round(sum(d["attended_hours"] for d in days_out.values()), 6),
             "mixed_hours": round(sum(d["mixed_hours"] for d in days_out.values()), 6),
             "agent_hours": round(sum(d["agent_hours"] for d in days_out.values()), 6),
+            "presence_hours": round(
+                sum(d.get("presence_hours", 0.0) for d in days_out.values()), 6
+            ),
             "bracketed_hours": round(sum(d.get("bracketed_hours", 0.0) for d in days_out.values()), 6),
             "days_with_activity": len(days_out),
             "event_count": len(included_events),

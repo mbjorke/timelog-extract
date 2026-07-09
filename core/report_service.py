@@ -40,7 +40,10 @@ from core.presence_bracketing import (
     presence_bracket_cap_minutes,
     presence_bracketing_enabled,
 )
-from core.project_hours import build_project_reports_from_sessions
+from core.project_hours import (
+    build_project_reports_from_sessions,
+    fold_authorship_brackets_into_presence,
+)
 from core.presence_sources import collect_presence_comparators
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
@@ -383,6 +386,15 @@ def run_timelog_report(
         if bracketing.applied and bracketing.overall_days is not None:
             project_reports = build_project_reports_from_sessions(
                 bracketing.overall_days,
+                session_duration_hours_fn=core_domain.session_duration_hours,
+                min_session_minutes=args.min_session,
+                min_session_passive_minutes=args.min_session_passive,
+                gap_minutes=args.gap_minutes,
+            )
+            fold_authorship_brackets_into_presence(
+                project_reports,
+                bracketing.overall_days,
+                bracketing.sessions or [],
                 session_duration_hours_fn=core_domain.session_duration_hours,
                 min_session_minutes=args.min_session,
                 min_session_passive_minutes=args.min_session_passive,

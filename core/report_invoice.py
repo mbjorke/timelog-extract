@@ -33,6 +33,7 @@ def _build_invoice_pdf(
     customer_name: Optional[str] = None,
     billable_unit: float = 0.0,
     include_agent_billable: bool = False,
+    include_presence_billable: bool = False,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ) -> Path:
@@ -49,6 +50,7 @@ def _build_invoice_pdf(
         customer_name=customer_name,
         billable_unit=billable_unit,
         include_agent_billable=include_agent_billable,
+        include_presence_billable=include_presence_billable,
         billable_raw_by_project=billable_raw_by_project,
         reported_billing=reported_billing,
     )
@@ -61,17 +63,22 @@ def compute_billable_by_project(
 
     Prefers confirmed/edited ``reported_time`` over observed hours (the same D4
     adoption switch toggl-/jira-sync use); before adoption, falls back to observed
-    hours with autonomous agent time excluded by default (GH-284 slice 2).
+    hours with autonomous agent and presence-signal time excluded by default
+    (GH-284 slice 2 + GH-327).
     """
     from core.domain import billable_raw_by_project
     from core.reported_sync import reported_hours_for_window
 
     reported = reported_hours_for_window(report_payload, home)
     include_agent = bool(getattr(report_payload.args, "include_agent_billable", False))
+    include_presence = bool(
+        getattr(report_payload.args, "include_presence_billable", False)
+    )
     by_project = billable_raw_by_project(
         report_payload.project_reports,
         reported_hours=reported,
         include_agent_billable=include_agent,
+        include_presence_billable=include_presence,
     )
     return by_project, reported is not None
 
@@ -105,6 +112,7 @@ def generate_invoice_pdf(
         customer_name=args.customer,
         billable_unit=args.billable_unit,
         include_agent_billable=getattr(args, "include_agent_billable", False),
+        include_presence_billable=getattr(args, "include_presence_billable", False),
         billable_raw_by_project=billable_by_project,
         reported_billing=reported_billing,
     )

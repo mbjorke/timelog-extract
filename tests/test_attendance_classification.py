@@ -183,6 +183,93 @@ class TestBillableExcludesAgent(unittest.TestCase):
         self.assertIn("opted in", included)
 
 
+class TestBillableExcludesPresence(unittest.TestCase):
+    """GH-327: presence-signal hours are not billable by default."""
+
+    def test_presence_hours_excluded_by_default(self):
+        days = {
+            "2026-07-09": {
+                "hours": 5.0,
+                "attended_hours": 5.0,
+                "presence_hours": 3.0,
+                "agent_hours": 0.0,
+            }
+        }
+        # 5 - 3 presence = 2 authorship-eligible
+        self.assertAlmostEqual(project_billable_raw_hours(days), 2.0)
+
+    def test_presence_hours_included_when_opted_in(self):
+        days = {
+            "2026-07-09": {
+                "hours": 5.0,
+                "attended_hours": 5.0,
+                "presence_hours": 3.0,
+            }
+        }
+        self.assertAlmostEqual(
+            project_billable_raw_hours(days, include_presence=True), 5.0
+        )
+
+    def test_agent_and_presence_both_excluded(self):
+        days = {
+            "2026-07-09": {
+                "hours": 6.0,
+                "attended_hours": 4.0,
+                "agent_hours": 1.0,
+                "presence_hours": 2.0,
+            }
+        }
+        # 6 - 1 agent - 2 presence = 3
+        self.assertAlmostEqual(project_billable_raw_hours(days), 3.0)
+        self.assertAlmostEqual(
+            project_billable_raw_hours(days, include_agent=True, include_presence=True),
+            6.0,
+        )
+
+    def test_lovable_only_session_is_presence_hours(self):
+        from core.sources import session_is_presence_signal_only
+
+        events = [
+            _make_event(
+                "Lovable (desktop)",
+                datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc),
+                "cache ping",
+                "P1",
+            )
+        ]
+        self.assertTrue(session_is_presence_signal_only(events))
+        self.assertEqual(classify_attendance(events), "attended")
+
+    def test_cursor_plus_lovable_is_not_presence_only(self):
+        from core.sources import session_is_presence_signal_only
+
+        events = [
+            _make_event(
+                "Cursor",
+                datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc),
+                "edit",
+                "P1",
+            ),
+            _make_event(
+                "Lovable (desktop)",
+                datetime(2026, 7, 9, 10, 5, tzinfo=timezone.utc),
+                "cache",
+                "P1",
+            ),
+        ]
+        self.assertFalse(session_is_presence_signal_only(events))
+
+    def test_presence_billable_note(self):
+        from outputs.pdf import presence_billable_note
+
+        self.assertEqual(presence_billable_note(0.0, False), "")
+        excluded = presence_billable_note(1.25, include_presence_billable=False)
+        self.assertIn("Excludes 1.25 h", excluded)
+        self.assertIn("not billable by default", excluded)
+        included = presence_billable_note(1.25, include_presence_billable=True)
+        self.assertIn("Includes 1.25 h", included)
+
+
 class TestBillableReportedLayer(unittest.TestCase):
     """GH-186 Phase 4: invoice/billable prefers confirmed reported_time."""
 

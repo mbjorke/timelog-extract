@@ -8,8 +8,7 @@ from typing import Any, Callable, Dict
 
 from core.domain import compute_sessions
 from core.events import event_anchors
-from core.sources import AI_SOURCES
-from core.sources import session_is_presence_signal_only
+from core.sources import AI_SOURCES, session_is_presence_signal_only
 
 # Floor for Tier A (high-signal) sub-span claims in allocate_session_hours_by_project.
 # Weights at/above this own wall-clock from their own events first; below this they

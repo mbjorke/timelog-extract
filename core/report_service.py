@@ -33,6 +33,7 @@ from core.report_runtime import (
 from core.workspace_root import runtime_workspace_root
 from core.report_aggregate import AggregationResult, aggregate_report
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
+from core.presence_edge_gaps import EdgeGapReport, measure_session_edge_gaps
 from core.presence_sources import collect_presence_comparators
 from core.sources import AI_SOURCES, CURSOR_CHECKPOINTS_SOURCE, GIT_COMMITS_SOURCE, SOURCE_ORDER, WORKLOG_SOURCE
 from core.calibration.reconciliation import evaluate_reconciliation
@@ -86,6 +87,7 @@ class ReportPayload:
     presence_estimated: PresenceEstimatedResult = field(
         default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
     )
+    presence_edge_gaps: EdgeGapReport = field(default_factory=EdgeGapReport)
 
 
 def _event_key(event: Dict[str, Any]) -> Any:
@@ -201,6 +203,7 @@ def _print_report(
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Optional[PresenceEstimatedResult] = None,
+    presence_edge_gaps: Optional[EdgeGapReport] = None,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ) -> None:
@@ -219,6 +222,7 @@ def _print_report(
         timelog_project_totals=timelog_project_totals,
         git_project_totals=git_project_totals,
         presence_estimated=presence_estimated,
+        presence_edge_gaps=presence_edge_gaps,
         billable_raw_by_project=billable_raw_by_project,
         reported_billing=reported_billing,
     )
@@ -286,7 +290,7 @@ def run_timelog_report(
     from core.evidence_store import maybe_replay
     all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
 
-    screen_time_days = collect_presence_comparators(
+    screen_time_days, timely_memory_spans = collect_presence_comparators(
         args=args,
         dt_from=dt_from,
         dt_to=dt_to,
@@ -347,6 +351,13 @@ def run_timelog_report(
             min_session_passive_minutes=args.min_session_passive,
         )
 
+    # GH-332 Slice 1: measure adjacent presence at session edges (no hour changes).
+    presence_edge_gaps = measure_session_edge_gaps(
+        agg.overall_days,
+        timely_memory_spans,
+        presence_source="Timely Memory",
+    )
+
     presence_estimated = compute_presence_estimated(
         agg.overall_days,
         agg.project_reports,
@@ -372,6 +383,7 @@ def run_timelog_report(
         timelog_project_totals=timelog_totals,
         git_project_totals=git_totals,
         presence_estimated=presence_estimated,
+        presence_edge_gaps=presence_edge_gaps,
     )
 
 

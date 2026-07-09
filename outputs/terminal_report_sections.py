@@ -80,6 +80,7 @@ def print_review_summary_section(
     billable_total_hours_fn: Any,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
+    presence_edge_gaps: Any = None,
 ) -> None:
     """Print the Review summary block and sanity warnings."""
     console.print(f"[{STYLE_HEADING}]Review summary{period_heading_suffix(args)}[/{STYLE_HEADING}]")
@@ -110,6 +111,23 @@ def print_review_summary_section(
         summary_table.add_row(
             "Est. (presence)",
             f"[italic {STYLE_META}]{est_total:.1f}h[/italic {STYLE_META}]",
+        )
+
+    if (
+        presence_edge_gaps is not None
+        and getattr(presence_edge_gaps, "available", False)
+        and float(getattr(presence_edge_gaps, "total_edge_hours", 0.0) or 0.0) > 0
+    ):
+        edge_h = float(presence_edge_gaps.total_edge_hours)
+        lead_h = float(presence_edge_gaps.total_lead_hours)
+        trail_h = float(presence_edge_gaps.total_trail_hours)
+        summary_table.add_row(
+            "Edge gap (presence)",
+            f"[italic {STYLE_META}]{edge_h:.1f}h[/italic {STYLE_META}]",
+        )
+        summary_table.add_row(
+            "  · Lead / Trail",
+            f"[{STYLE_META}]{lead_h:.1f}h / {trail_h:.1f}h[/{STYLE_META}]",
         )
 
     if args.billable_unit and args.billable_unit > 0:
@@ -161,6 +179,16 @@ def print_review_summary_section(
             f"[{STYLE_META}]Est. (presence): soft-work fill between evidenced events, "
             f"capped by Screen Time — not billable. Delta (est.) compares estimate to "
             f"Screen Time; Delta (evidenced) is the honest event floor.[/{STYLE_META}]"
+        )
+    if (
+        presence_edge_gaps is not None
+        and getattr(presence_edge_gaps, "available", False)
+        and float(getattr(presence_edge_gaps, "total_edge_hours", 0.0) or 0.0) > 0
+    ):
+        console.print(
+            f"[{STYLE_META}]Edge gap (presence): continuous Timely Memory adjacent to "
+            f"session edges (lead before first event / trail after last). Diagnostic "
+            f"only — does not change observed hours (GH-332 Slice 1).[/{STYLE_META}]"
         )
 
     print_report_warnings(

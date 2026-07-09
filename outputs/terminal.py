@@ -182,6 +182,7 @@ def print_report(
     timelog_project_totals: Optional[Dict[str, float]] = None,
     git_project_totals: Optional[Dict[str, float]] = None,
     presence_estimated: Any = None,
+    presence_edge_gaps: Any = None,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ):
@@ -305,6 +306,7 @@ def print_report(
             project_reports=project_reports,
             screen_time_days=screen_time_days,
             presence_estimated=presence_estimated,
+            presence_edge_gaps=presence_edge_gaps,
             overall_days=overall_days,
             session_duration_hours_fn=session_duration_hours_fn,
             billable_total_hours_fn=billable_total_hours_fn,

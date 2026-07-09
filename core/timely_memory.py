@@ -103,18 +103,20 @@ def collect_timely_memory(
     local_tz,
     gap_seconds: int = DEFAULT_SPAN_GAP_SECONDS,
 ):
-    """Return per-day presence seconds for coverage comparison, not event dicts.
+    """Return per-day presence seconds and span edges for coverage comparison.
 
-    Success: ``(daily_seconds_by_local_day, detail)`` where ``detail`` is the
-    buffer path. Failure: ``(None, reason)``. Mirrors
-    ``core.screen_time.collect_screen_time``; wired via
-    ``collect_timely_memory_status`` in ``core.report_runtime``.
+    Success: ``(daily_seconds_by_local_day, detail, spans)`` where ``detail`` is
+    the buffer path and ``spans`` is a list of ``(start, end_exclusive)`` UTC
+    datetimes (same exclusive end used for day splitting). Failure:
+    ``(None, reason, None)``. Mirrors ``core.screen_time.collect_screen_time``;
+    wired via ``collect_timely_memory_status`` in ``core.presence_sources``.
 
     Only the timestamp column is queried — never titles, app names, or URLs.
+    Spans feed GH-332 Slice 1 edge-gap diagnostics; they never create project time.
     """
     db_path = detect_timely_memory_db(candidates)
     if not db_path:
-        return None, "Timely Memory buffer not found"
+        return None, "Timely Memory buffer not found", None
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
@@ -133,9 +135,9 @@ def collect_timely_memory(
                 ),
             ).fetchall()
     except sqlite3.Error as exc:
-        return None, f"could not read Timely Memory buffer: {exc}"
+        return None, f"could not read Timely Memory buffer: {exc}", None
     except PermissionError:
-        return None, "no access to Timely Memory buffer"
+        return None, "no access to Timely Memory buffer", None
     finally:
         try:
             os.unlink(tmp.name)
@@ -148,11 +150,13 @@ def collect_timely_memory(
             timestamps.append(ts)
 
     daily_seconds: dict[str, float] = defaultdict(float)
+    spans: list[tuple[datetime, datetime]] = []
     for span_start, span_end in _fold_samples_into_spans(timestamps, gap_seconds):
         # Each ~1 Hz sample evidences its own second, so the span covers
         # [first sample, last sample + 1s) — a lone sample counts as 1s.
         span_end_exclusive = span_end + timedelta(seconds=1)
+        spans.append((span_start, span_end_exclusive))
         for day, seconds in split_duration_by_local_day(span_start, span_end_exclusive, local_tz):
             daily_seconds[day] += seconds
 
-    return daily_seconds, str(db_path)
+    return daily_seconds, str(db_path), spans

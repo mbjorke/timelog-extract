@@ -16,16 +16,17 @@ Timely Memory local buffer is an ingested source since #285/#290
 
 - story_id: `GH-332`
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `slice 1 in progress`
 - created_at: `2026-07-08`
-- last_updated_at: `2026-07-08`
+- last_updated_at: `2026-07-09`
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: `task/presence-edge-gap-measure`
 - implementation.commits: []
-- validation.evidence: pending — operator acceptance on a composition-heavy day (bracketed report ≥ evidence-only, bracketed minutes visibly labeled)
-- validation.decision: `NO-GO` (not built)
+- validation.evidence: pending — operator acceptance on a composition-heavy day (edge-gap diagnostic visible with `--timely-memory-source on`; observed hours unchanged)
+- validation.decision: `NO-GO` (slice 2 not built; slice 1 measures only)
 - changelog:
   - `2026-07-08: Initial draft from maintainer composition-time concern + Timely benchmark.`
+  - `2026-07-09: Slice 1 started — Timely Memory spans + edge-gap diagnostic (no hour changes).`
 
 ## Problem
 
@@ -87,6 +88,10 @@ Scenario: No presence source, no change
   exists (per edge, per day). Surface as a report diagnostic — no hour changes.
 - Value: quantifies the undercount before we change any totals (measure-first,
   same pattern as #254).
+- Implementation: `core/presence_edge_gaps.py` + Timely Memory span return from
+  `collect_timely_memory`. Terminal Review summary row **Edge gap (presence)**;
+  truth payload key `presence_edge_gaps`. Requires `--timely-memory-source on`.
+  Screen Time remains day-totals only (no span edges yet).
 
 ### Slice 2 — bracket with cap + label (priority: next, after slice-1 data)
 - Extend session spans into adjacent presence, capped (default e.g. 10 min/edge,

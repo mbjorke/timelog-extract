@@ -31,6 +31,7 @@ from core.report_runtime import (
     collect_runtime_events,
 )
 from core.workspace_root import runtime_workspace_root
+from core.work_unit_classifier import resolve_attribution_classify_fn
 from core.report_aggregate import AggregationResult, aggregate_report
 from core.presence_estimated import PresenceEstimatedResult, compute_presence_estimated
 from core.presence_edge_gaps import EdgeGapReport, measure_session_edge_gaps
@@ -99,7 +100,6 @@ class ReportPayload:
     )
     presence_edge_gaps: EdgeGapReport = field(default_factory=EdgeGapReport)
     presence_bracketing: BracketingResult = field(default_factory=BracketingResult)
-
 
 def _event_key(event: Dict[str, Any]) -> Any:
     return core_event_key(event, UNCATEGORIZED)
@@ -285,7 +285,11 @@ def run_timelog_report(
     profiles = context.profiles
     loaded_config_path = context.loaded_config_path
     worklog_path = context.worklog_path
-
+    classify_fn = resolve_attribution_classify_fn(
+        str(getattr(as_run_options(options), "attribution_classifier", "v1") or "v1"),
+        fallback=UNCATEGORIZED,
+        v1_fn=_classify_project,
+    )
     all_events, collector_status = collect_runtime_events(
         context=context,
         home=HOME,
@@ -296,7 +300,7 @@ def run_timelog_report(
         codex_ide_session_index=CODEX_IDE_SESSION_INDEX,
         worklog_source=WORKLOG_SOURCE,
         cursor_checkpoints_source=CURSOR_CHECKPOINTS_SOURCE,
-        classify_project_fn=_classify_project,
+        classify_project_fn=classify_fn,
         make_event_fn=_make_event,
     )
 
@@ -493,5 +497,3 @@ def _apply_invoice_calibration_if_requested(
         # Keep baseline report behavior if calibration input is invalid.
         LOGGER.warning("Invoice calibration disabled due to invalid input: %s", exc)
         return agg
-
-

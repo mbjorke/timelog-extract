@@ -1,0 +1,19 @@
+{
+  "date_from": "2026-06-01",
+  "date_to": "2026-06-30",
+  "tolerance_hours": 0.5,
+  "primary_uncategorized_max": 0.5,
+  "notes": "Anonymized placeholder for work-unit v2 spike tests. Copy shape into ~/.gittan/work-unit-acceptance.md (or JSON) with operator targets — never commit real customers/hours.",
+  "lines": [
+    {
+      "customer": "customer-a.example",
+      "line": "portal-engagement",
+      "expected_hours": 8.0
+    },
+    {
+      "customer": "customer-a.example",
+      "line": "faq-engagement",
+      "expected_hours": 2.0
+    }
+  ]
+}

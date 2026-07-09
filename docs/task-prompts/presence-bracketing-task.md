@@ -19,14 +19,15 @@ Timely Memory local buffer is an ingested source since #285/#290
 - implementation_status: `slice 1 in progress`
 - created_at: `2026-07-08`
 - last_updated_at: `2026-07-09`
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/339
 - implementation.branch: `task/presence-edge-gap-measure`
-- implementation.commits: []
-- validation.evidence: pending — operator acceptance on a composition-heavy day (edge-gap diagnostic visible with `--timely-memory-source on`; observed hours unchanged)
-- validation.decision: `NO-GO` (slice 2 not built; slice 1 measures only)
+- implementation.commits: `[4037710]`
+- validation.evidence: operator report with `--timely-memory-source on` — Edge gap row + Bracketable preview; observed hours unchanged; unique edge gap materially smaller than naive per-session sum
+- validation.decision: `conditional GO` (slice 1 measures; slice 2 not built)
 - changelog:
   - `2026-07-08: Initial draft from maintainer composition-time concern + Timely benchmark.`
   - `2026-07-09: Slice 1 started — Timely Memory spans + edge-gap diagnostic (no hour changes).`
+  - `2026-07-09: Unique wall-clock totals + capped bracketable preview; PR #339.`
 
 ## Problem
 

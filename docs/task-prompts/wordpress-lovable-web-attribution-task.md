@@ -93,6 +93,8 @@ Scenario: Lovable web is distinct from Lovable desktop
     attended set, doctor rows, and evidence legend.
   - WordPress attribution weight span-capable (~3); Lovable (desktop) below
     high-signal floor (~4); Lovable (web) between Chrome and desktop (~2).
+    Weights are a provisional heuristic (relative order + Tier A floor), not
+    invoice-calibrated absolutes — see `event_attribution_weight` docstring.
   - Tier B uses per-project sub-spans when weights cannot claim remainder;
     equal-split is last resort only.
   - Tests use synthetic fixtures only (no real client/person names).

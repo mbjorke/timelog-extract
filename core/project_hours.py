@@ -14,6 +14,9 @@ from core.sources import AI_SOURCES
 # Weights at/above this own wall-clock from their own events first; below this they
 # only compete in the weighted remainder / span fallback. Raising a source across
 # this line changes *who* gets hours, not the session total.
+#
+# Status: heuristic — not invoice-calibrated. Change only with a named fixture /
+# operator day that shows the failure mode (see event_attribution_weight docstring).
 _HIGH_SIGNAL_MIN_WEIGHT = 5.0
 _BROWSER_TAB_SOURCES = frozenset({"Chrome", "WordPress", "Lovable (web)"})
 
@@ -24,6 +27,14 @@ def event_attribution_weight(event: dict) -> float:
     These numbers are **not hours** and do not change observed session totals.
     They only decide the share of an already-computed session duration.
 
+    **Correctness status:** provisional heuristic, not a calibrated truth table.
+    Ordering and the Tier A floor were chosen to fix a known failure mode
+    (WordPress-heavy day diluted by Lovable desktop cache pings + Chrome weight 0;
+    GH-338 / PR #337). They are **not** proven optimal across clients, and they
+    are **not** invoice ground truth. Do not treat a higher weight as "more
+    accurate hours." Re-tune only with a failing fixture or a named operator
+    day; keep Lovable (desktop) strictly below ``_HIGH_SIGNAL_MIN_WEIGHT``.
+
     Allocation uses them in two ways (see ``allocate_session_hours_by_project``):
 
     1. **Tier A / high-signal** — weight >= ``_HIGH_SIGNAL_MIN_WEIGHT`` (5):
@@ -31,8 +42,7 @@ def event_attribution_weight(event: dict) -> float:
     2. **Weighted remainder** — positive weights below the floor compete
        proportionally for leftover time; weight 0 (generic Chrome) never claims.
 
-    Tuned ladder (keep Lovable desktop **below** the floor so cache pings cannot
-    Tier-A-claim a multi-hour WordPress/Chrome day):
+    Current ladder (relative order matters more than absolute values):
 
     ======  =====================  ===========================================
     Weight  Sources                Role

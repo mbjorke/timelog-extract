@@ -158,27 +158,41 @@ class CursorAgentTurnsTests(unittest.TestCase):
             "transcript_path": f"/Users/example/.cursor/projects/x/agent-transcripts/{cid}/{cid}.jsonl",
             "prompt": "redacted",
         }
+
+        def _input_block(payload: dict) -> str:
+            return (
+                "INPUT:\n"
+                + json.dumps(payload, indent=2)
+                + "\n\nOUTPUT:\n(empty)\n"
+            )
+
+        # tool_output embeds JSON braces — must not desync the INPUT parser.
+        noisy_tool = {
+            "hook_event_name": "postToolUse",
+            "conversation_id": cid,
+            "session_id": cid,
+            "workspace_roots": ["/Users/example/Workspace/Project/timelog-extract"],
+            "tool_name": "Shell",
+            "tool_output": json.dumps({"output": 'nested {"a":1} {"b":2} end', "exitCode": 0}),
+        }
         # Two window copies of the same turn — must not double-count.
         body = (
             "[2026-07-09T16:50:06.000Z] Hook step requested: beforeSubmitPrompt\n"
-            + json.dumps(prompt_payload, indent=2)
-            + "\n"
-            "[2026-07-09T17:05:00.000Z] Hook step requested: beforeSubmitPrompt\n"
-            + json.dumps(prompt_payload, indent=2)
-            + "\n"
-            # Noise: tool hooks must not create turns.
-            '[2026-07-09T17:06:00.000Z] Hook step requested: preToolUse\n'
-            + json.dumps(
+            + _input_block(prompt_payload)
+            + "[2026-07-09T16:51:00.000Z] Hook step requested: postToolUse\n"
+            + _input_block(noisy_tool)
+            + "[2026-07-09T17:05:00.000Z] Hook step requested: beforeSubmitPrompt\n"
+            + _input_block(prompt_payload)
+            + "[2026-07-09T17:06:00.000Z] Hook step requested: preToolUse\n"
+            + _input_block(
                 {
                     "hook_event_name": "preToolUse",
                     "conversation_id": cid,
                     "session_id": cid,
                     "workspace_roots": ["/Users/example/Workspace/Project/timelog-extract"],
                     "tool_name": "Shell",
-                },
-                indent=2,
+                }
             )
-            + "\n"
         )
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
@@ -217,6 +231,7 @@ class CursorAgentTurnsTests(unittest.TestCase):
         }
         body = (
             "[2026-07-09T18:00:00.000Z] Hook step requested: beforeSubmitPrompt\n"
+            "INPUT:\n"
             + json.dumps(payload, indent=2)
             + "\n"
         )

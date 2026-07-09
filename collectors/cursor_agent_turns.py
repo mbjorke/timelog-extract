@@ -213,39 +213,43 @@ def _collect_always_local_turn_starts(
     return buckets
 
 
+_JSON_DECODER = json.JSONDecoder()
+
+
 def _iter_hooks_json_objects(lines: list[str]):
-    """Yield (last_bracket_ts_line_or_none, obj) for top-level JSON objects in a hooks log."""
+    """Yield (last_bracket_ts_line_or_none, obj) for hook INPUT payloads.
+
+    Cursor writes each hook as a banner + ``INPUT:`` + pretty-printed JSON.
+    Brace-counting across lines is unsafe: ``tool_output`` strings embed JSON
+    with many ``{``/``}``, so a naive depth counter desyncs and later
+    ``beforeSubmitPrompt`` objects are skipped (GH-345 follow-up).
+    """
     last_ts_line: str | None = None
-    buf: list[str] | None = None
-    depth = 0
-    for line in lines:
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
         if _HOOKS_BRACKET_TS.match(line):
             last_ts_line = line
-        if buf is None:
-            if line.lstrip().startswith("{"):
-                buf = [line]
-                depth = line.count("{") - line.count("}")
-                if depth <= 0:
-                    try:
-                        obj = json.loads(line.strip())
-                    except json.JSONDecodeError:
-                        buf = None
-                        continue
-                    if isinstance(obj, dict):
-                        yield last_ts_line, obj
-                    buf = None
-            continue
-        buf.append(line)
-        depth += line.count("{") - line.count("}")
-        if depth <= 0:
+        if line.strip() == "INPUT:":
+            j = i + 1
+            while j < n and not lines[j].strip():
+                j += 1
+            if j >= n or not lines[j].lstrip().startswith("{"):
+                i += 1
+                continue
+            blob = "\n".join(lines[j:])
             try:
-                obj = json.loads("\n".join(buf))
+                obj, end = _JSON_DECODER.raw_decode(blob)
             except json.JSONDecodeError:
-                buf = None
+                i += 1
                 continue
             if isinstance(obj, dict):
                 yield last_ts_line, obj
-            buf = None
+            # Advance past the consumed JSON (end is a character offset in blob).
+            i = j + blob[:end].count("\n") + 1
+            continue
+        i += 1
 
 
 def _collect_hooks_turn_starts(

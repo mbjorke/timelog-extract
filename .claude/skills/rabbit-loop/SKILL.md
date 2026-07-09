@@ -14,6 +14,16 @@ runs autotests); you are the **generator**. After converging, the loop pushes +
 opens a PR and auto-merges the SAFE class; it pauses only for human-judgment
 changes (see Ship gate).
 
+**Step 0a (session title):** if preflight / `--chat-summary` suggests
+``#N · topic``, rename **this** Claude session with:
+
+```text
+/rename #N · topic
+```
+
+(Best-effort; never block the loop. Full matrix:
+`docs/skills/session-title-adapters.md`.)
+
 Bounds and stopping:
 - Fix only **within** `docs/decisions/agent-review-contract.md` (severity →
   allowed action; ≤5 tracked files for medium; escalate Critical / out-of-scope).

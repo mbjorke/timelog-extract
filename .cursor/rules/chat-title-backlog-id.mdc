@@ -1,0 +1,46 @@
+---
+description: When a backlog GitHub issue is in play, keep the chat/session title carrying that id
+alwaysApply: true
+---
+
+# Chat / session title carries backlog id
+
+When the conversation is about a **tracked backlog item** (GitHub issue / story),
+the chat or session title must include that id so the board and the conversation
+stay aligned.
+
+## When
+
+- Starting work on an issue (`#342`, `GH-327`, board card, task-prompt `story_id`)
+- Switching focus to a different issue mid-chat
+- Starting `/rabbit-loop` or a `task/*` implementation pass tied to an issue
+
+## Format
+
+```text
+#<github-issue> · <≤6 word topic>
+```
+
+Prefer the **GitHub issue number** (`#342`) over the story id (`GH-222`) when
+they differ — same rule as PR bodies in `AGENTS.md`. If only a story id exists
+yet, use `GH-NNN · topic` until the issue is filed.
+
+Use the preflight suggestion when present (`suggested_chat_title` /
+`--chat-summary` § Chat title).
+
+## How (this agent)
+
+Follow **`docs/skills/session-title-adapters.md`** for the product you are in:
+
+- **Cursor:** MCP `rename_chat` (`cursor-app-control`)
+- **Claude Code:** `/rename #N · topic`
+- **Zed:** ask human to click-edit the Agent Panel thread title (UI-only)
+- **Others:** product rename if any; else one-line `Chat title (manual): …`
+
+## Do not
+
+- Rename on every trivial turn
+- Put private customer names in the title
+- Block work if rename is unavailable (best-effort)
+
+Also: `docs/skills/rabbit-loop.md` § Chat title.

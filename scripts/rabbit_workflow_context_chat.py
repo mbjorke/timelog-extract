@@ -1,10 +1,52 @@
-#!/usr/bin/env python3
 """Render .rabbit-loop/preflight.json as markdown for agent/human chat."""
 
 from __future__ import annotations
 
 import json
+import re
 import sys
+
+
+def suggested_chat_title(data: dict) -> str | None:
+    """Best-effort `#N · topic` from open PR / branch (editor-agnostic hint).
+
+    Prefers an issue-like ``#N`` found in the PR title; falls back to the PR
+    number. Returns None when nothing useful can be derived.
+    """
+    branch = str(data.get("branch") or "").strip()
+    for pr in data.get("open_prs") or []:
+        if str(pr.get("branch") or "").strip() != branch:
+            continue
+        title = str(pr.get("title") or "").strip()
+        num = pr.get("number")
+        issue_m = re.search(r"#(\d+)\b", title)
+        if issue_m:
+            n = issue_m.group(1)
+        elif num is not None:
+            n = str(num)
+        else:
+            continue
+        topic = re.sub(r"#\d+\b|GH-\d+\b|[\[\]()]", " ", title, flags=re.I)
+        topic = " ".join(topic.split())
+        # Drop leading boilerplate verbs for a short tab label.
+        topic = re.sub(
+            r"^(docs|feat|fix|chore|refactor)[:\s]+", "", topic, flags=re.I
+        ).strip()
+        topic = re.sub(
+            r"\b(part of|closes|fixes|resolves)\b.*$", "", topic, flags=re.I
+        ).strip(" -–—")
+        if len(topic) > 48:
+            topic = topic[:45].rstrip() + "…"
+        return f"#{n} · {topic or 'task'}"
+
+    # Branch leaf sometimes encodes the issue (task/foo-342, docs/gh-342-bar).
+    leaf = branch.rsplit("/", 1)[-1]
+    m = re.search(r"(?:^|[-_])(?:gh-?)?(\d{2,4})(?:$|[-_])", leaf, re.I)
+    if m:
+        topic = re.sub(r"(?:^|[-_])(?:gh-?)?\d{2,4}(?:$|[-_])", "-", leaf, flags=re.I)
+        topic = " ".join(topic.replace("-", " ").replace("_", " ").split())
+        return f"#{m.group(1)} · {topic or leaf}"
+    return None
 
 
 def render_chat_summary(data: dict) -> str:
@@ -18,6 +60,23 @@ def render_chat_summary(data: dict) -> str:
         f"**mode:** {data.get('workflow_mode', '?')} · **dirty:** {dirty}",
         "",
     ]
+
+    suggestion = suggested_chat_title(data)
+    lines.append("### Chat title (step 0a)")
+    if suggestion:
+        lines.append(f"**Suggested:** `{suggestion}`")
+    else:
+        lines.append(
+            "**Suggested:** `#<issue> · short topic` "
+            "(derive from the board card / PR body when known)"
+        )
+    lines.append(
+        "If your editor can rename the conversation tab, set it now so the "
+        "backlog id follows the chat. Prefer GitHub issue `#N` over story id "
+        "`GH-…` when they differ. "
+        "See `docs/skills/rabbit-loop.md` § Chat title."
+    )
+    lines.append("")
 
     def section(title: str, items: list, bullet_fmt) -> None:
         lines.append(f"### {title}")

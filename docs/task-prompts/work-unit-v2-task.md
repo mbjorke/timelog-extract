@@ -18,7 +18,8 @@ Supersedes map-centric implementation paths under GH-222:
 
 Related (overlap / reuse): [`ab-rule-suggestions-task.md`](ab-rule-suggestions-task.md)
 (uncategorized rule preview + confirm), [`setup-config-write-safety-task.md`](setup-config-write-safety-task.md)
-(config write trust).
+(config write trust), [`anchor-plan-apply-guardrail-task.md`](anchor-plan-apply-guardrail-task.md)
+(**now** — stop bulk branch/label apply + nudge misrouting before the spike).
 
 Fixtures and examples in **this** spec are **anonymized** — no live customer domains.
 
@@ -28,7 +29,7 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
 - spec_status: `draft`
 - implementation_status: `not built`
 - created_at: `2026-06-30`
-- last_updated_at: `2026-06-30`
+- last_updated_at: `2026-07-09`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/225
 - implementation.branch: `task/work-unit-v2-docs`
 - implementation.commits: []
@@ -39,6 +40,7 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
   - `2026-06-30: Operator acceptance tables stay operator-local (outside repo) per config hygiene.`
   - `2026-06-30: Open PR disposition decided — close #221–#224; land v2 docs via new PR.`
   - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
+  - `2026-07-09: PO pass — guardrail spec (anchor-plan-apply-guardrail-task.md) is a hard dependency before spike; #267 stays next until guardrail lands.`
 
 ## Product framing
 

@@ -18,7 +18,8 @@ Supersedes map-centric implementation paths under GH-222:
 
 Related (overlap / reuse): [`ab-rule-suggestions-task.md`](ab-rule-suggestions-task.md)
 (uncategorized rule preview + confirm), [`setup-config-write-safety-task.md`](setup-config-write-safety-task.md)
-(config write trust).
+(config write trust), [`anchor-plan-apply-guardrail-task.md`](anchor-plan-apply-guardrail-task.md)
+(**now** — stop bulk branch/label apply + nudge misrouting before the spike).
 
 Fixtures and examples in **this** spec are **anonymized** — no live customer domains.
 
@@ -28,10 +29,10 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
 - spec_status: `draft`
 - implementation_status: `in progress`
 - created_at: `2026-06-30`
-- last_updated_at: `2026-06-30`
-- implementation.pr: pending (spike slice)
+- last_updated_at: `2026-07-09`
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/347
 - implementation.branch: `task/work-unit-v2-spike-267`
-- implementation.commits: []
+- implementation.commits: [`907fc84`]
 - validation.evidence: operator-local `work-unit-acceptance.md` (outside repo); `scripts/calibration/run_work_unit_spike.py`; `tests/test_work_unit_spike.py`; `bash scripts/run_autotests.sh`
 - validation.decision: `NO-GO` (operator acceptance run still required)
 - changelog:
@@ -39,7 +40,8 @@ Fixtures and examples in **this** spec are **anonymized** — no live customer d
   - `2026-06-30: Operator acceptance tables stay operator-local (outside repo) per config hygiene.`
   - `2026-06-30: Open PR disposition decided — close #221–#224; land v2 docs via new PR.`
   - `2026-06-30: Address CodeRabbit PR #225 — neutral paths, fence tags, agenda traceability.`
-  - `2026-07-09: Spike slice — work_unit_v2 classifier + acceptance evaluator + calibration script (item 1 scaffolding); operator GO still pending.`
+  - `2026-07-09: PO pass — guardrail spec (anchor-plan-apply-guardrail-task.md) is a hard dependency before spike; #267 stays next until guardrail lands.`
+  - `2026-07-09: Spike slice — work_unit_v2 classifier + acceptance evaluator + calibration script (item 1 scaffolding); operator GO still pending. PR #347.`
 
 ## Product framing
 

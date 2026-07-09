@@ -29,6 +29,9 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
+0a. Title   If this pass tracks a GitHub issue and the agent can rename the chat
+              (Cursor MCP rename_chat), set the tab to `#N · short topic` so the
+              backlog id follows the conversation. Best-effort; skip when unavailable.
 0b. Workflow scripts/rabbit_workflow_context.sh → review briefing
               (`--chat-summary` for agents in chat, or `.rabbit-loop/preflight.html` in browser).
               Acknowledge: scripts/rabbit_workflow_context.sh --ack (or rabbit_loop.sh --ack-workflow).
@@ -45,6 +48,20 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 6. Repeat   Go to 2 until CONVERGED, or hit the iteration cap, or only escalations remain.
 7. Human    Hand back the converged diff + the escalation list for maintainer review.
 ```
+
+### Chat title (backlog id follows the conversation)
+
+When the loop (or any implementation pass) is tied to a board issue, **keep the
+chat title carrying that id** — `#342 · anchor-plan guardrail`, not a vague
+topic slug. Prefer the **GitHub issue number** (`#N`) over the story id when
+they differ (same convention as PR `Closes`/`Part of` in `AGENTS.md`).
+
+- **Cursor:** MCP `rename_chat` (cursor-app-control); rule
+  `.cursor/rules/chat-title-backlog-id.mdc`.
+- **Other agents / CI:** no-op — the shell loop does not call editor APIs.
+
+This is generator hygiene, not a critic step: do it once at setup (0a), again
+only if focus moves to a different issue.
 
 ### Stopping condition (the `/goal`)
 

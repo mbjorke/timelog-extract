@@ -12,7 +12,13 @@ from collectors.cursor_composer import collect_cursor_composer_sessions
 
 
 class CursorAgentTurnsTests(unittest.TestCase):
-    def _write_composer_db(self, home: Path, composers: list[dict]) -> None:
+    def _write_composer_db(
+        self,
+        home: Path,
+        composers: list[dict],
+        *,
+        extra_rows: list[tuple[str, str]] | None = None,
+    ) -> None:
         db_path = home / "Library/Application Support/Cursor/User/globalStorage/state.vscdb"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(db_path)
@@ -21,6 +27,8 @@ class CursorAgentTurnsTests(unittest.TestCase):
             "INSERT INTO ItemTable VALUES (?, ?)",
             ("composer.composerHeaders", json.dumps({"allComposers": composers})),
         )
+        for key, value in extra_rows or []:
+            conn.execute("INSERT INTO ItemTable VALUES (?, ?)", (key, value))
         conn.commit()
         conn.close()
 
@@ -262,6 +270,8 @@ class CursorAgentTurnsTests(unittest.TestCase):
             self.assertEqual(events[0]["project"], "timelog-extract")
             # No prompt in payload → fall back to turn count.
             self.assertIn("turn", events[0]["detail"])
+            # Fixture path is not a real git repo → no fabricated branch.
+            self.assertIsNone(events[0]["anchors"].get("branch"))
 
     def test_prompt_preview_is_capped_and_single_line(self):
         from collectors.cursor_agent_turns import _prompt_preview

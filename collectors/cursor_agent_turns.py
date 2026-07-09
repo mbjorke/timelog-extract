@@ -10,11 +10,13 @@ honest replacement is ``beforeSubmitPrompt`` payloads in
 ``cursor.hooks.workspaceId-*.log`` (same ``conversation_id``, plus
 ``workspace_roots``), timestamped by the preceding ``[ISO-8601]`` log line.
 
-Composer headers still supply title/workspace for classification. When turns
-exist for a composer, composer-header heartbeats are skipped to avoid
-double-counting.
+Composer headers still supply title/workspace for classification. When a
+Multitask/Glass conversation is missing from ``composer.composerHeaders``,
+labels fall back to Glass PR-tab metadata and/or the git branch under
+``workspace_roots`` (GH-348). When turns exist for a composer, composer-header
+heartbeats are skipped to avoid double-counting.
 
-Spec context: ``docs/specs/cursor-evidence-ceiling.md`` (GH-345).
+Spec context: ``docs/specs/cursor-evidence-ceiling.md`` (GH-345 / GH-348).
 """
 
 from __future__ import annotations
@@ -36,6 +38,8 @@ from collectors.cursor_composer import (
     cursor_state_db_path,
     load_cursor_workspaces,
 )
+from collectors.cursor_glass_meta import git_branch_leaf_at_path, load_glass_agent_tab_meta
+from collectors.cursor_log_scan import cursor_structured_logs_dir, iter_log_day_dirs
 
 CURSOR_AGENT_SOURCE = "Cursor (agent)"
 
@@ -50,10 +54,6 @@ _THIN_SPACING_SECONDS = 5 * 60
 _HOOKS_TURN_EVENT = "beforeSubmitPrompt"
 # Match Zed/Conductor report snippets — never store full prompts in detail.
 _PROMPT_SNIPPET_LEN = 80
-
-
-def cursor_structured_logs_dir(home: Path) -> Path:
-    return home / "Library" / "Application Support" / "Cursor" / "logs"
 
 
 def _parse_log_ts(line: str, local_tz) -> datetime | None:
@@ -180,38 +180,41 @@ def _collect_always_local_turn_starts(
     if not logs_dir.is_dir():
         return buckets
 
-    for log_file in logs_dir.glob("**/anysphere.cursor-always-local/Cursor Structured Logs*.log"):
-        try:
-            if log_file.stat().st_mtime < from_ts:
+    for day_dir in iter_log_day_dirs(logs_dir, dt_from, dt_to, local_tz):
+        for log_file in day_dir.glob(
+            "**/anysphere.cursor-always-local/Cursor Structured Logs*.log"
+        ):
+            try:
+                if log_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
                 continue
-        except OSError:
-            continue
-        workspace_id = _workspace_id_from_log_path(log_file)
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    if "agent.turn.start" not in line:
-                        continue
-                    ts = _parse_log_ts(line, local_tz)
-                    if ts is None or not (dt_from <= ts <= dt_to):
-                        continue
-                    json_match = _JSON_TAIL_RE.search(line)
-                    if not json_match:
-                        continue
-                    try:
-                        payload = json.loads(json_match.group())
-                    except json.JSONDecodeError:
-                        continue
-                    meta = payload.get("metadata") if isinstance(payload, dict) else None
-                    if not isinstance(meta, dict):
-                        continue
-                    conversation_id = str(meta.get("conversation_id") or "").strip()
-                    if not conversation_id:
-                        continue
-                    key = (conversation_id, workspace_id)
-                    buckets.setdefault(key, []).append(ts)
-        except OSError:
-            continue
+            workspace_id = _workspace_id_from_log_path(log_file)
+            try:
+                with open(log_file, encoding="utf-8", errors="replace") as fh:
+                    for line in fh:
+                        if "agent.turn.start" not in line:
+                            continue
+                        ts = _parse_log_ts(line, local_tz)
+                        if ts is None or not (dt_from <= ts <= dt_to):
+                            continue
+                        json_match = _JSON_TAIL_RE.search(line)
+                        if not json_match:
+                            continue
+                        try:
+                            payload = json.loads(json_match.group())
+                        except json.JSONDecodeError:
+                            continue
+                        meta = payload.get("metadata") if isinstance(payload, dict) else None
+                        if not isinstance(meta, dict):
+                            continue
+                        conversation_id = str(meta.get("conversation_id") or "").strip()
+                        if not conversation_id:
+                            continue
+                        key = (conversation_id, workspace_id)
+                        buckets.setdefault(key, []).append(ts)
+            except OSError:
+                continue
     return buckets
 
 
@@ -300,40 +303,43 @@ def _collect_hooks_turn_starts(
     if not logs_dir.is_dir():
         return buckets, workspace_paths, prompts
 
-    for log_file in logs_dir.glob("**/output_*/cursor.hooks.workspaceId-*.log"):
-        try:
-            if log_file.stat().st_mtime < from_ts:
+    for day_dir in iter_log_day_dirs(logs_dir, dt_from, dt_to, local_tz):
+        for log_file in day_dir.glob("**/output_*/cursor.hooks.workspaceId-*.log"):
+            try:
+                if log_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
                 continue
-        except OSError:
-            continue
-        workspace_id = _workspace_id_from_hooks_path(log_file)
-        try:
-            text = log_file.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for ts_line, obj in _iter_hooks_json_objects(text.splitlines()):
-            if obj.get("hook_event_name") != _HOOKS_TURN_EVENT:
+            workspace_id = _workspace_id_from_hooks_path(log_file)
+            try:
+                text = log_file.read_text(encoding="utf-8", errors="replace")
+            except OSError:
                 continue
-            conversation_id = str(obj.get("conversation_id") or obj.get("session_id") or "").strip()
-            if not conversation_id:
-                continue
-            roots = obj.get("workspace_roots")
-            if isinstance(roots, list):
-                for root in roots:
-                    path = str(root or "").strip()
-                    if path:
-                        workspace_paths.setdefault(conversation_id, path)
-                        break
-            if ts_line is None:
-                continue
-            ts = _parse_hooks_bracket_ts(ts_line, local_tz)
-            if ts is None or not (dt_from <= ts <= dt_to):
-                continue
-            key = (conversation_id, workspace_id)
-            buckets.setdefault(key, []).append(ts)
-            preview = _prompt_preview(str(obj.get("prompt") or ""))
-            if preview:
-                prompts.setdefault(conversation_id, []).append((ts, preview))
+            for ts_line, obj in _iter_hooks_json_objects(text.splitlines()):
+                if obj.get("hook_event_name") != _HOOKS_TURN_EVENT:
+                    continue
+                conversation_id = str(
+                    obj.get("conversation_id") or obj.get("session_id") or ""
+                ).strip()
+                if not conversation_id:
+                    continue
+                roots = obj.get("workspace_roots")
+                if isinstance(roots, list):
+                    for root in roots:
+                        path = str(root or "").strip()
+                        if path:
+                            workspace_paths.setdefault(conversation_id, path)
+                            break
+                if ts_line is None:
+                    continue
+                ts = _parse_hooks_bracket_ts(ts_line, local_tz)
+                if ts is None or not (dt_from <= ts <= dt_to):
+                    continue
+                key = (conversation_id, workspace_id)
+                buckets.setdefault(key, []).append(ts)
+                preview = _prompt_preview(str(obj.get("prompt") or ""))
+                if preview:
+                    prompts.setdefault(conversation_id, []).append((ts, preview))
     for cid, rows in prompts.items():
         # Dedupe identical (ts, preview) from multi-window hook copies.
         seen: set[tuple[datetime, str]] = set()
@@ -402,6 +408,8 @@ def collect_cursor_agent_turns(
 
     composers = _composer_map(home)
     workspace_map = load_cursor_workspaces(home)
+    glass_tabs = load_glass_agent_tab_meta(home)
+    branch_cache: dict[str, str | None] = {}
     covered: set[str] = set()
     results: list[dict] = []
 
@@ -409,13 +417,22 @@ def collect_cursor_agent_turns(
         if not stamps:
             continue
         composer = composers.get(conversation_id, {})
+        glass = glass_tabs.get(conversation_id, {})
         name = str(composer.get("name") or "").strip()
+        if not name:
+            name = str(glass.get("label") or "").strip()
         workspace = _composer_workspace_path(composer) if composer else ""
         if not workspace and workspace_id:
             workspace = workspace_map.get(workspace_id, "")
         if not workspace:
             workspace = hooks_workspace_paths.get(conversation_id, "")
         _git_text, branch = _composer_git_context(composer) if composer else ("", None)
+        if not branch:
+            branch = glass.get("branch") or None
+        if not branch and workspace:
+            if workspace not in branch_cache:
+                branch_cache[workspace] = git_branch_leaf_at_path(workspace)
+            branch = branch_cache[workspace]
         dir_leaf = _path_dir_leaf(workspace) if workspace else None
         if workspace_id and not dir_leaf:
             mapped = workspace_map.get(workspace_id, "")
@@ -429,7 +446,7 @@ def collect_cursor_agent_turns(
         haystack = (
             _composer_classification_haystack(composer, title=name)
             if composer
-            else " ".join(part for part in (label, workspace) if part)
+            else " ".join(part for part in (label, workspace, branch) if part)
         )
         project = classify_project(haystack, profiles)
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)

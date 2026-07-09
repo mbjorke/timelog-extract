@@ -153,14 +153,40 @@ GH-345): always-local logs no longer emit `agent.turn.start` (last seen
 
 Collector: `collectors/cursor_agent_turns.py` unions always-local + hooks, then
 dedupes by `conversation_id` so multi-window hook copies do not double-count.
+Log scans are restricted to Cursor day folders that can overlap the report
+window (folder name `YYYYMMDDTHHMMSS`, ±1 day pad) so a large live
+`~/Library/.../Cursor/logs` tree does not hang old golden/report windows.
 Report detail may include a **privacy-capped** user prompt preview (80 chars,
 single line; no role tag — hooks only carry user prompts); full prompts and
 transcript bodies are not copied into events.
 
+### Label enrichment when `composerHeaders` is missing (GH-348)
+
+Multitask/Glass chats often have a hooks `conversation_id` that is **absent**
+from `composer.composerHeaders`. Without a header, the collector used to fall
+back to the `workspace_roots` directory leaf only (no chat title, no
+`(@branch)`).
+
+Fallback order for display/anchors (composer header still wins when present):
+
+1. Glass PR tabs in global `state.vscdb` (`cursor/glass.tabs.v2/*/…`) —
+   `ownerAgentId` = conversation_id; tab `label` and optional `props.branchName`
+   (coverage is **partial** — PR tabs only; many Multitask chats have no tab).
+   Labels matching `PR #<digits>` (optional `: …`) are **rejected** as session
+   titles (GH-351) so an open PR tab does not sticky-paint Multitask rows;
+   `branchName` / git HEAD fallback still apply.
+2. Current git branch under `workspace_roots` (`git branch --show-current`),
+   privacy-leafed like other branch anchors (generic `main`/`develop` rejected).
+
+Agent transcripts and `rename_chat` titles are **not** used (no durable
+title/branch fields joinable today). Classic composers with headers are
+unchanged.
+
 This remains **log-based evidence**:
 
 - rotation and retention match ordinary IDE logs, not durable audit storage;
-- attribution requires joins (conversation_id → composer header → workspace);
+- attribution requires joins (conversation_id → composer header / Glass tab /
+  workspace_roots → workspace);
 - source role is still `direct_work_evidence` via log scrape — fragile and
   policy-discouraged for IDE forks, but the only honest per-turn local signal.
 

@@ -15,8 +15,6 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
-    AUDIT_SCHEMA_VERSION,
-    build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
     event_matches_tracked_url,
@@ -240,34 +238,7 @@ class ProjectsAuditTests(unittest.TestCase):
         # Events without anchors do not produce a row.
         self.assertNotIn(("dir", ""), rows)
 
-    def test_anchor_plan_from_audit_only_unanchored(self) -> None:
-        audit = {
-            "schema_version": AUDIT_SCHEMA_VERSION,
-            "command": "gittan projects-audit",
-            "options": {},
-            "top_signals": [
-                {"kind": "host", "value": "other.test", "hits": 14, "anchored": False, "rule_type": "tracked_urls"},
-                {"kind": "dir", "value": "project-gamma", "hits": 12, "anchored": False, "rule_type": "match_terms"},
-                {"kind": "branch", "value": "gamma-feature", "hits": 9, "anchored": False, "rule_type": "match_terms"},
-                {"kind": "dir", "value": "project-alpha", "hits": 30, "anchored": True, "rule_type": "match_terms"},
-                {"kind": "dir", "value": "noise", "hits": 1, "anchored": False, "rule_type": "match_terms"},
-            ],
-        }
-        plan = build_anchor_plan_from_audit(audit, min_hits=2)
-        self.assertEqual(plan["schema_version"], 1)
-        self.assertEqual(plan["meta"]["anchor_candidates"], 3)
-        adds = {(a["project_name"], a["rule_type"], a["rule_value"], a["anchor_kind"]) for a in plan["additions"]}
-        # host → tracked_urls; anchors → match_terms
-        self.assertIn(("other.test", "tracked_urls", "other.test", "host"), adds)
-        self.assertIn(("project-gamma", "match_terms", "project-gamma", "dir"), adds)
-        self.assertIn(("gamma-feature", "match_terms", "gamma-feature", "branch"), adds)
-        # anchored signal excluded; below-min-hits signal excluded
-        self.assertNotIn(("project-alpha", "match_terms", "project-alpha", "dir"), adds)
-        self.assertNotIn(("noise", "match_terms", "noise", "dir"), adds)
-
-    def test_anchor_plan_rejects_wrong_audit_schema(self) -> None:
-        with self.assertRaises(ValueError):
-            build_anchor_plan_from_audit({"schema_version": 99, "top_signals": []})
+    # GH-342 plan/apply guardrail tests live in test_anchor_plan_guardrail.py.
 
     def test_projects_anchor_applies_tracked_url(self) -> None:
         cfg_path = Path(self._temp_json())
@@ -281,7 +252,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "tracked_urls", "rule_value": "other.test"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "tracked_urls",
+                    "rule_value": "other.test",
+                    "anchor_kind": "host",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
@@ -306,7 +282,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "timelog-extract"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "timelog-extract",
+                    "anchor_kind": "dir",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
@@ -333,7 +314,12 @@ class ProjectsAuditTests(unittest.TestCase):
         plan = {
             "schema_version": 1,
             "additions": [
-                {"project_name": "existing", "rule_type": "match_terms", "rule_value": "newterm"},
+                {
+                    "project_name": "existing",
+                    "rule_type": "match_terms",
+                    "rule_value": "newterm",
+                    "anchor_kind": "dir",
+                },
             ],
         }
         plan_path.write_text(json.dumps(plan), encoding="utf-8")

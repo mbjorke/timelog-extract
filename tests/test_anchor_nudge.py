@@ -28,12 +28,14 @@ class StatusAnchorLineTests(unittest.TestCase):
     def test_listing_includes_kind_label(self):
         line = status_anchor_line([{"kind": "branch", "value": "project-beta", "hits": 120}])
         self.assertIn("project-beta (git branch, 120)", line)
+        self.assertIn("session context", line)
 
     def test_truncates_and_counts_remainder(self):
         anchors = [{"kind": "dir", "value": f"d{i}", "hits": 10 - i} for i in range(5)]
         line = status_anchor_line(anchors)
         self.assertIn("5 unmapped activity anchors", line)
         self.assertIn("+2 more", line)
+        self.assertIn("gittan map", line)
 
 
 class InteractiveAnchorFlowTests(unittest.TestCase):
@@ -128,7 +130,7 @@ class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
     def test_runs_flow_when_anchors_present(self):
         console = MagicMock()
         report = SimpleNamespace(
-            all_events=[{"anchors": {"label": "session alpha"}} for _ in range(25)],
+            all_events=[{"anchors": {"dir": "timelog-extract"}} for _ in range(25)],
             profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
             config_path="/tmp/projects.json",
         )
@@ -140,6 +142,24 @@ class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
             confirm.return_value.ask.return_value = True
             self.assertTrue(maybe_run_interactive_anchor_mapping(console, report))
             run_flow.assert_called_once()
+            passed = run_flow.call_args.args[1]
+            self.assertTrue(all(a.get("kind") == "dir" for a in passed))
+
+    def test_skips_interactive_when_only_ephemeral(self):
+        console = MagicMock()
+        report = SimpleNamespace(
+            all_events=[{"anchors": {"label": "session alpha"}} for _ in range(25)],
+            profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
+            config_path="/tmp/projects.json",
+        )
+        with (
+            patch("core.anchor_nudge.should_prompt", return_value=True),
+            patch("questionary.confirm") as confirm,
+            patch("core.anchor_nudge.run_interactive_anchor_flow") as run_flow,
+        ):
+            self.assertFalse(maybe_run_interactive_anchor_mapping(console, report))
+            confirm.assert_not_called()
+            run_flow.assert_not_called()
 
     def test_uses_precomputed_anchors_without_rescanning_report(self):
         console = MagicMock()
@@ -148,7 +168,7 @@ class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
             profiles=[{"name": "project-alpha", "match_terms": ["other"]}],
             config_path="/tmp/projects.json",
         )
-        anchors = [{"kind": "label", "value": "session alpha", "hits": 25}]
+        anchors = [{"kind": "dir", "value": "timelog-extract", "hits": 25}]
         with (
             patch("core.anchor_nudge.should_prompt", return_value=True),
             patch("core.report_nudges.unanchored_anchors_for_report") as rescan,
@@ -157,7 +177,8 @@ class MaybeRunInteractiveAnchorMappingTests(unittest.TestCase):
         ):
             confirm.return_value.ask.return_value = False
             maybe_run_interactive_anchor_mapping(console, report, anchors=anchors)
-        rescan.assert_not_called()
+            rescan.assert_not_called()
+            confirm.assert_called_once()
 
 
 if __name__ == "__main__":

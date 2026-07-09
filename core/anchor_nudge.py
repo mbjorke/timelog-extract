@@ -13,6 +13,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from core.anchor_plan import is_ephemeral_anchor_kind
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
@@ -24,6 +25,7 @@ from core.projects_audit import ANCHOR_KIND_LABELS
 _CREATE_PREFIX = "Create new project: "
 _SKIP = "Skip"
 _STOP = "Stop mapping"
+_DURABLE_KINDS = frozenset({"repo", "dir"})
 
 
 def _kind_label(kind: str) -> str:
@@ -39,7 +41,13 @@ def status_anchor_line(anchors: list[dict]) -> str | None:
     )
     more = "" if len(anchors) <= 3 else f" +{len(anchors) - 3} more"
     plural = "" if len(anchors) == 1 else "s"
-    return f"⚠ {len(anchors)} unmapped activity anchor{plural}: {listed}{more}"
+    stable = [a for a in anchors if a.get("kind") in {"repo", "dir"}]
+    hint = (
+        " — attach repo/dir to an existing line via `gittan map`"
+        if stable
+        else " — branch/title are session context, not permanent match_terms"
+    )
+    return f"⚠ {len(anchors)} unmapped activity anchor{plural}: {listed}{more}{hint}"
 
 
 def should_prompt() -> bool:
@@ -74,7 +82,13 @@ def run_interactive_anchor_flow(
         value = str(entry.get("value", "")).strip()
         if not value:
             continue
-        kind = _kind_label(entry.get("kind", ""))
+        raw_kind = str(entry.get("kind", "")).strip()
+        # GH-342: interactive map only writes durable repo/dir match_terms.
+        if is_ephemeral_anchor_kind(raw_kind) or (
+            raw_kind and raw_kind not in _DURABLE_KINDS
+        ):
+            continue
+        kind = _kind_label(raw_kind)
         choices = [*existing, f"{_CREATE_PREFIX}{value}", _SKIP, _STOP]
         answer = questionary.select(
             f"Map {kind} '{value}' ({entry.get('hits', 0)} events) to project",
@@ -127,16 +141,31 @@ def maybe_run_interactive_anchor_mapping(
     if not anchors:
         return False
 
-    import questionary
-
+    durable = [
+        a
+        for a in anchors
+        if str(a.get("kind", "")).strip() in _DURABLE_KINDS
+    ]
     line = status_anchor_line(anchors)
     if line:
         console.print(line)
+    if not durable:
+        console.print(
+            "[dim]Branch/session-title hits are session context — not offered as "
+            "permanent match_terms. Attach repo/dir via `gittan map` when those appear.[/dim]"
+        )
+        return False
+
+    import questionary
+
     if not questionary.confirm(
-        "Map activity anchors (working dirs, branches, session titles) to projects?",
+        "Map durable activity anchors (git repos / working dirs) to existing projects?",
         default=True,
     ).ask():
-        console.print("[dim]Skipped — run `gittan map` anytime to map anchors.[/dim]")
+        console.print(
+            "[dim]Skipped — run `gittan map` to attach repo/dir to an existing line. "
+            "Branch/session-title hits are context, not default match_terms.[/dim]"
+        )
         return False
 
     config = str(
@@ -151,7 +180,7 @@ def maybe_run_interactive_anchor_mapping(
 
     applied = run_interactive_anchor_flow(
         console,
-        anchors,
+        durable,
         list(getattr(report, "profiles", []) or []),
         config,
     )

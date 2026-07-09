@@ -25,7 +25,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. |
 | — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. |
 | — | `projects` | Manage project profiles interactively. |
-| — | `projects-anchor` | Add rules to projects from an anchor plan (unanchored signals: hosts, dirs, branches, titles). |
+| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). |
 | — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). |
 | — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. |
 | — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. |

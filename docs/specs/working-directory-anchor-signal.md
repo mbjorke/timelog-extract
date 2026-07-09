@@ -63,10 +63,13 @@ git remote config only (no network). See
    true if a profile rule already covers the value (the same rules
    classification uses).
 3. Suggestion/apply loop: `projects-audit --write-anchor-plan PATH` writes a
-   reviewable plan of rule additions for unanchored signals (any kind, each
-   tagged with `anchor_kind` and its own `rule_type`); `projects-anchor -i PATH
-   [--dry-run]` applies it (with backup, `match_terms` or `tracked_urls`),
-   mirroring the trim flow.
+   reviewable plan. **Default apply candidates** are stable kinds only
+   (`host` → `tracked_urls`; `repo` / `dir` → `match_terms`) at
+   `min_hits >= 20`. `branch` / `label` land under `inventory` (session
+   context) unless `--include-ephemeral-kinds`. Use `--unsafe-low-floor` only
+   when you intentionally want `min_hits=1`. `projects-anchor -i PATH
+   [--dry-run]` applies apply rows (skips ephemeral kinds unless
+   `--include-ephemeral-kinds`), with backup — mirroring the trim flow.
 4. Automatic surfacing (modal wall): `status` shows a one-line warning when
    unmapped **activity anchors** (`dir` / `branch` / `label` only — not web
    hosts) carry real activity and — on an interactive TTY — offers to map them

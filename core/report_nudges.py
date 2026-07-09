@@ -177,7 +177,12 @@ def build_unanchored_anchors_nudge(
     min_hits: int = UNANCHORED_ANCHOR_NUDGE_MIN_HITS,
     anchors: list[dict] | None = None,
 ) -> str | None:
-    """Multi-line nudge listing unmapped activity anchors (report surface)."""
+    """Multi-line nudge listing unmapped activity anchors (report surface).
+
+    Routes by kind (GH-342): repo/dir → attach to an existing customer/line via
+    ``gittan map``; branch/label → session context / review — not bulk
+    ``projects-audit --write-anchor-plan`` or permanent match_terms.
+    """
     if anchors is None:
         anchors = unanchored_anchors_for_report(report, min_hits=min_hits)
     if not anchors:
@@ -186,9 +191,30 @@ def build_unanchored_anchors_nudge(
         f"{a['value']} ({ANCHOR_KIND_LABELS.get(a['kind'], a['kind'])}, {a['hits']})"
         for a in anchors[:5]
     )
-    return (
+    stable = [a for a in anchors if a.get("kind") in {"repo", "dir"}]
+    ephemeral = [a for a in anchors if a.get("kind") in {"branch", "label"}]
+
+    lines = [
         f"Nudge: {len(anchors)} unmapped activity anchor"
-        f"{'' if len(anchors) == 1 else 's'} with activity: {listed}. "
-        "Run `gittan map` to map session titles, working dirs, and git repos interactively "
-        "(batch alternative: `gittan projects-audit --write-anchor-plan`)."
-    )
+        f"{'' if len(anchors) == 1 else 's'} with activity: {listed}."
+    ]
+    if stable:
+        lines.append(
+            "For git repos / working dirs: attach the signal to an existing "
+            "customer/line with `gittan map` (do not invent a profile per branch)."
+        )
+    if ephemeral and not stable:
+        lines.append(
+            "Branch / session-title signals are session context — review them in "
+            "`gittan report` / `gittan review`; do not promote them to permanent "
+            "match_terms."
+        )
+    elif ephemeral:
+        lines.append(
+            "Branch / session-title hits are context only — ignore for config, "
+            "or review in `gittan report`; do not bulk-apply them as match_terms."
+        )
+    if not stable and not ephemeral:
+        # host-only or unknown kinds — keep a safe generic pointer
+        lines.append("Review with `gittan map` or `gittan review` for the matching signal kind.")
+    return " ".join(lines)

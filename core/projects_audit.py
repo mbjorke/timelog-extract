@@ -16,8 +16,6 @@ AUDIT_SCHEMA_VERSION = 2
 
 TRIM_PLAN_SCHEMA_VERSION = 1
 
-ANCHOR_PLAN_SCHEMA_VERSION = 1
-
 # Activity-anchor kinds preserved on events (core.events.make_event) and surfaced
 # by the audit: git repo slug, working directory, git branch, and session title.
 # All are already part of the classification haystack for their source, so the
@@ -424,65 +422,6 @@ def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[s
             "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
             "audit_options": audit_payload.get("options", {}),
             "zero_hit_candidates": len(removals),
-        },
-    }
-
-
-def build_anchor_plan_from_audit(
-    audit_payload: dict[str, Any], *, min_hits: int = 1
-) -> dict[str, Any]:
-    """Build a `projects-anchor` plan (schema v1): rule additions from signals.
-
-    Each addition is an **unanchored** signal (`top_signals` row with
-    `anchored=false`) — a web host (→ tracked_urls), or a working directory, git
-    branch, or session title (→ match_terms) — seen at least `min_hits` times in
-    the audit window. Each row carries its own `rule_type`; the signal value is
-    proposed as the rule value (tagged with its `anchor_kind`), and `project_name`
-    defaults to that same value — review and edit it (and trim long title values)
-    to target an existing project before applying. Applying via
-    `gittan projects-anchor` creates a new project if the name does not exist.
-    """
-    sv = int(audit_payload.get("schema_version", 0))
-    if sv != AUDIT_SCHEMA_VERSION:
-        raise ValueError(f"audit schema_version must be {AUDIT_SCHEMA_VERSION}, got {sv}")
-
-    floor = max(1, int(min_hits))
-    additions: list[dict[str, Any]] = []
-    for row in audit_payload.get("top_signals") or []:
-        if row.get("anchored"):
-            continue
-        value = str(row.get("value", "")).strip()
-        hits = int(row.get("hits", 0))
-        if not value or hits < floor:
-            continue
-        kind = str(row.get("kind", ""))
-        additions.append(
-            {
-                "project_name": value,
-                "rule_type": str(row.get("rule_type") or SIGNAL_RULE_TYPE.get(kind, "match_terms")),
-                "rule_value": value,
-                "anchor_kind": kind,
-                "hits": hits,
-            }
-        )
-
-    note = (
-        "Candidate rules from unanchored signals (anchor_kind = host/dir/branch/label) in the audit "
-        "window only; rule_type is tracked_urls for hosts, match_terms otherwise. project_name "
-        "defaults to the signal value — edit it to map to an existing project, and trim long "
-        "session-title values (applying an unknown name creates a new project). Apply: "
-        "gittan projects-anchor -i <file> --dry-run then rerun without --dry-run."
-    )
-
-    return {
-        "schema_version": ANCHOR_PLAN_SCHEMA_VERSION,
-        "note": note,
-        "additions": additions,
-        "meta": {
-            "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
-            "audit_options": audit_payload.get("options", {}),
-            "min_hits": floor,
-            "anchor_candidates": len(additions),
         },
     }
 

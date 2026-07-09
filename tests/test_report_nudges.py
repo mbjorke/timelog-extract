@@ -103,6 +103,8 @@ class UnanchoredAnchorsNudgeTests(unittest.TestCase):
         assert text is not None
         self.assertIn("timelog-extract", text)
         self.assertIn("gittan map", text)
+        self.assertNotIn("write-anchor-plan", text)
+        self.assertIn("existing customer/line", text)
 
     def test_lists_unanchored_branch_and_label(self):
         events = (
@@ -115,6 +117,14 @@ class UnanchoredAnchorsNudgeTests(unittest.TestCase):
         self.assertEqual(kinds, {"branch": "project-beta", "label": "project beta redesign"})
         # Sorted by hits descending across kinds.
         self.assertEqual(anchors[0]["kind"], "branch")
+        text = build_unanchored_anchors_nudge(report, min_hits=20)
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertIn("session context", text)
+        self.assertNotIn("write-anchor-plan", text)
+        self.assertNotIn("projects-anchor", text.lower().replace("`", ""))
+        # Soft mention of not promoting — avoid pointing at bulk apply.
+        self.assertIn("match_terms", text)
 
     def test_anchored_dir_is_not_nudged(self):
         events = [{"anchors": {"dir": "timelog-extract"}} for _ in range(30)]

@@ -46,6 +46,17 @@ SIGNAL_RULE_TYPE = {
     "label": "match_terms",
 }
 
+# GH-342: branch/label are inventory, not default apply targets. Repo/dir/host
+# may become permanent rules; feature branches and session titles must not.
+EPHEMERAL_ANCHOR_KINDS = frozenset({"branch", "label"})
+# Default floor for apply candidates — matches UNANCHORED_ANCHOR_NUDGE_MIN_HITS.
+ANCHOR_PLAN_APPLY_MIN_HITS = 20
+
+
+def is_ephemeral_anchor_kind(kind: str) -> bool:
+    """True for branch/label — session context, not default match_terms material."""
+    return str(kind or "").strip().lower() in EPHEMERAL_ANCHOR_KINDS
+
 HIT_DEFINITION_V1 = (
     "match_terms: each event is counted once per term if the term is a case-insensitive "
     "substring of the event detail (same text field used by project classification). "
@@ -429,18 +440,23 @@ def build_zero_hit_trim_plan_from_audit(audit_payload: dict[str, Any]) -> dict[s
 
 
 def build_anchor_plan_from_audit(
-    audit_payload: dict[str, Any], *, min_hits: int = 1
+    audit_payload: dict[str, Any],
+    *,
+    min_hits: int = ANCHOR_PLAN_APPLY_MIN_HITS,
+    include_ephemeral_kinds: bool = False,
 ) -> dict[str, Any]:
     """Build a `projects-anchor` plan (schema v1): rule additions from signals.
 
-    Each addition is an **unanchored** signal (`top_signals` row with
-    `anchored=false`) — a web host (→ tracked_urls), or a working directory, git
-    branch, or session title (→ match_terms) — seen at least `min_hits` times in
-    the audit window. Each row carries its own `rule_type`; the signal value is
-    proposed as the rule value (tagged with its `anchor_kind`), and `project_name`
-    defaults to that same value — review and edit it (and trim long title values)
-    to target an existing project before applying. Applying via
-    `gittan projects-anchor` creates a new project if the name does not exist.
+    Default apply candidates are **stable** unanchored signals only (`host` →
+    tracked_urls; `repo` / `dir` → match_terms) at ``min_hits`` (default
+    :data:`ANCHOR_PLAN_APPLY_MIN_HITS`). Ephemeral kinds (`branch`, `label`) go
+    to ``inventory`` unless ``include_ephemeral_kinds`` is true — they are
+    session context, not permanent config (GH-342).
+
+    Each apply row carries ``rule_type`` / ``anchor_kind``; ``project_name``
+    defaults to the signal value — edit it to target an existing project before
+    applying. ``gittan projects-anchor`` creates a new project if the name does
+    not exist.
     """
     sv = int(audit_payload.get("schema_version", 0))
     if sv != AUDIT_SCHEMA_VERSION:
@@ -448,6 +464,7 @@ def build_anchor_plan_from_audit(
 
     floor = max(1, int(min_hits))
     additions: list[dict[str, Any]] = []
+    inventory: list[dict[str, Any]] = []
     for row in audit_payload.get("top_signals") or []:
         if row.get("anchored"):
             continue
@@ -456,33 +473,41 @@ def build_anchor_plan_from_audit(
         if not value or hits < floor:
             continue
         kind = str(row.get("kind", ""))
-        additions.append(
-            {
-                "project_name": value,
-                "rule_type": str(row.get("rule_type") or SIGNAL_RULE_TYPE.get(kind, "match_terms")),
-                "rule_value": value,
-                "anchor_kind": kind,
-                "hits": hits,
-            }
-        )
+        entry = {
+            "project_name": value,
+            "rule_type": str(row.get("rule_type") or SIGNAL_RULE_TYPE.get(kind, "match_terms")),
+            "rule_value": value,
+            "anchor_kind": kind,
+            "hits": hits,
+        }
+        if is_ephemeral_anchor_kind(kind) and not include_ephemeral_kinds:
+            inventory.append(entry)
+            continue
+        additions.append(entry)
 
     note = (
-        "Candidate rules from unanchored signals (anchor_kind = host/dir/branch/label) in the audit "
-        "window only; rule_type is tracked_urls for hosts, match_terms otherwise. project_name "
-        "defaults to the signal value — edit it to map to an existing project, and trim long "
-        "session-title values (applying an unknown name creates a new project). Apply: "
-        "gittan projects-anchor -i <file> --dry-run then rerun without --dry-run."
+        "Apply candidates are stable unanchored signals only (host → tracked_urls; "
+        "repo/dir → match_terms) at min_hits. branch/label stay under inventory "
+        "(session context — not default match_terms) unless the plan was built with "
+        "--include-ephemeral-kinds. project_name defaults to the signal value — edit "
+        "it to map to an existing project. Apply: gittan projects-anchor -i <file> "
+        "--dry-run then rerun without --dry-run."
     )
 
     return {
         "schema_version": ANCHOR_PLAN_SCHEMA_VERSION,
         "note": note,
         "additions": additions,
+        "inventory": inventory,
         "meta": {
             "source_audit_command": audit_payload.get("command", "gittan projects-audit"),
             "audit_options": audit_payload.get("options", {}),
             "min_hits": floor,
             "anchor_candidates": len(additions),
+            "inventory_candidates": len(inventory),
+            "include_ephemeral_kinds": bool(include_ephemeral_kinds),
+            "ephemeral_kinds_excluded_from_apply": sorted(EPHEMERAL_ANCHOR_KINDS),
+            "default_apply_kinds": ["host", "repo", "dir"],
         },
     }
 

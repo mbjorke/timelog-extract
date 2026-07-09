@@ -23,12 +23,14 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.projects_audit import (
+    ANCHOR_PLAN_APPLY_MIN_HITS,
     ANCHOR_PLAN_SCHEMA_VERSION,
     SIGNAL_KIND_LABELS,
     TRIM_PLAN_SCHEMA_VERSION,
     build_anchor_plan_from_audit,
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
+    is_ephemeral_anchor_kind,
 )
 
 
@@ -77,13 +79,36 @@ def projects_audit(
         typer.Option(
             "--write-anchor-plan",
             help=(
-                "Write anchor-plan JSON (schema v1) to PATH: rule additions for unanchored signals "
-                "(top_signals: web hosts → tracked_urls; working dirs, git branches, session titles → "
-                "match_terms) seen in this window. project_name defaults to the signal value — edit to "
-                "map to an existing project. Review then: projects-anchor -i PATH --dry-run."
+                "Write anchor-plan JSON (schema v1) to PATH: apply candidates for stable "
+                f"unanchored signals (host → tracked_urls; repo/dir → match_terms) at "
+                f"min_hits>={ANCHOR_PLAN_APPLY_MIN_HITS}. branch/label go to inventory only "
+                "(use --include-ephemeral-kinds to promote them). Edit project_name to map "
+                "to an existing project. Review then: projects-anchor -i PATH --dry-run."
             ),
         ),
     ] = None,
+    include_ephemeral_kinds: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephemeral-kinds",
+            help=(
+                "Include branch/label in apply candidates (default: inventory only). "
+                "Ephemeral kinds are session context — prefer attaching repo/dir to an "
+                "existing line instead of permanent match_terms."
+            ),
+        ),
+    ] = False,
+    unsafe_low_floor: Annotated[
+        bool,
+        typer.Option(
+            "--unsafe-low-floor",
+            help=(
+                f"Allow min_hits=1 for apply candidates (default floor is "
+                f"{ANCHOR_PLAN_APPLY_MIN_HITS}). Prints a warning; one-off noise becomes "
+                "easy to promote into config."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Count match_terms / tracked_urls hits over deduped collector events (read-only)."""
     from rich.console import Console
@@ -138,13 +163,26 @@ def projects_audit(
             )
 
     if write_anchor_plan:
-        plan = build_anchor_plan_from_audit(payload)
+        floor = 1 if unsafe_low_floor else ANCHOR_PLAN_APPLY_MIN_HITS
+        if unsafe_low_floor and not json_out:
+            console.print(
+                "[yellow]Warning:[/yellow] --unsafe-low-floor sets min_hits=1; "
+                "one-off branch/label/dir noise can become permanent match_terms."
+            )
+        plan = build_anchor_plan_from_audit(
+            payload,
+            min_hits=floor,
+            include_ephemeral_kinds=include_ephemeral_kinds,
+        )
         out_path = Path(write_anchor_plan).expanduser()
         out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if not json_out:
+            inv_n = int(plan["meta"].get("inventory_candidates", 0) or 0)
+            inv_note = f", {inv_n} inventory (branch/label)" if inv_n else ""
             console.print(
-                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} candidate signals) "
-                f"to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}). "
+                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} apply candidates"
+                f"{inv_note}) to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}, "
+                f"min_hits={plan['meta']['min_hits']}). "
                 f"Edit project_name to map to existing projects; then "
                 f"`gittan projects-anchor -i {out_path}` --dry-run.[/dim]"
             )
@@ -296,11 +334,19 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
         pn = str(item.get("project_name", "")).strip()
         rt = str(item.get("rule_type", "match_terms")).strip() or "match_terms"
         rv = str(item.get("rule_value", "")).strip()
+        kind = str(item.get("anchor_kind", "")).strip()
         if not pn or not rv:
             raise ValueError(f"additions[{idx}]: project_name and rule_value required")
         if rt not in {"match_terms", "tracked_urls"}:
             raise ValueError(f"additions[{idx}]: rule_type must be match_terms or tracked_urls")
-        out.append({"project_name": pn, "rule_type": rt, "rule_value": rv})
+        out.append(
+            {
+                "project_name": pn,
+                "rule_type": rt,
+                "rule_value": rv,
+                "anchor_kind": kind,
+            }
+        )
     return out
 
 
@@ -312,8 +358,19 @@ def projects_anchor(
         typer.Option("-i", "--input", help="JSON file with additions (use - for stdin)"),
     ] = None,
     dry_run: Annotated[bool, typer.Option(help="Print planned additions only; no write")] = False,
+    include_ephemeral_kinds: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephemeral-kinds",
+            help=(
+                "Apply branch/label rows (default: skip them). Prefer attaching repo/dir "
+                "to an existing customer/line instead of permanent match_terms from "
+                "ephemeral session context."
+            ),
+        ),
+    ] = False,
 ) -> None:
-    """Add rules to projects from an anchor plan (unanchored signals: hosts, dirs, branches, titles)."""
+    """Add rules from an anchor plan (stable signals: hosts, repos, dirs by default)."""
     from rich.console import Console
 
     console = Console()
@@ -327,11 +384,35 @@ def projects_anchor(
         console.print("[yellow]No additions in input; nothing to do.[/yellow]")
         raise typer.Exit(code=0)
 
+    skipped: list[str] = []
+    apply_rows: list[dict[str, Any]] = []
+    for item in additions:
+        kind = item.get("anchor_kind") or ""
+        if is_ephemeral_anchor_kind(kind) and not include_ephemeral_kinds:
+            skipped.append(
+                f"skip ephemeral {kind}: {item['project_name']} "
+                f"{item['rule_type']}={item['rule_value']!r}"
+            )
+            continue
+        apply_rows.append(item)
+
+    for line in skipped:
+        console.print(f"[dim]{line}[/dim]")
+
+    if not apply_rows:
+        console.print(
+            "[yellow]No apply candidates left "
+            "(plan was only ephemeral branch/label rows, or empty after filter). "
+            "Re-run with --include-ephemeral-kinds only if you intentionally want "
+            "permanent match_terms from session context.[/yellow]"
+        )
+        raise typer.Exit(code=1)
+
     cfg_path = Path(projects_config).expanduser()
     base = load_projects_config_payload(cfg_path)
     work = copy.deepcopy(base) if dry_run else base
     preview: list[str] = []
-    for item in additions:
+    for item in apply_rows:
         _rt, _rv, created = apply_rule_to_project(
             work,
             project_name=item["project_name"],

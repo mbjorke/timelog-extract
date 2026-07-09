@@ -29,9 +29,10 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 
 ```text
 0. Setup    Work on a task/* branch from origin/main (a worktree is ideal). Base = origin/main.
-0a. Title   If this pass tracks a GitHub issue and the agent can rename the chat
-              (Cursor MCP rename_chat), set the tab to `#N · short topic` so the
-              backlog id follows the conversation. Best-effort; skip when unavailable.
+0a. Title   If this pass tracks a GitHub issue, apply the suggested `#N · topic`
+              chat/session title using the adapter for **this** agent
+              (`docs/skills/session-title-adapters.md`). Best-effort; skip when
+              the product has no rename affordance.
 0b. Workflow scripts/rabbit_workflow_context.sh → review briefing
               (`--chat-summary` for agents in chat, or `.rabbit-loop/preflight.html` in browser).
               Acknowledge: scripts/rabbit_workflow_context.sh --ack (or rabbit_loop.sh --ack-workflow).
@@ -61,9 +62,8 @@ they differ (same convention as PR `Closes`/`Part of` in `AGENTS.md`).
 | Layer | Responsibility |
 | --- | --- |
 | Shell / preflight | **Suggest** `#N · topic` in `--chat-summary`, `preflight.json` (`suggested_chat_title`), HTML, and `rabbit_loop.sh` stdout |
-| Generator agent | **Apply** the suggestion in the editor UI when possible |
-| Cursor | MCP `rename_chat` + `.cursor/rules/chat-title-backlog-id.mdc` + `/rabbit-loop` step 0a |
-| Claude / Zed / Codex / … | Rename the session/tab if the product supports it; otherwise acknowledge the hint and continue |
+| Generator agent | **Apply** the suggestion with that product’s rename affordance |
+| Per-agent how-to | [`session-title-adapters.md`](session-title-adapters.md) (Cursor, Claude Code, Zed, Codex, Conductor, …) |
 
 The shell loop **never** calls an editor API — that would break editor-agnosticism.
 Do step 0a once at setup; again only if focus moves to a different issue.

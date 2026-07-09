@@ -166,10 +166,10 @@ parses:
   `docs/task-prompts/`); `#NNN` is the *GitHub issue/PR number*. They do **not**
   match 1:1 (e.g. story `GH-186` is issue `#263`). Put the story id in the title
   for humans **and** the `Closes/Part of #NNN` line in the body for GitHub.
-- **Chat tab title (Cursor):** when a pass tracks a board issue, keep the chat
-  title as `#N · short topic` via MCP `rename_chat` (see
-  `.cursor/rules/chat-title-backlog-id.mdc` and `docs/skills/rabbit-loop.md`
-  § Chat title). Prefer `#N` over `GH-…` when they differ.
+- **Chat / session title:** when a pass tracks a board issue, keep the title as
+  `#N · short topic`. Shell **suggests**; each agent **applies** via
+  `docs/skills/session-title-adapters.md` (Cursor `rename_chat`, Claude Code
+  `/rename`, Zed UI, …). Prefer `#N` over `GH-…` when they differ.
 - **Slices leave a trail:** when a PR ships slice N of M, its body states what
   remains (`Deferred to slice N+1: …`) so the still-open issue reflects reality.
 - **When no keyword fits** (pure docs/tooling with no issue), that's fine — but if

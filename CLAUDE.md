@@ -8,6 +8,8 @@ If this file conflicts with `AGENTS.md`, follow `AGENTS.md` as the source of tru
 
 **Claude → Cursor handoff:** large work often starts here and continues in Cursor on the same `task/*` branch. Before ending a session, commit; read `docs/decisions/gitbutler-multi-editor-workflow.md` for handoff checklist and GitButler vs plain-git mode.
 
+**Session title (backlog id):** when the pass tracks a GitHub issue, rename early with `/rename #N · short topic` (or use the preflight suggestion). See `docs/skills/session-title-adapters.md`.
+
 ## Project overview
 
 **Gittan** (`timelog-extract` on PyPI) is a local-first CLI tool that aggregates IDE, browser, mail, and worklog activity into project-hour reports and optional invoice PDFs. The CLI command is `gittan`; the package is installed via `pip install timelog-extract`. Python 3.10+ required.

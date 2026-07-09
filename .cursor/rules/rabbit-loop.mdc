@@ -11,8 +11,8 @@ When you are getting a `task/*` branch review-ready before a PR, run the
 
 1. In **Cursor**, run **`/rabbit-loop`**, **or** open and follow
    **`docs/skills/rabbit-loop.md`** (same workflow in any editor).
-   If the pass tracks a GitHub issue, rename the chat to `#N · short topic`
-   (MCP `rename_chat`; see `.cursor/rules/chat-title-backlog-id.mdc`).
+   If the pass tracks a GitHub issue, apply the suggested `#N · short topic`
+   title via `docs/skills/session-title-adapters.md` (Cursor: MCP `rename_chat`).
 2. **Workflow preflight** (step 0b): `scripts/rabbit_workflow_context.sh` → review
    `.rabbit-loop/preflight.html` (plain git vs GitButler, local `task/*` lanes, open PRs).
    Ack: `--ack` or `rabbit_loop.sh --ack-workflow`. Rationale: GitHub #240 — do not rely on

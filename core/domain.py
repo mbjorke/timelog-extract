@@ -66,7 +66,7 @@ def _normalized_url_variants(text: str) -> str:
 
 
 @functools.lru_cache(maxsize=1024)
-def _prepare_haystack_and_word_set(text_lower: str) -> tuple[str, Set[str]]:
+def _prepare_haystack_and_word_set(text_lower: str) -> tuple[str, frozenset[str]]:
     """Pre-calculate combined text and word set for fast O(1) word boundary checks."""
     normalized_variants = _normalized_url_variants(text_lower)
     haystack_with_variants = f"{text_lower} {normalized_variants}".strip()

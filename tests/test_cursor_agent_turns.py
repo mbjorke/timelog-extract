@@ -121,6 +121,7 @@ class CursorAgentTurnsTests(unittest.TestCase):
                 events[0]["anchors"].get("label"),
                 "Freelance bridge dashboard development",
             )
+            # always-local path has no prompt text — keep turn-count detail.
             self.assertIn("turn", events[0]["detail"])
             self.assertNotIn("Freelance bridge", events[0]["detail"])
             composer_events = collect_cursor_composer_sessions(
@@ -156,7 +157,11 @@ class CursorAgentTurnsTests(unittest.TestCase):
             "conversation_id": cid,
             "workspace_roots": ["/Users/example/Workspace/Project/timelog-extract"],
             "transcript_path": f"/Users/example/.cursor/projects/x/agent-transcripts/{cid}/{cid}.jsonl",
-            "prompt": "redacted",
+            "prompt": "ship the hooks parser",
+        }
+        later_payload = {
+            **prompt_payload,
+            "prompt": "and add short prompt previews like Zed",
         }
 
         def _input_block(payload: dict) -> str:
@@ -182,7 +187,7 @@ class CursorAgentTurnsTests(unittest.TestCase):
             + "[2026-07-09T16:51:00.000Z] Hook step requested: postToolUse\n"
             + _input_block(noisy_tool)
             + "[2026-07-09T17:05:00.000Z] Hook step requested: beforeSubmitPrompt\n"
-            + _input_block(prompt_payload)
+            + _input_block(later_payload)
             + "[2026-07-09T17:06:00.000Z] Hook step requested: preToolUse\n"
             + _input_block(
                 {
@@ -216,6 +221,8 @@ class CursorAgentTurnsTests(unittest.TestCase):
             self.assertEqual(events[0]["source"], "Cursor (agent)")
             self.assertEqual(events[0]["anchors"].get("label"), "Cursor 3.10 hooks turns")
             self.assertEqual(events[0]["project"], "timelog-extract")
+            self.assertEqual(events[0]["detail"], "[user] ship the hooks parser")
+            self.assertEqual(events[1]["detail"], "[user] and add short prompt previews like Zed")
             hours = {e["timestamp"].hour for e in events}
             self.assertEqual(hours, {16, 17})
 
@@ -227,7 +234,8 @@ class CursorAgentTurnsTests(unittest.TestCase):
             "conversation_id": cid,
             "session_id": cid,
             "workspace_roots": ["/Users/example/Workspace/Project/timelog-extract"],
-            "prompt": "x",
+            # Empty prompt → turn-count detail fallback.
+            "prompt": "",
         }
         body = (
             "[2026-07-09T18:00:00.000Z] Hook step requested: beforeSubmitPrompt\n"
@@ -252,6 +260,17 @@ class CursorAgentTurnsTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0]["anchors"].get("dir"), "timelog-extract")
             self.assertEqual(events[0]["project"], "timelog-extract")
+            # No prompt in payload → fall back to turn count.
+            self.assertIn("turn", events[0]["detail"])
+
+    def test_prompt_preview_is_capped_and_single_line(self):
+        from collectors.cursor_agent_turns import _prompt_preview
+
+        long = "word " * 40 + "\nsecret-line-two"
+        preview = _prompt_preview(long)
+        self.assertEqual(len(preview), 80)
+        self.assertNotIn("\n", preview)
+        self.assertNotIn("secret-line-two", preview)
 
 
 if __name__ == "__main__":

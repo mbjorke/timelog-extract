@@ -146,12 +146,16 @@ GH-345): always-local logs no longer emit `agent.turn.start` (last seen
 2026-07-04 on client 3.9.16). Turn-ish wall-clock moved to hooks payloads:
 
 - `hook_event_name: beforeSubmitPrompt` with `conversation_id` / `session_id`
-  (same UUID as `composerId`), `workspace_roots`, optional `transcript_path`
+  (same UUID as `composerId`), `workspace_roots`, optional `transcript_path`,
+  and a full `prompt` string
 - Timestamp from the preceding `[ISO-8601]` log line (UTC), not from the JSON body
 - `preToolUse` / `postToolUse` are denser and must **not** be treated as turns
 
 Collector: `collectors/cursor_agent_turns.py` unions always-local + hooks, then
 dedupes by `conversation_id` so multi-window hook copies do not double-count.
+Report detail may include a **privacy-capped** user prompt preview (80 chars,
+single line, Zed/Conductor-style `[user] …`); full prompts and transcript bodies
+are not copied into events.
 
 This remains **log-based evidence**:
 

@@ -48,6 +48,8 @@ _JSON_TAIL_RE = re.compile(r"\{.*\}$")
 _CLUSTER_GAP_SECONDS = 15 * 60
 _THIN_SPACING_SECONDS = 5 * 60
 _HOOKS_TURN_EVENT = "beforeSubmitPrompt"
+# Match Zed/Conductor report snippets — never store full prompts in detail.
+_PROMPT_SNIPPET_LEN = 80
 
 
 def cursor_structured_logs_dir(home: Path) -> Path:
@@ -252,22 +254,51 @@ def _iter_hooks_json_objects(lines: list[str]):
         i += 1
 
 
+def _prompt_preview(text: str, *, limit: int = _PROMPT_SNIPPET_LEN) -> str:
+    """Short single-line user prompt for report detail (privacy-capped)."""
+    snippet = " ".join(str(text or "").split())
+    return snippet[:limit] if snippet else ""
+
+
+def _prompt_for_stamp(
+    prompts: list[tuple[datetime, str]],
+    ts: datetime,
+) -> str:
+    """Exact stamp match, else nearest earlier prompt in the conversation."""
+    if not prompts:
+        return ""
+    exact = ""
+    earlier = ""
+    for stamp, preview in prompts:
+        if stamp == ts and preview:
+            exact = preview
+            break
+        if stamp <= ts and preview:
+            earlier = preview
+    return exact or earlier
+
+
 def _collect_hooks_turn_starts(
     logs_dir: Path,
     dt_from: datetime,
     dt_to: datetime,
     local_tz,
-) -> tuple[dict[tuple[str, str], list[datetime]], dict[str, str]]:
+) -> tuple[
+    dict[tuple[str, str], list[datetime]],
+    dict[str, str],
+    dict[str, list[tuple[datetime, str]]],
+]:
     """Map turns from ``beforeSubmitPrompt`` in cursor.hooks logs (Cursor 3.10+).
 
-    Returns buckets plus conversation_id → first workspace_roots path (for
-    classification when composer headers / workspace map are thin).
+    Returns buckets, conversation_id → workspace_roots path, and per-conversation
+    ``(timestamp, prompt_preview)`` pairs for report detail (capped snippets only).
     """
     from_ts = dt_from.timestamp()
     buckets: dict[tuple[str, str], list[datetime]] = {}
     workspace_paths: dict[str, str] = {}
+    prompts: dict[str, list[tuple[datetime, str]]] = {}
     if not logs_dir.is_dir():
-        return buckets, workspace_paths
+        return buckets, workspace_paths, prompts
 
     for log_file in logs_dir.glob("**/output_*/cursor.hooks.workspaceId-*.log"):
         try:
@@ -300,7 +331,20 @@ def _collect_hooks_turn_starts(
                 continue
             key = (conversation_id, workspace_id)
             buckets.setdefault(key, []).append(ts)
-    return buckets, workspace_paths
+            preview = _prompt_preview(str(obj.get("prompt") or ""))
+            if preview:
+                prompts.setdefault(conversation_id, []).append((ts, preview))
+    for cid, rows in prompts.items():
+        # Dedupe identical (ts, preview) from multi-window hook copies.
+        seen: set[tuple[datetime, str]] = set()
+        ordered: list[tuple[datetime, str]] = []
+        for row in sorted(rows, key=lambda item: item[0]):
+            if row in seen:
+                continue
+            seen.add(row)
+            ordered.append(row)
+        prompts[cid] = ordered
+    return buckets, workspace_paths, prompts
 
 
 def _collect_turn_starts(
@@ -308,11 +352,35 @@ def _collect_turn_starts(
     dt_from: datetime,
     dt_to: datetime,
     local_tz,
-) -> tuple[dict[tuple[str, str], list[datetime]], dict[str, str]]:
+) -> tuple[
+    dict[tuple[str, str], list[datetime]],
+    dict[str, str],
+    dict[str, list[tuple[datetime, str]]],
+]:
     """Union always-local (≤3.9) and hooks (3.10+) turn signals."""
     always_local = _collect_always_local_turn_starts(logs_dir, dt_from, dt_to, local_tz)
-    hooks, workspace_paths = _collect_hooks_turn_starts(logs_dir, dt_from, dt_to, local_tz)
-    return _merge_stamp_buckets(always_local, hooks), workspace_paths
+    hooks, workspace_paths, prompts = _collect_hooks_turn_starts(
+        logs_dir, dt_from, dt_to, local_tz
+    )
+    return _merge_stamp_buckets(always_local, hooks), workspace_paths, prompts
+
+
+def _turn_detail(
+    *,
+    ts: datetime,
+    cluster_turns: int,
+    branch: str | None,
+    label: str,
+    prompts: list[tuple[datetime, str]],
+) -> str:
+    preview = _prompt_for_stamp(prompts, ts)
+    if preview:
+        detail = f"[user] {preview}"
+    else:
+        detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
+    if branch and not _branch_reflected_in_label(branch, label or ""):
+        detail += f" (@{branch})"
+    return detail
 
 
 def collect_cursor_agent_turns(
@@ -325,7 +393,7 @@ def collect_cursor_agent_turns(
     make_event: Callable,
 ) -> tuple[list[dict], set[str]]:
     """Return agent-turn events and composer ids covered (for composer fallback skip)."""
-    buckets, hooks_workspace_paths = _collect_turn_starts(
+    buckets, hooks_workspace_paths, prompts_by_cid = _collect_turn_starts(
         cursor_structured_logs_dir(home), dt_from, dt_to, local_tz
     )
     if not buckets:
@@ -364,19 +432,23 @@ def collect_cursor_agent_turns(
         )
         project = classify_project(haystack, profiles)
         anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        prompts = prompts_by_cid.get(conversation_id, [])
 
         emitted = False
         for cluster in _clusters(stamps):
             cluster_turns = len(cluster)
-            cluster_detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
-            if branch and not _branch_reflected_in_label(branch, name or label or ""):
-                cluster_detail += f" (@{branch})"
             for ts in _thin(cluster):
                 results.append(
                     make_event(
                         CURSOR_AGENT_SOURCE,
                         ts,
-                        cluster_detail,
+                        _turn_detail(
+                            ts=ts,
+                            cluster_turns=cluster_turns,
+                            branch=branch,
+                            label=name or label or "",
+                            prompts=prompts,
+                        ),
                         project,
                         anchors=anchors,
                     )

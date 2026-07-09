@@ -85,23 +85,23 @@ class TerminalAnchorDisplayTests(unittest.TestCase):
     def test_event_detail_parts_hides_label_when_same_as_project(self):
         event = {
             "project": "timelog-extract",
-            "detail": "[user] Start multitasking",
+            "detail": "Start multitasking",
             "anchors": {"label": "timelog-extract", "dir": "timelog-extract"},
         }
         label, detail = event_detail_parts(event)
         self.assertEqual(label, "")
-        self.assertEqual(detail, "[user] Start multitasking")
-        self.assertEqual(_format_event_detail(event), "[user] Start multitasking")
+        self.assertEqual(detail, "Start multitasking")
+        self.assertEqual(_format_event_detail(event), "Start multitasking")
 
     def test_event_detail_parts_keeps_distinct_composer_title(self):
         event = {
             "project": "timelog-extract",
-            "detail": "[user] how is it going?",
+            "detail": "how is it going?",
             "anchors": {"label": "Timely API insights"},
         }
         label, detail = event_detail_parts(event)
         self.assertEqual(label, "Timely API insights")
-        self.assertEqual(detail, "[user] how is it going?")
+        self.assertEqual(detail, "how is it going?")
 
 
 if __name__ == "__main__":

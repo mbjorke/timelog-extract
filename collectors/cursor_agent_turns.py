@@ -375,7 +375,8 @@ def _turn_detail(
 ) -> str:
     preview = _prompt_for_stamp(prompts, ts)
     if preview:
-        detail = f"[user] {preview}"
+        # Hooks only emit user prompts (beforeSubmitPrompt) — no role tag needed.
+        detail = preview
     else:
         detail = f"{cluster_turns} turn{'s' if cluster_turns != 1 else ''}"
     if branch and not _branch_reflected_in_label(branch, label or ""):

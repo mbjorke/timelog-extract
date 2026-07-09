@@ -221,8 +221,8 @@ class CursorAgentTurnsTests(unittest.TestCase):
             self.assertEqual(events[0]["source"], "Cursor (agent)")
             self.assertEqual(events[0]["anchors"].get("label"), "Cursor 3.10 hooks turns")
             self.assertEqual(events[0]["project"], "timelog-extract")
-            self.assertEqual(events[0]["detail"], "[user] ship the hooks parser")
-            self.assertEqual(events[1]["detail"], "[user] and add short prompt previews like Zed")
+            self.assertEqual(events[0]["detail"], "ship the hooks parser")
+            self.assertEqual(events[1]["detail"], "and add short prompt previews like Zed")
             hours = {e["timestamp"].hour for e in events}
             self.assertEqual(hours, {16, 17})
 

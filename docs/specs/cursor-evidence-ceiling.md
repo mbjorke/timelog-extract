@@ -154,8 +154,8 @@ GH-345): always-local logs no longer emit `agent.turn.start` (last seen
 Collector: `collectors/cursor_agent_turns.py` unions always-local + hooks, then
 dedupes by `conversation_id` so multi-window hook copies do not double-count.
 Report detail may include a **privacy-capped** user prompt preview (80 chars,
-single line, Zed/Conductor-style `[user] …`); full prompts and transcript bodies
-are not copied into events.
+single line; no role tag — hooks only carry user prompts); full prompts and
+transcript bodies are not copied into events.
 
 This remains **log-based evidence**:
 

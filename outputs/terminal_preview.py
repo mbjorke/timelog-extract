@@ -65,7 +65,7 @@ def event_detail_parts(event: dict) -> tuple[str, str]:
         return "", detail
     # Dir-leaf fallback often equals the classified project (e.g. Multitask /
     # Glass chats missing composerHeaders) — avoid ``timelog-extract
-    # timelog-extract: [user] …``.
+    # timelog-extract: …``.
     project = str(event.get("project") or "").strip()
     if project and label.casefold() == project.casefold():
         return "", detail

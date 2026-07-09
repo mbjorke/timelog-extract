@@ -2,7 +2,7 @@
 
 ## Traceability
 
-- story_id: `GH-pending` (create on promote — see § Issue)
+- story_id: `GH-342`
 - spec_status: `approved`
 - implementation_status: `not built`
 - created_at: `2026-07-09`
@@ -207,13 +207,7 @@ Feature: Unanchored nudges route by anchor kind
 
 ## Issue
 
-Create one GitHub issue when this spec is committed (`priority:now`), titled
-along the lines of:
-
-> Anchor-plan must not bulk-apply branch/label; raise floor; fix nudge routing [guardrail before GH-222 v2]
-
-Link this file; mark **Part of** / blocked-by relationship toward #267 (v2 spike
-stays `next` until guardrail merges, then promote #267 to `now`).
+Tracking issue: [#342](https://github.com/mbjorke/timelog-extract/issues/342). #267 (v2 spike) stays `priority:next` until this guardrail merges, then promote #267 to `now`.
 
 ## Non-goals for this PO pass
 

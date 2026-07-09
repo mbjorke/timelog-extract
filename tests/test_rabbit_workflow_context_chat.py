@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.rabbit_workflow_context_chat import render_chat_summary
+from scripts.rabbit_workflow_context_chat import render_chat_summary, suggested_chat_title
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "rabbit_workflow_context_chat.py"
@@ -33,6 +33,28 @@ class RabbitWorkflowContextChatTests(unittest.TestCase):
         )
         self.assertIn("task/example", md)
         self.assertIn("### Questions", md)
+        self.assertIn("### Chat title (step 0a)", md)
+
+    def test_suggested_title_prefers_issue_in_pr_title(self):
+        title = suggested_chat_title(
+            {
+                "branch": "docs/anchor-plan-guardrail-po",
+                "open_prs": [
+                    {
+                        "number": 343,
+                        "branch": "docs/anchor-plan-guardrail-po",
+                        "title": "docs: stop bulk apply (Part of #342)",
+                    }
+                ],
+            }
+        )
+        self.assertEqual(title, "#342 · stop bulk apply")
+
+    def test_suggested_title_from_branch_leaf(self):
+        title = suggested_chat_title(
+            {"branch": "task/anchor-plan-guardrail-342", "open_prs": []}
+        )
+        self.assertEqual(title, "#342 · anchor plan guardrail")
 
     def test_cli_reads_json_file(self):
         if not SCRIPT.is_file():

@@ -56,12 +56,17 @@ chat title carrying that id** — `#342 · anchor-plan guardrail`, not a vague
 topic slug. Prefer the **GitHub issue number** (`#N`) over the story id when
 they differ (same convention as PR `Closes`/`Part of` in `AGENTS.md`).
 
-- **Cursor:** MCP `rename_chat` (cursor-app-control); rule
-  `.cursor/rules/chat-title-backlog-id.mdc`.
-- **Other agents / CI:** no-op — the shell loop does not call editor APIs.
+**Agnostic split (hint vs apply):**
 
-This is generator hygiene, not a critic step: do it once at setup (0a), again
-only if focus moves to a different issue.
+| Layer | Responsibility |
+| --- | --- |
+| Shell / preflight | **Suggest** `#N · topic` in `--chat-summary`, `preflight.json` (`suggested_chat_title`), HTML, and `rabbit_loop.sh` stdout |
+| Generator agent | **Apply** the suggestion in the editor UI when possible |
+| Cursor | MCP `rename_chat` + `.cursor/rules/chat-title-backlog-id.mdc` + `/rabbit-loop` step 0a |
+| Claude / Zed / Codex / … | Rename the session/tab if the product supports it; otherwise acknowledge the hint and continue |
+
+The shell loop **never** calls an editor API — that would break editor-agnosticism.
+Do step 0a once at setup; again only if focus moves to a different issue.
 
 ### Stopping condition (the `/goal`)
 

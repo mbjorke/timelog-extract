@@ -254,6 +254,21 @@ if [[ $SKIP_WORKFLOW -eq 0 ]]; then
     set -e
     echo ""
     echo "  Review .rabbit-loop/preflight.html (questions + local task/* lanes + open PRs)."
+    if [[ -f "$STATE_DIR/preflight.json" ]]; then
+      SUGGESTED="$(python3 -c "
+import json,sys
+from pathlib import Path
+sys.path.insert(0, str(Path(r'''$REPO_ROOT''')/'scripts'))
+from rabbit_workflow_context_chat import suggested_chat_title
+d=json.load(open(r'''$STATE_DIR/preflight.json'''))
+print(suggested_chat_title(d) or '')
+" 2>/dev/null || true)"
+      if [[ -n "$SUGGESTED" ]]; then
+        echo "  Chat title (step 0a): $SUGGESTED"
+      else
+        echo "  Chat title (step 0a): #<issue> · short topic (set in your editor if available)"
+      fi
+    fi
     echo "  Then: scripts/rabbit_workflow_context.sh --ack   or   scripts/rabbit_loop.sh --ack-workflow"
     if [[ $WF_EXIT -eq 2 ]]; then
       echo "rabbit_loop: workflow BLOCKERS — resolve before CodeRabbit (or --skip-workflow)." >&2

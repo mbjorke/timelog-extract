@@ -11,6 +11,10 @@ Thin wrapper. The canonical, editor-agnostic workflow lives in
 "run the kanin loop / loop on the review".
 
 **Mechanics:**
+- **Chat title (step 0a):** after preflight, set the conversation tab to the
+  suggested `#N · topic` (from `--chat-summary` / preflight). In Cursor use MCP
+  `rename_chat`; other editors: rename manually or skip. Canonical:
+  `docs/skills/rabbit-loop.md` § Chat title.
 - **Workflow preflight:** `scripts/rabbit_workflow_context.sh --chat-summary` (chat) or
   `.rabbit-loop/preflight.html` (browser). Ack with `--ack` before CodeRabbit runs.
 - Loop: implement → `scripts/rabbit_loop.sh` (workflow gate + CodeRabbit `--agent` + autotests) →

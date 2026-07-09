@@ -321,6 +321,7 @@ export WF_LANE_SEP="$LANE_SEP"
 export WF_GB_COMMON_BASE="$GB_COMMON_BASE" WF_GB_MAIN_BEHIND="$GB_MAIN_BEHIND"
 export WF_GB_DEAD_LANES="$GB_DEAD_LANES" WF_GB_PULL_CHECK_OK="$GB_PULL_CHECK_OK"
 export WF_GB_PULL_CHECK_EXCERPT="$GB_PULL_CHECK_EXCERPT"
+export WF_REPO_ROOT="$REPO_ROOT"
 
 python3 - "$JSON_FILE" "$HTML_FILE" <<'PY'
 import html
@@ -428,6 +429,18 @@ if dirty:
         "options": ["Yes", "No — split commits or stash"],
     })
 
+# Editor-agnostic chat-title hint (step 0a). Agents apply it in their UI;
+# the shell never renames a conversation tab.
+sys.path.insert(0, os.path.join(os.environ.get("WF_REPO_ROOT", "."), "scripts"))
+try:
+    from rabbit_workflow_context_chat import suggested_chat_title as _suggest_title
+except Exception:  # pragma: no cover - keep preflight resilient
+    def _suggest_title(_data):
+        return None
+
+_title_probe = {"branch": current, "open_prs": open_prs}
+suggested_title = _suggest_title(_title_probe)
+
 payload = {
     "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "branch": current,
@@ -445,6 +458,7 @@ payload = {
     "but_status_excerpt": (os.environ.get("WF_BUT_STATUS") or "")[:4000],
     "but_applied": lines(os.environ.get("WF_BUT_APPLIED", "")),
     "gitbutler_sync": gitbutler_sync,
+    "suggested_chat_title": suggested_title,
     "ack_command": "scripts/rabbit_workflow_context.sh --ack",
 }
 
@@ -476,6 +490,7 @@ wrn = "".join(f"<li><strong>{esc(w['kind'])}</strong>: {esc(w['detail'])}</li>" 
 but_applied = lines(os.environ.get("WF_BUT_APPLIED", ""))
 but_applied_html = "".join(f"<li><code>{esc(x)}</code></li>" for x in but_applied) or "<li>(none)</li>"
 
+title_hint = esc(suggested_title) if suggested_title else "#&lt;issue&gt; · short topic"
 page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/>
 <title>Gittan kanin-loop — workflow preflight</title>
@@ -494,6 +509,10 @@ page = f"""<!DOCTYPE html>
 <p>Branch <code>{esc(current)}</code> @ <code>{esc(head[:7])}</code>
 <span class="badge">{esc(mode)}</span>
 {'<span class="badge warn">dirty</span>' if dirty else ''}</p>
+<p><strong>Chat title (step 0a):</strong> <code>{title_hint}</code>
+— if your editor can rename the conversation tab, set it now
+(prefer GitHub issue <code>#N</code> over story id). See
+<code>docs/skills/rabbit-loop.md</code> § Chat title.</p>
 <p>Answer the questions below in chat or terminal, then run:
 <code>scripts/rabbit_workflow_context.sh --ack</code></p>
 <h2>Blockers</h2>

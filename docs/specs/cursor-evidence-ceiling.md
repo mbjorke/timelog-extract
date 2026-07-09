@@ -124,7 +124,9 @@ Cursor conversations stream over the agent transport (`kvClientMessage`,
 **not** persisted locally as a dense, timestamped event list Gittan can mine with
 the same collector pattern.
 
-## Footnote: structured logs (per-turn time, weak evidence)
+## Footnote: structured logs / hooks (per-turn time, weak evidence)
+
+### Always-local (Cursor ≤ 3.9.x)
 
 **Path:** `~/Library/Application Support/Cursor/logs/.../anysphere.cursor-always-local/Cursor Structured Logs*.log`
 
@@ -135,17 +137,32 @@ JSON lines include:
   `composer.composerHeaders` (joinable for title/workspace via headers)
 - `workspaceId` often appears in the **log file name**, not in every event
 
-This is the only local signal with explicit per-turn timing. It is still
-**log-based evidence**:
+### Hooks channel (Cursor 3.10+)
+
+**Path:** `~/Library/Application Support/Cursor/logs/.../output_*/cursor.hooks.workspaceId-*.log`
+
+Validated on maintainer machine after upgrade to **Cursor 3.10.20** (2026-07-09,
+GH-345): always-local logs no longer emit `agent.turn.start` (last seen
+2026-07-04 on client 3.9.16). Turn-ish wall-clock moved to hooks payloads:
+
+- `hook_event_name: beforeSubmitPrompt` with `conversation_id` / `session_id`
+  (same UUID as `composerId`), `workspace_roots`, optional `transcript_path`,
+  and a full `prompt` string
+- Timestamp from the preceding `[ISO-8601]` log line (UTC), not from the JSON body
+- `preToolUse` / `postToolUse` are denser and must **not** be treated as turns
+
+Collector: `collectors/cursor_agent_turns.py` unions always-local + hooks, then
+dedupes by `conversation_id` so multi-window hook copies do not double-count.
+Report detail may include a **privacy-capped** user prompt preview (80 chars,
+single line; no role tag — hooks only carry user prompts); full prompts and
+transcript bodies are not copied into events.
+
+This remains **log-based evidence**:
 
 - rotation and retention match ordinary IDE logs, not durable audit storage;
 - attribution requires joins (conversation_id → composer header → workspace);
-- volume and diagnostic mix are far lower than main logs, but the source role is
-  still `direct_work_evidence` via log scrape — fragile and policy-discouraged
-  for IDE forks.
-
-**No collector is proposed here.** Documented so future spikes do not re-discover
-`agent.turn.*` and mistake it for Claude-parity evidence.
+- source role is still `direct_work_evidence` via log scrape — fragile and
+  policy-discouraged for IDE forks, but the only honest per-turn local signal.
 
 ## Implications for product and collectors
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from core.report_runtime import collect_timely_memory_status
+from core.presence_sources import collect_timely_memory_status
 from core.sources import COVERAGE_COMPARATOR, get_source_role
 from core.timely_memory import (
     TIMELY_MEMORY_SOURCE,
@@ -78,7 +78,7 @@ class TestTimelyMemoryCollector(unittest.TestCase):
         def _must_not_run(dt_from, dt_to):
             raise AssertionError("collector ran while disabled")
 
-        result = collect_timely_memory_status(
+        result, spans = collect_timely_memory_status(
             args=argparse.Namespace(timely_memory_source="off"),
             dt_from=self.window[0],
             dt_to=self.window[1],
@@ -86,6 +86,7 @@ class TestTimelyMemoryCollector(unittest.TestCase):
             collect_timely_memory_fn=_must_not_run,
         )
         self.assertIsNone(result)
+        self.assertIsNone(spans)
         self.assertFalse(status[TIMELY_MEMORY_SOURCE]["enabled"])
         self.assertIn("opt-in", status[TIMELY_MEMORY_SOURCE]["reason"])
 
@@ -95,13 +96,17 @@ class TestTimelyMemoryCollector(unittest.TestCase):
         before_bytes = self.db.read_bytes()
         before_mtime = self.db.stat().st_mtime_ns
 
-        days, detail = collect_timely_memory(
+        days, detail, spans = collect_timely_memory(
             *self.window, candidates=[self.db], local_tz=TZ
         )
         self.assertEqual(detail, str(self.db))
         self.assertEqual(self.db.read_bytes(), before_bytes)
         self.assertEqual(self.db.stat().st_mtime_ns, before_mtime)
         self.assertAlmostEqual(days["2026-07-02"], 120.0)
+        self.assertEqual(len(spans), 1)
+        self.assertAlmostEqual(
+            (spans[0][1] - spans[0][0]).total_seconds(), 120.0
+        )
 
     def test_span_folding_and_gap_split(self):
         """1 Hz samples fold into spans; gaps > threshold split them."""
@@ -109,8 +114,9 @@ class TestTimelyMemoryCollector(unittest.TestCase):
             "2026-07-02", 300, 30
         )
         _make_buffer(self.db, samples)
-        days, _ = collect_timely_memory(*self.window, candidates=[self.db], local_tz=TZ)
+        days, _, spans = collect_timely_memory(*self.window, candidates=[self.db], local_tz=TZ)
         self.assertAlmostEqual(days["2026-07-02"], 90.0)
+        self.assertEqual(len(spans), 2)
 
     def test_date_window_filtering(self):
         """Rows outside the requested window are never counted."""
@@ -120,9 +126,10 @@ class TestTimelyMemoryCollector(unittest.TestCase):
             + _second_series("2026-07-03", 0, 60)
         )
         _make_buffer(self.db, samples)
-        days, _ = collect_timely_memory(*self.window, candidates=[self.db], local_tz=TZ)
+        days, _, spans = collect_timely_memory(*self.window, candidates=[self.db], local_tz=TZ)
         self.assertEqual(set(days), {"2026-07-02"})
         self.assertAlmostEqual(days["2026-07-02"], 60.0)
+        self.assertEqual(len(spans), 1)
 
     def test_presence_role_is_comparator_never_events(self):
         """Scenario: Presence role — comparator context, no classified time."""
@@ -130,7 +137,7 @@ class TestTimelyMemoryCollector(unittest.TestCase):
 
         _make_buffer(self.db, _second_series("2026-07-02", 0, 3600))
         status: dict = {}
-        days = collect_timely_memory_status(
+        days, spans = collect_timely_memory_status(
             args=argparse.Namespace(timely_memory_source="on"),
             dt_from=self.window[0],
             dt_to=self.window[1],
@@ -143,10 +150,12 @@ class TestTimelyMemoryCollector(unittest.TestCase):
         # status path returns no event dicts, so nothing can be classified
         # into project time or billable totals.
         self.assertAlmostEqual(days["2026-07-02"], 3600.0)
+        self.assertEqual(len(spans), 1)
         row = status[TIMELY_MEMORY_SOURCE]
         self.assertTrue(row["enabled"])
         self.assertEqual(row["days"], 1)
         self.assertAlmostEqual(row["presence_hours"], 1.0)
+        self.assertEqual(row["span_count"], 1)
 
     def test_source_disappears_gracefully(self):
         """Scenario: Source disappears — unavailable status, run completes."""
@@ -154,7 +163,7 @@ class TestTimelyMemoryCollector(unittest.TestCase):
         self.assertIsNone(detect_timely_memory_db([missing]))
 
         status: dict = {}
-        result = collect_timely_memory_status(
+        result, spans = collect_timely_memory_status(
             args=argparse.Namespace(timely_memory_source="on"),
             dt_from=self.window[0],
             dt_to=self.window[1],
@@ -164,6 +173,7 @@ class TestTimelyMemoryCollector(unittest.TestCase):
             ),
         )
         self.assertIsNone(result)
+        self.assertIsNone(spans)
         row = status[TIMELY_MEMORY_SOURCE]
         self.assertTrue(row["enabled"])
         self.assertIn("not found", row["reason"])

@@ -120,6 +120,7 @@ def build_truth_payload(
     collector_status: Dict[str, Dict[str, Any]],
     screen_time_days: Dict[str, float] | None,
     presence_estimated: Any | None = None,
+    presence_edge_gaps: Any | None = None,
     dt_from: datetime,
     dt_to: datetime,
     worklog_path: str,
@@ -199,6 +200,10 @@ def build_truth_payload(
             "note": "Screen-Time-bounded estimate between evidenced events; not billable.",
         }
 
+    edge_block: Dict[str, Any] | None = None
+    if presence_edge_gaps is not None and hasattr(presence_edge_gaps, "to_dict"):
+        edge_block = presence_edge_gaps.to_dict()
+
     paths_block: Dict[str, Any] = {
         "projects_config": config_path or "",
     }
@@ -247,4 +252,6 @@ def build_truth_payload(
     }
     if presence_block is not None:
         out["presence_estimated_hours"] = presence_block
+    if edge_block is not None:
+        out["presence_edge_gaps"] = edge_block
     return out

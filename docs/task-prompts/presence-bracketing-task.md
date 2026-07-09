@@ -16,16 +16,19 @@ Timely Memory local buffer is an ingested source since #285/#290
 
 - story_id: `GH-332`
 - spec_status: `draft`
-- implementation_status: `not built`
+- implementation_status: `in progress`
 - created_at: `2026-07-08`
-- last_updated_at: `2026-07-08`
-- implementation.pr: pending
-- implementation.branch: pending
-- implementation.commits: []
-- validation.evidence: pending — operator acceptance on a composition-heavy day (bracketed report ≥ evidence-only, bracketed minutes visibly labeled)
-- validation.decision: `NO-GO` (not built)
+- last_updated_at: `2026-07-09`
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/339
+- implementation.branch: `task/presence-edge-gap-measure`
+- implementation.commits: `[a6c96ba, 6e4362d, a7973fa]`
+- validation.evidence: operator report with `--timely-memory-source on` — Edge gap row + Bracketable preview; observed hours unchanged; unique edge gap materially smaller than naive per-session sum. Slice 1 measures only; Slice 2 (bracket) not built.
+- validation.decision: `conditional GO`
 - changelog:
   - `2026-07-08: Initial draft from maintainer composition-time concern + Timely benchmark.`
+  - `2026-07-09: Slice 1 started — Timely Memory spans + edge-gap diagnostic (no hour changes).`
+  - `2026-07-09: Unique wall-clock totals + capped bracketable preview; PR #339.`
+  - `2026-07-09: Canonical traceability enums (Qodo); exclusive-end presence containment.`
 
 ## Problem
 
@@ -87,6 +90,10 @@ Scenario: No presence source, no change
   exists (per edge, per day). Surface as a report diagnostic — no hour changes.
 - Value: quantifies the undercount before we change any totals (measure-first,
   same pattern as #254).
+- Implementation: `core/presence_edge_gaps.py` + Timely Memory span return from
+  `collect_timely_memory`. Terminal Review summary row **Edge gap (presence)**;
+  truth payload key `presence_edge_gaps`. Requires `--timely-memory-source on`.
+  Screen Time remains day-totals only (no span edges yet).
 
 ### Slice 2 — bracket with cap + label (priority: next, after slice-1 data)
 - Extend session spans into adjacent presence, capped (default e.g. 10 min/edge,

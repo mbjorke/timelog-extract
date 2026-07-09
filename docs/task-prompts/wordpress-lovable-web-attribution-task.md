@@ -1,11 +1,11 @@
 # Task Prompt: Browser-derived sources + mixed-session attribution (WordPress / Lovable web)
 
-Unplanned but critical operator day (2026-07-09): continuous WordPress work was
-credited to the wrong project and diluted by Lovable desktop cache pings +
-Chrome weight 0. Timely showed ~6.5h on the client work; Gittan project-hour
-review showed ~1.2h on a mislabeled profile and ~1.2h on an almost-idle client.
-Classification and attribution had to be fixed before presence bracketing
-(GH-332) can close the remaining observed-vs-Timely gap.
+Unplanned but critical operator day: continuous WordPress work was credited to
+the wrong project and diluted by Lovable desktop cache pings + Chrome weight 0.
+A presence-based tracker showed the bulk of the day on the client work; Gittan
+project-hour review under-credited that work and over-credited an almost-idle
+client. Classification and attribution had to be fixed before presence
+bracketing (GH-332) can close the remaining observed-vs-presence gap.
 
 **Strategic frame:** Gittan must attribute *what* you worked on before it can
 honestly claim *how long*. Derived browser sources (WordPress, Lovable web)
@@ -21,13 +21,15 @@ Presence bracketing remains the follow-up for total hours.
 - last_updated_at: `2026-07-09`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/337
 - implementation.branch: `task/wordpress-lovable-web-attribution`
-- implementation.commits: `[008680f, 70bcafd]`
-- validation.evidence: operator `gittan-dev report --from 2026-07-09 --to 2026-07-09` — WordPress in legend; client WordPress hours 1.2h → 3.5h; idle Lovable client 1.2h → 0.0h; observed still 5.4h (presence gap → GH-332)
+- implementation.commits: `[008680f, 70bcafd, 4f5d598, 49fdd4e, 45cd80d]`
+- validation.evidence: operator report on a WordPress-heavy day — WordPress in legend; WordPress client hours rise materially; idle Lovable client hours collapse; observed total still below presence tracker (gap → GH-332)
 - validation.decision: `conditional GO` — attribution slice verified locally; presence undercount out of scope
 - changelog:
   - `2026-07-09: Initial draft from unplanned WordPress-day incident + Timely comparison.`
   - `2026-07-09: PR #337 opened; implementation.branch + commits recorded.`
   - `2026-07-09: Issue #338 created with priority:now; story_id set.`
+  - `2026-07-09: Anonymize operator hour figures in committed spec (Qodo compliance).`
+  - `2026-07-09: Qodo review — thread gap_minutes into sub-spans; stop · truncation in browser dedupe.`
 
 ## Problem
 
@@ -49,8 +51,8 @@ Presence bracketing remains the follow-up for total hours.
 - Mixed-session allocation in `core/project_hours.py` (high-signal Tier A +
   weighted remainder).
 - Presence bracketing spec: `docs/task-prompts/presence-bracketing-task.md`
-  (GH-332) — **out of scope for this story**; closes observed 5.4h → Timely-like
-  totals, not project split.
+  (GH-332) — **out of scope for this story**; closes observed undercount vs
+  presence trackers, not project split.
 
 ## Backlog
 
@@ -118,7 +120,7 @@ Scenario: Lovable web is distinct from Lovable desktop
 ### Presence bracketing for WordPress-heavy days
 
 - priority: next (owned by GH-332)
-- problem: observed timeline still undercounts vs Timely continuous presence
+- problem: observed timeline still undercounts vs continuous presence trackers
   even after attribution is correct.
 - user value: session edges include ramp-up/ramp-down when Screen Time / Timely
   Memory show continuous presence.

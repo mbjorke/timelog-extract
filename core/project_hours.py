@@ -41,10 +41,13 @@ def event_attribution_weight(event: dict) -> float:
 
 
 def _browser_attribution_key(event: dict) -> tuple[str, str]:
+    """Dedupe key for browser tab churn within one session.
+
+    Keep the full detail prefix (not a `` · `` lead split): that separator is
+    GitHub-title specific and would collapse unrelated page titles.
+    """
     project = str(event.get("project") or "").strip() or "Uncategorized"
     detail = str(event.get("detail") or "").strip().lower()
-    if " · " in detail:
-        detail = detail.split(" · ", 1)[0].strip()
     return project, detail[:96]
 
 
@@ -71,6 +74,7 @@ def _subspan_hours_by_project(
     session_duration_hours_fn: Callable[..., float],
     min_session_minutes: int,
     min_session_passive_minutes: int,
+    gap_minutes: int = 15,
     include_event: Callable[[dict], bool] | None = None,
 ) -> Dict[str, float]:
     """Sum per-project sub-session wall-clock from that project's events."""
@@ -87,7 +91,7 @@ def _subspan_hours_by_project(
         if not with_ts:
             continue
         project_hours = 0.0
-        for start_ts, end_ts, chunk_events in compute_sessions(with_ts, gap_minutes=15):
+        for start_ts, end_ts, chunk_events in compute_sessions(with_ts, gap_minutes=gap_minutes):
             project_hours += session_duration_hours_fn(
                 chunk_events,
                 start_ts,
@@ -107,6 +111,7 @@ def _high_signal_hours_by_project(
     session_duration_hours_fn: Callable[..., float],
     min_session_minutes: int,
     min_session_passive_minutes: int,
+    gap_minutes: int = 15,
 ) -> Dict[str, float]:
     """Bill from worklog, GitHub, composer titles — not Chrome/WordPress tab churn."""
     return _subspan_hours_by_project(
@@ -114,6 +119,7 @@ def _high_signal_hours_by_project(
         session_duration_hours_fn=session_duration_hours_fn,
         min_session_minutes=min_session_minutes,
         min_session_passive_minutes=min_session_passive_minutes,
+        gap_minutes=gap_minutes,
         include_event=lambda event: event_attribution_weight(event) >= _HIGH_SIGNAL_MIN_WEIGHT,
     )
 
@@ -146,6 +152,7 @@ def _span_project_split(
     session_duration_hours_fn: Callable[..., float],
     min_session_minutes: int,
     min_session_passive_minutes: int,
+    gap_minutes: int = 15,
 ) -> Dict[str, float]:
     """Allocate hours by per-project event sub-spans (includes WordPress/Chrome)."""
     spans = _subspan_hours_by_project(
@@ -153,6 +160,7 @@ def _span_project_split(
         session_duration_hours_fn=session_duration_hours_fn,
         min_session_minutes=min_session_minutes,
         min_session_passive_minutes=min_session_passive_minutes,
+        gap_minutes=gap_minutes,
         include_event=None,
     )
     if not spans:
@@ -176,6 +184,7 @@ def allocate_session_hours_by_project(
     session_duration_hours_fn: Callable[..., float] | None = None,
     min_session_minutes: int = 15,
     min_session_passive_minutes: int = 5,
+    gap_minutes: int = 15,
 ) -> Dict[str, float]:
     """Split session duration across projects; prefer high-signal spans when present."""
     if hours <= 0 or not session_events:
@@ -193,6 +202,7 @@ def allocate_session_hours_by_project(
             session_duration_hours_fn=session_duration_hours_fn,
             min_session_minutes=min_session_minutes,
             min_session_passive_minutes=min_session_passive_minutes,
+            gap_minutes=gap_minutes,
         )
 
     if session_duration_hours_fn is not None:
@@ -201,6 +211,7 @@ def allocate_session_hours_by_project(
             session_duration_hours_fn=session_duration_hours_fn,
             min_session_minutes=min_session_minutes,
             min_session_passive_minutes=min_session_passive_minutes,
+            gap_minutes=gap_minutes,
         )
         if high_signal:
             capped = _cap_allocation_to_session_hours(high_signal, hours)
@@ -217,6 +228,7 @@ def allocate_session_hours_by_project(
             session_duration_hours_fn=session_duration_hours_fn,
             min_session_minutes=min_session_minutes,
             min_session_passive_minutes=min_session_passive_minutes,
+            gap_minutes=gap_minutes,
         )
         if span_split:
             return span_split
@@ -237,6 +249,7 @@ def build_project_reports_from_sessions(
     session_duration_hours_fn: Callable[..., float],
     min_session_minutes: int,
     min_session_passive_minutes: int,
+    gap_minutes: int = 15,
 ) -> Dict[str, Dict[str, Dict[str, float]]]:
     """Derive per-project daily hours from overall sessions (no double-counting)."""
     reports: dict[str, dict[str, dict[str, float]]] = defaultdict(
@@ -260,6 +273,7 @@ def build_project_reports_from_sessions(
                 session_duration_hours_fn=session_duration_hours_fn,
                 min_session_minutes=min_session_minutes,
                 min_session_passive_minutes=min_session_passive_minutes,
+                gap_minutes=gap_minutes,
             ).items():
                 reports[project][day]["hours"] += chunk
                 if attendance == "attended":

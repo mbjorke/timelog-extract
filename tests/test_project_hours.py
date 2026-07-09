@@ -247,6 +247,57 @@ class ProjectHoursTests(unittest.TestCase):
         hours = session_duration_hours(events, base, end, 15, 5, AI_SOURCES)
         self.assertAlmostEqual(hours, 0.5, places=3)
 
+    def test_browser_dedupe_keeps_full_detail_with_middle_dot(self):
+        """Titles that share a prefix before `` · `` must not collapse into one weight."""
+        events = [
+            {"source": "WordPress", "project": "acme-news", "detail": "Docs · Page A"},
+            {"source": "WordPress", "project": "acme-news", "detail": "Docs · Page B"},
+            {"source": "WordPress", "project": "other-site", "detail": "Home"},
+        ]
+        # No duration fn → weighted path (exercises browser dedupe keys).
+        split = allocate_session_hours_by_project(events, 1.0)
+        self.assertAlmostEqual(split["acme-news"], 2.0 / 3.0, places=3)
+        self.assertAlmostEqual(split["other-site"], 1.0 / 3.0, places=3)
+
+    def test_subspan_uses_configured_gap_minutes(self):
+        """Per-project sub-spans must honor gap_minutes, not a hardcoded 15."""
+        base = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+        events = [
+            {"source": "WordPress", "project": "acme-news", "detail": "a", "local_ts": base},
+            {
+                "source": "WordPress",
+                "project": "other-site",
+                "detail": "b",
+                "local_ts": base + timedelta(minutes=20),
+            },
+            {
+                "source": "WordPress",
+                "project": "acme-news",
+                "detail": "c",
+                "local_ts": base + timedelta(minutes=40),
+            },
+        ]
+        session_hours = 40.0 / 60.0
+        common = dict(
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=5,
+            min_session_passive_minutes=5,
+        )
+        split_tight = allocate_session_hours_by_project(
+            events, session_hours, gap_minutes=15, **common
+        )
+        split_wide = allocate_session_hours_by_project(
+            events, session_hours, gap_minutes=60, **common
+        )
+        self.assertAlmostEqual(sum(split_tight.values()), session_hours, places=2)
+        self.assertAlmostEqual(sum(split_wide.values()), session_hours, places=2)
+        # 40 min between acme events: gap=15 splits them; gap=60 joins → different share.
+        self.assertNotAlmostEqual(
+            split_tight.get("acme-news", 0.0),
+            split_wide.get("acme-news", 0.0),
+            places=2,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

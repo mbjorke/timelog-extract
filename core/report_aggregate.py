@@ -51,6 +51,7 @@ def aggregate_report(
         session_duration_hours_fn=session_duration_hours,
         min_session_minutes=args.min_session,
         min_session_passive_minutes=args.min_session_passive,
+        gap_minutes=args.gap_minutes,
     )
 
     return AggregationResult(

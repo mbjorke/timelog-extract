@@ -49,6 +49,21 @@ only if evidence warrants:
 - **`TRUTH_PAYLOAD_VERSION` frozen at "1"** — write a versioning/migration policy
   before the first forced bump (later).
 
+## Open decision (parked) — vision wording
+
+The meta-insight "first run must deliver value before it asks for trust-review"
+has **not** been landed in the vision — maintainer to decide later. Draft kept
+here so it survives outside chat:
+
+> - **Value before ceremony** — the first run shows what you did before it asks
+>   you to review, configure, or trust. Onboarding earns the review step by
+>   delivering value first.
+
+Placement options: a new bullet under **Core promises**, or a sharpening of
+**Product soul #3** (reduce cognitive load) / **#5** (practical over perfect) in
+`docs/product/gittan-vision.md`. Nothing blocks on this; the terminal-style-guide
+already encodes the behavioral half ("Value before caveats").
+
 ## The meta-unknown neither pass could close
 
 A blind-spot pass reads code; a desirability pass reads users — but this one read

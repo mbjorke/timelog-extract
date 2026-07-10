@@ -44,9 +44,17 @@ python3 -m unittest tests/test_engine_api.py::TestEngineApi::test_some_method
 ### CLI smoke test
 
 ```bash
-gittan --today --screen-time off --source-summary
-python timelog_extract.py --today --screen-time off --source-summary
+gittan report --today --screen-time off --source-summary
+python timelog_extract.py report --today --screen-time off --source-summary
 ```
+
+> Reporting lives under the `report` subcommand. Legacy top-level report
+> invocations (e.g. `gittan --today`) are redirected to `gittan report …` with a
+> one-line stderr note (`core/cli.py::redirect_legacy_report_argv`); the `--`
+> end-of-options sentinel and top-level options like `--help` / `--version` pass
+> through unchanged. The CI smoke step (`.github/workflows/ci.yml`) now exercises
+> `report --today` directly (no `|| true` masking). The broader inline CLI UX gate
+> is tracked in `docs/task-prompts/agent-inline-cli-ux-validation-task.md` (GH-123).
 
 ### Build package (for release validation)
 
@@ -121,6 +129,8 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 ### File size policy
 
 **No Python file may exceed 500 lines.** This is enforced in CI via `scripts/check_file_lengths.py`. When a file nears the limit, split by responsibility rather than raising the limit.
+
+The checker also **warns (without failing)** for files at or above `--warn-lines` (default 460) — the approaching-the-cap band. This surfaces the "trimmed to just under 500" pressure early, so decomposition happens by design instead of as a scramble when a file finally tips over the hard cap. Warnings never turn CI red; only files over `--max-lines` do.
 
 ### Branch and PR policy
 

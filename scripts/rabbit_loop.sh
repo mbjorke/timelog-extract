@@ -139,20 +139,34 @@ classify_merge() {
 # saw, so file-path SAFE + CONVERGED alone is NOT sufficient to merge
 # (incident: PR #371 merged with an open thread). Fail closed: any error
 # resolving the PR or querying threads blocks the merge.
+# First ~200 chars of a captured stderr file, flattened to one line — enough to
+# tell an auth/rate-limit/network failure from "no PR", without dumping pages.
+_gate_err_summary() {
+  tr '\n' ' ' <"$1" | cut -c1-200 | sed 's/[[:space:]]*$//'
+}
+
 merge_gate() {
-  local pr="$1" unresolved
+  local pr="$1" unresolved count more rc err errf
   command -v gh >/dev/null 2>&1 || {
     echo "MERGE_GATE: BLOCKED (gh CLI not found — cannot verify review threads)"; return 1
   }
+  errf="$(mktemp)" || {
+    echo "MERGE_GATE: BLOCKED (mktemp failed — cannot capture gh errors)"; return 1
+  }
   if [[ -z "$pr" ]]; then
-    pr="$(gh pr view --json number --jq .number 2>/dev/null || true)"
-    if [[ -z "$pr" ]]; then
-      echo "MERGE_GATE: BLOCKED (no open PR found for the current branch — pass --pr <number>)"
+    set +e
+    pr="$(gh pr view --json number --jq .number 2>"$errf")"
+    rc=$?
+    set -e
+    if [[ $rc -ne 0 || -z "$pr" ]]; then
+      err="$(_gate_err_summary "$errf")"; rm -f "$errf"
+      echo "MERGE_GATE: BLOCKED (could not resolve an open PR for the current branch${err:+ — gh: $err} — pass --pr <number>)"
       return 1
     fi
   fi
   # Single-page read capped at 100 threads; hasNextPage=true blocks below so a
   # busier PR fails closed instead of under-counting.
+  set +e
   unresolved="$(gh api graphql \
     -f query='query($owner:String!,$repo:String!,$pr:Int!){
       repository(owner:$owner,name:$repo){
@@ -164,17 +178,21 @@ merge_gate() {
         }
       }
     }' \
-    -f owner="$(gh repo view --json owner --jq .owner.login)" \
-    -f repo="$(gh repo view --json name --jq .name)" \
+    -f owner="$(gh repo view --json owner --jq .owner.login 2>/dev/null)" \
+    -f repo="$(gh repo view --json name --jq .name 2>/dev/null)" \
     -F pr="$pr" \
     --jq '([.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length),
-          .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' 2>/dev/null)" || unresolved=""
-  local count more
+          .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' 2>"$errf")"
+  rc=$?
+  set -e
   count="$(printf '%s\n' "$unresolved" | sed -n 1p)"
   more="$(printf '%s\n' "$unresolved" | sed -n 2p)"
-  if [[ -z "$count" ]]; then
-    echo "MERGE_GATE: BLOCKED (could not query review threads for PR #$pr)"; return 1
+  if [[ $rc -ne 0 || -z "$count" ]]; then
+    err="$(_gate_err_summary "$errf")"; rm -f "$errf"
+    echo "MERGE_GATE: BLOCKED (could not query review threads for PR #$pr${err:+ — gh: $err})"
+    return 1
   fi
+  rm -f "$errf"
   if [[ "$more" == "true" ]]; then
     echo "MERGE_GATE: BLOCKED (PR #$pr has >100 review threads — check manually)"; return 1
   fi

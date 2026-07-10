@@ -19,8 +19,9 @@ SCRIPT = REPO_ROOT / "scripts" / "rabbit_loop.sh"
 
 # Stub gh: answers the exact calls merge_gate() makes, driven by env vars.
 #   GH_STUB_THREADS  stdout for `gh api graphql` ("<count>\n<hasNextPage>")
-#   GH_STUB_API_FAIL "1" -> `gh api graphql` exits 1
+#   GH_STUB_API_FAIL "1" -> `gh api graphql` exits 1 (stderr: GH_STUB_ERR)
 #   GH_STUB_PR       stdout for `gh pr view --json number` (empty -> exit 1)
+#   GH_STUB_ERR      stderr emitted on the failing call
 _GH_STUB = """#!/usr/bin/env bash
 args="$*"
 case "$1" in
@@ -31,11 +32,17 @@ case "$1" in
     esac
     ;;
   pr)
-    [[ -n "${GH_STUB_PR:-}" ]] || exit 1
+    if [[ -z "${GH_STUB_PR:-}" ]]; then
+      echo "${GH_STUB_ERR:-}" >&2
+      exit 1
+    fi
     echo "$GH_STUB_PR"
     ;;
   api)
-    [[ "${GH_STUB_API_FAIL:-0}" == "1" ]] && exit 1
+    if [[ "${GH_STUB_API_FAIL:-0}" == "1" ]]; then
+      echo "${GH_STUB_ERR:-}" >&2
+      exit 1
+    fi
     printf '%s\\n' "${GH_STUB_THREADS:-}"
     ;;
   *) exit 1 ;;
@@ -88,6 +95,14 @@ class RabbitMergeGateTests(unittest.TestCase):
         self.assertIn("MERGE_GATE: BLOCKED", proc.stdout)
         self.assertIn("could not query", proc.stdout)
 
+    def test_blocked_query_failure_surfaces_gh_stderr(self):
+        proc = self._run(
+            "--pr", "5", GH_STUB_API_FAIL="1", GH_STUB_ERR="HTTP 403: rate limit exceeded"
+        )
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("MERGE_GATE: BLOCKED", proc.stdout)
+        self.assertIn("rate limit exceeded", proc.stdout)
+
     def test_blocked_when_thread_page_overflows(self):
         proc = self._run("--pr", "5", GH_STUB_THREADS="0\ntrue")
         self.assertEqual(proc.returncode, 1)
@@ -95,10 +110,11 @@ class RabbitMergeGateTests(unittest.TestCase):
         self.assertIn(">100", proc.stdout)
 
     def test_blocked_when_no_pr_for_branch(self):
-        proc = self._run(GH_STUB_PR="")
+        proc = self._run(GH_STUB_PR="", GH_STUB_ERR="no pull requests found for branch")
         self.assertEqual(proc.returncode, 1)
         self.assertIn("MERGE_GATE: BLOCKED", proc.stdout)
-        self.assertIn("no open PR", proc.stdout)
+        self.assertIn("could not resolve an open PR", proc.stdout)
+        self.assertIn("no pull requests found", proc.stdout)
 
     def test_pr_resolved_from_current_branch(self):
         proc = self._run(GH_STUB_PR="7", GH_STUB_THREADS="0\nfalse")

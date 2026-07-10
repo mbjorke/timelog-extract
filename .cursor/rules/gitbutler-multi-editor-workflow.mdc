@@ -41,7 +41,7 @@ When But work is done for a while: `but teardown --checkout-to main`.
 - History edits: `but rub <source> <target>`; mode pick in policy doc (parallel / stack / worktree)
 - Stale lanes: `but oplog snapshot` before bulk cleanup; runbook `docs/runbooks/gitbutler-workspace-cleanup.md`
 - Push: `but push <branch-name>` then PR (`but pr new` or `gh pr create`)
-- Keep CLI + skill current (local): `but update check` → `but update install` → `but skill install --detect`. Never `but agent setup` here (can overwrite `AGENTS.md` / `CLAUDE.md`)
+- Keep CLI + skill current (local): `but update check` → `but update` → `but skill install --detect`. Never `but agent setup` here (can overwrite `AGENTS.md` / `CLAUDE.md`)
 
 ## Handoff to next editor (Claude ↔ Cursor)
 

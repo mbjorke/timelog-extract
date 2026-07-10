@@ -194,10 +194,47 @@ def _signal_weight(signal: str) -> tuple[float, bool]:
     return 1.0, True
 
 
+def _compile_work_unit_index(
+    units: Sequence[WorkUnit],
+) -> tuple[
+    dict[str, list[tuple[int, float, bool]]],
+    list[tuple[str, list[tuple[int, float, bool]]]],
+    dict[str, list[tuple[int, float, bool]]],
+]:
+    """Index units by signal for fast lookup.
+
+    Returns:
+        fast_signals: Map of alphanumeric signals to impacts
+        slow_signals: List of (signal, impacts) for non-alphanumeric or path-like signals
+        all_signals: Combined map for all signals
+    """
+    signal_to_impacts: dict[str, list[tuple[int, float, bool]]] = {}
+
+    for i, unit in enumerate(units):
+        for signal in unit.signals:
+            if not signal:
+                continue
+            if signal not in signal_to_impacts:
+                signal_to_impacts[signal] = []
+            weight, is_specific = _signal_weight(signal)
+            signal_to_impacts[signal].append((i, weight, is_specific))
+
+    fast_signals: dict[str, list[tuple[int, float, bool]]] = {}
+    slow_signals: list[tuple[str, list[tuple[int, float, bool]]]] = []
+    for signal, impacts in signal_to_impacts.items():
+        if signal.isalnum() and not _is_path_like_term(signal):
+            fast_signals[signal] = impacts
+        else:
+            slow_signals.append((signal, impacts))
+
+    return fast_signals, slow_signals, signal_to_impacts
+
+
 def classify_work_unit(
     text: str,
     units: Sequence[WorkUnit],
     fallback: str,
+    index: Optional[tuple] = None,
 ) -> str:
     """Score text against WorkUnit signals; return line_key or fallback.
 
@@ -208,40 +245,55 @@ def classify_work_unit(
     if not text:
         return fallback
 
+    if index is None:
+        index = _compile_work_unit_index(units)
+    fast_signals, slow_signals, all_signals = index
+
     haystack, word_set = _prepare_haystack_and_word_set(text.lower())
+
+    matched_signals = set()
+    # 1. Fast path: alphanumeric signals in the text's word set.
+    for signal in fast_signals.keys() & word_set:
+        matched_signals.add(signal)
+
+    # 2. Slow path: path-like or special-char signals.
+    for signal, _ in slow_signals:
+        if signal in haystack:
+            if _matches_term(signal, haystack, word_set=word_set):
+                matched_signals.add(signal)
+
+    if not matched_signals:
+        return fallback
+
+    num_units = len(units)
+    weighted = [0.0] * num_units
+    specific_hits = [0] * num_units
+    generic_hits = [0] * num_units
+    match_len = [0] * num_units
+    distinct = [0] * num_units
+
+    # 3. Single-pass scoring: accumulate rank components for all matching units.
+    for signal in matched_signals:
+        s_len = len(signal)
+        for idx, weight, is_specific in all_signals[signal]:
+            weighted[idx] += weight
+            match_len[idx] += s_len
+            distinct[idx] += 1
+            if is_specific:
+                specific_hits[idx] += 1
+            else:
+                generic_hits[idx] += 1
+
     best_key = fallback
     # Rank: (weighted, specific_hits, distinct_signals, match_len, -generic_hits)
     best_rank = (0.0, 0, 0, 0, 0)
-    match_cache: Dict[str, bool] = {}
 
-    for unit in units:
-        weighted = 0.0
-        specific_hits = 0
-        generic_hits = 0
-        match_len = 0
-        distinct = 0
-
-        for signal in unit.signals:
-            if signal not in match_cache:
-                if signal in haystack:
-                    match_cache[signal] = _matches_term(signal, haystack, word_set=word_set)
-                else:
-                    match_cache[signal] = False
-            if not match_cache[signal]:
-                continue
-            distinct += 1
-            match_len += len(signal)
-            weight, is_specific = _signal_weight(signal)
-            weighted += weight
-            if is_specific:
-                specific_hits += 1
-            else:
-                generic_hits += 1
-
-        rank = (weighted, specific_hits, distinct, match_len, -generic_hits)
-        if (specific_hits > 0 or weighted >= 1.0) and rank > best_rank:
-            best_rank = rank
-            best_key = unit.line_key
+    for i in range(num_units):
+        if specific_hits[i] > 0 or weighted[i] >= 1.0:
+            rank = (weighted[i], specific_hits[i], distinct[i], match_len[i], -generic_hits[i])
+            if rank > best_rank:
+                best_rank = rank
+                best_key = units[i].line_key
 
     return best_key
 
@@ -258,15 +310,21 @@ def make_work_unit_classify_fn(
 ) -> Callable[[str, List[Dict[str, Any]]], str]:
     """Return a ``(text, profiles) -> line_key`` callable for the report seam."""
 
-    cache: Dict[int, list[WorkUnit]] = {}
+    cache: Dict[int, tuple[Any, list[WorkUnit], tuple]] = {}
 
     def classify(text: str, profiles: List[Dict[str, Any]]) -> str:
         key = id(profiles)
-        units = cache.get(key)
-        if units is None:
+        # Fingerprint to detect mutation of the same list object (common in tests).
+        fingerprint = (len(profiles), tuple(p.get("name") for p in profiles))
+
+        cached = cache.get(key)
+        if cached is None or cached[0] != fingerprint:
             units = build_work_units(profiles)
-            cache[key] = units
-        return classify_work_unit(text, units, fallback)
+            index = _compile_work_unit_index(units)
+            cache[key] = (fingerprint, units, index)
+
+        _, units, index = cache[key]
+        return classify_work_unit(text, units, fallback, index=index)
 
     return classify
 

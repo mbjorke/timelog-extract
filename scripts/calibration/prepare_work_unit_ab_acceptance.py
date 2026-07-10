@@ -85,17 +85,39 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    out_path = Path(args.out).expanduser()
-    if out_path.exists():
+    out_path = Path(args.out).expanduser().resolve()
+    if out_path.exists() and not out_path.is_file():
+        print(f"error: --out exists but is not a file: {out_path}", file=sys.stderr)
+        return 1
+    if out_path.is_file():
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         backup = out_path.with_suffix(out_path.suffix + f".pre-ab-{stamp}")
-        backup.write_text(out_path.read_text(encoding="utf-8"), encoding="utf-8")
+        try:
+            backup.write_text(out_path.read_text(encoding="utf-8"), encoding="utf-8")
+        except OSError as exc:
+            print(f"error: failed to back up existing --out: {exc}", file=sys.stderr)
+            return 1
         print(f"backed up existing acceptance → {backup}")
 
-    profiles, _cfg, _workspace = load_profiles(
-        args.projects_config,
+    projects_config_path = Path(args.projects_config).expanduser().resolve()
+    if not projects_config_path.is_file():
+        print(
+            f"error: --projects-config is not a readable file: {projects_config_path}",
+            file=sys.stderr,
+        )
+        return 1
+    projects_config = str(projects_config_path)
+
+    profiles, loaded_cfg, _workspace = load_profiles(
+        projects_config,
         SimpleNamespace(project="Uncategorized", keywords="", email=""),
     )
+    if loaded_cfg is None:
+        print(
+            f"error: failed to load projects config (parse/read): {projects_config}",
+            file=sys.stderr,
+        )
+        return 1
     profiles_list = list(profiles or [])
     customers = _customer_map(profiles_list)
 
@@ -105,7 +127,7 @@ def main() -> int:
         flush=True,
     )
     payload = run_report_payload(
-        args.projects_config,
+        projects_config,
         args.date_from,
         args.date_to,
         {
@@ -154,7 +176,7 @@ def main() -> int:
     print("next:")
     print(
         "  .venv/bin/python scripts/calibration/run_work_unit_spike.py \\\n"
-        f"    --projects-config {args.projects_config} \\\n"
+        f"    --projects-config {projects_config} \\\n"
         f"    --acceptance {out_path} \\\n"
         f"    --date-from {args.date_from} --date-to {args.date_to}"
     )

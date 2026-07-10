@@ -33,6 +33,12 @@ class ClassifyLengthsTests(unittest.TestCase):
         self.assertEqual(violations, [])
         self.assertEqual(warnings, [])
 
+    def test_exactly_at_warn_line_warns(self):
+        # Lower boundary is inclusive (warn_lines <= lines): 460 with warn_lines=460 warns.
+        violations, warnings = classify_lengths([("a.py", 460)], max_lines=500, warn_lines=460)
+        self.assertEqual(violations, [])
+        self.assertEqual(warnings, [("a.py", 460)])
+
     def test_mixed_set_is_partitioned(self):
         counts = [("ok.py", 100), ("near.py", 480), ("edge.py", 500), ("over.py", 520)]
         violations, warnings = classify_lengths(counts, max_lines=500, warn_lines=460)

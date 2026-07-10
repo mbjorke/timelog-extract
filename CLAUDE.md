@@ -128,6 +128,8 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 **No Python file may exceed 500 lines.** This is enforced in CI via `scripts/check_file_lengths.py`. When a file nears the limit, split by responsibility rather than raising the limit.
 
+The checker also **warns (without failing)** for files at or above `--warn-lines` (default 460) — the approaching-the-cap band. This surfaces the "trimmed to just under 500" pressure early, so decomposition happens by design instead of as a scramble when a file finally tips over the hard cap. Warnings never turn CI red; only files over `--max-lines` do.
+
 ### Branch and PR policy
 
 - Fast rule-of-thumb:

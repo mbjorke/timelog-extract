@@ -35,17 +35,46 @@ def count_lines(path: Path) -> int:
         return sum(1 for _ in path.open("r", encoding="latin-1"))
 
 
+def classify_lengths(counts, max_lines: int, warn_lines: int):
+    """Split (rel_path, lines) pairs into hard violations and soft warnings.
+
+    A file over ``max_lines`` is a violation (fails CI). A file at or above
+    ``warn_lines`` but within the cap is a warning: it surfaces the "trimmed to
+    just under the limit" pressure *before* the cliff, so the fix is to split by
+    responsibility early rather than shave lines to stay green.
+    """
+    violations, warnings = [], []
+    for rel_path, lines in counts:
+        if lines > max_lines:
+            violations.append((rel_path, lines))
+        elif warn_lines <= lines <= max_lines:
+            warnings.append((rel_path, lines))
+    return violations, warnings
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--max-lines", type=int, default=500, help="Maximum lines allowed per file.")
+    parser.add_argument("--max-lines", type=int, default=500, help="Maximum lines allowed per file (hard cap).")
+    parser.add_argument(
+        "--warn-lines",
+        type=int,
+        default=460,
+        help="Warn (without failing) for files at or above this many lines — the approaching-the-cap band.",
+    )
     args = parser.parse_args()
+    warn_lines = min(args.warn_lines, args.max_lines)
 
     repo_root = Path(__file__).resolve().parent.parent
-    violations = []
-    for path in tracked_python_files(repo_root):
-        lines = count_lines(path)
-        if lines > args.max_lines:
-            violations.append((path.relative_to(repo_root), lines))
+    counts = [
+        (path.relative_to(repo_root), count_lines(path))
+        for path in tracked_python_files(repo_root)
+    ]
+    violations, warnings = classify_lengths(counts, args.max_lines, warn_lines)
+
+    if warnings:
+        print(f"Approaching the {args.max_lines}-line limit (split by responsibility — don't shave to fit):")
+        for rel_path, lines in sorted(warnings, key=lambda item: item[1], reverse=True):
+            print(f"- {rel_path}: {lines} ({args.max_lines - lines} to go)")
 
     if violations:
         print(f"Files over {args.max_lines} lines:")

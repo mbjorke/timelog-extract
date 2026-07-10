@@ -27,12 +27,17 @@ def iter_log_day_dirs(
 ) -> list[Path]:
     """Restrict scans to Cursor day folders that can overlap the report window.
 
-    Day-folder names encode the session calendar day; pad ±1 day for spill.
+    Folder names encode the *app launch* time, not the log-entry day: a
+    long-lived Cursor process appends to the same folder for days (GH-363).
+    So only folders named after the window end (+1 day pad) are excluded —
+    they cannot contain in-window entries. Older folders are always kept;
+    the per-file ``st_mtime`` checks in the scanners skip stale files cheaply,
+    which preserves the GH-353 perf goal for old-window reports.
     Unknown folder layouts are kept so a Cursor rename does not go silent.
     """
+    del dt_from  # lower bound intentionally not applied (GH-363)
     if not logs_dir.is_dir():
         return []
-    start = dt_from.astimezone(local_tz).date() - timedelta(days=1)
     end = dt_to.astimezone(local_tz).date() + timedelta(days=1)
     matched: list[Path] = []
     unknown: list[Path] = []
@@ -52,6 +57,6 @@ def iter_log_day_dirs(
         except ValueError:
             unknown.append(entry)
             continue
-        if start <= day <= end:
+        if day <= end:
             matched.append(entry)
     return matched + unknown

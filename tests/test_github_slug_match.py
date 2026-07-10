@@ -231,6 +231,31 @@ class GithubSlugMatchTests(unittest.TestCase):
         self.assertFalse(is_plausible_github_slug("ideas/triage-signal-examples.md"))
         self.assertFalse(is_plausible_github_slug("axfinans.cloudflareaccess.com/cdn-cgi"))
 
+    def test_rejects_cursor_glass_multitask_product_surface(self):
+        """GH-359: Glass/Multitask parentheticals must not invent a fake remote."""
+        noise = [
+            "issue #348 closed: restore chat title when composerHeaders missing "
+            "(Glass/Multitask) (mbjorke/timelog-extract)",
+            "switched to glass/multitask",
+            "working in glass/multitask mode",
+            "https://github.com/glass/multitask",
+            "Pull requests · glass/multitask",
+        ]
+        for text in noise:
+            slugs = github_slugs_in_text(text)
+            self.assertNotIn("glass/multitask", slugs, msg=text)
+        self.assertFalse(is_plausible_github_slug("glass/multitask"))
+        # Trailing ``({repo})`` from GitHub IssuesEvent details still parses.
+        mixed = (
+            "issue #348 labeled: Cursor (agent): missing (Glass/Multitask) "
+            "(mbjorke/timelog-extract)"
+        )
+        self.assertEqual(github_slugs_in_text(mixed), ["mbjorke/timelog-extract"])
+        self.assertEqual(
+            github_slugs_in_text("PR #1 merged (mbjorke/timelog-extract)"),
+            ["mbjorke/timelog-extract"],
+        )
+
     def test_no_shift_when_only_sibling_repo_is_active(self):
         profiles = [
             {

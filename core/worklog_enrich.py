@@ -18,6 +18,25 @@ _PR_NUMBER_SESSION_LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Live shell titles (Glass Multitask terminal tabs, GH-361) are not session
+# titles; exact-match on the bare shell name.
+_SHELL_TITLE_SESSION_LABELS = frozenset(
+    {
+        "zsh",
+        "bash",
+        "sh",
+        "dash",
+        "fish",
+        "ksh",
+        "tcsh",
+        "csh",
+        "nu",
+        "nushell",
+        "pwsh",
+        "powershell",
+    }
+)
+
 # Chat/IDE sources that carry human-meaningful session titles.
 _SESSION_LABEL_SOURCES = frozenset(
     {
@@ -43,6 +62,16 @@ def is_pr_number_session_label(label: str | None) -> bool:
     if not text:
         return False
     return bool(_PR_NUMBER_SESSION_LABEL_RE.match(text))
+
+
+def is_shell_title_session_label(label: str | None) -> bool:
+    """True when ``label`` is a bare shell name (``zsh``, ``fish``, …) (GH-361).
+
+    Glass Multitask terminal tabs carry the live terminal title; an idle
+    terminal reports just the shell name, which must not become a session
+    title on delivery rows.
+    """
+    return str(label or "").strip().lower() in _SHELL_TITLE_SESSION_LABELS
 
 
 def is_commit_worklog_detail(detail: str) -> bool:
@@ -148,7 +177,7 @@ def _nearest_session_label(
         if str(prev.get("source") or "") not in _SESSION_LABEL_SOURCES:
             continue
         label = str(event_anchors(prev).get("label") or "").strip()
-        if not label or is_pr_number_session_label(label):
+        if not label or is_pr_number_session_label(label) or is_shell_title_session_label(label):
             continue
         return label
     return None

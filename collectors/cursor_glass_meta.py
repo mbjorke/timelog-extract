@@ -15,7 +15,7 @@ from pathlib import Path
 
 from collectors.ai_logs import _GENERIC_BRANCHES
 from collectors.cursor_composer import cursor_state_db_path
-from core.worklog_enrich import is_pr_number_session_label
+from core.worklog_enrich import is_pr_number_session_label, is_shell_title_session_label
 
 _GLASS_TABS_KEY_PREFIX = "cursor/glass.tabs.v2/"
 
@@ -85,6 +85,10 @@ def load_glass_agent_tab_meta(home: Path) -> dict[str, dict[str, str]]:
             for tab in tabs:
                 if not isinstance(tab, dict):
                     continue
+                # GH-361: Multitask terminal tabs carry the live terminal
+                # title (last shell command); never a session label/branch.
+                if str(tab.get("kind") or "").strip().lower() == "terminal":
+                    continue
                 props = tab.get("props")
                 if not isinstance(props, dict):
                     continue
@@ -94,7 +98,9 @@ def load_glass_agent_tab_meta(home: Path) -> dict[str, dict[str, str]]:
                 label = str(tab.get("label") or "").strip()
                 # GH-351: PR-tab titles like ``PR #347: …`` overpaint Multitask
                 # sessions; keep branchName / git fallback, drop the label.
-                if is_pr_number_session_label(label):
+                # GH-361: bare shell names (``zsh``/``bash``) are terminal
+                # titles, not session titles.
+                if is_pr_number_session_label(label) or is_shell_title_session_label(label):
                     label = ""
                 branch = _branch_name_leaf(str(props.get("branchName") or ""))
                 prev = out.get(agent_id, {})

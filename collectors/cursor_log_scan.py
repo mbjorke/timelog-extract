@@ -35,9 +35,10 @@ def iter_log_day_dirs(
     Folder names encode the *app launch* time, not the log-entry day: a
     long-lived Cursor process appends to the same folder for days (GH-363).
     So the lower bound pads the window start by the maximum plausible session
-    lifetime (``_MAX_SESSION_FOLDER_AGE_DAYS``) instead of one day, and only
-    folders named after the window end (+1 day pad) are excluded — they cannot
-    contain in-window entries. The bounded range keeps the GH-353 perf goal
+    lifetime (``_MAX_SESSION_FOLDER_AGE_DAYS``) instead of one day, and folders
+    named outside the padded range — older than the padded start or after the
+    window end (+1 day pad) — are excluded; they cannot contain in-window
+    entries. The bounded range keeps the GH-353 perf goal
     (no unbounded enumeration of historical folders); the per-file
     ``st_mtime`` checks in the scanners still skip stale files cheaply.
     Unknown folder layouts are kept so a Cursor rename does not go silent.

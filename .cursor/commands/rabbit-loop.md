@@ -25,6 +25,10 @@ Thin wrapper. The canonical, editor-agnostic workflow lives in
   when CONVERGED. `NEEDS_HUMAN` (report/invoice engine, `collectors/`, `outputs/`,
   deps, CI, governance) → generate a checklist with
   `scripts/rabbit_loop.sh --manual-test-plan`, post it, and pause for the maintainer.
+- **Merge gate (even for SAFE):** immediately before `gh pr merge`, run
+  `scripts/rabbit_loop.sh --merge-gate [--pr N]`. `BLOCKED` (unresolved review
+  threads, bot or human) → do **not** merge; reply + resolve every thread first,
+  then re-run until `CLEAR`.
 - Base defaults to `origin/main`; keep it fresh (`git fetch`).
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

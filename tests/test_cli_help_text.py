@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import re
 import unittest
 
 from typer.testing import CliRunner
 
 from core.cli import app
-
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def _plain_cli_output(text: str) -> str:
-    return _ANSI_RE.sub("", text)
+from tests.cli_output_helpers import strip_ansi as _plain_cli_output
 
 
 class CliHelpTextTests(unittest.TestCase):

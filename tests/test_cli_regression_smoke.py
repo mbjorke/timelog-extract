@@ -8,7 +8,6 @@ import ast
 import importlib.util
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -16,9 +15,10 @@ import time
 import unittest
 from pathlib import Path
 
+from tests.cli_output_helpers import strip_ansi
+
 ROOT = Path(__file__).resolve().parent.parent
 ENTRY = ROOT / "timelog_extract.py"
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class CliRegressionSmokeTests(unittest.TestCase):
@@ -26,13 +26,8 @@ class CliRegressionSmokeTests(unittest.TestCase):
 
     @staticmethod
     def _plain_text(output: str) -> str:
-        """
-        Strip ANSI color and style escape sequences from Rich-rendered CLI output.
-        
-        Returns:
-            str: The input string with ANSI escape sequences removed.
-        """
-        return ANSI_ESCAPE_RE.sub("", output)
+        """Strip ANSI color and style escape sequences from Rich-rendered CLI output."""
+        return strip_ansi(output)
 
     def _run_doctor(self, args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         """

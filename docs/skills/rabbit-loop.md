@@ -127,6 +127,7 @@ scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
 scripts/rabbit_loop.sh --skip-workflow    # emergency: skip multi-agent preflight
 scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
+scripts/rabbit_loop.sh --merge-gate       # last gate: MERGE_GATE CLEAR | BLOCKED (unresolved threads)
 ```
 
 ### Invoking it per agent
@@ -193,9 +194,18 @@ Adjust `_judgment_required()` in `scripts/rabbit_loop.sh` deliberately.
 **Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
 not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.
 
-**Resolve open review threads before merging.** Before `gh pr merge`, every unresolved
-CodeRabbit (or human) review thread on the PR must be **fixed, or replied to with a reason and
-resolved** — a merge should not leave dangling review conversations. Check and resolve them:
+**Merge gate (mandatory, even for SAFE): zero unresolved review threads.** GitHub-app
+reviewers (CodeRabbit, Qodo, humans) post threads the local CLI loop never sees, so
+`CONVERGED` + `SAFE` alone does not prove the PR thread is clean (incident: PR #371 was
+merged with an open thread). Run the gate **immediately before every `gh pr merge`**:
+
+```bash
+scripts/rabbit_loop.sh --merge-gate [--pr N]   # MERGE_GATE: CLEAR | BLOCKED
+```
+
+`BLOCKED` means unresolved threads exist (or they could not be verified — the gate fails
+closed). Do **not** merge; close each thread out first: **fix it, or reply with a reason
+(English) and resolve** — a merge must not leave dangling review conversations.
 
 ```bash
 # list unresolved threads (paginated)
@@ -214,9 +224,8 @@ gh api graphql -f query='query($owner:String!, $repo:String!, $pr:Int!, $after:S
 gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID"}){thread{isResolved}}}'
 ```
 
-The CLI loop's local findings never reach these GitHub threads, so this is a manual close-out step
-the merging agent owns. If a finding is a verified false positive or out-of-contract, reply on the
-thread with the reason (English), then resolve — don't silently dismiss.
+If a finding is a verified false positive or out-of-contract, reply on the thread with the
+reason, then resolve — don't silently dismiss. Re-run `--merge-gate` until `CLEAR`, then merge.
 
 ### Invoice-engine changes: run the real-data differential
 

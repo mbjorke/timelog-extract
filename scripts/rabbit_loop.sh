@@ -13,6 +13,7 @@
 # Usage:
 #   scripts/rabbit_loop.sh [--base <branch>] [--light] [--no-tests] [--help]
 #   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
+#   scripts/rabbit_loop.sh --merge-gate [--pr <number>]   # unresolved review threads
 #   scripts/rabbit_loop.sh --skip-workflow       # skip GitButler/multi-agent preflight
 #   scripts/rabbit_loop.sh --ack-workflow      # record workflow acknowledgement
 #   scripts/rabbit_loop.sh --skip-board-sync   # skip project-board PR sync on CONVERGED
@@ -28,6 +29,14 @@
 #                              CONVERGED (per docs/skills/rabbit-loop.md)
 #   MERGE_CLASS: NEEDS_HUMAN → touches a judgment surface (report/invoice engine,
 #                              collectors, outputs, deps, CI, governance) → pause
+#
+# --merge-gate checks the OPEN PR for unresolved review threads (bot or human)
+# via `gh` GraphQL. Even a SAFE + CONVERGED branch must NOT be merged while
+# review threads are open — reply + resolve first (AGENTS.md review close-out).
+#   MERGE_GATE: CLEAR (0 unresolved threads)  → merge allowed  (exit 0)
+#   MERGE_GATE: BLOCKED (N unresolved …)      → do not merge   (exit 1)
+# Defaults to the PR for the current branch; pass --pr <number> to override
+# (required on gitbutler/* workspaces where the lane branch is not checked out).
 #
 # Exit codes: 0 = CONVERGED / SAFE, 1 = ITERATE or NEEDS_HUMAN,
 #             2 = preflight/setup problem (e.g. not authenticated, or the working
@@ -52,6 +61,8 @@ LIGHT=""
 RUN_TESTS=1
 CLASSIFY=0
 MANUAL_PLAN=0
+MERGE_GATE=0
+MERGE_GATE_PR=""
 SKIP_WORKFLOW=0
 ACK_WORKFLOW=0
 SKIP_BOARD_SYNC=0
@@ -122,6 +133,59 @@ classify_merge() {
   return 1
 }
 
+# The last gate before `gh pr merge`: no unresolved review threads may remain on
+# the PR — bot or human. The CLI loop's findings never reach GitHub threads, and
+# GitHub-app reviewers (CodeRabbit, Qodo, …) post threads the local loop never
+# saw, so file-path SAFE + CONVERGED alone is NOT sufficient to merge
+# (incident: PR #371 merged with an open thread). Fail closed: any error
+# resolving the PR or querying threads blocks the merge.
+merge_gate() {
+  local pr="$1" unresolved
+  command -v gh >/dev/null 2>&1 || {
+    echo "MERGE_GATE: BLOCKED (gh CLI not found — cannot verify review threads)"; return 1
+  }
+  if [[ -z "$pr" ]]; then
+    pr="$(gh pr view --json number --jq .number 2>/dev/null || true)"
+    if [[ -z "$pr" ]]; then
+      echo "MERGE_GATE: BLOCKED (no open PR found for the current branch — pass --pr <number>)"
+      return 1
+    fi
+  fi
+  # Single-page read capped at 100 threads; hasNextPage=true blocks below so a
+  # busier PR fails closed instead of under-counting.
+  unresolved="$(gh api graphql \
+    -f query='query($owner:String!,$repo:String!,$pr:Int!){
+      repository(owner:$owner,name:$repo){
+        pullRequest(number:$pr){
+          reviewThreads(first:100){
+            nodes{isResolved}
+            pageInfo{hasNextPage}
+          }
+        }
+      }
+    }' \
+    -f owner="$(gh repo view --json owner --jq .owner.login)" \
+    -f repo="$(gh repo view --json name --jq .name)" \
+    -F pr="$pr" \
+    --jq '([.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length),
+          .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' 2>/dev/null)" || unresolved=""
+  local count more
+  count="$(printf '%s\n' "$unresolved" | sed -n 1p)"
+  more="$(printf '%s\n' "$unresolved" | sed -n 2p)"
+  if [[ -z "$count" ]]; then
+    echo "MERGE_GATE: BLOCKED (could not query review threads for PR #$pr)"; return 1
+  fi
+  if [[ "$more" == "true" ]]; then
+    echo "MERGE_GATE: BLOCKED (PR #$pr has >100 review threads — check manually)"; return 1
+  fi
+  if [[ "$count" != "0" ]]; then
+    echo "MERGE_GATE: BLOCKED (PR #$pr has $count unresolved review thread(s) — reply + resolve before merge)"
+    return 1
+  fi
+  echo "MERGE_GATE: CLEAR (PR #$pr has 0 unresolved review threads)"
+  return 0
+}
+
 # Scaffold a manual-test checklist from the committed diff, mapping each changed
 # AREA to a concrete verification command. The agent completes each step's
 # "Expected:" with a judgeable outcome before handing it to the maintainer.
@@ -178,6 +242,8 @@ while [[ $# -gt 0 ]]; do
     --light) LIGHT="--light"; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
     --classify-merge) CLASSIFY=1; shift ;;
+    --merge-gate) MERGE_GATE=1; shift ;;
+    --pr) MERGE_GATE_PR="${2:?--pr needs a PR number}"; shift 2 ;;
     --manual-test-plan) MANUAL_PLAN=1; shift ;;
     --skip-workflow) SKIP_WORKFLOW=1; shift ;;
     --ack-workflow) ACK_WORKFLOW=1; shift ;;
@@ -200,6 +266,11 @@ cd "$REPO_ROOT"
 # Internal movement classifier (pure git; used by tests). No CodeRabbit call needed.
 if [[ $CLASSIFY_MOVE -eq 1 ]]; then
   _classify_movement "$CLASSIFY_MOVE_BR" "$CLASSIFY_MOVE_SHA"; exit 0
+fi
+
+# Merge gate: pure gh query; no CodeRabbit call needed.
+if [[ $MERGE_GATE -eq 1 ]]; then
+  merge_gate "$MERGE_GATE_PR"; exit $?
 fi
 
 # Ship-gate classification and the manual-test scaffold are pure git-diff checks;

@@ -35,11 +35,13 @@ When But work is done for a while: `but teardown --checkout-to main`.
 - Before commit on shared files (`pyproject.toml`, `CHANGELOG.md`, `CONTRIBUTING.md`):
   `but unapply` other applied stacks → commit → re-apply only if needed
 - One virtual branch ≈ one future PR; do not bundle unrelated scope
-- Use `but diff` → `but commit <branch> -m "…" --changes <ids>`; do not chain `but` mutations with `&&`
+- Use `but diff` → `but commit <branch> … --changes <ids>`; do not chain `but` mutations with `&&`
+- Prefer **`but commit <branch> --ai --changes <ids>`** (or `--ai="…"` with a short English hint) for the message; same for **`but squash --ai`**. Still run the autotests gate first when push-ready; reword if the AI message is not English or scope-bounded
 - Delete stale lane: `but apply <branch>` then `but branch delete <branch>` (delete fails on unapplied lanes)
 - History edits: `but rub <source> <target>`; mode pick in policy doc (parallel / stack / worktree)
 - Stale lanes: `but oplog snapshot` before bulk cleanup; runbook `docs/runbooks/gitbutler-workspace-cleanup.md`
 - Push: `but push <branch-name>` then PR (`but pr new` or `gh pr create`)
+- Keep CLI + skill current (local): `but update check` → `but update` → `but skill install --detect`. Never `but agent setup` here (can overwrite `AGENTS.md` / `CLAUDE.md`)
 
 ## Handoff to next editor (Claude ↔ Cursor)
 

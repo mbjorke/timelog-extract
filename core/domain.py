@@ -19,6 +19,13 @@ GENERIC_TOOL_TERMS = {
     "toggle.com",
 }
 
+# Impact types for pre-compiled profile index
+_IMPACT_GENERIC = 0
+_IMPACT_PATH = 1
+_IMPACT_NORMAL = 2
+_IMPACT_NAME = 3
+_IMPACT_URL = 4
+
 
 @functools.lru_cache(maxsize=1024)
 def _is_path_like_term(term: str) -> bool:
@@ -74,6 +81,79 @@ def _prepare_haystack_and_word_set(text_lower: str) -> tuple[str, frozenset[str]
     return haystack_with_variants, word_set
 
 
+def _compile_profiles_index(
+    profiles: List[Dict[str, Any]],
+) -> tuple[
+    dict[str, list[tuple[int, int]]],
+    list[tuple[str, list[tuple[int, int]]]],
+    dict[str, list[tuple[int, int]]],
+]:
+    """Index profiles by term for fast lookup.
+
+    Returns:
+        fast_terms: Map of alphanumeric terms to (profile_index, impact_type)
+        slow_terms: List of (term, impacts) for non-alphanumeric or path-like terms
+        all_impacts: Combined map for all terms
+    """
+    term_to_impacts: dict[str, list[tuple[int, int]]] = {}
+
+    def add_term(term: Any, idx: int, impact: int):
+        clean = str(term).strip().lower()
+        if not clean:
+            return
+        if clean not in term_to_impacts:
+            term_to_impacts[clean] = []
+        term_to_impacts[clean].append((idx, impact))
+
+    for i, profile in enumerate(profiles):
+        for term in profile.get("match_terms") or []:
+            clean_term = str(term).strip().lower()
+            if not clean_term:
+                continue
+            if clean_term in GENERIC_TOOL_TERMS:
+                impact = _IMPACT_GENERIC
+            elif _is_path_like_term(clean_term):
+                impact = _IMPACT_PATH
+            else:
+                impact = _IMPACT_NORMAL
+            add_term(clean_term, i, impact)
+
+        name_lower = profile["name"].lower()
+        if name_lower:
+            add_term(name_lower, i, _IMPACT_NAME)
+
+        for url in profile.get("tracked_urls") or []:
+            add_term(url, i, _IMPACT_URL)
+
+    fast_terms: dict[str, list[tuple[int, int]]] = {}
+    slow_terms: list[tuple[str, list[tuple[int, int]]]] = []
+    for term, impacts in term_to_impacts.items():
+        if term.isalnum() and not _is_path_like_term(term):
+            fast_terms[term] = impacts
+        else:
+            slow_terms.append((term, impacts))
+
+    return fast_terms, slow_terms, term_to_impacts
+
+
+_LAST_PROFILES_DATA: tuple[Any, Any, Any] | None = None
+
+
+def _get_compiled_index(profiles: List[Dict[str, Any]]) -> Any:
+    """Caching wrapper to avoid re-compiling the index for the same profiles list."""
+    global _LAST_PROFILES_DATA
+    # Fingerprint to detect mutation of the same list object (common in tests).
+    # We include all profile names to catch renames or project swaps in the same list.
+    fingerprint = (len(profiles), tuple(p.get("name") for p in profiles))
+    if (
+        _LAST_PROFILES_DATA is None
+        or _LAST_PROFILES_DATA[0] is not profiles
+        or _LAST_PROFILES_DATA[1] != fingerprint
+    ):
+        _LAST_PROFILES_DATA = (profiles, fingerprint, _compile_profiles_index(profiles))
+    return _LAST_PROFILES_DATA[2]
+
+
 def _matches_term(term: str, haystack: str, word_set: Optional[Set[str]] = None) -> bool:
     """True when term appears in haystack, respecting word boundaries for plain terms."""
     if not term:
@@ -96,79 +176,65 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     if not text:
         return fallback
 
+    fast_terms, slow_terms, all_impacts = _get_compiled_index(profiles)
     haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
+
+    matched_terms = set()
+    # 1. Fast path: alphanumeric terms that are definitely in the text's word set.
+    for term in fast_terms.keys() & word_set:
+        matched_terms.add(term)
+
+    # 2. Slow path: path-like or special-char terms.
+    # Only check them if the term appears as a substring in the haystack.
+    for term, _ in slow_terms:
+        if term in haystack_with_variants:
+            if _matches_term(term, haystack_with_variants, word_set=word_set):
+                matched_terms.add(term)
+
+    if not matched_terms:
+        return fallback
+
+    num_profs = len(profiles)
+    scores = [0.0] * num_profs
+    specifics = [0] * num_profs
+    generics = [0] * num_profs
+    lens = [0] * num_profs
+    counts = [0] * num_profs
+
+    # 3. Single-pass scoring: accumulate rank components for all matching profiles.
+    for term in matched_terms:
+        t_len = len(term)
+        for idx, impact in all_impacts[term]:
+            lens[idx] += t_len
+            if impact == _IMPACT_GENERIC:
+                scores[idx] += 0.25
+                generics[idx] += 1
+                counts[idx] += 1
+            elif impact == _IMPACT_PATH:
+                scores[idx] += 2.0
+                specifics[idx] += 1
+                counts[idx] += 1
+            elif impact == _IMPACT_NORMAL:
+                scores[idx] += 1.0
+                specifics[idx] += 1
+                counts[idx] += 1
+            elif impact == _IMPACT_NAME:
+                scores[idx] += 1.0
+                specifics[idx] += 1
+            elif impact == _IMPACT_URL:
+                scores[idx] += 2.0
+                specifics[idx] += 1
 
     best_name = fallback
     # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
     best_rank = (0.0, 0, 0, 0, 0)
 
-    # Use match_cache to avoid re-evaluating the same term across different profiles.
-    match_cache: Dict[str, bool] = {}
-
-    for profile in profiles:
-        weighted_score = 0.0
-        specific_hits = 0
-        generic_hits = 0
-        match_len = 0
-        num_matches = 0
-
-        for term in profile.get("match_terms") or []:
-            clean = str(term).strip().lower()
-            if not clean:
-                continue
-
-            if clean not in match_cache:
-                if clean in haystack_with_variants:
-                    match_cache[clean] = _matches_term(clean, haystack_with_variants, word_set=word_set)
-                else:
-                    match_cache[clean] = False
-
-            if match_cache[clean]:
-                num_matches += 1
-                match_len += len(clean)
-                if clean in GENERIC_TOOL_TERMS:
-                    weighted_score += 0.25
-                    generic_hits += 1
-                elif _is_path_like_term(clean):
-                    weighted_score += 2.0
-                    specific_hits += 1
-                else:
-                    weighted_score += 1.0
-                    specific_hits += 1
-
-        name_lower = profile["name"].lower()
-        if name_lower:
-            if name_lower not in match_cache:
-                if name_lower in haystack_with_variants:
-                    match_cache[name_lower] = _matches_term(name_lower, haystack_with_variants, word_set=word_set)
-                else:
-                    match_cache[name_lower] = False
-
-            if match_cache[name_lower]:
-                weighted_score += 1.0
-                specific_hits += 1
-                match_len += len(name_lower)
-
-        for url in profile.get("tracked_urls") or []:
-            fragment = str(url).strip().lower()
-            if not fragment:
-                continue
-
-            if fragment not in match_cache:
-                if fragment in haystack_with_variants:
-                    match_cache[fragment] = _matches_term(fragment, haystack_with_variants, word_set=word_set)
-                else:
-                    match_cache[fragment] = False
-
-            if match_cache[fragment]:
-                weighted_score += 2.0
-                specific_hits += 1
-                match_len += len(fragment)
-
-        rank = (weighted_score, specific_hits, match_len, -generic_hits, num_matches)
-        if (specific_hits > 0 or weighted_score >= 1.0) and rank > best_rank:
-            best_rank = rank
-            best_name = profile["name"]
+    for i in range(num_profs):
+        if specifics[i] > 0 or scores[i] >= 1.0:
+            rank = (scores[i], specifics[i], lens[i], -generics[i], counts[i])
+            if rank > best_rank:
+                best_rank = rank
+                best_name = profiles[i]["name"]
 
     return best_name
 

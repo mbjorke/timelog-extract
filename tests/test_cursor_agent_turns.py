@@ -317,14 +317,15 @@ class CursorAgentTurnsTests(unittest.TestCase):
                 events[0]["detail"], "keep counting turns from long-lived sessions"
             )
 
-    def test_log_day_dirs_keep_older_prune_future_folders(self):
-        """Only folders named after the window end (+1 pad) are pruned (GH-363)."""
+    def test_log_day_dirs_bounded_session_age_prune_future_folders(self):
+        """Lower bound = session-age pad; upper bound = window end +1 (GH-363)."""
         from collectors.cursor_log_scan import iter_log_day_dirs
 
         with tempfile.TemporaryDirectory() as tmp:
             logs_dir = Path(tmp)
             for name in (
-                "20260601T090000",  # far older launch — must be kept
+                "20260401T090000",  # beyond the session-age pad — pruned
+                "20260601T090000",  # within the session-age pad — kept
                 "20260707T083000",  # 2 days before window — must be kept
                 "20260710T090000",  # window end +1 pad — kept
                 "20260712T090000",  # after the pad — pruned

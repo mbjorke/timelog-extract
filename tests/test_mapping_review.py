@@ -226,6 +226,26 @@ class MappingReviewTests(unittest.TestCase):
         self.assertEqual(review.new_projects[0].slug, "mbjorke/landsbanken-faq-helper")
         self.assertTrue(review.new_projects[0].created_at.startswith("2026-06-11"))
 
+    def test_rejects_glass_multitask_parenthetical_as_new_project(self):
+        """GH-359: GitHub issue titles mentioning Glass/Multitask must not map-nudge."""
+        profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]
+        ts = datetime(2026, 7, 9, 23, 44, tzinfo=timezone.utc)
+        events = [
+            {
+                "source": "GitHub",
+                "timestamp": ts,
+                "detail": (
+                    "issue #348 closed: Cursor (agent): restore chat title / branch "
+                    "slug when composerHeaders missing (Glass/Multitask) "
+                    "(mbjorke/timelog-extract)"
+                ),
+                "project": "timelog-extract",
+            },
+        ]
+        review = build_mapping_review(events, profiles, slug_bindings={}, gh_discovery=False)
+        self.assertEqual(review.new_projects, [])
+        self.assertEqual(review.changes, [])
+
 
 if __name__ == "__main__":
     unittest.main()

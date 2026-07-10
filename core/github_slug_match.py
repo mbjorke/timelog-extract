@@ -65,6 +65,9 @@ _RESERVED_GH_OWNERS = frozenset(
         "east",
         "global",
         "world",
+        # Cursor Glass / Multitask product surface — not a real remote owner
+        # (GH-359: map nudge invented github.com/glass/multitask from issue text).
+        "glass",
     }
 )
 

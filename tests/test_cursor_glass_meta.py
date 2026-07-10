@@ -212,6 +212,181 @@ class CursorGlassMetaTests(unittest.TestCase):
             self.assertEqual(events[0]["anchors"].get("branch"), "work-unit-v2-spike-267")
             self.assertIn("(@work-unit-v2-spike-267)", events[0]["detail"])
 
+    def test_glass_terminal_tab_label_ignored_falls_back_to_dir(self):
+        """GH-361: Multitask terminal tab titles must not become session labels."""
+        cid = "eeeeeeee-ffff-0000-1111-222222222222"
+        ws = "b2c3d4e5f60718293a4b5c6d7e8f90a1"
+        repo_path = "/tmp/project-alpha"
+        glass_payload = {
+            "version": 2,
+            "stableTabs": [],
+            "workspaceTabs": [
+                {
+                    "id": "terminal:example",
+                    "kind": "terminal",
+                    "label": "gittan-dev report --yesterday",
+                    "props": {
+                        "ownerAgentId": cid,
+                        "repoPath": repo_path,
+                    },
+                }
+            ],
+        }
+        payload = {
+            "hook_event_name": "beforeSubmitPrompt",
+            "conversation_id": cid,
+            "session_id": cid,
+            "workspace_roots": [repo_path],
+            "prompt": "ignore terminal tab titles",
+        }
+        body = (
+            "[2026-07-09T22:00:00.000Z] Hook step requested: beforeSubmitPrompt\n"
+            "INPUT:\n"
+            + json.dumps(payload, indent=2)
+            + "\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_composer_db(
+                home,
+                [],
+                extra_rows=[
+                    (
+                        f"cursor/glass.tabs.v2/{ws}/state.json",
+                        json.dumps(glass_payload),
+                    )
+                ],
+            )
+            self._write_hooks_log(home, ws, body)
+            events, covered = collect_cursor_agent_turns(
+                [],
+                datetime(2026, 7, 9, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 7, 9, 23, 59, tzinfo=timezone.utc),
+                home,
+                timezone.utc,
+                lambda t, p: "project-alpha",
+                self._make_event,
+            )
+            self.assertEqual(covered, {cid})
+            self.assertEqual(len(events), 1)
+            label = events[0]["anchors"].get("label")
+            self.assertNotEqual(label, "gittan-dev report --yesterday")
+            # Dir leaf fallback, same convention as the GH-351 PR-title reject.
+            self.assertEqual(label, "project-alpha")
+
+    def test_glass_terminal_tab_skipped_valid_tab_label_wins(self):
+        """GH-361: a non-terminal tab's label wins over a terminal tab's title."""
+        cid = "ffffffff-0000-1111-2222-333333333333"
+        ws = "c3d4e5f60718293a4b5c6d7e8f90a1b2"
+        glass_payload = {
+            "version": 2,
+            "stableTabs": [],
+            "workspaceTabs": [
+                {
+                    "id": "terminal:example",
+                    "kind": "terminal",
+                    "label": "zsh",
+                    "props": {"ownerAgentId": cid},
+                },
+                {
+                    "id": "pr:example",
+                    "kind": "pr",
+                    "label": "Fix terminal title leak",
+                    "props": {
+                        "ownerAgentId": cid,
+                        "branchName": "task/361-glass-terminal-tab-label",
+                    },
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_composer_db(
+                home,
+                [],
+                extra_rows=[
+                    (
+                        f"cursor/glass.tabs.v2/{ws}/state.json",
+                        json.dumps(glass_payload),
+                    )
+                ],
+            )
+            meta = load_glass_agent_tab_meta(home)
+            self.assertEqual(meta[cid].get("label"), "Fix terminal title leak")
+            self.assertEqual(meta[cid].get("branch"), "361-glass-terminal-tab-label")
+
+    def test_glass_only_terminal_tabs_yield_no_meta(self):
+        """GH-361: agents whose only Glass tabs are terminals get no tab meta."""
+        cid = "00000000-1111-2222-3333-444444444444"
+        ws = "d4e5f60718293a4b5c6d7e8f90a1b2c3"
+        glass_payload = {
+            "version": 2,
+            "stableTabs": [
+                {
+                    "id": "terminal:one",
+                    "kind": "terminal",
+                    "label": "bash",
+                    "props": {"ownerAgentId": cid},
+                }
+            ],
+            "workspaceTabs": [
+                {
+                    "id": "terminal:two",
+                    "kind": "terminal",
+                    "label": "gittan-dev report --yesterday",
+                    "props": {"ownerAgentId": cid},
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_composer_db(
+                home,
+                [],
+                extra_rows=[
+                    (
+                        f"cursor/glass.tabs.v2/{ws}/state.json",
+                        json.dumps(glass_payload),
+                    )
+                ],
+            )
+            self.assertEqual(load_glass_agent_tab_meta(home), {})
+
+    def test_glass_shell_title_label_rejected_keeps_branch(self):
+        """GH-361: bare shell names are dropped even on non-terminal tabs."""
+        cid = "11111111-2222-3333-4444-555555555555"
+        ws = "e5f60718293a4b5c6d7e8f90a1b2c3d4"
+        glass_payload = {
+            "version": 2,
+            "stableTabs": [],
+            "workspaceTabs": [
+                {
+                    "id": "pr:example",
+                    "kind": "pr",
+                    "label": "zsh",
+                    "props": {
+                        "ownerAgentId": cid,
+                        "branchName": "task/361-shell-title-guard",
+                    },
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_composer_db(
+                home,
+                [],
+                extra_rows=[
+                    (
+                        f"cursor/glass.tabs.v2/{ws}/state.json",
+                        json.dumps(glass_payload),
+                    )
+                ],
+            )
+            meta = load_glass_agent_tab_meta(home)
+            self.assertNotIn("label", meta.get(cid, {}))
+            self.assertEqual(meta[cid].get("branch"), "361-shell-title-guard")
+
     def test_git_branch_fallback_when_composer_header_missing(self):
         """GH-348: workspace_roots HEAD branch when Glass/header have no branch."""
         cid = "cccccccc-dddd-eeee-ffff-000000000000"

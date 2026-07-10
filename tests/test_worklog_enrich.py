@@ -109,6 +109,46 @@ class WorklogEnrichTests(unittest.TestCase):
         self.assertNotIn("label", events[2].get("anchors", {}))
         self.assertEqual(events[1]["detail"], "issue #345 opened (example/project-alpha)")
 
+    def test_enrich_skips_shell_title_session_labels(self):
+        """GH-361: terminal-title labels (shell names) must not paint delivery rows."""
+        base = datetime(2026, 7, 10, 14, 0, tzinfo=timezone.utc)
+        events = [
+            make_test_event(
+                "Cursor (agent)",
+                base,
+                "3 turns",
+                "timelog-extract",
+                anchors={"label": "zsh"},
+            ),
+            make_test_event(
+                "GitHub",
+                base + timedelta(minutes=10),
+                "issue #361 opened (example/project-alpha)",
+                "timelog-extract",
+            ),
+            make_test_event(
+                "TIMELOG.md",
+                base + timedelta(minutes=12),
+                "Commit: guard terminal titles",
+                "timelog-extract",
+            ),
+        ]
+        from core.worklog_enrich import enrich_delivery_session_labels
+
+        enrich_delivery_session_labels(events)
+        self.assertNotIn("label", events[1].get("anchors", {}))
+        self.assertNotIn("label", events[2].get("anchors", {}))
+
+    def test_is_shell_title_session_label(self):
+        from core.worklog_enrich import is_shell_title_session_label
+
+        self.assertTrue(is_shell_title_session_label("zsh"))
+        self.assertTrue(is_shell_title_session_label("  Bash  "))
+        self.assertFalse(is_shell_title_session_label("zsh scripting tips"))
+        self.assertFalse(is_shell_title_session_label("Restore agent labels"))
+        self.assertFalse(is_shell_title_session_label(""))
+        self.assertFalse(is_shell_title_session_label(None))
+
     def test_enrich_skips_when_project_differs(self):
         base = datetime(2026, 6, 24, 15, 40, tzinfo=timezone.utc)
         events = [

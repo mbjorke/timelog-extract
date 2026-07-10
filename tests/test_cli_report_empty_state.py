@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -8,13 +7,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
-
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def _plain(output: str) -> str:
-    """Strip ANSI color codes; Rich colorizes in color-capable terminals."""
-    return _ANSI_RE.sub("", output)
+from tests.cli_output_helpers import strip_ansi as _plain
 
 
 class _FakeReport:

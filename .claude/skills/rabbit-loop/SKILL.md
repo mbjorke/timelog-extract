@@ -36,6 +36,10 @@ Bounds and stopping:
   checklist with `scripts/rabbit_loop.sh --manual-test-plan` (real command +
   judgeable expected outcome per step), post it, and pause. Never auto-merge unless
   CONVERGED.
+- **Merge gate (even for SAFE):** immediately before `gh pr merge`, run
+  `scripts/rabbit_loop.sh --merge-gate [--pr N]`. `BLOCKED` (unresolved review
+  threads, bot or human) → do **not** merge; reply + resolve every thread, then
+  re-run until `CLEAR`.
 - Keep an audit trail in `.rabbit-loop/state.md` (git-ignored).
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

@@ -31,6 +31,15 @@ When you use `--format json`, the truth payload includes `collector_status`: for
 
 Use this to answer “why is Chrome/GitHub/etc. empty?” without guessing.
 
+**Contract: partial failure must be visible, never silent.** A collector that hits
+an error mid-run (locked SQLite DB, moved log path, permission change after an OS
+update) must record a **degraded** status with the error reason in
+`collector_status` — it must not swallow the error and return quietly fewer events.
+For a tool people invoice from, the most dangerous number is the one we failed to
+collect: a shrunk report caused by a degraded source must never be
+indistinguishable from a genuinely light week. Broad `except Exception … pass` in a
+collector violates this contract.
+
 The Rich terminal report does **not** print the full `collector_status` table; it shows a **Source Summary** built from **actual events** (counts by `source` field) after inclusion rules.
 
 ## `--exclude` is not “exclude this source”

@@ -36,6 +36,11 @@ Implementation: `outputs/terminal_theme.py` (canonical hex tokens). The site (`g
 - Avoid heavy table boxes unless they add clear value.
 - Prefer `Table.grid(...)` for lightweight readouts.
 - Minimize bracket noise like `[Source] [Project]` when color + spacing is enough.
+- **Value before caveats.** Lead with what the user did (per-project/day activity),
+  then the trust framing (`observed → classified → approved`, review-before-invoicing)
+  as a footer — not a preamble. A caveat the user cannot yet contextualize reads as
+  noise, not trust. Demote expected-absence warnings (e.g. `~/Library/Mail not found`
+  on a machine without Mail) to a quiet line, not an alert.
 
 ## Do / Don't
 

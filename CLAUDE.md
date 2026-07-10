@@ -44,9 +44,15 @@ python3 -m unittest tests/test_engine_api.py::TestEngineApi::test_some_method
 ### CLI smoke test
 
 ```bash
-gittan --today --screen-time off --source-summary
-python timelog_extract.py --today --screen-time off --source-summary
+gittan report --today --screen-time off --source-summary
+python timelog_extract.py report --today --screen-time off --source-summary
 ```
+
+> Reporting lives under the `report` subcommand. Bare `gittan --today` errors with
+> `No such option: --today`. The CI smoke step (`.github/workflows/ci.yml`) still
+> uses the legacy top-level flag and masks the failure with `|| true`; making that
+> gate real is tracked in `docs/task-prompts/agent-inline-cli-ux-validation-task.md`
+> (GH-123).
 
 ### Build package (for release validation)
 

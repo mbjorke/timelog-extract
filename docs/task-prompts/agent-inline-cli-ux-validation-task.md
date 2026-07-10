@@ -10,7 +10,7 @@ smoke checks, not only at PR end.
 - spec_status: `approved`
 - implementation_status: `not built`
 - created_at: `2026-04-15`
-- last_updated_at: `2026-04-26`
+- last_updated_at: `2026-07-10`
 - implementation.pr: `pending`
 - implementation.branch: `pending`
 - implementation.commits: `[]`
@@ -20,6 +20,23 @@ smoke checks, not only at PR end.
   - `2026-04-15: Initial task prompt created.`
   - `2026-04-15: Added mandatory traceability metadata and branch-flow defaults.`
   - `2026-04-26: Added CLI impact smoke gate and updated required behavior formatting.`
+  - `2026-07-10: Added observed regression (bare --today dead-ends; CI smoke masked by || true) as motivating evidence and an acceptance case; from desirability brainstorm (docs/ideas/blind-spot-desirability-brainstorm-2026-07-10.md).`
+
+## Motivating regression (observed 2026-07-10)
+
+This task is not hypothetical — the gap it closes is already live:
+
+- Reporting moved under the `report` subcommand, so `gittan --today` (the command
+  in `CLAUDE.md`'s smoke section and the instinctive first thing a new user types)
+  now dead-ends with `No such option: --today`. A brand-new user's first
+  interaction is a bare error box.
+- The CI smoke step (`.github/workflows/ci.yml`) still runs the legacy
+  `python timelog_extract.py --today …` **and suffixes `|| true`**, so it has been
+  green while executing a broken command — the exact "validated only at PR end, and
+  even then masked" failure this task exists to prevent.
+
+The inline smoke gate must catch this class: a documented/legacy top-level
+invocation silently ceasing to work, hidden by an error-swallowing CI step.
 
 ## Goal
 
@@ -86,6 +103,10 @@ This task is priority #1.
 - Failures are explicit and actionable.
 - No regressions in existing CLI flows.
 - Docs updated minimally if command contract changed.
+- The smoke gate covers **documented/legacy top-level invocations** (e.g.
+  `gittan --today`) and **fails loudly** — no `|| true` masking; a broken smoke
+  command turns CI red, and `CLAUDE.md` / help text stay in sync with the actual
+  command contract.
 
 ## Task output format
 

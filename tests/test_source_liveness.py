@@ -83,6 +83,23 @@ class ShadowBaselineTests(unittest.TestCase):
                 shadow_baseline_by_source(date(2026, 3, 10), home=Path(tmp)), {}
             )
 
+    def test_lookback_spanning_three_months_reads_middle_month(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_shadow_records(
+                home,
+                [
+                    _shadow_record("Cursor (agent)", "2026-01-25"),
+                    _shadow_record("Cursor (agent)", "2026-02-15"),
+                    _shadow_record("Cursor (agent)", "2026-03-05"),
+                ],
+            )
+            baseline = shadow_baseline_by_source(
+                date(2026, 3, 10), home=home, lookback_days=60
+            )
+        self.assertEqual(baseline["Cursor (agent)"]["days_active"], 3)
+        self.assertEqual(baseline["Cursor (agent)"]["last_active"], "2026-03-05")
+
 
 class DetectSilentSourcesTests(unittest.TestCase):
     """Replays of the #345 / #363 shape: active history, silent window, busy siblings."""
@@ -240,6 +257,9 @@ class WindowFallbackTests(unittest.TestCase):
     """No shadow log: yesterday-vs-today comparison inside the window itself."""
 
     def _detect(self, events, collector_status=None):
+        # dt_from is the *window start*: fixtures span 2026-03-09..10, so the
+        # window opens on 03-09. The empty temp home guarantees no shadow-log
+        # baseline exists, forcing the window-internal fallback path.
         with tempfile.TemporaryDirectory() as tmp:
             return detect_silent_sources(
                 events,

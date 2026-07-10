@@ -139,7 +139,13 @@ def shadow_baseline_by_source(
     if not ev_dir.is_dir():
         return {}
     start = window_start - timedelta(days=lookback_days)
-    months = {start.isoformat()[:7], window_start.isoformat()[:7]}
+    # Enumerate every calendar month the lookback touches (a >2-month lookback
+    # would otherwise skip the middle months' files).
+    months = set()
+    cursor = start.replace(day=1)
+    while cursor <= window_start:
+        months.add(cursor.isoformat()[:7])
+        cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
     baseline: Dict[str, Dict[str, Any]] = {}
     for month, record in read_records(ev_dir):
         if month not in months:

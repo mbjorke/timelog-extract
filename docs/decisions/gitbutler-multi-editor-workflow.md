@@ -246,11 +246,33 @@ not commit IDs).
 
 | Editor | Guidance |
 | --- | --- |
-| **Claude Code** | Good for large exploration; commit before handoff; optional hooks: `but claude post-tool` (see GitButler AI docs). |
+| **Claude Code** | Good for large exploration; commit before handoff; optional hooks: `but claude post-tool` (see GitButler AI docs). Opt-in helpers: `but commit --ai` / `but squash --ai` generate a message from the staged changes (still run the autotests gate first; reword to match our English, scope-bounded convention). |
 | **Cursor** | Read `.cursor/rules/gitbutler-multi-editor-workflow.mdc`; run tests in session; use `gh` for PR threads. |
 | **Both on same branch** | Same handoff checklist; never assume the other tool ran `but pull`. |
 
 Personal GitButler CLI skill (install locally; operational `but` command detail) lives outside this repo — see upstream GitButler docs and your editor’s skill path. Do not duplicate that skill here; this doc is **policy** only.
+
+## Keeping GitButler + skill current
+
+`but` releases roughly weekly. It is a **personal, local tool** — not a repo dependency,
+not pinned in `pyproject.toml`, not a CI concern. Keeping it current is per-machine
+maintenance, not a repo change.
+
+| Task | Command |
+| --- | --- |
+| Check for a new CLI version | `but update check` |
+| Update the CLI | `but update` (or `brew upgrade gitbutler`, or re-run the [installer](https://gitbutler.com/cli)) |
+| Refresh the skill after updating | `but skill install --detect` |
+
+- **Update the skill after every GitButler upgrade** — the templates ship with the
+  binary and drift otherwise (GitButler docs: *"update the skill after updating
+  GitButler"*). Use `but skill install` / `--detect` for **just the skill files**.
+- **Avoid `but agent setup` in this repo.** The wizard writes workflow preferences into
+  agent instruction files (`AGENTS.md` / `CLAUDE.md`) and can overwrite our curated
+  policy. This doc is the policy; run the skill installer, not the wizard.
+- **CLI ships with the desktop app.** After a desktop auto-update `but` can break
+  (upstream [#12043](https://github.com/gitbutlerapp/gitbutler/issues/12043)); reinstall
+  the CLI (global settings → *Install CLI*, or the installer script) if it does.
 
 ## When to choose worktrees instead
 

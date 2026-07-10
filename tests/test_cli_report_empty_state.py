@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -7,6 +8,13 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(output: str) -> str:
+    """Strip ANSI color codes; Rich colorizes in color-capable terminals."""
+    return _ANSI_RE.sub("", output)
 
 
 class _FakeReport:
@@ -40,9 +48,10 @@ class ReportEmptyStateUxTests(unittest.TestCase):
         with patch("core.report_cli.run_timelog_report", return_value=report):
             result = self.runner.invoke(app, ["report", "--today"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("No events found.", result.output)
-        self.assertIn("gittan doctor", result.output)
-        flat = " ".join(result.output.split())
+        output = _plain(result.output)
+        self.assertIn("No events found.", output)
+        self.assertIn("gittan doctor", output)
+        flat = " ".join(output.split())
         self.assertIn("gittan report --today --source-summary", flat)
 
     def test_report_ambiguous_project_message_unchanged(self):
@@ -50,8 +59,9 @@ class ReportEmptyStateUxTests(unittest.TestCase):
         with patch("core.report_cli.run_timelog_report", return_value=report):
             result = self.runner.invoke(app, ["report", "--today", "--only-project", "Ax"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Project filter 'Ax' is ambiguous.", result.output)
-        self.assertNotIn("No events found.", result.output)
+        output = _plain(result.output)
+        self.assertIn("Project filter 'Ax' is ambiguous.", output)
+        self.assertNotIn("No events found.", output)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,22 @@ _PR_NUMBER_SESSION_LABEL_RE = re.compile(
 
 # Live shell titles (Glass Multitask terminal tabs, GH-361) are not session
 # titles; exact-match on the bare shell name.
-_SHELL_TITLE_SESSION_LABELS = frozenset({"zsh", "bash"})
+_SHELL_TITLE_SESSION_LABELS = frozenset(
+    {
+        "zsh",
+        "bash",
+        "sh",
+        "dash",
+        "fish",
+        "ksh",
+        "tcsh",
+        "csh",
+        "nu",
+        "nushell",
+        "pwsh",
+        "powershell",
+    }
+)
 
 # Chat/IDE sources that carry human-meaningful session titles.
 _SESSION_LABEL_SOURCES = frozenset(
@@ -50,7 +65,7 @@ def is_pr_number_session_label(label: str | None) -> bool:
 
 
 def is_shell_title_session_label(label: str | None) -> bool:
-    """True when ``label`` is a bare shell name (``zsh``/``bash``) (GH-361).
+    """True when ``label`` is a bare shell name (``zsh``, ``fish``, …) (GH-361).
 
     Glass Multitask terminal tabs carry the live terminal title; an idle
     terminal reports just the shell name, which must not become a session

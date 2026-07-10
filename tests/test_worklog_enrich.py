@@ -144,6 +144,10 @@ class WorklogEnrichTests(unittest.TestCase):
 
         self.assertTrue(is_shell_title_session_label("zsh"))
         self.assertTrue(is_shell_title_session_label("  Bash  "))
+        self.assertTrue(is_shell_title_session_label("sh"))
+        self.assertTrue(is_shell_title_session_label("fish"))
+        self.assertTrue(is_shell_title_session_label("pwsh"))
+        self.assertTrue(is_shell_title_session_label("nu"))
         self.assertFalse(is_shell_title_session_label("zsh scripting tips"))
         self.assertFalse(is_shell_title_session_label("Restore agent labels"))
         self.assertFalse(is_shell_title_session_label(""))

@@ -27,7 +27,7 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Smoke run
         run: |
-          python timelog_extract.py --today --screen-time off --source-summary || true
+          python timelog_extract.py report --today --screen-time off --source-summary
       - name: Enforce Python file line limit
         run: |
           python scripts/check_file_lengths.py --max-lines 500

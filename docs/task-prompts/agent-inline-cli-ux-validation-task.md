@@ -30,10 +30,12 @@ This task is not hypothetical — the gap it closes is already live:
   in `CLAUDE.md`'s smoke section and the instinctive first thing a new user types)
   now dead-ends with `No such option: --today`. A brand-new user's first
   interaction is a bare error box.
-- The CI smoke step (`.github/workflows/ci.yml`) still runs the legacy
-  `python timelog_extract.py --today …` **and suffixes `|| true`**, so it has been
+- The CI smoke step (`.github/workflows/ci.yml`) had been running the legacy
+  `python timelog_extract.py --today …` **suffixed with `|| true`**, so it stayed
   green while executing a broken command — the exact "validated only at PR end, and
-  even then masked" failure this task exists to prevent.
+  even then masked" failure this task exists to prevent. (That single smoke line has
+  since been un-masked and pointed at `report --today`; the general inline gate below
+  is still the task.)
 
 The inline smoke gate must catch this class: a documented/legacy top-level
 invocation silently ceasing to work, hidden by an error-swallowing CI step.

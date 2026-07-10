@@ -48,11 +48,13 @@ gittan report --today --screen-time off --source-summary
 python timelog_extract.py report --today --screen-time off --source-summary
 ```
 
-> Reporting lives under the `report` subcommand. Bare `gittan --today` errors with
-> `No such option: --today`. The CI smoke step (`.github/workflows/ci.yml`) still
-> uses the legacy top-level flag and masks the failure with `|| true`; making that
-> gate real is tracked in `docs/task-prompts/agent-inline-cli-ux-validation-task.md`
-> (GH-123).
+> Reporting lives under the `report` subcommand. Legacy top-level report
+> invocations (e.g. `gittan --today`) are redirected to `gittan report …` with a
+> one-line stderr note (`core/cli.py::redirect_legacy_report_argv`); the `--`
+> end-of-options sentinel and top-level options like `--help` / `--version` pass
+> through unchanged. The CI smoke step (`.github/workflows/ci.yml`) now exercises
+> `report --today` directly (no `|| true` masking). The broader inline CLI UX gate
+> is tracked in `docs/task-prompts/agent-inline-cli-ux-validation-task.md` (GH-123).
 
 ### Build package (for release validation)
 

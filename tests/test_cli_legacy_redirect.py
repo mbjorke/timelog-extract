@@ -39,6 +39,18 @@ class LegacyReportRedirectTests(unittest.TestCase):
                 argv = ["gittan", opt]
                 self.assertEqual(redirect_legacy_report_argv(argv), argv)
 
+    def test_end_of_options_sentinel_is_unchanged(self):
+        # `gittan --` must not become `gittan report --` (which could prompt/hang).
+        argv = ["gittan", "--"]
+        self.assertEqual(redirect_legacy_report_argv(argv), argv)
+
+    def test_redirect_is_entrypoint_agnostic(self):
+        # Works the same when invoked as `python timelog_extract.py --today`.
+        argv = ["timelog_extract.py", "--today"]
+        self.assertEqual(
+            redirect_legacy_report_argv(argv), ["timelog_extract.py", "report", "--today"]
+        )
+
     def test_bare_invocation_is_unchanged(self):
         argv = ["gittan"]
         self.assertEqual(redirect_legacy_report_argv(argv), argv)

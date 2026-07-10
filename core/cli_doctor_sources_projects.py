@@ -258,6 +258,19 @@ def doctor(
             style_muted=STYLE_MUTED,
         )
 
+        # Liveness (GH-366): "Logs readable" proves reachability only; these
+        # rows show when each source last produced evidence.
+        from core.doctor_liveness_rows import add_source_liveness_rows
+
+        add_source_liveness_rows(
+            table,
+            home=home,
+            ok_icon=OK_ICON,
+            warn_icon=WARN_ICON,
+            na_icon=NA_ICON,
+            style_muted=STYLE_MUTED,
+        )
+
         add_remote_api_doctor_rows(
             table,
             gh_mode=gh_mode,

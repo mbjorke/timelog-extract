@@ -22,6 +22,14 @@ from core.truth_payload import build_truth_payload
 
 def _payload_from_report(report) -> Dict[str, Any]:
     cfg = str(report.config_path) if report.config_path else ""
+    try:
+        # Silent-source watchdog (GH-366): mark flatlined sources in
+        # collector_status so extension callers can surface the anomaly.
+        from core.source_liveness import apply_silent_source_watchdog
+
+        apply_silent_source_watchdog(report)
+    except Exception:  # noqa: BLE001 - watchdog is advisory, never fatal
+        pass
     return build_truth_payload(
         overall_days=report.overall_days,
         project_reports=report.project_reports,

@@ -9,3 +9,7 @@
 ## 2026-07-09 - [Inverted Index for Project Classification]
 **Learning:** Project classification was the primary bottleneck because it performed O(N*M) matching (Profiles * Terms) for every event. Moving to an inverted index allows O(U) matching (Unique words in event) for alphanumeric terms. Set intersection between the event's word set and the "fast path" index identifies matches instantly.
 **Action:** Use inverted indices for many-to-many matching tasks. Always separate "fast path" (exact/word set) and "slow path" (regex/substring) to minimize expensive operations.
+
+## 2026-07-11 - [WorkUnit V2 Inverted Index]
+**Learning:** The `work_unit_v2` classifier initially used an O(U*S) approach, scanning every signal of every unit for every event. Implementing an inverted index with a "fast path" for alphanumeric signals (using set intersection) and a single-pass scoring mechanism reduced the classification time from ~2.8s to ~0.9s for 10,000 events. Fingerprinting the profile list in the cache is essential to handle in-place mutations safely.
+**Action:** Always prefer inverted indices for many-to-many matching in hot paths. Ensure caches are invalidated when the underlying data is mutated, especially when using `id()` as a key.

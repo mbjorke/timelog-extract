@@ -110,7 +110,7 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertEqual(r.exit_code, 0, msg=r.output)
         options = run_mock.call_args[0][3]
         self.assertEqual(getattr(options, "noise_profile", ""), "ultra-strict")
-        self.assertIn("No activity tracked for this period.", r.output)
+        self.assertIn("No events found.", r.output)
         self.assertIn("gittan doctor", r.output)
         self.assertIn("gittan report --today", r.output)
         self.assertIn("--source-summary", r.output)

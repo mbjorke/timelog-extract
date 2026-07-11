@@ -331,11 +331,12 @@ def status(
         )
 
         if not report.included_events:
-            console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No activity tracked for this period. No local evidence found.[/{CLR_VALUE_ORANGE}]")
-            console.print(
-                f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
-                f"`gittan report --today --source-summary` to inspect collection.[/{STYLE_MUTED}]"
+            from core.onboarding_guidance import (
+                build_empty_report_next_steps,
+                print_next_steps,
             )
+            console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events found.[/{CLR_VALUE_ORANGE}]")
+            print_next_steps(console, build_empty_report_next_steps())
             if shadow_line:
                 console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
             return

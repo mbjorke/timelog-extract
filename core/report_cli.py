@@ -141,6 +141,10 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         return
 
     if not report.included_events:
+        from core.onboarding_guidance import (
+            build_empty_report_next_steps,
+            print_next_steps,
+        )
         from outputs.terminal_theme import CLR_VALUE_ORANGE, STYLE_MUTED, WARN_ICON
         if report.args.only_project:
             ambiguous = getattr(report.args, "only_project_ambiguous", None) or []
@@ -151,16 +155,16 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
                 report_console.print(
                     f"[{STYLE_MUTED}]Did you mean one of: {', '.join(repr(name) for name in ambiguous)}?[/{STYLE_MUTED}]"
                 )
+                report_console.print(f"[{STYLE_MUTED}]Next: use `gittan projects` to see available project profiles.[/{STYLE_MUTED}]")
                 return
             report_console.print(
                 f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events for project {report.args.only_project!r} in selected range.[/{CLR_VALUE_ORANGE}]"
             )
         else:
             report_console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events found.[/{CLR_VALUE_ORANGE}]")
-            report_console.print(
-                f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
-                f"`gittan report --today --source-summary` to inspect collected evidence.[/{STYLE_MUTED}]"
-            )
+
+        if not report.args.only_project or not ambiguous:
+            print_next_steps(report_console, build_empty_report_next_steps())
         if report.args.invoice_pdf:
             try:
                 out = (

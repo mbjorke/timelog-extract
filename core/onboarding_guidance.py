@@ -210,6 +210,14 @@ def finish_review_guidance(
     print_next_steps(console, list(dict.fromkeys(steps)))
 
 
+def build_empty_report_next_steps() -> list[str]:
+    """Next steps when no events are found for a selected timeframe."""
+    return [
+        "Run `gittan doctor` to verify source access and collector permissions.",
+        "Run `gittan report --today --source-summary` to inspect collected evidence.",
+    ]
+
+
 def print_next_steps(console, steps: list[str]) -> None:
     from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
 

@@ -38,11 +38,13 @@ from core.onboarding_guidance import (
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
+    CLR_SOURCE_BLUE,
     CLR_VALUE_ORANGE,
     FAIL_ICON,
     NA_ICON,
     OK_ICON,
     STYLE_BORDER,
+    STYLE_DIM,
     STYLE_LABEL,
     STYLE_MUTED,
     WARN_ICON,
@@ -334,7 +336,7 @@ def sources():
     )
 
     console = Console()
-    with console.status("[bold blue]Analyzing source importance..."):
+    with console.status(f"[{STYLE_DIM}]Analyzing source importance..."):
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
 
     if not report.all_events:
@@ -389,12 +391,14 @@ def sources():
         title=f"Source Importance Analysis ({options.date_from} to {options.date_to})",
         box=box.ROUNDED,
     )
-    table.add_column("Source", style="cyan")
-    table.add_column("Events", justify="right", style="green")
-    table.add_column("Uncat.", justify="right", style="red")
-    table.add_column("Samples (Uncat)", style="dim", max_width=40)
-    table.add_column("Est. Hours Impact", justify="right", style="magenta")
-    table.add_column("Weight %", justify="right", style="dim")
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Source", style=CLR_SOURCE_BLUE)
+    table.add_column("Events", justify="right", style=STYLE_MUTED)
+    table.add_column("Uncat.", justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Samples (Uncat)", style=STYLE_DIM, max_width=40)
+    table.add_column("Est. Hours Impact", justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Weight %", justify="right", style=STYLE_DIM)
 
     total_impact_h = sum(source_hours.values())
     sorted_sources = sorted(source_counts.keys(), key=lambda s: source_hours[s], reverse=True)
@@ -413,6 +417,14 @@ def sources():
 
     console.print(table)
     console.print(
-        "\n[dim]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
-        "specific source.[/dim]\n"
+        f"\n[{STYLE_DIM}]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
+        f"specific source.[/{STYLE_DIM}]"
     )
+    if sum(uncategorized_count.values()) > 0:
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan review` to map unanchored signals to project buckets.[/{STYLE_MUTED}]\n"
+        )
+    else:
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan report --today` to see your daily project-hour breakdown.[/{STYLE_MUTED}]\n"
+        )

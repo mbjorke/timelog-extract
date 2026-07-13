@@ -29,6 +29,16 @@ _TICKET_RE_PREFIXES = ("gh-", "jira-", "ticket-")
 
 
 @dataclass(frozen=True)
+class WorkUnitIndex:
+    """Compiled index for fast WorkUnit classification."""
+
+    fast_signals: dict[str, list[int]]
+    slow_signals: list[tuple[str, list[int]]]
+    signal_metadata: dict[str, tuple[float, bool, int]]
+    all_signals: dict[str, list[int]]
+
+
+@dataclass(frozen=True)
 class WorkUnit:
     """In-memory work unit for the spike classifier (not a persisted schema)."""
 
@@ -131,6 +141,59 @@ def _find_canonical_for_thin(
     return best
 
 
+def _compile_work_unit_index(units: Sequence[WorkUnit]) -> WorkUnitIndex:
+    """Index units by signal for fast lookup."""
+    signal_to_units: dict[str, list[int]] = {}
+    signal_metadata: dict[str, tuple[float, bool, int]] = {}
+
+    for i, unit in enumerate(units):
+        for signal in unit.signals:
+            if signal not in signal_to_units:
+                signal_to_units[signal] = []
+                weight, is_specific = _signal_weight(signal)
+                signal_metadata[signal] = (weight, is_specific, len(signal))
+            signal_to_units[signal].append(i)
+
+    fast_signals: dict[str, list[int]] = {}
+    slow_signals: list[tuple[str, list[int]]] = []
+
+    for signal, unit_indices in signal_to_units.items():
+        if signal.isalnum() and not _is_path_like_term(signal):
+            fast_signals[signal] = unit_indices
+        else:
+            slow_signals.append((signal, unit_indices))
+
+    return WorkUnitIndex(
+        fast_signals=fast_signals,
+        slow_signals=slow_signals,
+        signal_metadata=signal_metadata,
+        all_signals=signal_to_units,
+    )
+
+
+_LAST_UNITS_DATA: tuple[Sequence[WorkUnit], tuple, WorkUnitIndex] | None = None
+
+
+def _get_work_unit_index(units: Sequence[WorkUnit]) -> WorkUnitIndex:
+    """Caching wrapper to avoid re-compiling the index for the same units list."""
+    global _LAST_UNITS_DATA
+    # Fast path: exact same object.
+    if _LAST_UNITS_DATA is not None and _LAST_UNITS_DATA[0] is units:
+        return _LAST_UNITS_DATA[2]
+
+    # Fingerprint to detect mutation (signals are immutable tuples in WorkUnit).
+    # We include full signals to catch content changes.
+    fingerprint = (len(units), tuple((u.line_key, u.signals) for u in units))
+    if _LAST_UNITS_DATA is not None and _LAST_UNITS_DATA[1] == fingerprint:
+        # Update identity ref to enable future fast path.
+        _LAST_UNITS_DATA = (units, fingerprint, _LAST_UNITS_DATA[2])
+        return _LAST_UNITS_DATA[2]
+
+    index = _compile_work_unit_index(units)
+    _LAST_UNITS_DATA = (units, fingerprint, index)
+    return index
+
+
 def build_work_units(profiles: Sequence[Dict[str, Any]]) -> list[WorkUnit]:
     """Map v1 profiles to WorkUnits, collapsing thin slug duplicates into richer lines.
 
@@ -208,40 +271,55 @@ def classify_work_unit(
     if not text:
         return fallback
 
+    index = _get_work_unit_index(units)
+    fast_signals = index.fast_signals
+    slow_signals = index.slow_signals
+    signal_metadata = index.signal_metadata
+    all_signals = index.all_signals
     haystack, word_set = _prepare_haystack_and_word_set(text.lower())
+
+    matched_signals = set()
+    # 1. Fast path: alphanumeric signals that are definitely in the text's word set.
+    for signal in fast_signals.keys() & word_set:
+        matched_signals.add(signal)
+
+    # 2. Slow path: path-like or special-char signals.
+    for signal, _ in slow_signals:
+        if signal in haystack:
+            if _matches_term(signal, haystack, word_set=word_set):
+                matched_signals.add(signal)
+
+    if not matched_signals:
+        return fallback
+
+    # unit_idx -> [score, specific, distinct, match_len, generic]
+    scores: dict[int, list[float]] = {}
+
+    # 3. Single-pass scoring: accumulate rank components for matched units only.
+    for signal in matched_signals:
+        weight, is_specific, s_len = signal_metadata[signal]
+        for idx in all_signals[signal]:
+            if idx not in scores:
+                scores[idx] = [0.0, 0.0, 0.0, 0.0, 0.0]
+            row = scores[idx]
+            row[0] += weight  # weighted score
+            if is_specific:
+                row[1] += 1  # specific hits
+            else:
+                row[4] += 1  # generic hits
+            row[2] += 1  # distinct signals
+            row[3] += s_len  # match length
+
     best_key = fallback
     # Rank: (weighted, specific_hits, distinct_signals, match_len, -generic_hits)
     best_rank = (0.0, 0, 0, 0, 0)
-    match_cache: Dict[str, bool] = {}
 
-    for unit in units:
-        weighted = 0.0
-        specific_hits = 0
-        generic_hits = 0
-        match_len = 0
-        distinct = 0
-
-        for signal in unit.signals:
-            if signal not in match_cache:
-                if signal in haystack:
-                    match_cache[signal] = _matches_term(signal, haystack, word_set=word_set)
-                else:
-                    match_cache[signal] = False
-            if not match_cache[signal]:
-                continue
-            distinct += 1
-            match_len += len(signal)
-            weight, is_specific = _signal_weight(signal)
-            weighted += weight
-            if is_specific:
-                specific_hits += 1
-            else:
-                generic_hits += 1
-
-        rank = (weighted, specific_hits, distinct, match_len, -generic_hits)
-        if (specific_hits > 0 or weighted >= 1.0) and rank > best_rank:
-            best_rank = rank
-            best_key = unit.line_key
+    for idx, (weighted, specific, distinct, match_len, generic) in scores.items():
+        if specific > 0 or weighted >= 1.0:
+            rank = (weighted, int(specific), int(distinct), int(match_len), -int(generic))
+            if rank > best_rank:
+                best_rank = rank
+                best_key = units[idx].line_key
 
     return best_key
 

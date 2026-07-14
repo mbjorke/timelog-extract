@@ -194,6 +194,50 @@ def _signal_weight(signal: str) -> tuple[float, bool]:
     return 1.0, True
 
 
+def _compile_units_index(
+    units: Sequence[WorkUnit],
+) -> tuple[dict[str, list[int]], list[str], dict[str, list[int]]]:
+    """Index units by signal for fast lookup.
+
+    Returns:
+        fast_signals: Map of alphanumeric signals to list of unit indices.
+        slow_signals: List of non-alphanumeric signals.
+        all_signals: Map of all signals to list of unit indices.
+    """
+    signal_to_units: dict[str, list[int]] = {}
+    for i, unit in enumerate(units):
+        for sig in unit.signals:
+            if sig not in signal_to_units:
+                signal_to_units[sig] = []
+            signal_to_units[sig].append(i)
+
+    fast_signals: dict[str, list[int]] = {}
+    slow_signals: list[str] = []
+    for sig, indices in signal_to_units.items():
+        if sig.isalnum() and not _is_path_like_term(sig):
+            fast_signals[sig] = indices
+        else:
+            slow_signals.append(sig)
+
+    return fast_signals, slow_signals, signal_to_units
+
+
+_LAST_UNITS_DATA: tuple[Any, Any, Any] | None = None
+
+
+def _get_compiled_units_index(units: Sequence[WorkUnit]) -> Any:
+    """Caching wrapper to avoid re-compiling the index for the same units list."""
+    global _LAST_UNITS_DATA
+    # Fingerprint to detect mutation of the same list object (common in tests).
+    if _LAST_UNITS_DATA is not None and _LAST_UNITS_DATA[0] is units:
+        return _LAST_UNITS_DATA[2]
+
+    fingerprint = (len(units), tuple((u.line_key, u.signals) for u in units))
+    if _LAST_UNITS_DATA is None or _LAST_UNITS_DATA[1] != fingerprint:
+        _LAST_UNITS_DATA = (units, fingerprint, _compile_units_index(units))
+    return _LAST_UNITS_DATA[2]
+
+
 def classify_work_unit(
     text: str,
     units: Sequence[WorkUnit],
@@ -208,40 +252,59 @@ def classify_work_unit(
     if not text:
         return fallback
 
+    fast_signals, slow_signals, all_signals = _get_compiled_units_index(units)
     haystack, word_set = _prepare_haystack_and_word_set(text.lower())
-    best_key = fallback
-    # Rank: (weighted, specific_hits, distinct_signals, match_len, -generic_hits)
-    best_rank = (0.0, 0, 0, 0, 0)
-    match_cache: Dict[str, bool] = {}
 
-    for unit in units:
-        weighted = 0.0
-        specific_hits = 0
-        generic_hits = 0
-        match_len = 0
-        distinct = 0
+    matched_signals = set()
+    # 1. Fast path: alphanumeric signals in the word set.
+    for sig in fast_signals.keys() & word_set:
+        matched_signals.add(sig)
 
-        for signal in unit.signals:
-            if signal not in match_cache:
-                if signal in haystack:
-                    match_cache[signal] = _matches_term(signal, haystack, word_set=word_set)
-                else:
-                    match_cache[signal] = False
-            if not match_cache[signal]:
-                continue
-            distinct += 1
-            match_len += len(signal)
-            weight, is_specific = _signal_weight(signal)
-            weighted += weight
+    # 2. Slow path: non-alphanumeric or path-like signals.
+    for sig in slow_signals:
+        if sig in haystack:
+            if _matches_term(sig, haystack, word_set=word_set):
+                matched_signals.add(sig)
+
+    if not matched_signals:
+        return fallback
+
+    # Using dictionaries to store scores and metrics only for units with matched signals.
+    # This avoids O(N) allocations for each call.
+    weighted_scores: Dict[int, float] = {}
+    specific_hits: Dict[int, int] = {}
+    generic_hits: Dict[int, int] = {}
+    match_lens: Dict[int, int] = {}
+    distinct_signals: Dict[int, int] = {}
+
+    # 3. Single-pass scoring.
+    for sig in matched_signals:
+        weight, is_specific = _signal_weight(sig)
+        sig_len = len(sig)
+        for idx in all_signals[sig]:
+            weighted_scores[idx] = weighted_scores.get(idx, 0.0) + weight
+            distinct_signals[idx] = distinct_signals.get(idx, 0) + 1
+            match_lens[idx] = match_lens.get(idx, 0) + sig_len
             if is_specific:
-                specific_hits += 1
+                specific_hits[idx] = specific_hits.get(idx, 0) + 1
             else:
-                generic_hits += 1
+                generic_hits[idx] = generic_hits.get(idx, 0) + 1
 
-        rank = (weighted, specific_hits, distinct, match_len, -generic_hits)
-        if (specific_hits > 0 or weighted >= 1.0) and rank > best_rank:
+    best_key = fallback
+    # Rank: (weighted, specific_hits, distinct, match_len, -generic_hits)
+    best_rank = (0.0, 0, 0, 0, 0)
+
+    for idx in distinct_signals:
+        weighted = weighted_scores.get(idx, 0.0)
+        specific = specific_hits.get(idx, 0)
+        generic = generic_hits.get(idx, 0)
+        distinct = distinct_signals[idx]
+        m_len = match_lens.get(idx, 0)
+
+        rank = (weighted, specific, distinct, m_len, -generic)
+        if (specific > 0 or weighted >= 1.0) and rank > best_rank:
             best_rank = rank
-            best_key = unit.line_key
+            best_key = units[idx].line_key
 
     return best_key
 

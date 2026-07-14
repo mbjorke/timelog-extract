@@ -9,3 +9,7 @@
 ## 2026-07-09 - [Inverted Index for Project Classification]
 **Learning:** Project classification was the primary bottleneck because it performed O(N*M) matching (Profiles * Terms) for every event. Moving to an inverted index allows O(U) matching (Unique words in event) for alphanumeric terms. Set intersection between the event's word set and the "fast path" index identifies matches instantly.
 **Action:** Use inverted indices for many-to-many matching tasks. Always separate "fast path" (exact/word set) and "slow path" (regex/substring) to minimize expensive operations.
+
+## 2026-07-14 - [WorkUnit v2 Inverted Index Optimization]
+**Learning:** The WorkUnit v2 spike classifier was suffering from the same O(N*M) bottleneck as the original v1 classifier. Even though it's a "spike", performance matters for large event sets. Applying the inverted index pattern (from 2026-07-09) and using sparse dictionaries for scoring instead of full-sized lists further optimizes memory and time when many units have zero matches.
+**Action:** Always apply the inverted index pattern to text-to-profile classification tasks. Use dictionaries for sparse scoring to avoid O(N) work for non-matching profiles.

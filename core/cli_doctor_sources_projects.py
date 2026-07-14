@@ -38,14 +38,18 @@ from core.onboarding_guidance import (
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
+    CLR_SOURCE_BLUE,
+    CLR_TEXT_SOFT,
     CLR_VALUE_ORANGE,
     FAIL_ICON,
     NA_ICON,
     OK_ICON,
     STYLE_BORDER,
+    STYLE_DIM,
     STYLE_LABEL,
     STYLE_MUTED,
     WARN_ICON,
+    display_source_label,
 )
 
 _DOCTOR_LOG = logging.getLogger(__name__)
@@ -334,85 +338,101 @@ def sources():
     )
 
     console = Console()
-    with console.status("[bold blue]Analyzing source importance..."):
-        report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+    print_command_hero(console, "sources")
+    title_date = f"{options.date_from} to {options.date_to}"
+    console.print(f"[bold {CLR_TEXT_SOFT}]Source Importance — {title_date}[/bold {CLR_TEXT_SOFT}]\n")
 
-    if not report.all_events:
+    try:
+        with console.status(f"[bold {CLR_SOURCE_BLUE}]Analyzing source importance..."):
+            report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+
+        if not report.all_events:
+            console.print(
+                f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
+            )
+            console.print(
+                f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
+            )
+            return
+
+        source_counts = defaultdict(int)
+        source_hours = defaultdict(float)
+
+        for event in report.all_events:
+            source_counts[event["source"]] += 1
+
+        raw_grouped = group_by_day(report.all_events, local_tz=LOCAL_TZ)
+        raw_overall = estimate_hours_by_day(
+            raw_grouped,
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            compute_sessions_fn=_compute_sessions,
+            session_duration_hours_fn=_session_duration_hours,
+        )
+
+        uncategorized_count = defaultdict(int)
+        uncategorized_samples = defaultdict(list)
+        for day_data in raw_overall.values():
+            for session in day_data["sessions"]:
+                start, end, session_events = session[:3]
+                dur = session_duration_hours(session_events, start, end, 15, 5, AI_SOURCES)
+
+                session_counts = defaultdict(int)
+                for e in session_events:
+                    if e.get("project") == "Uncategorized":
+                        src = e["source"]
+                        uncategorized_count[src] += 1
+                        detail = e.get("detail", "")
+                        if detail and detail not in uncategorized_samples[src] and len(uncategorized_samples[src]) < 3:
+                            uncategorized_samples[src].append(detail)
+                    session_counts[e["source"]] += 1
+
+                total_session_events = len(session_events)
+                if total_session_events > 0:
+                    for src, count in session_counts.items():
+                        share = dur * (count / total_session_events)
+                        source_hours[src] += share
+
+        table = Table(
+            title=f"Source Importance Analysis ({title_date})",
+            box=box.ROUNDED,
+        )
+        table.border_style = STYLE_BORDER
+        table.header_style = f"bold {STYLE_LABEL}"
+        table.add_column("Source", style=CLR_SOURCE_BLUE)
+        table.add_column("Events", justify="right", style=STYLE_MUTED)
+        table.add_column("Uncat.", justify="right", style=CLR_VALUE_ORANGE)
+        table.add_column("Samples (Uncat)", style=STYLE_DIM, max_width=40)
+        table.add_column("Est. Hours Impact", justify="right", style=CLR_VALUE_ORANGE)
+        table.add_column("Weight %", justify="right", style=STYLE_DIM)
+
+        total_impact_h = sum(source_hours.values())
+        sorted_sources = sorted(source_counts.keys(), key=lambda s: source_hours[s], reverse=True)
+
+        for src in sorted_sources:
+            pct = (source_hours[src] / total_impact_h * 100) if total_impact_h > 0 else 0
+            samples_text = " | ".join(uncategorized_samples[src])
+            table.add_row(
+                display_source_label(src),
+                str(source_counts[src]),
+                str(uncategorized_count[src]),
+                samples_text,
+                f"{source_hours[src]:.1f}h",
+                f"{pct:.1f}%",
+            )
+
+        console.print(table)
         console.print(
-            f"[{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
+            f"\n[{STYLE_DIM}]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
+            f"specific source.[/{STYLE_DIM}]"
         )
-        console.print(
-            f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
-        )
-        return
-
-    source_counts = defaultdict(int)
-    source_hours = defaultdict(float)
-
-    for event in report.all_events:
-        source_counts[event["source"]] += 1
-
-    raw_grouped = group_by_day(report.all_events, local_tz=LOCAL_TZ)
-    raw_overall = estimate_hours_by_day(
-        raw_grouped,
-        gap_minutes=15,
-        min_session_minutes=15,
-        min_session_passive_minutes=5,
-        compute_sessions_fn=_compute_sessions,
-        session_duration_hours_fn=_session_duration_hours,
-    )
-
-    uncategorized_count = defaultdict(int)
-    uncategorized_samples = defaultdict(list)
-    for day_data in raw_overall.values():
-        for session in day_data["sessions"]:
-            start, end, session_events = session[:3]
-            dur = session_duration_hours(session_events, start, end, 15, 5, AI_SOURCES)
-
-            session_counts = defaultdict(int)
-            for e in session_events:
-                if e.get("project") == "Uncategorized":
-                    src = e["source"]
-                    uncategorized_count[src] += 1
-                    detail = e.get("detail", "")
-                    if detail and detail not in uncategorized_samples[src] and len(uncategorized_samples[src]) < 3:
-                        uncategorized_samples[src].append(detail)
-                session_counts[e["source"]] += 1
-
-            total_session_events = len(session_events)
-            if total_session_events > 0:
-                for src, count in session_counts.items():
-                    share = dur * (count / total_session_events)
-                    source_hours[src] += share
-
-    table = Table(
-        title=f"Source Importance Analysis ({options.date_from} to {options.date_to})",
-        box=box.ROUNDED,
-    )
-    table.add_column("Source", style="cyan")
-    table.add_column("Events", justify="right", style="green")
-    table.add_column("Uncat.", justify="right", style="red")
-    table.add_column("Samples (Uncat)", style="dim", max_width=40)
-    table.add_column("Est. Hours Impact", justify="right", style="magenta")
-    table.add_column("Weight %", justify="right", style="dim")
-
-    total_impact_h = sum(source_hours.values())
-    sorted_sources = sorted(source_counts.keys(), key=lambda s: source_hours[s], reverse=True)
-
-    for src in sorted_sources:
-        pct = (source_hours[src] / total_impact_h * 100) if total_impact_h > 0 else 0
-        samples_text = " | ".join(uncategorized_samples[src])
-        table.add_row(
-            src,
-            str(source_counts[src]),
-            str(uncategorized_count[src]),
-            samples_text,
-            f"{source_hours[src]:.1f}h",
-            f"{pct:.1f}%",
-        )
-
-    console.print(table)
-    console.print(
-        "\n[dim]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
-        "specific source.[/dim]\n"
-    )
+        total_uncat = sum(uncategorized_count.values())
+        if total_uncat > 0:
+            console.print(f"[{STYLE_MUTED}]Next: run `gittan review` to categorize these signals.[/{STYLE_MUTED}]\n")
+        else:
+            console.print(f"[{STYLE_MUTED}]Next: run `gittan report --today` to see your daily totals.[/{STYLE_MUTED}]\n")
+    except Exception as e:
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error analyzing sources: {e}[/{CLR_VALUE_ORANGE}]")
+        console.print(f"[{STYLE_MUTED}]Next: try `gittan doctor` or check your configuration.[/{STYLE_MUTED}]")
+        raise typer.Exit(code=1) from e

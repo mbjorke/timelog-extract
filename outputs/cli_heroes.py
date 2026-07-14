@@ -80,6 +80,15 @@ _HEROES: dict[str, tuple[list[str], str]] = {
         ],
         "collect -> classify -> summarize",
     ),
+    "sources": (
+        [
+            "    __      Gittan Sources",
+            "   /oo\\     Analyze data source importance and impact.",
+            "   \\__/     Identify which sources back your reported hours.",
+            "  o    o    Compare event counts and uncategorized clusters.",
+        ],
+        "source importance -> evidence impact",
+    ),
 }
 
 

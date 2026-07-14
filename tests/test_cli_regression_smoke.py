@@ -348,6 +348,7 @@ class CliRegressionSmokeTests(unittest.TestCase):
         self.assertIn("Gittan Setup", completed.stdout)
         self.assertIn("Gittan Global Timelog", completed.stdout)
         self.assertIn("Gittan Report", completed.stdout)
+        self.assertIn("Gittan Sources", completed.stdout)
 
     def test_jira_sync_help_includes_manual_confirmation(self):
         completed = subprocess.run(

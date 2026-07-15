@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -13,8 +14,8 @@ import typer
 
 from core.chromium_cache import CODEC_REINSTALL_HINT
 from core.cli_app import app
+from core.cli_date_range import resolve_date_window
 from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
 from core.config import (
     default_projects_config_option,
     load_profiles,
@@ -38,11 +39,13 @@ from core.onboarding_guidance import (
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
+    CLR_SOURCE_BLUE,
     CLR_VALUE_ORANGE,
     FAIL_ICON,
     NA_ICON,
     OK_ICON,
     STYLE_BORDER,
+    STYLE_DIM,
     STYLE_LABEL,
     STYLE_MUTED,
     WARN_ICON,
@@ -91,7 +94,7 @@ def doctor(
 ):
     """
     Check source access and local integration health, then print a diagnostic table.
-    
+
     Parameters:
         worklog (Optional[str]): Path to a worklog file that overrides the configured/workspace worklog.
         github_source (str): GitHub source mode: "auto", "on", or "off" (controls visibility of GitHub checks in the diagnostic output).
@@ -171,7 +174,9 @@ def doctor(
         if using_single_worklog:
             worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
         elif profile_worklogs:
-            accessible = [path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)]
+            accessible = [
+                path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)
+            ]
             total = len(profile_worklogs)
             readable = len(accessible)
             if readable == total:
@@ -198,11 +203,23 @@ def doctor(
         else:
             worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
         coverage = assess_config_git_coverage(_profiles)
-        coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
+        coverage_icon = (
+            OK_ICON
+            if coverage.status == "ok"
+            else WARN_ICON
+            if coverage.status == "warn"
+            else NA_ICON
+        )
         coverage_detail = coverage.detail
         if coverage.status == "warn" and coverage.suggested_terms:
-            coverage_detail = f"{coverage.detail} Suggested cues: {', '.join(coverage.suggested_terms)}"
-        table.add_row("Git match_terms coverage", coverage_icon, f"[{STYLE_MUTED}]{coverage_detail}[/{STYLE_MUTED}]")
+            coverage_detail = (
+                f"{coverage.detail} Suggested cues: {', '.join(coverage.suggested_terms)}"
+            )
+        table.add_row(
+            "Git match_terms coverage",
+            coverage_icon,
+            f"[{STYLE_MUTED}]{coverage_detail}[/{STYLE_MUTED}]",
+        )
 
         from collectors.git_commits import configured_git_repo_paths
 
@@ -272,9 +289,7 @@ def doctor(
             f"{', '.join(codec_blocked)} disabled or degraded, so AI-session hours "
             f"are silently under-counted."
         )
-        console.print(
-            f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT}[/{STYLE_MUTED}]"
-        )
+        console.print(f"  [{STYLE_MUTED}]Fix: {CODEC_REINSTALL_HINT}[/{STYLE_MUTED}]")
     console.print(
         f"\n[{STYLE_MUTED}]Note: warnings/errors for Mail/Chrome/Screen Time often mean Full Disk Access is required "
         f"for your Terminal in System Settings > Privacy & Security.[/{STYLE_MUTED}]\n"
@@ -302,7 +317,22 @@ def doctor(
 
 
 @app.command()
-def sources():
+def sources(
+    date_from: Annotated[
+        Optional[datetime],
+        typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)"),
+    ] = None,
+    date_to: Annotated[
+        Optional[datetime],
+        typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)"),
+    ] = None,
+    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
+    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
+    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
+    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
+    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
+    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
+):
     """Analyze which data sources are contributing the most to your reports."""
     from rich import box
     from rich.console import Console
@@ -318,28 +348,43 @@ def sources():
     )
     from core.sources import AI_SOURCES
 
-    picked = prompt_for_timeframe()
+    df_s, dt_s = resolve_date_window(
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        prompt_if_missing=not (
+            date_from
+            or date_to
+            or today
+            or yesterday
+            or last_3_days
+            or last_week
+            or last_14_days
+            or last_month
+        ),
+    )
 
     options = TimelogRunOptions(
-        date_from=picked.get("date_from"),
-        date_to=picked.get("date_to"),
-        today=picked.get("today", False),
-        yesterday=picked.get("yesterday", False),
-        last_3_days=picked.get("last_3_days", False),
-        last_week=picked.get("last_week", False),
-        last_14_days=picked.get("last_14_days", False),
-        last_month=picked.get("last_month", False),
+        date_from=df_s,
+        date_to=dt_s,
         projects_config=default_projects_config_option(),
         quiet=True,
     )
 
     console = Console()
-    with console.status("[bold blue]Analyzing source importance..."):
-        report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
+    with console.status(f"[bold {STYLE_LABEL}]Analyzing source importance..."):
+        report = run_timelog_report(
+            options.projects_config, options.date_from, options.date_to, options
+        )
 
     if not report.all_events:
         console.print(
-            f"[{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
+            f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
@@ -375,7 +420,11 @@ def sources():
                     src = e["source"]
                     uncategorized_count[src] += 1
                     detail = e.get("detail", "")
-                    if detail and detail not in uncategorized_samples[src] and len(uncategorized_samples[src]) < 3:
+                    if (
+                        detail
+                        and detail not in uncategorized_samples[src]
+                        and len(uncategorized_samples[src]) < 3
+                    ):
                         uncategorized_samples[src].append(detail)
                 session_counts[e["source"]] += 1
 
@@ -389,12 +438,14 @@ def sources():
         title=f"Source Importance Analysis ({options.date_from} to {options.date_to})",
         box=box.ROUNDED,
     )
-    table.add_column("Source", style="cyan")
-    table.add_column("Events", justify="right", style="green")
-    table.add_column("Uncat.", justify="right", style="red")
-    table.add_column("Samples (Uncat)", style="dim", max_width=40)
-    table.add_column("Est. Hours Impact", justify="right", style="magenta")
-    table.add_column("Weight %", justify="right", style="dim")
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Source", style=CLR_SOURCE_BLUE)
+    table.add_column("Events", justify="right", style=STYLE_MUTED)
+    table.add_column("Uncat.", justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Samples (Uncat)", style=STYLE_DIM, max_width=40)
+    table.add_column("Est. Hours Impact", justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Weight %", justify="right", style=STYLE_DIM)
 
     total_impact_h = sum(source_hours.values())
     sorted_sources = sorted(source_counts.keys(), key=lambda s: source_hours[s], reverse=True)
@@ -413,6 +464,6 @@ def sources():
 
     console.print(table)
     console.print(
-        "\n[dim]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
-        "specific source.[/dim]\n"
+        f"\n[{STYLE_DIM}]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
+        f"specific source.[/{STYLE_DIM}]\n"
     )

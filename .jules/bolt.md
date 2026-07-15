@@ -9,3 +9,7 @@
 ## 2026-07-09 - [Inverted Index for Project Classification]
 **Learning:** Project classification was the primary bottleneck because it performed O(N*M) matching (Profiles * Terms) for every event. Moving to an inverted index allows O(U) matching (Unique words in event) for alphanumeric terms. Set intersection between the event's word set and the "fast path" index identifies matches instantly.
 **Action:** Use inverted indices for many-to-many matching tasks. Always separate "fast path" (exact/word set) and "slow path" (regex/substring) to minimize expensive operations.
+
+## 2026-07-15 - [Inverted Index for WorkUnit Classification]
+**Learning:** `WorkUnit` classification (v2) was performing O(U*S) matching (Units * Signals) per text. Moving to an inverted index allows O(1) matching for alphanumeric signals via set intersection with the text's word set. Using dictionaries for scores/metrics instead of O(N) list allocations per classification further reduces overhead for large unit sets.
+**Action:** Use inverted indices for many-to-many matching. Prefer sparse storage (dictionaries) for results when only a small fraction of items are expected to match.

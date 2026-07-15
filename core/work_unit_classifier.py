@@ -27,6 +27,10 @@ PRIMARY_NAME = "name"
 
 _TICKET_RE_PREFIXES = ("gh-", "jira-", "ticket-")
 
+# Impact types for pre-compiled units index (matches core.domain for consistency)
+_IMPACT_GENERIC = 0
+_IMPACT_SPECIFIC = 1
+
 
 @dataclass(frozen=True)
 class WorkUnit:
@@ -182,16 +186,77 @@ def build_work_units(profiles: Sequence[Dict[str, Any]]) -> list[WorkUnit]:
     return units
 
 
+def _signal_impact(signal: str) -> int:
+    """Return impact type for a signal."""
+    if signal in GENERIC_TOOL_TERMS:
+        return _IMPACT_GENERIC
+    return _IMPACT_SPECIFIC
+
+
 def _signal_weight(signal: str) -> tuple[float, bool]:
     """Return (weight, is_specific) for a matched signal."""
-    if signal in GENERIC_TOOL_TERMS:
+    impact = _signal_impact(signal)
+    if impact == _IMPACT_GENERIC:
         return 0.25, False
+
     if _is_path_like_term(signal) or "/" in signal or signal.startswith("http"):
         return 2.0, True
     if "." in signal and " " not in signal:
         # host-like / url fragment
         return 2.0, True
     return 1.0, True
+
+
+def _compile_units_index(
+    units: Sequence[WorkUnit],
+) -> tuple[
+    dict[str, list[tuple[int, int]]],
+    list[tuple[str, list[tuple[int, int]]]],
+    dict[str, list[tuple[int, int]]],
+]:
+    """Index units by signal for fast lookup.
+
+    Returns:
+        fast_signals: Map of alphanumeric signals to (unit_index, impact_type)
+        slow_signals: List of (signal, impacts) for non-alphanumeric or path-like signals
+        all_impacts: Combined map for all signals
+    """
+    signal_to_impacts: dict[str, list[tuple[int, int]]] = {}
+
+    for i, unit in enumerate(units):
+        for signal in unit.signals:
+            clean = signal.strip().lower()
+            if not clean:
+                continue
+            if clean not in signal_to_impacts:
+                signal_to_impacts[clean] = []
+            signal_to_impacts[clean].append((i, _signal_impact(clean)))
+
+    fast_signals: dict[str, list[tuple[int, int]]] = {}
+    slow_signals: list[tuple[str, list[tuple[int, int]]]] = []
+    for signal, impacts in signal_to_impacts.items():
+        if signal.isalnum() and not _is_path_like_term(signal):
+            fast_signals[signal] = impacts
+        else:
+            slow_signals.append((signal, impacts))
+
+    return fast_signals, slow_signals, signal_to_impacts
+
+
+_LAST_UNITS_DATA: tuple[Any, Any, Any] | None = None
+
+
+def _get_compiled_units_index(units: Sequence[WorkUnit]) -> Any:
+    """Caching wrapper to avoid re-compiling the index for the same units list."""
+    global _LAST_UNITS_DATA
+    if _LAST_UNITS_DATA is not None and _LAST_UNITS_DATA[0] is units:
+        return _LAST_UNITS_DATA[2]
+
+    # Fingerprint to detect mutation of the same list object (common in tests).
+    fingerprint = (len(units), tuple((u.line_key, u.signals) for u in units))
+    if _LAST_UNITS_DATA is None or _LAST_UNITS_DATA[1] != fingerprint:
+        _LAST_UNITS_DATA = (units, fingerprint, _compile_units_index(units))
+    return _LAST_UNITS_DATA[2]
 
 
 def classify_work_unit(
@@ -208,40 +273,62 @@ def classify_work_unit(
     if not text:
         return fallback
 
+    fast_signals, slow_signals, all_impacts = _get_compiled_units_index(units)
     haystack, word_set = _prepare_haystack_and_word_set(text.lower())
+
+    matched_signals = set()
+    # 1. Fast path: alphanumeric signals that are definitely in the text's word set.
+    for signal in fast_signals.keys() & word_set:
+        matched_signals.add(signal)
+
+    # 2. Slow path: path-like or special-char signals.
+    for signal, _ in slow_signals:
+        if signal in haystack:
+            if _matches_term(signal, haystack, word_set=word_set):
+                matched_signals.add(signal)
+
+    if not matched_signals:
+        return fallback
+
+    # Using dictionaries for scores/metrics for units with hits to avoid O(N) allocation
+    # for large unit sets where only few match.
+    scores: Dict[int, float] = {}
+    specifics: Dict[int, int] = {}
+    generics: Dict[int, int] = {}
+    lens: Dict[int, int] = {}
+    counts: Dict[int, int] = {}
+
+    # 3. Single-pass scoring: accumulate rank components for all matching units.
+    for signal in matched_signals:
+        s_len = len(signal)
+        weight, is_specific = _signal_weight(signal)
+        for idx, _impact in all_impacts[signal]:
+            lens[idx] = lens.get(idx, 0) + s_len
+            scores[idx] = scores.get(idx, 0.0) + weight
+            counts[idx] = counts.get(idx, 0) + 1
+            if is_specific:
+                specifics[idx] = specifics.get(idx, 0) + 1
+            else:
+                generics[idx] = generics.get(idx, 0) + 1
+
     best_key = fallback
     # Rank: (weighted, specific_hits, distinct_signals, match_len, -generic_hits)
     best_rank = (0.0, 0, 0, 0, 0)
-    match_cache: Dict[str, bool] = {}
 
-    for unit in units:
-        weighted = 0.0
-        specific_hits = 0
-        generic_hits = 0
-        match_len = 0
-        distinct = 0
-
-        for signal in unit.signals:
-            if signal not in match_cache:
-                if signal in haystack:
-                    match_cache[signal] = _matches_term(signal, haystack, word_set=word_set)
-                else:
-                    match_cache[signal] = False
-            if not match_cache[signal]:
-                continue
-            distinct += 1
-            match_len += len(signal)
-            weight, is_specific = _signal_weight(signal)
-            weighted += weight
-            if is_specific:
-                specific_hits += 1
-            else:
-                generic_hits += 1
-
-        rank = (weighted, specific_hits, distinct, match_len, -generic_hits)
-        if (specific_hits > 0 or weighted >= 1.0) and rank > best_rank:
-            best_rank = rank
-            best_key = unit.line_key
+    for idx in scores:
+        s_hits = specifics.get(idx, 0)
+        weight = scores[idx]
+        if s_hits > 0 or weight >= 1.0:
+            rank = (
+                weight,
+                s_hits,
+                counts.get(idx, 0),
+                lens.get(idx, 0),
+                -generics.get(idx, 0),
+            )
+            if rank > best_rank:
+                best_rank = rank
+                best_key = units[idx].line_key
 
     return best_key
 

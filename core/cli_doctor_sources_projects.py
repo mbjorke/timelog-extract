@@ -353,7 +353,7 @@ def sources():
     )
 
     console = Console()
-    with console.status(f"[bold {CLR_SOURCE_BLUE}]Analyzing source importance..."):
+    with console.status(f"[bold {STYLE_LABEL}]Analyzing source importance...", spinner="dots"):
         report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
 
     if not report.all_events:
@@ -437,3 +437,13 @@ def sources():
         f"\n[{STYLE_DIM}]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
         f"specific source.[/{STYLE_DIM}]\n"
     )
+
+    total_uncategorized = sum(uncategorized_count.values())
+    if total_uncategorized > 0:
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan review` to map uncategorized domains to project buckets.[/{STYLE_MUTED}]"
+        )
+    else:
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan report --today` to review your daily project timeline.[/{STYLE_MUTED}]"
+        )

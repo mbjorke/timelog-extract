@@ -76,8 +76,8 @@ class OpLogWriteReadTests(unittest.TestCase):
 
 
 class RollbackTests(unittest.TestCase):
-    def _delete_ok(self, creds, entry_id):
-        self.deleted.append(entry_id)
+    def _delete_ok(self, creds, entry_id, workspace_id=None):
+        self.deleted.append((entry_id, workspace_id))
         return "deleted"
 
     def setUp(self):
@@ -91,8 +91,22 @@ class RollbackTests(unittest.TestCase):
             _record(home, op, "e2")
             res = rollback_op(_CREDS, op, delete_fn=self._delete_ok, home=home)
             self.assertEqual(res.deleted, 2)
-            self.assertEqual(sorted(self.deleted), ["e1", "e2"])
+            self.assertEqual(sorted(e for e, _w in self.deleted), ["e1", "e2"])
             self.assertTrue(all(r.rolled_back for r in rows_for_op(op, home=home)))
+
+    def test_rollback_targets_the_entrys_recorded_workspace(self):
+        # An entry posted to workspace 99 must be deleted against 99, even when
+        # the active creds default to a different workspace (Qodo #398).
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            op = new_op_id()
+            record_push(
+                op_id=op, workspace_id=99, entry_id="e1", project_id=1,
+                day="2026-06-23", marker_tag="gittan:1:2026-06-23",
+                payload={}, home=home,
+            )
+            rollback_op(_CREDS, op, delete_fn=self._delete_ok, home=home)
+            self.assertEqual(self.deleted, [("e1", 99)])  # not _CREDS.workspace_id (42)
 
     def test_rollback_is_idempotent(self):
         with tempfile.TemporaryDirectory() as d:
@@ -111,12 +125,12 @@ class RollbackTests(unittest.TestCase):
             home = Path(d)
             op = new_op_id()
             _record(home, op, "ghost")
-            res = rollback_op(_CREDS, op, delete_fn=lambda c, e: "gone", home=home)
+            res = rollback_op(_CREDS, op, delete_fn=lambda c, e, w=None: "gone", home=home)
             self.assertEqual(res.gone, 1)
             self.assertTrue(rows_for_op(op, home=home)[0].rolled_back)
 
     def test_failed_delete_keeps_row_for_retry(self):
-        def boom(creds, entry_id):
+        def boom(creds, entry_id, workspace_id=None):
             raise RuntimeError("network down")
 
         with tempfile.TemporaryDirectory() as d:

@@ -12,6 +12,7 @@ from collectors.toggl import resolve_toggl_credentials, toggl_sync_enabled
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
 from core.config import default_projects_config_option
+from core.toggl_oplog import new_op_id, record_push
 from core.toggl_sync import (
     TogglSyncSummary,
     build_toggl_entry_candidates,
@@ -20,7 +21,6 @@ from core.toggl_sync import (
     post_candidate,
     rollback_op,
 )
-from core.toggl_oplog import new_op_id, record_push
 
 
 def _next_step_hint(summary: TogglSyncSummary) -> str:

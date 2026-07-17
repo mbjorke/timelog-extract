@@ -180,4 +180,12 @@ def mark_rolled_back(op_id: str, entry_ids: set, home: Optional[Path] = None) ->
     with tmp.open("w", encoding="utf-8") as fh:
         for row in rows:
             fh.write(json.dumps(row.to_dict(), separators=(",", ":")) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())  # durable temp before the atomic replace
     tmp.replace(path)
+    # fsync the directory so the rename itself survives a crash/power loss.
+    dir_fd = os.open(str(path.parent), os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)

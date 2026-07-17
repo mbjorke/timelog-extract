@@ -267,7 +267,10 @@ def rollback_op(
             result.already += 1
             continue
         try:
-            status = delete_fn(creds, row.entry_id)
+            # Delete against the workspace the entry was posted to (recorded in
+            # the row), not the currently configured default — a mismatched
+            # active workspace must not delete the wrong entry or false-succeed.
+            status = delete_fn(creds, row.entry_id, row.workspace_id)
         except Exception as exc:  # noqa: BLE001 - surfaced per-entry, others continue
             result.failed += 1
             result.lines.append(

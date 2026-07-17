@@ -213,19 +213,27 @@ def post_toggl_time_entry(
     return entry_id
 
 
-def delete_toggl_time_entry(creds: TogglCredentials, entry_id: str) -> str:
+def delete_toggl_time_entry(
+    creds: TogglCredentials, entry_id: str, workspace_id: Optional[int] = None
+) -> str:
     """Delete a Toggl time entry by id (for op-log rollback).
+
+    ``workspace_id`` targets the workspace the entry actually lives in — the
+    rollback flow passes the id recorded in the op-log row, not the currently
+    configured default, so a run with a different active workspace cannot delete
+    the wrong entry or falsely report success. Falls back to ``creds.workspace_id``.
 
     Returns ``"deleted"`` on success or ``"gone"`` when Toggl reports the entry
     no longer exists (HTTP 404) — the latter is treated as an idempotent success
     by the rollback flow, since the desired end state (entry absent) already
     holds. Any other failure raises ``RuntimeError``.
     """
+    wid = workspace_id if workspace_id is not None else creds.workspace_id
     try:
         _toggl_request(
             creds,
             "DELETE",
-            f"/api/v9/workspaces/{creds.workspace_id}/time_entries/{entry_id}",
+            f"/api/v9/workspaces/{wid}/time_entries/{entry_id}",
         )
     except RuntimeError as exc:
         if "HTTP 404" in str(exc):

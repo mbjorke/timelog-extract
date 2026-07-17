@@ -119,17 +119,21 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
 
 def extract_revision(rev: str, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
-    archive = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "archive", rev],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["tar", "-x", "-C", str(dest)],
-        input=archive.stdout,
-        check=True,
-        capture_output=True,
-    )
+    # Stream via a temp file so the full archive is not held in RAM.
+    with tempfile.TemporaryFile() as archive:
+        subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "archive", rev],
+            stdout=archive,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        archive.seek(0)
+        subprocess.run(
+            ["tar", "-x", "-C", str(dest)],
+            stdin=archive,
+            check=True,
+            capture_output=True,
+        )
 
 
 def run_for_revision(rev: str, code_root: Path, args: argparse.Namespace) -> dict:

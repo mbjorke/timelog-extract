@@ -49,10 +49,26 @@ class BenchSynthDataTests(unittest.TestCase):
         data = generate(80, days=5, n_projects=3, seed=7)
         blob = "\n".join(e["detail"] for e in data["events"])
         self.assertNotIn("DN.se", blob)
-        self.assertNotIn("/Users/dev/Workspace/", blob)
+        self.assertNotIn("/Users/", blob)
+        self.assertNotIn("Lindqvist", blob)
         self.assertNotIn("Nyhetsbrev", blob)
         self.assertNotIn("fakturaunderlag", blob)
         self.assertNotIn("avstämning", blob)
+
+    def test_generate_rejects_invalid_n_projects(self):
+        with self.assertRaises(ValueError):
+            generate(10, days=2, n_projects=0, seed=1)
+        with self.assertRaises(ValueError):
+            generate(10, days=2, n_projects=-1, seed=1)
+        max_projects = 12 * 10  # FIRST_WORDS * SECOND_WORDS
+        with self.assertRaises(ValueError):
+            generate(10, days=2, n_projects=max_projects + 1, seed=1)
+
+    def test_generate_normalizes_utc_tz_case(self):
+        data = generate(
+            5, days=1, n_projects=2, seed=3, start_date="2024-06-01", tz_name="utc"
+        )
+        self.assertEqual(data["tz"], "UTC")
 
 
 class BenchHotpathHelpersTests(unittest.TestCase):
@@ -68,12 +84,12 @@ class BenchHotpathHelpersTests(unittest.TestCase):
         exc_b = subprocess.CalledProcessError(1, ["tar"], stderr=b"boom\n")
         self.assertEqual(_exc_stderr_text(exc_b), "boom")
 
-    def test_extract_revision_captures_tar_stderr(self):
+    def test_extract_revision_streams_archive_and_captures_tar_stderr(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp) / "out"
             with mock.patch("scripts.bench_hotpath.subprocess.run") as run:
                 run.side_effect = [
-                    mock.Mock(stdout=b"archive-bytes", returncode=0),
+                    mock.Mock(returncode=0),
                     subprocess.CalledProcessError(
                         1, ["tar"], stderr=b"tar: failed to extract\n"
                     ),
@@ -81,7 +97,11 @@ class BenchHotpathHelpersTests(unittest.TestCase):
                 with self.assertRaises(subprocess.CalledProcessError) as ctx:
                     extract_revision("HEAD", dest)
                 self.assertEqual(ctx.exception.stderr, b"tar: failed to extract\n")
+                git_kwargs = run.call_args_list[0].kwargs
+                self.assertIsNotNone(git_kwargs.get("stdout"))
+                self.assertEqual(git_kwargs.get("stderr"), subprocess.PIPE)
                 self.assertEqual(run.call_args_list[1].kwargs.get("capture_output"), True)
+                self.assertIsNotNone(run.call_args_list[1].kwargs.get("stdin"))
 
 
 if __name__ == "__main__":

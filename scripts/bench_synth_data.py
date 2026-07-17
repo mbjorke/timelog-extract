@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -51,7 +51,7 @@ CLIENTS = [
     "Icebreaker Inc",
     "Jade Falcon",
     "Kestrel Labs",
-    "Lindqvist & Co",
+    "Lakeview Co",
 ]
 FILES = [
     "core/pipeline.py",
@@ -140,7 +140,10 @@ def make_detail(source: str, profile: dict | None, rng: random.Random) -> str:
     slug = profile["name"]
     client = profile["_client"]
     if source in ("Cursor", "Cursor checkpoints", "Codex IDE"):
-        return f"Edited {rng.choice(FILES)} — /Users/dev/project-alpha/{slug}/{rng.choice(FILES)}"
+        return (
+            f"Edited {rng.choice(FILES)} — "
+            f"/fixture/workspace/project-alpha/{slug}/{rng.choice(FILES)}"
+        )
     if source in ("Claude Code CLI", "Claude Desktop", "Gemini CLI"):
         return f"{rng.choice(COMMIT_VERBS)} {rng.choice(COMMIT_OBJECTS)} for {slug} ({client})"
     if source == "Chrome":
@@ -170,6 +173,14 @@ def _block_event_counts(events_for_day: int, n_blocks: int) -> list[int]:
     return [base + (1 if i < rem else 0) for i in range(n_blocks)]
 
 
+def _resolve_tz(tz_name: str):
+    """Match bench_hotpath: UTC is case-insensitive and uses timezone.utc."""
+    name = (tz_name or "UTC").strip()
+    if name.upper() == "UTC":
+        return timezone.utc, "UTC"
+    return ZoneInfo(name), name
+
+
 def generate(
     events_target: int,
     days: int,
@@ -183,10 +194,13 @@ def generate(
         raise ValueError("events_target must be >= 0")
     if days < 1:
         raise ValueError("days must be >= 1")
+    max_projects = len(FIRST_WORDS) * len(SECOND_WORDS)
+    if not 1 <= n_projects <= max_projects:
+        raise ValueError(f"n_projects must be between 1 and {max_projects}")
 
     rng = random.Random(seed)
     profiles = build_profiles(n_projects, rng)
-    tz = ZoneInfo(tz_name)
+    tz, tz_label = _resolve_tz(tz_name)
     day0 = datetime.combine(date.fromisoformat(start_date), datetime.min.time(), tzinfo=tz)
 
     events: list[dict] = []
@@ -232,7 +246,7 @@ def generate(
         "days": days,
         "n_projects": n_projects,
         "start_date": start_date,
-        "tz": tz_name,
+        "tz": tz_label,
         "events": events,
         "profiles": clean_profiles,
     }

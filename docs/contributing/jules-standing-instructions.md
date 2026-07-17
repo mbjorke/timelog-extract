@@ -112,6 +112,33 @@ duplicates** and hand off clearly (below).
 “Comments addressed” means the conversation is closed out — not that you
 opened another Palette PR with a slightly different styling pass.
 
+### End every run with a handoff comment (always, not only when blocked)
+
+A scheduled run cannot wait for review bots, so "done" is a **declared
+handoff**, not a silent exit. Before the session ends, post one structured
+comment on your PR:
+
+```markdown
+## Handoff (Bolt|Palette, YYYY-MM-DD)
+- **Done:** <what changed, one line per item>
+- **Verified:** <exact commands run + actual result — not "should work">
+- **Not done / skipped:** <deliberate omissions + why>
+- **Awaiting:** Qodo + CodeRabbit review; next run answers them (step 0).
+```
+
+A PR with no handoff comment is not finished — it is abandoned.
+
+### Step 0 of the NEXT run: answer reviews before new work
+
+Before even the §1 queue check, open your own PRs from previous runs and give
+every new Qodo/CodeRabbit finding since the handoff a **disposition**:
+
+- valid → fix on that branch, reply on the thread with the commit;
+- invalid/out-of-scope → reply with a brief reason (one sentence is enough).
+
+Silence is not a disposition. If answering reviews consumes the whole run,
+that **was** the run — do not also open a new PR (§4).
+
 ## 6. Learnings files
 
 Append durable learnings to `.jules/bolt.md` / `.jules/palette.md` as usual.

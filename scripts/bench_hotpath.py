@@ -7,6 +7,11 @@ and reports timings side by side, to locate where a performance regression
 landed. Uses ``git archive`` extractions in a temp dir — never touches the
 working tree or GitButler state.
 
+This is a first-party repo harness under ``scripts/``, not an external
+integration. It imports ``core.analytics`` / ``core.domain`` / ``core.sources``
+directly so it can exercise the hot path across older revisions that predate
+any stable ``engine_api`` surface for these internals.
+
 Usage:
     # single run against the current working tree
     python scripts/bench_hotpath.py --run --dataset private/bench/synth_events.json
@@ -25,11 +30,35 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 UNCATEGORIZED = "Uncategorized"
+
+
+def _dataset_tz(data: dict):
+    """Resolve grouping tz from dataset metadata; default UTC for older files."""
+    name = data.get("tz") or "UTC"
+    if name.upper() == "UTC":
+        return timezone.utc
+    return ZoneInfo(name)
+
+
+def _stderr_last_line(stderr: str | None, *, default: str = "failed") -> str:
+    lines = (stderr or "").splitlines()
+    msg = next((ln for ln in reversed(lines) if ln.strip()), default)
+    return msg[:120]
+
+
+def _exc_stderr_text(exc: subprocess.CalledProcessError) -> str:
+    err = exc.stderr
+    if err is None:
+        return str(exc)
+    if isinstance(err, bytes):
+        return err.decode(errors="replace").strip()
+    return str(err).strip()
 
 
 def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: int) -> dict:
@@ -37,6 +66,7 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
     import functools
     import inspect
 
+    # First-party harness: direct core imports (not engine_api). See module docstring.
     from core.analytics import estimate_hours_by_day, group_by_day
     from core.domain import classify_project, compute_sessions, session_duration_hours
 
@@ -48,7 +78,7 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
 
     data = json.loads(Path(dataset_path).read_text())
     profiles = data["profiles"]
-    local_tz = datetime.now().astimezone().tzinfo
+    local_tz = _dataset_tz(data)
     events = [
         {**e, "timestamp": datetime.fromisoformat(e["timestamp"])}
         for e in data["events"]
@@ -89,11 +119,21 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
 
 def extract_revision(rev: str, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
-    archive = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "archive", rev],
-        check=True, capture_output=True,
-    )
-    subprocess.run(["tar", "-x", "-C", str(dest)], input=archive.stdout, check=True)
+    # Stream via a temp file so the full archive is not held in RAM.
+    with tempfile.TemporaryFile() as archive:
+        subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "archive", rev],
+            stdout=archive,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        archive.seek(0)
+        subprocess.run(
+            ["tar", "-x", "-C", str(dest)],
+            stdin=archive,
+            check=True,
+            capture_output=True,
+        )
 
 
 def run_for_revision(rev: str, code_root: Path, args: argparse.Namespace) -> dict:
@@ -110,7 +150,8 @@ def run_for_revision(rev: str, code_root: Path, args: argparse.Namespace) -> dic
     for _ in range(max(1, args.repeat)):
         proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
         if proc.returncode != 0:
-            return {"error": (proc.stderr or "").strip().splitlines()[-1][:120] if proc.stderr else "failed"}
+            msg = _stderr_last_line(proc.stderr)
+            return {"error": f"exit {proc.returncode}: {msg}"}
         result = json.loads(proc.stdout)
         if best is None or result["total_s"] < best["total_s"]:
             best = result
@@ -128,7 +169,8 @@ def compare(revs: list[str], args: argparse.Namespace) -> None:
                 try:
                     extract_revision(rev, code_root)
                 except subprocess.CalledProcessError as exc:
-                    rows.append((rev, {"error": exc.stderr.decode(errors="replace").strip()[:120]}))
+                    err = _exc_stderr_text(exc)[:120] or "extract failed"
+                    rows.append((rev, {"error": err}))
                     continue
             print(f"benchmarking {rev} …", file=sys.stderr)
             rows.append((rev, run_for_revision(rev, code_root, args)))

@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from core.chromium_cache import (
+    BoundedRawCache,
     codec_available,
     iter_cache_entries,
     read_cache_entry,
@@ -96,6 +97,36 @@ class ChromiumCacheTests(unittest.TestCase):
             entry = read_cache_entry(d / "zz_0")
             self.assertIsNotNone(entry)
             self.assertEqual(entry.body, payload)
+
+    def test_bounded_raw_cache_stops_retaining_past_the_cap(self) -> None:
+        """Qodo review (PR #388): an unfiltered scan must not retain every
+        file's bytes unconditionally — past max_bytes, reads still succeed
+        but are no longer cached for reuse by a second scan."""
+        with TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            body = b'{"pad":"' + b"x" * 990 + b'"}'
+            paths = []
+            for i in range(10):
+                key = f"1/0/https://x/v1/sessions/s{i}/events"
+                self._write(d, f"e{i}", key, body)
+                paths.append(d / f"e{i}_0")
+
+            # Cap well under the total (10 files * ~1KB+header each).
+            cache = BoundedRawCache(max_bytes=3000)
+            for path in paths:
+                entry = read_cache_entry(path, raw_cache=cache)
+                self.assertIsNotNone(entry)  # every read still succeeds
+
+            self.assertLess(len(cache), len(paths))  # not all retained
+            retained_bytes = sum(len(cache[p]) for p in paths if p in cache)
+            self.assertLessEqual(retained_bytes, 3000)
+
+            # A file evicted-by-cap still reads correctly on a second pass
+            # (falls back to disk instead of raising or returning stale data).
+            uncached = [p for p in paths if p not in cache][0]
+            entry = read_cache_entry(uncached, raw_cache=cache)
+            self.assertIsNotNone(entry)
+            self.assertEqual(entry.body, body)
 
 
 if __name__ == "__main__":

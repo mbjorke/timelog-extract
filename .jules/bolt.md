@@ -9,3 +9,11 @@
 ## 2026-07-09 - [Inverted Index for Project Classification]
 **Learning:** Project classification was the primary bottleneck because it performed O(N*M) matching (Profiles * Terms) for every event. Moving to an inverted index allows O(U) matching (Unique words in event) for alphanumeric terms. Set intersection between the event's word set and the "fast path" index identifies matches instantly.
 **Action:** Use inverted indices for many-to-many matching tasks. Always separate "fast path" (exact/word set) and "slow path" (regex/substring) to minimize expensive operations.
+
+## 2026-07-16 - [WorkUnit Classification Inverted Index]
+**Learning:** The WorkUnit v2 spike classifier had a similar performance bottleneck to the original project classifier because it iterated over all units and signals sequentially for every text snippet. Compiling an inverted index that maps signals to pre-calculated weights and properties (categorized into fast-path alphanumeric and slow-path path/regex signals) reduces classification cost from O(U*S) to roughly O(min(words, fast signals) + slow signals + matched impacts).
+**Action:** Use inverted indices with fast/slow signal paths for WorkUnit classification. Cache compiled indexes with identity **and** content fingerprint (same pattern as `domain._get_compiled_index`). Never use an identity-only early return on mutable sequences — that reintroduces stale-index bugs and has already been reverted once after review (#386 follow-up).
+
+## 2026-07-17 - [Do not reopen solved Bolt work / check open PRs first]
+**Learning:** Opening a fresh PR every day for the same Bolt task (WorkUnit inverted index) produced seven near-duplicate PRs (#374–#386). After #386 merged, a follow-up commit reintroduced an identity-only cache fast path that review had just removed, and deleted the regression test — undoing a correctness fix. Qodo and CodeRabbit had already flagged that exact stale-cache issue; the revert ignored them.
+**Action:** Follow `docs/contributing/jules-standing-instructions.md` before every Bolt run: (1) list open PRs and do not duplicate, (2) read Qodo + CodeRabbit threads on matching PRs and fix or respect them, (3) never revert a review fix or delete its regression test unless the PR thread explicitly asks.

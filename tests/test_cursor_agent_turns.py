@@ -358,6 +358,52 @@ class CursorAgentTurnsTests(unittest.TestCase):
         self.assertNotIn("\n", preview)
         self.assertNotIn("secret-line-two", preview)
 
+    def test_iter_hooks_json_objects_handles_many_turns_and_brace_noise(self):
+        """Offset-based parsing (perf fix) must match the original per-turn
+        join semantics: correct object per INPUT block, brace-noisy tool
+        output does not desync later turns, and a large turn count does not
+        blow up (would time out under the old O(n*turns) re-join)."""
+        from collectors.cursor_agent_turns import _iter_hooks_json_objects
+
+        def _input_block(payload: dict) -> str:
+            return "INPUT:\n" + json.dumps(payload, indent=2) + "\n\nOUTPUT:\n(empty)\n"
+
+        lines: list[str] = []
+        expected: list[tuple[str, int]] = []
+        for turn in range(400):
+            ts_line = f"[2026-07-09T16:{turn % 60:02d}:00.000Z] Hook step requested: beforeSubmitPrompt"
+            lines.append(ts_line)
+            lines.extend(
+                _input_block(
+                    {
+                        "hook_event_name": "beforeSubmitPrompt",
+                        "conversation_id": "cid",
+                        "turn": turn,
+                        "prompt": "ship it",
+                    }
+                ).splitlines()
+            )
+            expected.append((ts_line, turn))
+            lines.append("[2026-07-09T16:00:30.000Z] Hook step requested: postToolUse")
+            lines.extend(
+                _input_block(
+                    {
+                        "hook_event_name": "postToolUse",
+                        "conversation_id": "cid",
+                        "tool_output": json.dumps({"output": 'nested {"a":1} {"b":2} end'}),
+                    }
+                ).splitlines()
+            )
+
+        results = list(_iter_hooks_json_objects(lines))
+        turn_results = [
+            (ts, obj["turn"]) for ts, obj in results if obj.get("hook_event_name") == "beforeSubmitPrompt"
+        ]
+        self.assertEqual(turn_results, expected)
+        # postToolUse blocks (with embedded braces) must also survive intact.
+        tool_results = [obj for _ts, obj in results if obj.get("hook_event_name") == "postToolUse"]
+        self.assertEqual(len(tool_results), 400)
+
 
 if __name__ == "__main__":
     unittest.main()

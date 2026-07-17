@@ -124,6 +124,28 @@ class TestWorkUnitClassifier(unittest.TestCase):
         self.assertEqual(customer_for_line(units, line), "customer-a.example")
         self.assertNotEqual(customer_for_line(units, line), "portal-repo")
 
+    def test_compiled_index_invalidates_on_in_place_list_mutation(self):
+        """Same list object mutated must rebuild the compiled index (not identity-cache)."""
+        from core.work_unit_classifier import WorkUnit
+
+        units = list(build_work_units(_profiles_with_thin_duplicate()))
+        self.assertEqual(
+            classify_work_unit("portal-repo commit", units, "Uncategorized"),
+            "portal-engagement",
+        )
+        units.append(
+            WorkUnit(
+                line_key="unique-spike-line",
+                customer_ref="customer-b.example",
+                primary="name",
+                signals=("unique-spike-signal",),
+            )
+        )
+        self.assertEqual(
+            classify_work_unit("unique-spike-signal land", units, "Uncategorized"),
+            "unique-spike-line",
+        )
+
 
 class TestWorkUnitAcceptance(unittest.TestCase):
     def test_load_example_fixture(self):

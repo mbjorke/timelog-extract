@@ -222,3 +222,68 @@ def post_candidate(creds: TogglCredentials, candidate: TogglEntryCandidate) -> s
         project_id=candidate.project_id,
         tags=candidate.tags,
     )
+
+
+@dataclass
+class RollbackResult:
+    op_id: str
+    deleted: int = 0
+    gone: int = 0
+    already: int = 0
+    failed: int = 0
+    lines: List[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.lines is None:
+            self.lines = []
+
+
+def rollback_op(
+    creds: TogglCredentials,
+    op_id: str,
+    *,
+    delete_fn=None,
+    home=None,
+) -> RollbackResult:
+    """Delete the Toggl entries a prior push created, idempotently.
+
+    ``delete_fn(creds, entry_id) -> "deleted"|"gone"`` is injected so tests never
+    hit the network. Entries already flagged rolled back are skipped; a re-run is
+    a clean no-op. Rows deleted (or found already gone) are marked rolled back.
+    """
+    from collectors.toggl import delete_toggl_time_entry
+    from core.toggl_oplog import mark_rolled_back, rows_for_op
+
+    delete_fn = delete_fn or delete_toggl_time_entry
+    result = RollbackResult(op_id=op_id)
+    rows = rows_for_op(op_id, home=home)
+    if not rows:
+        result.lines.append(f"No op-log rows for op {op_id} — nothing to roll back.")
+        return result
+
+    settled: set = set()
+    for row in rows:
+        if row.rolled_back:
+            result.already += 1
+            continue
+        try:
+            status = delete_fn(creds, row.entry_id)
+        except Exception as exc:  # noqa: BLE001 - surfaced per-entry, others continue
+            result.failed += 1
+            result.lines.append(
+                f"Failed to delete entry {row.entry_id} ({row.project_id}/{row.day}): {exc}"
+            )
+            continue
+        if status == "gone":
+            result.gone += 1
+            result.lines.append(
+                f"Entry {row.entry_id} ({row.project_id}/{row.day}) already absent in Toggl."
+            )
+        else:
+            result.deleted += 1
+            result.lines.append(f"Deleted entry {row.entry_id} ({row.project_id}/{row.day}).")
+        settled.add(row.entry_id)
+
+    if settled:
+        mark_rolled_back(op_id, settled, home=home)
+    return result

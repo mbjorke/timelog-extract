@@ -18,7 +18,9 @@ from core.toggl_sync import (
     candidate_payload,
     existing_marker_tags,
     post_candidate,
+    rollback_op,
 )
+from core.toggl_oplog import new_op_id, record_push
 
 
 def _next_step_hint(summary: TogglSyncSummary) -> str:
@@ -52,9 +54,19 @@ def toggl_sync(
     toggl_workspace_id: Annotated[Optional[int], typer.Option(help="Toggl workspace id")] = None,
     dry_run: Annotated[bool, typer.Option(help="Preview candidates; do not post")] = False,
     require_confirm: Annotated[bool, typer.Option(help="Confirm each post interactively")] = True,
+    rollback: Annotated[Optional[str], typer.Option(help="Roll back a prior push by op-id (deletes its Toggl entries)")] = None,
+    list_ops: Annotated[bool, typer.Option("--list-ops", help="List recorded push operations and exit")] = False,
 ):
     """Post Gittan-derived hours to Toggl as time entries (one per project + day)."""
     from core.report_service import run_timelog_report
+
+    # Op-log subcommands short-circuit the report/post path entirely.
+    if list_ops:
+        _print_ops()
+        return
+    if rollback:
+        _run_rollback(rollback, toggl_sync_mode, toggl_api_token, toggl_workspace_id)
+        return
 
     options = TimelogRunOptions(
         date_from=date_from.strftime("%Y-%m-%d") if date_from else None,
@@ -101,6 +113,7 @@ def toggl_sync(
         return
 
     summary = TogglSyncSummary(unmapped=unmapped)
+    op_id = new_op_id()
     existing = set()
     if not dry_run:
         # Toggl's end_date is exclusive, so add a day to cover dt_to's full day.
@@ -143,6 +156,20 @@ def toggl_sync(
             entry_id = post_candidate(creds, candidate)
             summary.posted += 1
             typer.echo(f"Posted Toggl time entry id={entry_id}")
+            try:
+                record_push(
+                    op_id=op_id,
+                    workspace_id=creds.workspace_id,
+                    entry_id=entry_id,
+                    project_id=candidate.project_id,
+                    day=candidate.day,
+                    marker_tag=candidate.marker_tag,
+                    payload=candidate_payload(creds, candidate),
+                )
+            except Exception as log_exc:  # noqa: BLE001 - logging must not fail a post
+                import logging
+
+                logging.warning("Toggl op-log write failed for entry %s: %s", entry_id, log_exc)
         except Exception as exc:
             import logging
             import traceback
@@ -160,4 +187,50 @@ def toggl_sync(
         f"posted={summary.posted}, skipped={summary.skipped}, "
         f"unmapped={summary.unmapped}, failed={summary.failed}"
     )
+    if summary.posted > 0:
+        typer.echo(f"Operation id: {op_id}  (undo with `gittan toggl-sync --rollback {op_id}`)")
     typer.echo(_next_step_hint(summary))
+
+
+def _toggl_creds_or_exit(mode, token, workspace_id):
+    """Resolve Toggl creds for op-log subcommands, or raise a clean CLI error."""
+    gate_args = SimpleNamespace(
+        toggl_sync=mode, toggl_api_token=token, toggl_workspace_id=workspace_id
+    )
+    enabled, reason = toggl_sync_enabled(gate_args)
+    if not enabled:
+        raise typer.BadParameter(reason or "Toggl sync is not enabled")
+    creds = resolve_toggl_credentials(gate_args)
+    if creds is None:
+        raise typer.BadParameter("Missing Toggl credentials")
+    return creds
+
+
+def _print_ops():
+    from core.toggl_oplog import list_ops
+
+    ops = list_ops()
+    if not ops:
+        typer.echo("No Toggl push operations recorded yet.")
+        return
+    typer.echo("Recorded Toggl push operations (newest first):")
+    for op in ops:
+        state = f"{op['rolled_back']}/{op['entries']} rolled back" if op["rolled_back"] else f"{op['entries']} entries"
+        typer.echo(f"  {op['op_id']}  {op['ts']}  {state}  days={','.join(op['days'])}")
+
+
+def _run_rollback(op_id, mode, token, workspace_id):
+    creds = _toggl_creds_or_exit(mode, token, workspace_id)
+    result = rollback_op(creds, op_id)
+    for line in result.lines:
+        typer.echo(line)
+    typer.echo(
+        "Rollback summary: "
+        f"deleted={result.deleted}, already_gone={result.gone}, "
+        f"already_rolled_back={result.already}, failed={result.failed}"
+    )
+    if result.failed:
+        typer.echo(
+            "Next: some deletions failed — re-run the same `--rollback` once Toggl "
+            "is reachable; entries already removed are skipped."
+        )

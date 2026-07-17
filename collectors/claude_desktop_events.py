@@ -23,7 +23,12 @@ from pathlib import Path
 from typing import Optional
 
 from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
-from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
+from core.chromium_cache import (
+    CODEC_REINSTALL_HINT,
+    BoundedRawCache,
+    codec_available,
+    iter_cache_entries,
+)
 from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
@@ -185,8 +190,10 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
     sessions: dict[str, dict] = {}
     # Shared with _session_meta below: both scan the same cache_dir (this pass
     # date-filtered for events, that one unfiltered for titles/slugs), so a
-    # file read here is reused there instead of hitting disk twice.
-    raw_cache: dict = {}
+    # file read here is reused there instead of hitting disk twice. Bounded
+    # so the later unfiltered pass can't retain a very large cache directory's
+    # bytes in memory all at once (Qodo review, PR #388).
+    raw_cache = BoundedRawCache()
     for entry in iter_cache_entries(
         cache_dir, _SESSIONS_KEY_MARKER, newer_than=dt_from, raw_cache=raw_cache
     ):

@@ -41,11 +41,48 @@ _GZIP_MAGIC = b"\x1f\x8b\x08"
 _DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 # Decompression-bomb guard for the decoded body.
 _MAX_DECODED_BYTES = 64 * 1024 * 1024
+# raw_cache retention cap (see BoundedRawCache): bounds worst-case memory when
+# a caller shares one cache across a full, unfiltered Cache_Data walk.
+_RAW_CACHE_MAX_BYTES = 150 * 1024 * 1024
 
 CODEC_REINSTALL_HINT = (
     "pipx install --force timelog-extract"
     "  or: pip install --upgrade timelog-extract"
 )
+
+
+class BoundedRawCache:
+    """``dict[Path, bytes]``-like cache capped by total bytes retained.
+
+    ``read_cache_entry``/``iter_cache_entries`` populate this unconditionally
+    for every file they read (matching a key filter or not), so a caller that
+    shares one cache across an unfiltered directory walk could otherwise
+    retain the whole cache directory's bytes in memory at once. Past the cap,
+    new entries are simply not retained — a second scan for that file falls
+    back to a normal disk read instead of risking unbounded growth. Already
+    the actual on-disk read still returns correct bytes either way; only
+    *reuse by a second scan* is affected.
+    """
+
+    def __init__(self, max_bytes: int = _RAW_CACHE_MAX_BYTES) -> None:
+        self._data: dict[Path, bytes] = {}
+        self._max_bytes = max_bytes
+        self._total_bytes = 0
+
+    def __contains__(self, path: Path) -> bool:
+        return path in self._data
+
+    def __getitem__(self, path: Path) -> bytes:
+        return self._data[path]
+
+    def __setitem__(self, path: Path, raw: bytes) -> None:
+        if path in self._data or self._total_bytes + len(raw) > self._max_bytes:
+            return
+        self._data[path] = raw
+        self._total_bytes += len(raw)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 @dataclass(frozen=True)

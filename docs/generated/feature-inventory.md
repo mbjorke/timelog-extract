@@ -19,31 +19,31 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | --- | --- | --- | --- |
 | — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). | (no spec) |
 | — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. | (no spec) |
-| — | `doctor` | Check source access and local integration health, then print a diagnostic table. | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
-| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | [local-evidence-shadow-log-slice1-task](../task-prompts/local-evidence-shadow-log-slice1-task.md) · `in progress` |
+| — | `doctor` | Check source access and local integration health, then print a diagnostic table. | (no spec) |
+| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | (no spec) |
 | — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. | (no spec) |
-| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
-| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [evidence-gap-recalibration-task](../task-prompts/evidence-gap-recalibration-task.md) |
-| — | `projects` | Manage project profiles interactively. | [map-new-project-identity](../task-prompts/map-new-project-identity.md) · `in progress` |
-| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
-| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
-| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. | [projects-config-trimming-task](../task-prompts/projects-config-trimming-task.md) · built |
-| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. | [implementation-status](../task-prompts/implementation-status.md) |
-| — | `report` | Build detailed local evidence reports for a selected timeframe. | [agent-inline-cli-ux-validation-task](../task-prompts/agent-inline-cli-ux-validation-task.md) · `not built` |
-| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. | [ab-rule-suggestions-task](../task-prompts/ab-rule-suggestions-task.md) · `built` |
-| — | `search` | Search timeline quickly with all events shown (shares report execution path). | [report-search-refactor-plan](../specs/report-search-refactor-plan.md) |
-| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. | [backlog-priority-2026-07-08-task](../task-prompts/backlog-priority-2026-07-08-task.md) · `not built` (planning artifact — no code) |
+| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | (no spec) |
+| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [map-customer-first-flow](../task-prompts/map-customer-first-flow.md) · `not built` |
+| — | `projects` | Manage project profiles interactively. | (no spec) |
+| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). | (no spec) |
+| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). | (no spec) |
+| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. | (no spec) |
+| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. | (no spec) |
+| — | `report` | Build detailed local evidence reports for a selected timeframe. | (no spec) |
+| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. | (no spec) |
+| — | `search` | Search timeline quickly with all events shown (shares report execution path). | (no spec) |
+| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. | (no spec) |
 | — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. | (no spec) |
 | — | `sources` | Analyze which data sources are contributing the most to your reports. | (no spec) |
-| — | `status` | Quick hours snapshot with project totals and session counts. | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
+| — | `status` | Quick hours snapshot with project totals and session counts. | (no spec) |
 | — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). | [toggl-posting-task](../task-prompts/toggl-posting-task.md) · built |
 | — | `ux-heroes` | Preview hero sections only for key CLI commands. | (no spec) |
 | **config** | _(group)_ | Inspect active config paths. | |
-| config | `path` | Print active projects-config path and source. | [repo-slug-project-attribution](../task-prompts/repo-slug-project-attribution.md) · built |
+| config | `path` | Print active projects-config path and source. | (no spec) |
 | **reported** | _(group)_ | Review observed time into confirmed reported time, or add manual time. | |
-| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
-| reported | `list` | Show confirmed reported hours per project + day. | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
-| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. | [ab-rule-suggestions-task](../task-prompts/ab-rule-suggestions-task.md) · `built` |
+| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). | (no spec) |
+| reported | `list` | Show confirmed reported hours per project + day. | (no spec) |
+| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. | (no spec) |
 | reported | `sync` | Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review. | (no spec) |
 
 ## Collectors
@@ -53,21 +53,21 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Antigravity | events | (no spec) |
 | Apple Mail | mail | (no spec) |
 | Calendar | events | (no spec) |
-| Chrome | visits | [wordpress-lovable-web-attribution-task](../task-prompts/wordpress-lovable-web-attribution-task.md) · `in progress` |
-| Claude Code CLI | events | [copilot-cli-source-task](../task-prompts/copilot-cli-source-task.md) · `built` |
-| Claude Desktop | events | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
-| Claude Desktop (Code) | events | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
+| Chrome | visits | (no spec) |
+| Claude Code CLI | events | (no spec) |
+| Claude Desktop | events | (no spec) |
+| Claude Desktop (Code) | events | (no spec) |
 | Claude.ai (specific URLs) | visits | (no spec) |
 | Codex IDE (OpenAI ~/.codex) | sessions | (no spec) |
 | Conductor | events | (no spec) |
-| Cursor | events | [copilot-cli-source-task](../task-prompts/copilot-cli-source-task.md) · `built` |
+| Cursor | events | (no spec) |
 | Cursor checkpoints | events | (no spec) |
 | Gemini (web, specific URLs) | visits | (no spec) |
 | Gemini CLI | events | (no spec) |
 | GitHub | events | (no spec) |
 | GitHub Copilot CLI | events | (no spec) |
-| Lovable (desktop) | visits | [attended-agent-time-task](../task-prompts/attended-agent-time-task.md) · verified |
-| TIMELOG.md | timestamps | [agent-inline-cli-ux-validation-task](../task-prompts/agent-inline-cli-ux-validation-task.md) · `not built` |
+| Lovable (desktop) | visits | (no spec) |
+| TIMELOG.md | timestamps | (no spec) |
 | Toggl | events | (no spec) |
 | Windsurf | events | (no spec) |
 | Zed | events | (no spec) |

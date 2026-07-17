@@ -73,9 +73,27 @@ class SpecLinkTests(unittest.TestCase):
         self.assertEqual(path, "docs/task-prompts/toggl-posting-task.md")
         self.assertTrue(status)  # implementation_status is carried along
 
-    def test_backtick_mention_links_a_spec(self):
+    def test_title_backtick_mention_links_a_spec(self):
+        # `gittan map` is backticked in map-customer-first-flow.md's H1 title.
         command_specs, _collectors, _unspecced = fig.build_feature_links()
-        self.assertIn("jira-sync", command_specs)  # linked via backtick mention
+        self.assertIn("map", command_specs)
+
+    def test_body_prose_mention_does_not_claim_coverage(self):
+        # jira-sync is backtick-mentioned in several spec bodies and in the
+        # toggl spec's Traceability `related:` line — none of those count
+        # (Qodo review on #395: prose mentions must not suppress the
+        # un-specced report). Only covers:/title mentions link.
+        command_specs, _collectors, unspecced = fig.build_feature_links()
+        self.assertNotIn("jira-sync", command_specs)
+        self.assertIn("command `jira-sync`", unspecced)
+
+    def test_multiline_implementation_status_is_joined(self):
+        # reported-time-layer-task.md wraps implementation_status across
+        # indented continuation lines; the parsed value must not end at the
+        # first physical line (Qodo review on #395).
+        specs = fig.load_specs()
+        spec = next(s for s in specs if s.path.name == "reported-time-layer-task.md")
+        self.assertNotEqual(spec.status.rstrip()[-1:], ",")
 
     def test_unknown_feature_reports_no_spec(self):
         specs = fig.load_specs()

@@ -15,11 +15,14 @@ regenerate-and-diff.
 Traceability coupling (Phase 2, GH-230): each command/collector links to the
 spec that covers it. A spec declares coverage explicitly with a ``covers:``
 line in its ``## Traceability`` block (comma-separated command/collector
-names — the robust key), or implicitly by mentioning the command in backticks
-(`` `toggl-sync` `` / `` `gittan toggl-sync` ``). ``--check`` keeps the
-stale-file gate **hard**; the un-specced-feature report is **advisory** by
-default and hard only with ``--strict`` (resolved gate decision in
-docs/task-prompts/feature-inventory-generator-task.md).
+names — the robust key), or implicitly by a backtick mention
+(`` `toggl-sync` `` / `` `gittan toggl-sync` ``) in the spec's **H1 title**
+only — body/Traceability prose does not count, so a passing mention (or a
+`related:` cross-reference) cannot claim coverage and suppress the
+un-specced report. ``--check``
+keeps the stale-file gate **hard**; the un-specced-feature report is
+**advisory** by default and hard only with ``--strict`` (resolved gate
+decision in docs/task-prompts/feature-inventory-generator-task.md).
 """
 
 from __future__ import annotations
@@ -153,7 +156,7 @@ class SpecInfo:
     def __init__(self, path: Path, covers: set, backticked: set, status: str):
         self.path = path
         self.covers = covers          # explicit `covers:` names (lowercased)
-        self.backticked = backticked  # every backticked token (verbatim)
+        self.backticked = backticked  # backticked tokens from the H1 title only
         self.status = status          # implementation_status value, may be ""
 
     def mentions(self, name: str) -> bool:
@@ -162,23 +165,60 @@ class SpecInfo:
         return name in self.backticked or f"gittan {name}" in self.backticked
 
 
+def _traceability_section(text: str) -> str:
+    """Return the ``## Traceability`` section body (up to the next H2), or ""."""
+    lines = text.splitlines()
+    start = next(
+        (i for i, ln in enumerate(lines) if ln.strip().lower().startswith("## traceability")),
+        None,
+    )
+    if start is None:
+        return ""
+    end = next(
+        (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    return "\n".join(lines[start + 1 : end])
+
+
+def _status_with_continuations(section_lines: List[str], idx: int, first: str) -> str:
+    """Join a multi-line ``implementation_status:`` value (indented continuations)."""
+    parts = [first]
+    for line in section_lines[idx + 1 :]:
+        # A continuation is indented and is not the next `- key:` bullet.
+        if re.match(r"^\s{2,}\S", line) and not re.match(r"^\s*-\s", line):
+            parts.append(line.strip())
+        else:
+            break
+    return " ".join(parts)
+
+
 def load_specs() -> List[SpecInfo]:
-    """Parse every spec under SPEC_DIRS for coverage keys + implementation_status."""
+    """Parse every spec under SPEC_DIRS for coverage keys + implementation_status.
+
+    ``covers:`` / ``implementation_status:`` are read **only** from the
+    ``## Traceability`` section, and the backtick-mention fallback **only**
+    from H1 title lines — body prose and Traceability cross-references
+    (``related:``) cannot claim a feature (Qodo review on #395).
+    """
     specs: List[SpecInfo] = []
     for rel in SPEC_DIRS:
-        for path in sorted((REPO_ROOT / rel).glob("*.md")):
+        for path in sorted((REPO_ROOT / rel).rglob("*.md")):
             text = path.read_text(encoding="utf-8")
-            covers: set = set()
+            section = _traceability_section(text)
+            section_lines = section.splitlines()
+            covers: set[str] = set()
             status = ""
-            for line in text.splitlines():
+            for i, line in enumerate(section_lines):
                 covers_m = _COVERS_RE.match(line)
                 if covers_m:
                     covers |= {t.strip().lower() for t in covers_m.group(1).split(",") if t.strip()}
                     continue
                 status_m = _STATUS_RE.match(line)
                 if status_m and not status:
-                    status = status_m.group(1).strip()
-            specs.append(SpecInfo(path, covers, set(_BACKTICK_RE.findall(text)), status))
+                    status = _status_with_continuations(section_lines, i, status_m.group(1).strip())
+            titles = "\n".join(ln for ln in text.splitlines() if ln.startswith("# "))
+            specs.append(SpecInfo(path, covers, set(_BACKTICK_RE.findall(titles)), status))
     return specs
 
 

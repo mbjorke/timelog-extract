@@ -8,6 +8,7 @@ module rather than CLI or output modules.
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -22,6 +23,16 @@ from core.truth_payload import build_truth_payload
 
 def _payload_from_report(report) -> Dict[str, Any]:
     cfg = str(report.config_path) if report.config_path else ""
+    try:
+        # Silent-source watchdog (GH-366): mark flatlined sources in
+        # collector_status so extension callers can surface the anomaly.
+        from core.source_liveness import apply_silent_source_watchdog
+
+        apply_silent_source_watchdog(report)
+    except Exception:  # noqa: BLE001 - watchdog is advisory, never fatal
+        logging.getLogger(__name__).debug(
+            "silent-source watchdog skipped", exc_info=True
+        )
     return build_truth_payload(
         overall_days=report.overall_days,
         project_reports=report.project_reports,

@@ -4,4 +4,4 @@
 
 ## 2026-07-17 - [Check open PRs before a new Palette PR]
 **Learning:** The same Palette brief (`sources` styling / UX) produced a long stack of open PRs (#375–#387) without checking whether yesterday’s PR already covered the work.
-**Action:** Follow `docs/contributing/jules-standing-instructions.md` before every Palette run — list open PRs, match on title/branch, and do not open a duplicate.
+**Action:** Follow `docs/contributing/jules-standing-instructions.md` before every Palette run — list open PRs (no duplicates), and read Qodo + CodeRabbit threads on matching PRs before more commits.

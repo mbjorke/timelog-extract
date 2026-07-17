@@ -23,7 +23,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 | `security/` | Privacy baseline, license intent, upstream risk notes. |
 | `sources/` | Collectors, flags, and integration notes (including backlog integrations). |
 | `ideas/` | Exploratory proposals and learning notes — not final policy. **Maintainer TIL (human → agent) by month:** [`ideas/til/`](ideas/til/). |
-| `contributing/` | Contributor-focused guides (e.g. [ai-assisted-work.md](contributing/ai-assisted-work.md), [agent-task-handover-prompt.md](contributing/agent-task-handover-prompt.md)). |
+| `contributing/` | Contributor-focused guides (e.g. [ai-assisted-work.md](contributing/ai-assisted-work.md), [agent-task-handover-prompt.md](contributing/agent-task-handover-prompt.md), [jules-finisher-agents.md](contributing/jules-finisher-agents.md)). |
 | `meta/` | Repo layout ([`structure.md`](meta/structure.md)), private-business policy ([`private-local-notes.md`](meta/private-local-notes.md)), and [`documentation-structure.md`](meta/documentation-structure.md) redirect. |
 | `inspiration/` | Short external links and patterns before they become specs; see [`inspiration/README.md`](inspiration/README.md). |
 | `incidents/` | Postmortems and corrective actions after concrete incidents. |

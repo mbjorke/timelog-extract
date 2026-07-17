@@ -12,16 +12,18 @@ Read this at the start of every scheduled Bolt or Palette run. Learnings under
 
 Before writing code or opening a pull request:
 
-1. List open PRs: `gh pr list --state open --limit 50` (or the GitHub UI).
+1. List open PRs for this repo (GitHub UI on the repo’s Pull requests tab, or
+   any GitHub API / tool your session actually has — **do not assume `gh` is
+   installed** in the Jules VM).
 2. Match today’s brief against **title and branch** keywords (`Bolt`, `WorkUnit`,
    `inverted index`, `Palette`, `sources`, …).
 3. Decide:
 
 | Situation | What to do |
 | --- | --- |
-| Open PR already covers the same task | **Do not open a new PR.** Push fixes onto that branch if review asked for them; when threads are closed and CI is green, **merge it** (§5). |
+| Open PR already covers the same task | **Do not open a new PR.** Push fixes onto that branch if review asked for them; when threads are closed and CI is green, **finish it** (§5). |
 | Same task merged to `main` recently | **Stop.** Only open a PR for a *new* defect not already fixed. |
-| No matching open/recent PR | Proceed with **one** focused PR, then finish it through review → merge (§5). |
+| No matching open/recent PR | Proceed with **one** focused PR, then finish it through review → merge/hand-off (§5). |
 
 Opening a duplicate PR for the same daily brief is waste: reviewers get a stack
 of near-identical PRs, CI burns, and the maintainer triages by hand. Different
@@ -33,18 +35,14 @@ Review bots are part of the workflow in this repo. **Before** you write more
 code, open another PR, or “optimize” an existing lane, you must read their
 feedback on matching open PRs (and on the PR you are about to push to).
 
-1. For each relevant open PR, open the conversation and **inline review threads**.
+1. For each relevant open PR, open the conversation and **inline review threads**
+   in the GitHub UI (or API if available).
 2. Treat findings from **`qodo-code-review`** and **`coderabbitai`** as first-class:
    - Correctness / bug / major → fix on that PR (or explain why not), do not ignore.
    - Do not open a parallel PR that repeats the same bug the bots already flagged.
-3. Practical check (from repo root, with `gh` authenticated):
-
-   ```bash
-   gh pr list --state open --search "Bolt OR Palette OR WorkUnit" --limit 20
-   # then for a candidate PR number N:
-   gh api repos/mbjorke/timelog-extract/pulls/N/comments --jq \
-     '.[] | select(.user.login|test("qodo|coderabbit")) | {path, user: .user.login, body: .body[0:200]}'
-   ```
+3. Scan PR conversation + Files changed review comments for those bot logins.
+   Ignore the exact shell — what matters is reading the threads before writing more
+   code.
 
 4. If Qodo/CodeRabbit already named the issue (e.g. stale cache, wrong fingerprint),
    your next commit must address that thread — not reintroduce the old pattern under
@@ -68,35 +66,41 @@ If a commit on the branch (or a human / bot reply in the PR) fixed a review find
 One Jules run → at most one PR for that brief. Prefer pushing to the existing
 open branch for the same brief over creating another `task/…-<random>` lane.
 
-## 5. Finish the PR — merge when review is done (especially Palette)
+## 5. Finish the PR when review is done (especially Palette)
 
-Jules **may and should merge** its own PR once the loop below is green.
-Leaving a finished Palette/Bolt PR open so tomorrow’s brief opens a duplicate
-is how #375–#387 piled up. Closing the loop is part of the job.
+Closing the loop is part of the job. Leaving a finished Palette/Bolt PR open so
+tomorrow’s brief opens a duplicate is how #375–#387 piled up.
 
-**Merge when all of these are true:**
+**Jules sessions usually do not have the GitHub CLI (`gh`).** Do not depend on
+`gh pr merge` / `gh pr list`. Use the GitHub UI (or any merge control your Jules
+environment actually exposes). If you truly cannot merge, still **stop opening
+duplicates** and hand off clearly (below).
+
+**Ready to finish when all of these are true:**
 
 1. **CI green** on the PR (or you just pushed a fix and CI is expected green).
 2. **Qodo + CodeRabbit threads addressed** — each open thread either fixed in a
-   commit (reply with the SHA) or answered with a short “not applicable / why”
-   note. Do not merge with unanswered review comments.
+   commit (reply on the thread with what changed) or answered with a short
+   “not applicable / why” note. Do not leave unanswered review comments.
 3. **No unresolved human “please change X”** left in the thread.
-4. **Branch is current enough** — rebase/merge `main` if the PR is behind, and
-   never squash-merge a tip that deletes unrelated files that already exist on
-   `main` (that is how #387 wiped liveness/bench/standing-instructions).
+4. **Branch is current enough** — update from `main` if the PR is behind, and
+   never land a tip that deletes unrelated files that already exist on `main`
+   (that is how #387 wiped liveness/bench/standing-instructions).
 
-**How (from repo root, authenticated `gh`):**
+**Then, in order:**
 
-```bash
-# after the fix commit is pushed and CI looks good:
-gh pr merge <N> --squash --delete-branch
-```
+1. **Merge if you can** — use the PR’s **Squash and merge** (preferred) in the
+   GitHub UI / Jules merge affordance. Delete the branch when offered.
+2. **If merge is blocked** (no permission, branch protection, required human
+   review, conflict you cannot resolve): post one PR comment that the work is
+   **ready to merge**, list what you fixed, and **stop**. Optionally add label
+   `jules-merge-ready`. A Cursor or Claude **finisher** agent (with `gh` /
+   GitHub access) may then merge under
+   [`jules-finisher-agents.md`](jules-finisher-agents.md). Do **not** open a
+   second PR for the same brief on the next run — pick up this PR instead.
+3. Mark the PR **Ready for review** if it is still Draft.
 
-Prefer **squash** so `main` stays one commit per outcome. If GitHub blocks
-merge (branch protection, required reviews, conflict), stop and comment on the
-PR with what is blocking — do **not** open a second PR for the same brief.
-
-**Do not merge when:**
+**Do not merge / do not claim ready when:**
 
 | Blocker | Action |
 | --- | --- |

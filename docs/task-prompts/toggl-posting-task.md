@@ -370,13 +370,13 @@ Scenario: Rollback a regretted push
 
 - story_id: GH-175 (tracked by PR #175); op-log slice tracked by #265
 - spec_status: draft (partially shipped)
-- implementation_status: built (MVP); op-log slice now (#265)
+- implementation_status: built
 - created_at: 2026-06-23
 - last_updated_at: 2026-07-17
 - implementation.pr: #175, #178, #179, #194 (merged); op-log slice (#265) now
 - implementation.branch: task/toggl-posting (merged); task/toggl-oplog-265 (resume)
 - implementation.commits: []
-- validation.evidence: MVP + reported-read live-verified; op-log slice parked at next until #284+#263 (changelog 2026-07-08)
+- validation.evidence: MVP + reported-read live-verified. Op-log slice (#265): was parked at next 2026-07-08 behind #284+#263; re-promoted to now 2026-07-17 after #284 shipped (changelog 2026-07-17) — not yet built
 - validation.decision: conditional GO
 - related:
   - mirrors `gittan jira-sync` (`core/jira_sync.py`, `core/cli_jira_sync.py`)

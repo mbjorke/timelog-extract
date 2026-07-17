@@ -93,7 +93,10 @@ duplicates** and hand off clearly (below).
    GitHub UI / Jules merge affordance. Delete the branch when offered.
 2. **If merge is blocked** (no permission, branch protection, required human
    review, conflict you cannot resolve): post one PR comment that the work is
-   **ready to merge**, list what you fixed, and **stop**. Do **not** open a
+   **ready to merge**, list what you fixed, and **stop**. Optionally add label
+   `jules-merge-ready`. A Cursor or Claude **finisher** agent (with `gh` /
+   GitHub access) may then merge under
+   [`jules-finisher-agents.md`](jules-finisher-agents.md). Do **not** open a
    second PR for the same brief on the next run — pick up this PR instead.
 3. Mark the PR **Ready for review** if it is still Draft.
 

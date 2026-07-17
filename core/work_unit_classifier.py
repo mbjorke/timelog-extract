@@ -239,24 +239,20 @@ def _get_compiled_units_index(units: Sequence[WorkUnit]) -> tuple[
     list[tuple[str, list[tuple[int, float, bool, int]]]],
     dict[str, list[tuple[int, float, bool, int]]],
 ]:
-    """Caching wrapper to avoid re-compiling the index for the same units list."""
+    """Caching wrapper to avoid re-compiling the index for the same units list.
+
+    Always fingerprints content (same pattern as ``domain._get_compiled_index``)
+    so in-place list mutation cannot reuse a stale compiled index.
+    """
     global _LAST_UNITS_DATA
 
-    # 1. Fast path: object identity check first
-    if _LAST_UNITS_DATA is not None and _LAST_UNITS_DATA[0] is units:
-        return _LAST_UNITS_DATA[2]
-
-    # 2. Slow path: fingerprint comparison to detect mutations
     fingerprint = (len(units), tuple((u.line_key, u.signals) for u in units))
     if (
         _LAST_UNITS_DATA is None
+        or _LAST_UNITS_DATA[0] is not units
         or _LAST_UNITS_DATA[1] != fingerprint
     ):
         _LAST_UNITS_DATA = (units, fingerprint, _compile_units_index(units))
-    else:
-        # Update identity to the new list object since the content fingerprint is identical
-        _LAST_UNITS_DATA = (units, fingerprint, _LAST_UNITS_DATA[2])
-
     return _LAST_UNITS_DATA[2]
 
 

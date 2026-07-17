@@ -2,7 +2,7 @@
 
 # Feature inventory (code-derived)
 
-Enumerated from the Typer app, the collector registry, and `normalize_profile`. The hand-written planning and specification docs live under `docs/`; spec linkage is a later phase.
+Enumerated from the Typer app, the collector registry, and `normalize_profile`. Spec links come from `covers:` fields and backtick mentions in `docs/task-prompts/` + `docs/specs/` Traceability blocks; "(no spec)" rows are the un-specced surface reported by `--check` (advisory; hard with `--strict`).
 
 ## Summary
 
@@ -15,62 +15,62 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 ## Commands
 
-| Group | Command | Help |
-| --- | --- | --- |
-| — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). |
-| — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. |
-| — | `doctor` | Check source access and local integration health, then print a diagnostic table. |
-| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). |
-| — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. |
-| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. |
-| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. |
-| — | `projects` | Manage project profiles interactively. |
-| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). |
-| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). |
-| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. |
-| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. |
-| — | `report` | Build detailed local evidence reports for a selected timeframe. |
-| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. |
-| — | `search` | Search timeline quickly with all events shown (shares report execution path). |
-| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. |
-| — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. |
-| — | `sources` | Analyze which data sources are contributing the most to your reports. |
-| — | `status` | Quick hours snapshot with project totals and session counts. |
-| — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). |
-| — | `ux-heroes` | Preview hero sections only for key CLI commands. |
-| **config** | _(group)_ | Inspect active config paths. |
-| config | `path` | Print active projects-config path and source. |
-| **reported** | _(group)_ | Review observed time into confirmed reported time, or add manual time. |
-| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). |
-| reported | `list` | Show confirmed reported hours per project + day. |
-| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. |
-| reported | `sync` | Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review. |
+| Group | Command | Help | Spec |
+| --- | --- | --- | --- |
+| — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). | (no spec) |
+| — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. | (no spec) |
+| — | `doctor` | Check source access and local integration health, then print a diagnostic table. | (no spec) |
+| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | (no spec) |
+| — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. | (no spec) |
+| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | (no spec) |
+| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [map-customer-first-flow](../task-prompts/map-customer-first-flow.md) · `not built` |
+| — | `projects` | Manage project profiles interactively. | (no spec) |
+| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). | (no spec) |
+| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). | (no spec) |
+| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. | (no spec) |
+| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. | (no spec) |
+| — | `report` | Build detailed local evidence reports for a selected timeframe. | (no spec) |
+| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. | (no spec) |
+| — | `search` | Search timeline quickly with all events shown (shares report execution path). | (no spec) |
+| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. | (no spec) |
+| — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. | (no spec) |
+| — | `sources` | Analyze which data sources are contributing the most to your reports. | (no spec) |
+| — | `status` | Quick hours snapshot with project totals and session counts. | (no spec) |
+| — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). | [toggl-posting-task](../task-prompts/toggl-posting-task.md) · built |
+| — | `ux-heroes` | Preview hero sections only for key CLI commands. | (no spec) |
+| **config** | _(group)_ | Inspect active config paths. | |
+| config | `path` | Print active projects-config path and source. | (no spec) |
+| **reported** | _(group)_ | Review observed time into confirmed reported time, or add manual time. | |
+| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). | (no spec) |
+| reported | `list` | Show confirmed reported hours per project + day. | (no spec) |
+| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. | (no spec) |
+| reported | `sync` | Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review. | (no spec) |
 
 ## Collectors
 
-| Source | Unit |
-| --- | --- |
-| Antigravity | events |
-| Apple Mail | mail |
-| Calendar | events |
-| Chrome | visits |
-| Claude Code CLI | events |
-| Claude Desktop | events |
-| Claude Desktop (Code) | events |
-| Claude.ai (specific URLs) | visits |
-| Codex IDE (OpenAI ~/.codex) | sessions |
-| Conductor | events |
-| Cursor | events |
-| Cursor checkpoints | events |
-| Gemini (web, specific URLs) | visits |
-| Gemini CLI | events |
-| GitHub | events |
-| GitHub Copilot CLI | events |
-| Lovable (desktop) | visits |
-| TIMELOG.md | timestamps |
-| Toggl | events |
-| Windsurf | events |
-| Zed | events |
+| Source | Unit | Spec |
+| --- | --- | --- |
+| Antigravity | events | (no spec) |
+| Apple Mail | mail | (no spec) |
+| Calendar | events | (no spec) |
+| Chrome | visits | (no spec) |
+| Claude Code CLI | events | (no spec) |
+| Claude Desktop | events | (no spec) |
+| Claude Desktop (Code) | events | (no spec) |
+| Claude.ai (specific URLs) | visits | (no spec) |
+| Codex IDE (OpenAI ~/.codex) | sessions | (no spec) |
+| Conductor | events | (no spec) |
+| Cursor | events | (no spec) |
+| Cursor checkpoints | events | (no spec) |
+| Gemini (web, specific URLs) | visits | (no spec) |
+| Gemini CLI | events | (no spec) |
+| GitHub | events | (no spec) |
+| GitHub Copilot CLI | events | (no spec) |
+| Lovable (desktop) | visits | (no spec) |
+| TIMELOG.md | timestamps | (no spec) |
+| Toggl | events | (no spec) |
+| Windsurf | events | (no spec) |
+| Zed | events | (no spec) |
 
 ## Per-project config fields
 

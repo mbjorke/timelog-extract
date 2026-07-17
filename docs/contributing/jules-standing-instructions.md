@@ -19,9 +19,9 @@ Before writing code or opening a pull request:
 
 | Situation | What to do |
 | --- | --- |
-| Open PR already covers the same task | **Stop.** Do not open a new PR. Comment on the existing one only if you have a concrete, scoped improvement. |
+| Open PR already covers the same task | **Do not open a new PR.** Push fixes onto that branch if review asked for them; when threads are closed and CI is green, **merge it** (§5). |
 | Same task merged to `main` recently | **Stop.** Only open a PR for a *new* defect not already fixed. |
-| No matching open/recent PR | Proceed with **one** focused PR. |
+| No matching open/recent PR | Proceed with **one** focused PR, then finish it through review → merge (§5). |
 
 Opening a duplicate PR for the same daily brief is waste: reviewers get a stack
 of near-identical PRs, CI burns, and the maintainer triages by hand. Different
@@ -68,8 +68,48 @@ If a commit on the branch (or a human / bot reply in the PR) fixed a review find
 One Jules run → at most one PR for that brief. Prefer pushing to the existing
 open branch for the same brief over creating another `task/…-<random>` lane.
 
-## 5. Learnings files
+## 5. Finish the PR — merge when review is done (especially Palette)
+
+Jules **may and should merge** its own PR once the loop below is green.
+Leaving a finished Palette/Bolt PR open so tomorrow’s brief opens a duplicate
+is how #375–#387 piled up. Closing the loop is part of the job.
+
+**Merge when all of these are true:**
+
+1. **CI green** on the PR (or you just pushed a fix and CI is expected green).
+2. **Qodo + CodeRabbit threads addressed** — each open thread either fixed in a
+   commit (reply with the SHA) or answered with a short “not applicable / why”
+   note. Do not merge with unanswered review comments.
+3. **No unresolved human “please change X”** left in the thread.
+4. **Branch is current enough** — rebase/merge `main` if the PR is behind, and
+   never squash-merge a tip that deletes unrelated files that already exist on
+   `main` (that is how #387 wiped liveness/bench/standing-instructions).
+
+**How (from repo root, authenticated `gh`):**
+
+```bash
+# after the fix commit is pushed and CI looks good:
+gh pr merge <N> --squash --delete-branch
+```
+
+Prefer **squash** so `main` stays one commit per outcome. If GitHub blocks
+merge (branch protection, required reviews, conflict), stop and comment on the
+PR with what is blocking — do **not** open a second PR for the same brief.
+
+**Do not merge when:**
+
+| Blocker | Action |
+| --- | --- |
+| Open review threads still unanswered | Fix or reply first (§2). |
+| CI red | Fix, push, re-check. |
+| PR touches report/invoice number engine, collectors billing math, or packaging/release files and a human asked to hold | Wait for maintainer. |
+| Merge would drop files that exist on `main` but not on your tip | Sync from `main` first; do not force a stale tip through. |
+
+“Comments addressed” means the conversation is closed out — not that you
+opened another Palette PR with a slightly different styling pass.
+
+## 6. Learnings files
 
 Append durable learnings to `.jules/bolt.md` / `.jules/palette.md` as usual.
-If a learning contradicts §1–§3, **correct the learning** — do not teach the
+If a learning contradicts §1–§5, **correct the learning** — do not teach the
 unsafe shortcut again.

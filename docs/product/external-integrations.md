@@ -63,7 +63,7 @@ Same pattern, shipped first.
 ### GitHub — evidence collector (read-only)
 
 - **Endpoints:** public events via `https://api.github.com` (or GitHub
-  Enterprise via `GITHUB_API_BASE` → `https://host/api/v3`),
+  Enterprise via `GITHUB_API_BASE_URL` → `https://host/api/v3`),
   `collectors/github.py`.
 - **Role:** GitHub activity becomes timeline **evidence** (events with
   source/timestamp/detail), feeding classification like any other source. Also:

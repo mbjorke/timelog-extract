@@ -2,7 +2,7 @@
 
 # Feature inventory (code-derived)
 
-Enumerated from the Typer app, the collector registry, and `normalize_profile`. The hand-written planning and specification docs live under `docs/`; spec linkage is a later phase.
+Enumerated from the Typer app, the collector registry, and `normalize_profile`. Spec links come from `covers:` fields and backtick mentions in `docs/task-prompts/` + `docs/specs/` Traceability blocks; "(no spec)" rows are the un-specced surface reported by `--check` (advisory; hard with `--strict`).
 
 ## Summary
 
@@ -15,62 +15,62 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 ## Commands
 
-| Group | Command | Help |
-| --- | --- | --- |
-| — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). |
-| — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. |
-| — | `doctor` | Check source access and local integration health, then print a diagnostic table. |
-| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). |
-| — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. |
-| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. |
-| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. |
-| — | `projects` | Manage project profiles interactively. |
-| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). |
-| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). |
-| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. |
-| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. |
-| — | `report` | Build detailed local evidence reports for a selected timeframe. |
-| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. |
-| — | `search` | Search timeline quickly with all events shown (shares report execution path). |
-| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. |
-| — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. |
-| — | `sources` | Analyze which data sources are contributing the most to your reports. |
-| — | `status` | Quick hours snapshot with project totals and session counts. |
-| — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). |
-| — | `ux-heroes` | Preview hero sections only for key CLI commands. |
-| **config** | _(group)_ | Inspect active config paths. |
-| config | `path` | Print active projects-config path and source. |
-| **reported** | _(group)_ | Review observed time into confirmed reported time, or add manual time. |
-| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). |
-| reported | `list` | Show confirmed reported hours per project + day. |
-| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. |
-| reported | `sync` | Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review. |
+| Group | Command | Help | Spec |
+| --- | --- | --- | --- |
+| — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). | (no spec) |
+| — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. | (no spec) |
+| — | `doctor` | Check source access and local integration health, then print a diagnostic table. | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
+| — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | [local-evidence-shadow-log-slice1-task](../task-prompts/local-evidence-shadow-log-slice1-task.md) · `in progress` |
+| — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. | (no spec) |
+| — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
+| — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [evidence-gap-recalibration-task](../task-prompts/evidence-gap-recalibration-task.md) |
+| — | `projects` | Manage project profiles interactively. | [map-new-project-identity](../task-prompts/map-new-project-identity.md) · `in progress` |
+| — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
+| — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
+| — | `projects-lint` | Lint project config for overlapping terms and high-risk generic terms. | [projects-config-trimming-task](../task-prompts/projects-config-trimming-task.md) · built |
+| — | `projects-trim` | Remove match_terms / tracked_urls entries using an explicit JSON payload. | [implementation-status](../task-prompts/implementation-status.md) |
+| — | `report` | Build detailed local evidence reports for a selected timeframe. | [agent-inline-cli-ux-validation-task](../task-prompts/agent-inline-cli-ux-validation-task.md) · `not built` |
+| — | `review` | Map URL hosts to projects (default). Use --gaps for report-gap attribution, --uncategorized for legacy log-cluster cleanup. | [ab-rule-suggestions-task](../task-prompts/ab-rule-suggestions-task.md) · `built` |
+| — | `search` | Search timeline quickly with all events shown (shares report execution path). | [report-search-refactor-plan](../specs/report-search-refactor-plan.md) |
+| — | `setup` | Run one-click onboarding: setup, top project/customer seeds, doctor, and a first smoke report. | [backlog-priority-2026-07-08-task](../task-prompts/backlog-priority-2026-07-08-task.md) · `not built` (planning artifact — no code) |
+| — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. | (no spec) |
+| — | `sources` | Analyze which data sources are contributing the most to your reports. | (no spec) |
+| — | `status` | Quick hours snapshot with project totals and session counts. | [anchor-plan-apply-guardrail-task](../task-prompts/anchor-plan-apply-guardrail-task.md) · `not built` |
+| — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). | [toggl-posting-task](../task-prompts/toggl-posting-task.md) · built |
+| — | `ux-heroes` | Preview hero sections only for key CLI commands. | (no spec) |
+| **config** | _(group)_ | Inspect active config paths. | |
+| config | `path` | Print active projects-config path and source. | [repo-slug-project-attribution](../task-prompts/repo-slug-project-attribution.md) · built |
+| **reported** | _(group)_ | Review observed time into confirmed reported time, or add manual time. | |
+| reported | `add` | Add net-new manual time gittan never observed (SFTP, mail, meetings). | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
+| reported | `list` | Show confirmed reported hours per project + day. | [reported-time-layer-task](../task-prompts/reported-time-layer-task.md) · in progress — Phase 1 built (#186), Phase 2 built (#187), |
+| reported | `review` | Confirm / edit / dismiss observed time into reported_time records. | [ab-rule-suggestions-task](../task-prompts/ab-rule-suggestions-task.md) · `built` |
+| reported | `sync` | Auto-confirm observed time for projects opted into `auto_report`; leave the rest for review. | (no spec) |
 
 ## Collectors
 
-| Source | Unit |
-| --- | --- |
-| Antigravity | events |
-| Apple Mail | mail |
-| Calendar | events |
-| Chrome | visits |
-| Claude Code CLI | events |
-| Claude Desktop | events |
-| Claude Desktop (Code) | events |
-| Claude.ai (specific URLs) | visits |
-| Codex IDE (OpenAI ~/.codex) | sessions |
-| Conductor | events |
-| Cursor | events |
-| Cursor checkpoints | events |
-| Gemini (web, specific URLs) | visits |
-| Gemini CLI | events |
-| GitHub | events |
-| GitHub Copilot CLI | events |
-| Lovable (desktop) | visits |
-| TIMELOG.md | timestamps |
-| Toggl | events |
-| Windsurf | events |
-| Zed | events |
+| Source | Unit | Spec |
+| --- | --- | --- |
+| Antigravity | events | (no spec) |
+| Apple Mail | mail | (no spec) |
+| Calendar | events | (no spec) |
+| Chrome | visits | [wordpress-lovable-web-attribution-task](../task-prompts/wordpress-lovable-web-attribution-task.md) · `in progress` |
+| Claude Code CLI | events | [copilot-cli-source-task](../task-prompts/copilot-cli-source-task.md) · `built` |
+| Claude Desktop | events | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
+| Claude Desktop (Code) | events | [claude-desktop-chat-code-evidence](../task-prompts/claude-desktop-chat-code-evidence.md) · verified |
+| Claude.ai (specific URLs) | visits | (no spec) |
+| Codex IDE (OpenAI ~/.codex) | sessions | (no spec) |
+| Conductor | events | (no spec) |
+| Cursor | events | [copilot-cli-source-task](../task-prompts/copilot-cli-source-task.md) · `built` |
+| Cursor checkpoints | events | (no spec) |
+| Gemini (web, specific URLs) | visits | (no spec) |
+| Gemini CLI | events | (no spec) |
+| GitHub | events | (no spec) |
+| GitHub Copilot CLI | events | (no spec) |
+| Lovable (desktop) | visits | [attended-agent-time-task](../task-prompts/attended-agent-time-task.md) · verified |
+| TIMELOG.md | timestamps | [agent-inline-cli-ux-validation-task](../task-prompts/agent-inline-cli-ux-validation-task.md) · `not built` |
+| Toggl | events | (no spec) |
+| Windsurf | events | (no spec) |
+| Zed | events | (no spec) |
 
 ## Per-project config fields
 

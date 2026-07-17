@@ -374,6 +374,7 @@ Scenario: Rollback a regretted push
 - implementation.commits: []
 - validation.evidence: MVP + reported-read live-verified; op-log slice parked at next until #284+#263 (changelog 2026-07-08)
 - validation.decision: conditional GO
+- covers: toggl-sync
 - related:
   - mirrors `gittan jira-sync` (`core/jira_sync.py`, `core/cli_jira_sync.py`)
   - product model: [`simple-invoicing-model.md`](../ideas/simple-invoicing-model.md)

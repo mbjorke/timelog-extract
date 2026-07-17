@@ -18,8 +18,9 @@ from __future__ import annotations
 import argparse
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 SOURCES_AI = [
     "Cursor",
@@ -38,21 +39,67 @@ SOURCES_PASSIVE = [
 
 FIRST_WORDS = ["nova", "flux", "orbit", "cedar", "delta", "harbor", "lumen", "quartz", "raven", "sable", "tidal", "verve"]
 SECOND_WORDS = ["site", "app", "portal", "shop", "crm", "docs", "board", "sync", "hub", "flow"]
-CLIENTS = ["Acme AB", "Borealis", "Cygnus Media", "Drakryggen", "Ekens Bygg", "Fjordline", "Granit Digital", "Humlan", "Isbrytaren", "Jaktfalken", "Kastanjen", "Lindqvist & Co"]
-FILES = ["core/pipeline.py", "src/index.ts", "app/routes.tsx", "lib/session.py", "styles/main.css", "api/handlers.go", "tests/test_report.py", "README.md", "components/Invoice.vue", "utils/dates.py"]
-BROWSER_TOPICS = ["pricing page", "admin dashboard", "checkout flow", "landing hero", "blog draft", "API docs", "analytics report", "settings panel"]
+CLIENTS = [
+    "Acme Corp",
+    "Borealis",
+    "Cygnus Media",
+    "Delta Builders",
+    "Echo Digital",
+    "Fjordline",
+    "Granite Digital",
+    "Harbor Co",
+    "Icebreaker Inc",
+    "Jade Falcon",
+    "Kestrel Labs",
+    "Lindqvist & Co",
+]
+FILES = [
+    "core/pipeline.py",
+    "src/index.ts",
+    "app/routes.tsx",
+    "lib/session.py",
+    "styles/main.css",
+    "api/handlers.go",
+    "tests/test_report.py",
+    "README.md",
+    "components/Invoice.vue",
+    "utils/dates.py",
+]
+BROWSER_TOPICS = [
+    "pricing page",
+    "admin dashboard",
+    "checkout flow",
+    "landing hero",
+    "blog draft",
+    "API docs",
+    "analytics report",
+    "settings panel",
+]
 NOISE_TITLES = [
     "Hacker News — front page",
     "Python typing best practices — Stack Overflow",
     "YouTube — synthwave mix",
-    "DN.se — nyheter",
-    "Weather forecast Stockholm",
+    "news.example — headlines",
+    "Weather forecast Example City",
     "GitHub Actions pricing — docs",
     "Reddit — r/programming",
     "Wikipedia — Session (computer science)",
 ]
 COMMIT_VERBS = ["fix", "add", "refactor", "polish", "wire up", "remove", "extract", "speed up"]
-COMMIT_OBJECTS = ["session math", "invoice rounding", "login form", "date parsing", "PDF layout", "nav menu", "config loader", "CI workflow"]
+COMMIT_OBJECTS = [
+    "session math",
+    "invoice rounding",
+    "login form",
+    "date parsing",
+    "PDF layout",
+    "nav menu",
+    "config loader",
+    "CI workflow",
+]
+MAIL_TOPICS = ["invoice draft", "status sync", "new feature", "quote request"]
+
+DEFAULT_START_DATE = "2024-01-01"
+DEFAULT_TZ = "UTC"
 
 
 def build_profiles(n_projects: int, rng: random.Random) -> list[dict]:
@@ -65,7 +112,7 @@ def build_profiles(n_projects: int, rng: random.Random) -> list[dict]:
                 used.add(slug)
                 break
         client = CLIENTS[i % len(CLIENTS)]
-        domain = slug.replace("-", "") + ".se"
+        domain = slug.replace("-", "") + ".example"
         profile = {
             "name": slug,
             "match_terms": [
@@ -88,12 +135,12 @@ def make_detail(source: str, profile: dict | None, rng: random.Random) -> str:
         if source == "Chrome":
             return rng.choice(NOISE_TITLES)
         if source == "Apple Mail":
-            return "Nyhetsbrev: veckans erbjudanden"
+            return "Newsletter: weekly offers"
         return f"scratch: {rng.choice(COMMIT_VERBS)} {rng.choice(COMMIT_OBJECTS)}"
     slug = profile["name"]
     client = profile["_client"]
     if source in ("Cursor", "Cursor checkpoints", "Codex IDE"):
-        return f"Edited {rng.choice(FILES)} — /Users/dev/Workspace/{slug}/{rng.choice(FILES)}"
+        return f"Edited {rng.choice(FILES)} — /Users/dev/project-alpha/{slug}/{rng.choice(FILES)}"
     if source in ("Claude Code CLI", "Claude Desktop", "Gemini CLI"):
         return f"{rng.choice(COMMIT_VERBS)} {rng.choice(COMMIT_OBJECTS)} for {slug} ({client})"
     if source == "Chrome":
@@ -103,7 +150,7 @@ def make_detail(source: str, profile: dict | None, rng: random.Random) -> str:
             return f"Dashboard ‹ {slug} — WordPress — https://{profile['_domain']}/wp-admin/"
         return f"{rng.choice(BROWSER_TOPICS)} — {profile['_domain']}"
     if source == "Apple Mail":
-        return f"Re: {client} — {rng.choice(['fakturaunderlag', 'avstämning', 'ny funktion', 'offert'])} {slug}"
+        return f"Re: {client} — {rng.choice(MAIL_TOPICS)} {slug}"
     if source == "GitHub":
         return f"Pushed to {slug}: {rng.choice(COMMIT_VERBS)} {rng.choice(COMMIT_OBJECTS)}"
     if source == "TIMELOG.md":
@@ -111,28 +158,51 @@ def make_detail(source: str, profile: dict | None, rng: random.Random) -> str:
     return f"{slug} activity"
 
 
-def generate(events_target: int, days: int, n_projects: int, seed: int) -> dict:
+def _day_event_counts(events_target: int, days: int) -> list[int]:
+    base, rem = divmod(events_target, days)
+    return [base + (1 if i < rem else 0) for i in range(days)]
+
+
+def _block_event_counts(events_for_day: int, n_blocks: int) -> list[int]:
+    if events_for_day <= 0:
+        return [0] * n_blocks
+    base, rem = divmod(events_for_day, n_blocks)
+    return [base + (1 if i < rem else 0) for i in range(n_blocks)]
+
+
+def generate(
+    events_target: int,
+    days: int,
+    n_projects: int,
+    seed: int,
+    *,
+    start_date: str = DEFAULT_START_DATE,
+    tz_name: str = DEFAULT_TZ,
+) -> dict:
+    if events_target < 0:
+        raise ValueError("events_target must be >= 0")
+    if days < 1:
+        raise ValueError("days must be >= 1")
+
     rng = random.Random(seed)
     profiles = build_profiles(n_projects, rng)
-    local_tz = datetime.now().astimezone().tzinfo
+    tz = ZoneInfo(tz_name)
+    day0 = datetime.combine(date.fromisoformat(start_date), datetime.min.time(), tzinfo=tz)
 
     events: list[dict] = []
-    day0 = datetime.now(local_tz).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
-    per_day = max(1, events_target // days)
-
+    day_counts = _day_event_counts(events_target, days)
     revisit_pool: list[tuple[str, str]] = []  # (source, detail) for repeated browser titles
 
-    for d in range(days):
+    for d, events_for_day in enumerate(day_counts):
         day_start = day0 + timedelta(days=d)
-        # 2–4 work blocks per day, each biased to 1–2 projects
         n_blocks = rng.randint(2, 4)
-        block_events = per_day // n_blocks
+        block_counts = _block_event_counts(events_for_day, n_blocks)
         cursor_h = 8.0 + rng.random() * 2
-        for _ in range(n_blocks):
+        for block_len in block_counts:
             block_projects = rng.sample(profiles, k=min(len(profiles), rng.randint(1, 2)))
             block_len_min = rng.randint(30, 150)
             block_start = day_start + timedelta(hours=cursor_h)
-            for _ in range(block_events):
+            for _ in range(block_len):
                 offset = rng.random() * block_len_min
                 ts = block_start + timedelta(minutes=offset)
                 roll = rng.random()
@@ -152,11 +222,17 @@ def generate(events_target: int, days: int, n_projects: int, seed: int) -> dict:
             cursor_h += block_len_min / 60.0 + rng.random() * 2 + 0.5
 
     events.sort(key=lambda e: e["timestamp"])
+    if len(events) != events_target:
+        raise AssertionError(
+            f"generate() produced {len(events)} events, expected {events_target}"
+        )
     clean_profiles = [{k: v for k, v in p.items() if not k.startswith("_")} for p in profiles]
     return {
         "seed": seed,
         "days": days,
         "n_projects": n_projects,
+        "start_date": start_date,
+        "tz": tz_name,
         "events": events,
         "profiles": clean_profiles,
     }
@@ -168,10 +244,27 @@ def main() -> None:
     ap.add_argument("--days", type=int, default=14)
     ap.add_argument("--projects", type=int, default=10)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--start-date",
+        default=DEFAULT_START_DATE,
+        help="ISO date for day 0 (default: 2024-01-01)",
+    )
+    ap.add_argument(
+        "--tz",
+        default=DEFAULT_TZ,
+        help="IANA timezone for timestamps (default: UTC)",
+    )
     ap.add_argument("--out", default="private/bench/synth_events.json")
     ns = ap.parse_args()
 
-    data = generate(ns.events, ns.days, ns.projects, ns.seed)
+    data = generate(
+        ns.events,
+        ns.days,
+        ns.projects,
+        ns.seed,
+        start_date=ns.start_date,
+        tz_name=ns.tz,
+    )
     out = Path(ns.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data, ensure_ascii=False, indent=1))

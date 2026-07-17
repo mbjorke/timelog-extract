@@ -150,6 +150,10 @@ The checker also **warns (without failing)** for files at or above `--warn-lines
 - Treat `timelog_projects.json` as critical local data; never move/delete without confirmation or backup.
 - Use real wall time (`date '+%Y-%m-%d %H:%M'`) for timelog entries.
 - Canonical safety/review cadence rules live in `AGENTS.md`.
+- The checked-in Claude Code sandbox policy (`.claude/settings.json`) enforces
+  these at the OS level for sandboxed Bash commands — `timelog_projects.json`,
+  `TIMELOG.md`, and `private/` are write-denied. See
+  `docs/runbooks/claude-sandbox.md`.
 
 ## CI jobs (`.github/workflows/ci.yml`)
 

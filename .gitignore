@@ -24,9 +24,12 @@ TIMELOG.md
 
 # Local business / pitch notes (never commit)
 private/
-# Keep .claude/ local, but track only the shared repo skill manifests
-# (thin SKILL.md wrappers → docs/skills/). Everything else under .claude/ stays local.
+# Keep .claude/ local, but track the shared project settings (Bash sandbox
+# policy — see docs/runbooks/claude-sandbox.md) and the repo skill manifests
+# (thin SKILL.md wrappers → docs/skills/). Everything else under .claude/
+# stays local (settings.local.json, caches, etc.).
 .claude/*
+!.claude/settings.json
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/*/

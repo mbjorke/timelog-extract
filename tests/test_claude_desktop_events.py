@@ -1,6 +1,7 @@
 import json
 import struct
 import unittest
+import unittest.mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -216,6 +217,32 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
         events = self._collect()
         details = {ev["detail"] for ev in events}
         self.assertEqual(details, {"3 turns"})
+
+    def test_events_and_meta_scan_share_reads_no_duplicate_disk_io(self) -> None:
+        """The events pass and the metadata pass (_session_meta) both walk
+        cache_dir; each file must be read from disk at most once total."""
+        base = datetime(2026, 6, 11, 8, 0, tzinfo=timezone.utc)
+        body = _events_payload("session_01SHARED", [base, base + timedelta(minutes=2)], "/home/user/project-alpha")
+        _write_cache(
+            self.home, "ev-shared", "1/0/https://claude.ai/v1/sessions/session_01SHARED/events?limit=500", body
+        )
+        meta = json.dumps({"id": "session_01SHARED", "title": "Shared read title"}).encode("utf-8")
+        _write_cache(self.home, "meta-shared", "1/0/https://claude.ai/v1/sessions/session_01SHARED", meta)
+
+        read_counts: dict[Path, int] = {}
+        original_read_bytes = Path.read_bytes
+
+        def counting_read_bytes(self_path: Path) -> bytes:
+            read_counts[self_path] = read_counts.get(self_path, 0) + 1
+            return original_read_bytes(self_path)
+
+        with unittest.mock.patch.object(Path, "read_bytes", counting_read_bytes):
+            events = self._collect()
+
+        self.assertTrue(events)
+        self.assertEqual(events[0]["anchors"].get("label"), "Shared read title")
+        duplicated = {path: count for path, count in read_counts.items() if count > 1}
+        self.assertEqual(duplicated, {}, f"files read from disk more than once: {duplicated}")
 
     def test_corrupt_and_foreign_entries_are_skipped(self) -> None:
         cache = self.home / "Library" / "Application Support" / "Claude" / "Cache" / "Cache_Data"

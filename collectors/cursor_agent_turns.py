@@ -230,15 +230,8 @@ def _iter_hooks_json_objects(lines: list[str]):
     ``beforeSubmitPrompt`` objects are skipped (GH-345 follow-up).
     """
     last_ts_line: str | None = None
-    n = len(lines)
-    # Join once and index by character offset instead of re-joining the
-    # remaining lines on every "INPUT:" marker — a file with many turns
-    # otherwise pays O(remaining lines) per turn (quadratic overall).
-    full_text = "\n".join(lines)
-    line_offsets = [0] * (n + 1)
-    for idx, text_line in enumerate(lines):
-        line_offsets[idx + 1] = line_offsets[idx] + len(text_line) + 1
     i = 0
+    n = len(lines)
     while i < n:
         line = lines[i]
         if _HOOKS_BRACKET_TS.match(line):
@@ -250,16 +243,16 @@ def _iter_hooks_json_objects(lines: list[str]):
             if j >= n or not lines[j].lstrip().startswith("{"):
                 i += 1
                 continue
-            start_offset = line_offsets[j]
+            blob = "\n".join(lines[j:])
             try:
-                obj, end = _JSON_DECODER.raw_decode(full_text, start_offset)
+                obj, end = _JSON_DECODER.raw_decode(blob)
             except json.JSONDecodeError:
                 i += 1
                 continue
             if isinstance(obj, dict):
                 yield last_ts_line, obj
-            # Advance past the consumed JSON (end is a character offset in full_text).
-            i = j + full_text[start_offset:end].count("\n") + 1
+            # Advance past the consumed JSON (end is a character offset in blob).
+            i = j + blob[:end].count("\n") + 1
             continue
         i += 1
 

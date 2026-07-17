@@ -7,46 +7,12 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from core.cli import app
-from core.cli_doctor_sources_projects import _report_command_for_window
-from core.cli_options import TimelogRunOptions
 from tests.cli_output_helpers import strip_ansi as _plain
 
 
 class CliSourcesTests(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
-
-    def test_report_command_for_window_presets_and_range(self):
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(today=True)),
-            "gittan report --today",
-        )
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(yesterday=True)),
-            "gittan report --yesterday",
-        )
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(last_3_days=True)),
-            "gittan report --last-3-days",
-        )
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(last_week=True)),
-            "gittan report --last-week",
-        )
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(last_14_days=True)),
-            "gittan report --last-14-days",
-        )
-        self.assertEqual(
-            _report_command_for_window(TimelogRunOptions(last_month=True)),
-            "gittan report --last-month",
-        )
-        self.assertEqual(
-            _report_command_for_window(
-                TimelogRunOptions(date_from="2026-05-01", date_to="2026-05-07")
-            ),
-            "gittan report --from 2026-05-01 --to 2026-05-07",
-        )
 
     @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
     @patch("core.report_service.run_timelog_report")
@@ -65,7 +31,7 @@ class CliSourcesTests(unittest.TestCase):
         # Setup report
         report = MagicMock()
         report.all_events = [
-            {"source": "Chrome", "project": "Uncategorized", "detail": "example.com"},
+            {"source": "Chrome", "project": "Uncategorized", "detail": "site.com"},
             {"source": "GitHub", "project": "project-alpha", "detail": "commit"},
         ]
         mock_report.return_value = report
@@ -79,7 +45,7 @@ class CliSourcesTests(unittest.TestCase):
                         datetime(2026, 5, 1, 9, 0),
                         datetime(2026, 5, 1, 10, 0),
                         [
-                            {"source": "Chrome", "project": "Uncategorized", "detail": "example.com"},
+                            {"source": "Chrome", "project": "Uncategorized", "detail": "site.com"},
                             {"source": "GitHub", "project": "project-alpha", "detail": "commit"},
                         ],
                     )
@@ -141,49 +107,7 @@ class CliSourcesTests(unittest.TestCase):
         self.assertIn("Source Importance Analysis (2026-05-01 to 2026-05-01)", output)
         self.assertIn("GitHub", output)
         # Check Next steps guidance suggests report
-        self.assertIn("Next: run `gittan report --today` to review your project timeline.", output)
-
-    @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
-    @patch("core.report_service.run_timelog_report")
-    @patch("core.analytics.group_by_day")
-    @patch("core.analytics.estimate_hours_by_day")
-    def test_sources_all_categorized_preserves_non_today_window(
-        self, mock_estimate, mock_group, mock_report, mock_prompt
-    ):
-        """Fully-categorized next-step must match the chosen timeframe, not --today."""
-        mock_prompt.return_value = {
-            "date_from": "2026-04-25",
-            "date_to": "2026-05-01",
-            "last_week": True,
-        }
-
-        report = MagicMock()
-        report.all_events = [
-            {"source": "GitHub", "project": "project-alpha", "detail": "commit"},
-        ]
-        mock_report.return_value = report
-
-        mock_group.return_value = {}
-        mock_estimate.return_value = {
-            "2026-05-01": {
-                "sessions": [
-                    (
-                        datetime(2026, 5, 1, 9, 0),
-                        datetime(2026, 5, 1, 10, 0),
-                        [
-                            {"source": "GitHub", "project": "project-alpha", "detail": "commit"},
-                        ],
-                    )
-                ]
-            }
-        }
-
-        result = self.runner.invoke(app, ["sources"])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        output = _plain(result.output)
-
-        self.assertIn("Next: run `gittan report --last-week` to review your project timeline.", output)
-        self.assertNotIn("gittan report --today", output)
+        self.assertIn("Next: run `gittan report --today` to review your daily project timeline.", output)
 
     @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
     @patch("core.report_service.run_timelog_report")

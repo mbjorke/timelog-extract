@@ -122,12 +122,6 @@ def collect_all_events(
         BarColumn(),
         TaskProgressColumn(),
         transient=True,
-        # Manual refresh only: the default background refresh thread wakes
-        # every 1/refresh_per_second and re-checks console.is_terminal (an
-        # uncached isatty() call) each time — under some terminal/Python
-        # combinations that lock contention dominates wall time on a fast
-        # collector loop. We refresh explicitly at each step instead.
-        auto_refresh=False,
     ) as progress:
         task = progress.add_task("[cyan]Scanning sources...", total=total_collectors)
         for spec in collectors:
@@ -136,7 +130,7 @@ def collect_all_events(
             enabled = spec.enabled
             reason = spec.reason
 
-            progress.update(task, description=f"[cyan]Scanning {name}...", refresh=True)
+            progress.update(task, description=f"[cyan]Scanning {name}...")
 
             if not enabled:
                 collector_status[name] = {

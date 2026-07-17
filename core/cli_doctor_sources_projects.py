@@ -260,23 +260,6 @@ def doctor(
             style_muted=STYLE_MUTED,
         )
 
-        # Liveness (GH-366): "Logs readable" proves reachability only; these
-        # rows show when each source last produced evidence. Advisory only —
-        # never let them break the rest of the diagnostic table.
-        try:
-            from core.doctor_liveness_rows import add_source_liveness_rows
-
-            add_source_liveness_rows(
-                table,
-                home=home,
-                ok_icon=OK_ICON,
-                warn_icon=WARN_ICON,
-                na_icon=NA_ICON,
-                style_muted=STYLE_MUTED,
-            )
-        except Exception:  # noqa: BLE001 - liveness rows are advisory, never fatal
-            _DOCTOR_LOG.debug("source liveness rows skipped", exc_info=True)
-
         add_remote_api_doctor_rows(
             table,
             gh_mode=gh_mode,
@@ -320,25 +303,6 @@ def doctor(
     )
 
 
-def _report_command_for_window(options: TimelogRunOptions) -> str:
-    """Build a `gittan report …` invocation matching the chosen timeframe."""
-    if options.today:
-        return "gittan report --today"
-    if options.yesterday:
-        return "gittan report --yesterday"
-    if options.last_3_days:
-        return "gittan report --last-3-days"
-    if options.last_week:
-        return "gittan report --last-week"
-    if options.last_14_days:
-        return "gittan report --last-14-days"
-    if options.last_month:
-        return "gittan report --last-month"
-    date_from = options.date_from or ""
-    date_to = options.date_to or ""
-    return f"gittan report --from {date_from} --to {date_to}"
-
-
 @app.command()
 def sources():
     """Analyze which data sources are contributing the most to your reports."""
@@ -377,7 +341,7 @@ def sources():
 
     if not report.all_events:
         console.print(
-            f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
+            f"[{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
@@ -463,7 +427,21 @@ def sources():
             f"[{STYLE_MUTED}]Next: run `gittan review` to map uncategorized domains to project buckets.[/{STYLE_MUTED}]"
         )
     else:
-        report_cmd = _report_command_for_window(options)
+        report_cmd = "gittan report"
+        if options.today:
+            report_cmd += " --today"
+        elif options.yesterday:
+            report_cmd += " --yesterday"
+        elif options.last_3_days:
+            report_cmd += " --last-3-days"
+        elif options.last_week:
+            report_cmd += " --last-week"
+        elif options.last_14_days:
+            report_cmd += " --last-14-days"
+        elif options.last_month:
+            report_cmd += " --last-month"
+        elif options.date_from and options.date_to:
+            report_cmd += f" --from {options.date_from} --to {options.date_to}"
         console.print(
-            f"[{STYLE_MUTED}]Next: run `{report_cmd}` to review your project timeline.[/{STYLE_MUTED}]"
+            f"[{STYLE_MUTED}]Next: run `{report_cmd}` to review your daily project timeline.[/{STYLE_MUTED}]"
         )

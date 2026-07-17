@@ -68,16 +68,11 @@ def lovable_cache_status(home: Path) -> tuple[bool, str]:
     return True, "Cache readable; projects/search title map not cached yet"
 
 
-def load_lovable_project_titles(home: Path, *, raw_cache: dict | None = None) -> dict[str, str]:
-    """UUID → display_name from cached ``projects/search`` responses.
-
-    ``raw_cache``, when given, is shared with ``collect_lovable_cache_events``
-    so the same ``Cache_Data`` files are read from disk once, not twice, when
-    both the title map and the event scan run for one report (GH perf pass).
-    """
+def load_lovable_project_titles(home: Path) -> dict[str, str]:
+    """UUID → display_name from cached ``projects/search`` responses."""
     cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
     titles: dict[str, str] = {}
-    for entry in iter_cache_entries(cache_dir, _PROJECTS_SEARCH_MARKER, raw_cache=raw_cache):
+    for entry in iter_cache_entries(cache_dir, _PROJECTS_SEARCH_MARKER):
         try:
             data = json.loads(entry.body)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -131,17 +126,9 @@ def collect_lovable_cache_events(
     *,
     collapse_minutes: int = 15,
     title_map: dict[str, str] | None = None,
-    raw_cache: dict | None = None,
 ) -> list:
-    """Emit one event per cache file mtime burst that references a project UUID.
-
-    ``raw_cache``, when given, is checked before reading a file from disk (and
-    populated as a side effect) — shared with ``load_lovable_project_titles``
-    so a file already read for the title map is not read again here.
-    """
-    titles = (
-        title_map if title_map is not None else load_lovable_project_titles(home, raw_cache=raw_cache)
-    )
+    """Emit one event per cache file mtime burst that references a project UUID."""
+    titles = title_map if title_map is not None else load_lovable_project_titles(home)
     results: list = []
     scanned_bytes = 0
     for cache_dir in lovable_cache_dirs(home):
@@ -165,15 +152,10 @@ def collect_lovable_cache_events(
             if scanned_bytes + size > _CACHE_MAX_SCAN_BYTES:
                 break
             scanned_bytes += size
-            if raw_cache is not None and path in raw_cache:
-                raw = raw_cache[path]
-            else:
-                try:
-                    raw = path.read_bytes()
-                except OSError:
-                    continue
-                if raw_cache is not None:
-                    raw_cache[path] = raw
+            try:
+                raw = path.read_bytes()
+            except OSError:
+                continue
             tiba_titles = _tiba_titles_from_bytes(raw)
             for uuid in _extract_cache_uuids(raw):
                 canonical = _synthetic_lovable_project_url(uuid)

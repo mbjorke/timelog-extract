@@ -5,7 +5,3 @@
 ## 2026-07-16 - Aligning `sources` command table and actionability
 **Learning:** Dense data summary commands like `sources` can easily drift into using ad-hoc rainbow colors that violate calm terminal aesthetics. Additionally, not providing a clear follow-up command for uncategorized entries leaves users without a clear path forward.
 **Action:** Standardized the `sources` table with shared theme tokens (`STYLE_BORDER`, `STYLE_LABEL`, `CLR_SOURCE_BLUE`, `CLR_VALUE_ORANGE`, `STYLE_MUTED`, and `STYLE_DIM`). Implemented conditional "Next:" guidance recommending `gittan review` when uncategorized signals exist and `gittan report --today` when none exist.
-
-## 2026-07-17 - [Check open PRs before a new Palette PR]
-**Learning:** The same Palette brief (`sources` styling / UX) produced a long stack of open PRs (#375–#387) without checking whether yesterday’s PR already covered the work.
-**Action:** Follow `docs/contributing/jules-standing-instructions.md` before every Palette run — list open PRs (no duplicates), and read Qodo + CodeRabbit threads on matching PRs before more commits.

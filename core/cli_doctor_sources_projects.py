@@ -320,6 +320,25 @@ def doctor(
     )
 
 
+def _report_command_for_window(options: TimelogRunOptions) -> str:
+    """Build a `gittan report …` invocation matching the chosen timeframe."""
+    if options.today:
+        return "gittan report --today"
+    if options.yesterday:
+        return "gittan report --yesterday"
+    if options.last_3_days:
+        return "gittan report --last-3-days"
+    if options.last_week:
+        return "gittan report --last-week"
+    if options.last_14_days:
+        return "gittan report --last-14-days"
+    if options.last_month:
+        return "gittan report --last-month"
+    date_from = options.date_from or ""
+    date_to = options.date_to or ""
+    return f"gittan report --from {date_from} --to {date_to}"
+
+
 @app.command()
 def sources():
     """Analyze which data sources are contributing the most to your reports."""
@@ -444,6 +463,7 @@ def sources():
             f"[{STYLE_MUTED}]Next: run `gittan review` to map uncategorized domains to project buckets.[/{STYLE_MUTED}]"
         )
     else:
+        report_cmd = _report_command_for_window(options)
         console.print(
-            f"[{STYLE_MUTED}]Next: run `gittan report --today` to review your daily project timeline.[/{STYLE_MUTED}]"
+            f"[{STYLE_MUTED}]Next: run `{report_cmd}` to review your project timeline.[/{STYLE_MUTED}]"
         )

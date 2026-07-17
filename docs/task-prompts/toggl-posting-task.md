@@ -284,7 +284,11 @@ Scenario: Opt-in AI description producer
 
 ### Local operation log + regret recovery
 
-- priority: **next**
+- priority: **now** (re-promoted 2026-07-17 — maintainer). Was parked at `next`
+  on 2026-07-08 behind the invoice/reported-time surface (#284 → #263); #284 has
+  since shipped, so this slice is the active `now`. It does **not** hard-depend on
+  #263 — the parking was a prioritization choice, now reversed. Agent work may
+  resume on `task/toggl-oplog-265`.
 - problem: the solo-first model requires a local, append-only record of every
   push (operation ID, timestamp, target identifiers, payload hash) and a way to
   undo a regretted push.
@@ -364,13 +368,13 @@ Scenario: Rollback a regretted push
 
 ## Traceability
 
-- story_id: GH-175 (tracked by PR #175)
+- story_id: GH-175 (tracked by PR #175); op-log slice tracked by #265
 - spec_status: draft (partially shipped)
-- implementation_status: built
+- implementation_status: built (MVP); op-log slice now (#265)
 - created_at: 2026-06-23
-- last_updated_at: 2026-07-08
-- implementation.pr: #175, #178, #179, #194 (merged); op-log slice pending
-- implementation.branch: task/toggl-posting (merged); task/toggl-oplog-265 (parked)
+- last_updated_at: 2026-07-17
+- implementation.pr: #175, #178, #179, #194 (merged); op-log slice (#265) now
+- implementation.branch: task/toggl-posting (merged); task/toggl-oplog-265 (resume)
 - implementation.commits: []
 - validation.evidence: MVP + reported-read live-verified; op-log slice parked at next until #284+#263 (changelog 2026-07-08)
 - validation.decision: conditional GO
@@ -396,3 +400,7 @@ Scenario: Rollback a regretted push
   - 2026-07-08: PO pass — #265 (op-log slice) **parked** at `next`; invoice surface
     (#284 slice 2 → #263 Phase 4) is `now`. Agent work on `task/toggl-oplog-265` must not
     ship until re-promoted; issue #265 comment documents the gate.
+  - 2026-07-17: PO pass (post-0.3.1) — op-log slice (#265) **re-promoted to `now`**
+    per maintainer; #284 gate cleared, and the slice does not hard-depend on #263.
+    `task/toggl-oplog-265` may resume. Board unchanged this pass (maintainer working
+    open PRs in Cursor); priority reflected in this spec + issue #265.

@@ -14,6 +14,8 @@ slowest first, plus a total.
 from __future__ import annotations
 
 import argparse
+import cProfile
+import pstats
 import time
 from datetime import datetime
 from pathlib import Path
@@ -54,7 +56,9 @@ def main() -> None:
 
     cat.git_branch_leaf_at_path = _timed_git_branch_leaf_at_path
 
+    profiler = cProfile.Profile()
     wall_start = time.perf_counter()
+    profiler.enable()
     events, _covered = cat.collect_cursor_agent_turns(
         profiles=[],
         dt_from=dt_from,
@@ -64,6 +68,7 @@ def main() -> None:
         classify_project=_classify_project_stub,
         make_event=_make_event_stub,
     )
+    profiler.disable()
     wall_elapsed = time.perf_counter() - wall_start
 
     print(f"\ncollect_cursor_agent_turns: {len(events)} events, {wall_elapsed:.2f}s wall total")
@@ -75,6 +80,11 @@ def main() -> None:
     if _timings:
         total_git = sum(elapsed for _p, elapsed, _r in _timings)
         print(f"\nTotal time inside git subprocess calls: {total_git:.2f}s")
+
+    print("\n--- top 20 by self time (tottime) ---")
+    pstats.Stats(profiler).sort_stats("tottime").print_stats(20)
+    print("\n--- top 20 by cumulative time ---")
+    pstats.Stats(profiler).sort_stats("cumulative").print_stats(20)
 
 
 if __name__ == "__main__":

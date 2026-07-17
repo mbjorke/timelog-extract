@@ -13,6 +13,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from core.source_liveness import (
+    LOOKBACK_DAYS,
     SilentSourceFinding,
     apply_liveness_to_collector_status,
     detect_silent_sources,
@@ -256,15 +257,18 @@ class DetectSilentSourcesTests(unittest.TestCase):
 class WindowFallbackTests(unittest.TestCase):
     """No shadow log: yesterday-vs-today comparison inside the window itself."""
 
-    def _detect(self, events, collector_status=None):
+    def _detect(self, events, collector_status=None, *, dt_to=None):
         # dt_from is the *window start*: fixtures span 2026-03-09..10, so the
         # window opens on 03-09. The empty temp home guarantees no shadow-log
         # baseline exists, forcing the window-internal fallback path.
+        if dt_to is None:
+            dt_to = datetime(2026, 3, 10, 23, 59, tzinfo=UTC)
         with tempfile.TemporaryDirectory() as tmp:
             return detect_silent_sources(
                 events,
                 collector_status if collector_status is not None else {},
                 datetime(2026, 3, 9, 0, 0, tzinfo=UTC),
+                dt_to,
                 home=Path(tmp),
             )
 
@@ -282,14 +286,34 @@ class WindowFallbackTests(unittest.TestCase):
 
     def test_single_day_window_cannot_self_baseline(self):
         events = [_event("Cursor", "2026-03-09")]
-        self.assertEqual(self._detect(events), [])
+        self.assertEqual(
+            self._detect(events, dt_to=datetime(2026, 3, 9, 23, 59, tzinfo=UTC)),
+            [],
+        )
 
     def test_no_alarm_when_last_day_is_idle_for_everyone(self):
         events = [
             _event("Cursor (agent)", "2026-03-09"),
             _event("Cursor", "2026-03-09"),
         ]
+        # Window ends 03-10 with no events that day — family sibling also idle.
         self.assertEqual(self._detect(events), [])
+
+    def test_idle_window_end_still_uses_dt_to_as_silent_day(self):
+        # Regression (Qodo): when dt_to is "now" and today is still idle for
+        # everyone except a sibling that did fire, do not derive last_day from
+        # the latest eventful day (03-10) — use the report end (03-11).
+        events = [
+            _event("Cursor (agent)", "2026-03-10"),
+            _event("Cursor", "2026-03-10"),
+            _event("Cursor", "2026-03-11"),
+        ]
+        findings = self._detect(
+            events, dt_to=datetime(2026, 3, 11, 18, 0, tzinfo=UTC)
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].source, "Cursor (agent)")
+        self.assertEqual(findings[0].last_active, "2026-03-10")
 
     def test_disabled_source_skipped_in_fallback(self):
         events = [
@@ -413,6 +437,9 @@ class DoctorLivenessRowTests(unittest.TestCase):
         by_label = {row[0]: row for row in rows}
         self.assertEqual(by_label["Cursor (agent)"][1], "OK")
         self.assertIn("Liveness:", by_label["Cursor (agent)"][2])
+        self.assertIn(
+            f"of the last {LOOKBACK_DAYS} days", by_label["Cursor (agent)"][2]
+        )
         self.assertEqual(by_label["Windsurf"][1], "WARN")
         self.assertIn("gone quiet", by_label["Windsurf"][2])
 

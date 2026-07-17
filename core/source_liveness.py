@@ -19,9 +19,9 @@ Baselines, in order of preference:
    ``observed_at`` day; the (rare) local-midnight skew only shifts a baseline
    day, never invents activity.
 2. **Window-internal fallback** (no store required) — for windows spanning at
-   least two days, "yesterday vs today" within the collected events: a source
-   active on the day before the window's last day but silent on the last day
-   while a family sibling is not.
+   least two calendar days, "yesterday vs today" relative to the report's
+   ``dt_to`` date: a source active on the preceding calendar day but silent on
+   the window end day while a family sibling is not.
 
 A genuinely idle window (no source produced anything) never alarms, and neither
 do disabled/opt-in-off sources, coverage comparators, or content-derived
@@ -222,13 +222,20 @@ def _shadow_findings(
 def _window_fallback_findings(
     window_counts: Dict[str, Dict[str, int]],
     collector_status: Dict[str, Dict[str, Any]],
+    *,
+    window_end: date,
+    window_start: date,
 ) -> List[SilentSourceFinding]:
-    """No-store baseline: yesterday vs today inside a multi-day window."""
-    all_days = sorted({day for per_day in window_counts.values() for day in per_day})
-    if len(all_days) < 2:
+    """No-store baseline: calendar yesterday vs window end inside a multi-day window.
+
+    Uses the report's ``dt_to`` date as the silent day (not the latest eventful
+    day), so an idle final day — common when ``dt_to`` is "now" — still
+    compares against the preceding calendar day.
+    """
+    if window_end <= window_start:
         return []
-    last_day = all_days[-1]
-    prev_day = all_days[-2]
+    last_day = window_end.isoformat()
+    prev_day = (window_end - timedelta(days=1)).isoformat()
     findings: List[SilentSourceFinding] = []
     for source, per_day in sorted(window_counts.items()):
         if source in _NEVER_ALARM or source in CONTENT_DERIVED_SOURCES:
@@ -260,6 +267,7 @@ def detect_silent_sources(
     all_events: List[Dict[str, Any]],
     collector_status: Dict[str, Dict[str, Any]],
     dt_from: datetime,
+    dt_to: Optional[datetime] = None,
     *,
     home: Optional[Path] = None,
     lookback_days: int = LOOKBACK_DAYS,
@@ -274,7 +282,23 @@ def detect_silent_sources(
     )
     if baseline:
         return _shadow_findings(window_counts, baseline, collector_status, window_start)
-    return _window_fallback_findings(window_counts, collector_status)
+    # Prefer explicit window end; fall back to latest event day only when callers
+    # omit dt_to (legacy / unit helpers).
+    if dt_to is not None:
+        window_end = dt_to.date()
+    else:
+        event_days = sorted(
+            {day for per_day in window_counts.values() for day in per_day}
+        )
+        if len(event_days) < 2:
+            return []
+        window_end = date.fromisoformat(event_days[-1])
+    return _window_fallback_findings(
+        window_counts,
+        collector_status,
+        window_end=window_end,
+        window_start=window_start,
+    )
 
 
 def apply_liveness_to_collector_status(
@@ -329,6 +353,7 @@ def apply_silent_source_watchdog(report: Any, *, home: Optional[Path] = None) ->
         getattr(report, "all_events", []) or [],
         report.collector_status,
         report.dt_from,
+        getattr(report, "dt_to", None),
         home=home,
     )
     apply_liveness_to_collector_status(report.collector_status, findings)

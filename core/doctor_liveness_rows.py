@@ -30,9 +30,10 @@ def add_source_liveness_rows(
 ) -> None:
     """Add one liveness row per recently active source (distinct from readability)."""
     today = today or date.today()
-    # Baseline window ends tomorrow so today's records count as activity.
+    # End tomorrow so today's records count; lookback=LOOKBACK_DAYS keeps a true
+    # N-day window ([today-(N-1), tomorrow) ≡ N calendar days including today).
     baseline = shadow_baseline_by_source(
-        today + timedelta(days=1), home=home, lookback_days=LOOKBACK_DAYS + 1
+        today + timedelta(days=1), home=home, lookback_days=LOOKBACK_DAYS
     )
     if not baseline:
         table.add_row(

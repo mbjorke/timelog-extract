@@ -6,6 +6,7 @@ import json
 import os
 import struct
 import unittest
+import unittest.mock
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -180,6 +181,56 @@ class LovableCacheTests(unittest.TestCase):
         hours = {event["timestamp"].hour for event in events}
         self.assertIn(9, hours)
         self.assertIn(18, hours)
+
+    def test_title_and_event_scan_share_reads_no_duplicate_disk_io(self):
+        """load_lovable_project_titles (unfiltered) and collect_lovable_cache_events
+        (date-filtered) both walk Cache_Data; each file must be read once total."""
+        morning = datetime(2026, 6, 11, 9, 40, tzinfo=timezone.utc)
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            search_path = cache_dir / "search_0"
+            search_path.write_bytes(
+                _make_entry(
+                    "1/0/https://api.lovable.dev/workspaces/ws/projects/search",
+                    json.dumps(
+                        {"projects": [{"id": _PROJECT_ALPHA, "display_name": "Project Alpha"}]}
+                    ).encode("utf-8"),
+                )
+            )
+            activity_path = cache_dir / "activity_0"
+            activity_path.write_bytes(
+                _make_entry(f"1/0/https://lovable.dev/projects/{_PROJECT_ALPHA}", b"analytics payload")
+            )
+            os.utime(activity_path, (morning.timestamp(), morning.timestamp()))
+
+            read_counts: dict[Path, int] = {}
+            original_read_bytes = Path.read_bytes
+
+            def counting_read_bytes(self_path: Path) -> bytes:
+                read_counts[self_path] = read_counts.get(self_path, 0) + 1
+                return original_read_bytes(self_path)
+
+            with unittest.mock.patch.object(Path, "read_bytes", counting_read_bytes):
+                events = _collect_lovable_desktop_from_storage(
+                    profiles=[{"name": "project-alpha", "match_terms": [_PROJECT_ALPHA]}],
+                    dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                    dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                    home=home,
+                    classify_project=_classify,
+                    make_event=lambda source, ts, detail, project: {
+                        "source": source,
+                        "timestamp": ts,
+                        "detail": detail,
+                        "project": project,
+                    },
+                )
+
+        self.assertTrue(events)
+        self.assertIn("Project Alpha", events[0]["detail"])
+        duplicated = {path: count for path, count in read_counts.items() if count > 1}
+        self.assertEqual(duplicated, {}, f"files read from disk more than once: {duplicated}")
 
     def test_cache_scan_skips_rudderstack_uuid(self):
         ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)

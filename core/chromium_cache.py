@@ -155,6 +155,7 @@ def read_cache_entry(
     *,
     key_substr: str = "",
     key_predicate=None,
+    raw_cache: Optional[dict] = None,
 ) -> Optional[CacheEntry]:
     """Parse one ``*_0`` simple-cache file → CacheEntry, or None.
 
@@ -162,11 +163,23 @@ def read_cache_entry(
     all) and satisfies ``key_predicate`` (when given), so a non-matching entry
     never pays the decompression cost. Never raises on malformed/binary/evicted
     entries; returns None instead.
+
+    ``raw_cache``, when given, is checked first (avoiding a second disk read
+    when another scan of the same directory already read this file) and is
+    populated with every file's raw bytes as a side effect — matching or not —
+    so a caller that needs the same directory for a second purpose (e.g. an
+    unfiltered title/metadata pass alongside a date-filtered event pass) can
+    share one on-disk read per file instead of paying for it twice.
     """
     try:
-        if path.stat().st_size > _DEFAULT_MAX_FILE_BYTES:
-            return None
-        raw = path.read_bytes()
+        if raw_cache is not None and path in raw_cache:
+            raw = raw_cache[path]
+        else:
+            if path.stat().st_size > _DEFAULT_MAX_FILE_BYTES:
+                return None
+            raw = path.read_bytes()
+            if raw_cache is not None:
+                raw_cache[path] = raw
     except OSError:
         return None
     split = _split_key(raw)
@@ -193,11 +206,17 @@ def iter_cache_entries(
     *,
     newer_than: Optional[datetime] = None,
     key_predicate=None,
+    raw_cache: Optional[dict] = None,
 ) -> Iterator[CacheEntry]:
     """Yield decoded cache entries whose key contains ``key_substr``.
 
     ``newer_than`` (aware datetime) filters by file mtime before reading the
     body. Unreadable/foreign entries are skipped silently.
+
+    ``raw_cache``, when given, is shared with ``read_cache_entry`` so a second
+    scan of the same ``cache_dir`` for a different ``key_substr`` (e.g. an
+    unfiltered metadata pass alongside a date-filtered event pass) reuses
+    already-read bytes instead of reading each file from disk again.
     """
     if not cache_dir.is_dir():
         return
@@ -211,6 +230,8 @@ def iter_cache_entries(
                 continue
             if mtime < newer_than:
                 continue
-        entry = read_cache_entry(path, key_substr=key_substr, key_predicate=key_predicate)
+        entry = read_cache_entry(
+            path, key_substr=key_substr, key_predicate=key_predicate, raw_cache=raw_cache
+        )
         if entry is not None:
             yield entry

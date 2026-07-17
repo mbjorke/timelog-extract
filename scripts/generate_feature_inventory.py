@@ -153,7 +153,7 @@ _STATUS_RE = re.compile(r"^[-*\s]*implementation_status:\s*(.+)$", re.IGNORECASE
 class SpecInfo:
     """Coverage facts parsed from one spec file."""
 
-    def __init__(self, path: Path, covers: set, backticked: set, status: str):
+    def __init__(self, path: Path, covers: set[str], backticked: set[str], status: str):
         self.path = path
         self.covers = covers          # explicit `covers:` names (lowercased)
         self.backticked = backticked  # backticked tokens from the H1 title only

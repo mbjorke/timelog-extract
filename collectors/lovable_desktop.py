@@ -437,8 +437,15 @@ def _collect_lovable_desktop_from_storage(
 ):
     """Fallback when Chromium History is absent: storage blobs + cache mtimes."""
     from collectors.lovable_cache import collect_lovable_cache_events, load_lovable_project_titles
+    from core.chromium_cache import BoundedRawCache
 
-    title_map = load_lovable_project_titles(home)
+    # Shared with collect_lovable_cache_events below: both scan Cache_Data
+    # (this pass unfiltered for titles, that one date-filtered for events),
+    # so a file read here is reused there instead of hitting disk twice.
+    # Bounded so an unfiltered walk of a very large cache can't retain the
+    # whole directory's bytes in memory at once (Qodo review, PR #388).
+    raw_cache = BoundedRawCache()
+    title_map = load_lovable_project_titles(home, raw_cache=raw_cache)
     files = _storage_signal_files(home)
     results = []
     profile = (lovable_noise_profile or DEFAULT_LOVABLE_NOISE_PROFILE).strip().lower()
@@ -476,6 +483,7 @@ def _collect_lovable_desktop_from_storage(
         make_event,
         collapse_minutes=collapse_minutes,
         title_map=title_map,
+        raw_cache=raw_cache,
     )
     merge_seconds = max(60, int(collapse_minutes or 15) * 60)
     return _merge_storage_events(results + cache_events, merge_seconds=merge_seconds)

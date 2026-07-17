@@ -41,11 +41,48 @@ _GZIP_MAGIC = b"\x1f\x8b\x08"
 _DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 # Decompression-bomb guard for the decoded body.
 _MAX_DECODED_BYTES = 64 * 1024 * 1024
+# raw_cache retention cap (see BoundedRawCache): bounds worst-case memory when
+# a caller shares one cache across a full, unfiltered Cache_Data walk.
+_RAW_CACHE_MAX_BYTES = 150 * 1024 * 1024
 
 CODEC_REINSTALL_HINT = (
     "pipx install --force timelog-extract"
     "  or: pip install --upgrade timelog-extract"
 )
+
+
+class BoundedRawCache:
+    """``dict[Path, bytes]``-like cache capped by total bytes retained.
+
+    ``read_cache_entry``/``iter_cache_entries`` populate this unconditionally
+    for every file they read (matching a key filter or not), so a caller that
+    shares one cache across an unfiltered directory walk could otherwise
+    retain the whole cache directory's bytes in memory at once. Past the cap,
+    new entries are simply not retained — a second scan for that file falls
+    back to a normal disk read instead of risking unbounded growth. Already
+    the actual on-disk read still returns correct bytes either way; only
+    *reuse by a second scan* is affected.
+    """
+
+    def __init__(self, max_bytes: int = _RAW_CACHE_MAX_BYTES) -> None:
+        self._data: dict[Path, bytes] = {}
+        self._max_bytes = max_bytes
+        self._total_bytes = 0
+
+    def __contains__(self, path: Path) -> bool:
+        return path in self._data
+
+    def __getitem__(self, path: Path) -> bytes:
+        return self._data[path]
+
+    def __setitem__(self, path: Path, raw: bytes) -> None:
+        if path in self._data or self._total_bytes + len(raw) > self._max_bytes:
+            return
+        self._data[path] = raw
+        self._total_bytes += len(raw)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 @dataclass(frozen=True)
@@ -155,6 +192,7 @@ def read_cache_entry(
     *,
     key_substr: str = "",
     key_predicate=None,
+    raw_cache: Optional[dict] = None,
 ) -> Optional[CacheEntry]:
     """Parse one ``*_0`` simple-cache file → CacheEntry, or None.
 
@@ -162,11 +200,23 @@ def read_cache_entry(
     all) and satisfies ``key_predicate`` (when given), so a non-matching entry
     never pays the decompression cost. Never raises on malformed/binary/evicted
     entries; returns None instead.
+
+    ``raw_cache``, when given, is checked first (avoiding a second disk read
+    when another scan of the same directory already read this file) and is
+    populated with every file's raw bytes as a side effect — matching or not —
+    so a caller that needs the same directory for a second purpose (e.g. an
+    unfiltered title/metadata pass alongside a date-filtered event pass) can
+    share one on-disk read per file instead of paying for it twice.
     """
     try:
-        if path.stat().st_size > _DEFAULT_MAX_FILE_BYTES:
-            return None
-        raw = path.read_bytes()
+        if raw_cache is not None and path in raw_cache:
+            raw = raw_cache[path]
+        else:
+            if path.stat().st_size > _DEFAULT_MAX_FILE_BYTES:
+                return None
+            raw = path.read_bytes()
+            if raw_cache is not None:
+                raw_cache[path] = raw
     except OSError:
         return None
     split = _split_key(raw)
@@ -193,11 +243,17 @@ def iter_cache_entries(
     *,
     newer_than: Optional[datetime] = None,
     key_predicate=None,
+    raw_cache: Optional[dict] = None,
 ) -> Iterator[CacheEntry]:
     """Yield decoded cache entries whose key contains ``key_substr``.
 
     ``newer_than`` (aware datetime) filters by file mtime before reading the
     body. Unreadable/foreign entries are skipped silently.
+
+    ``raw_cache``, when given, is shared with ``read_cache_entry`` so a second
+    scan of the same ``cache_dir`` for a different ``key_substr`` (e.g. an
+    unfiltered metadata pass alongside a date-filtered event pass) reuses
+    already-read bytes instead of reading each file from disk again.
     """
     if not cache_dir.is_dir():
         return
@@ -211,6 +267,8 @@ def iter_cache_entries(
                 continue
             if mtime < newer_than:
                 continue
-        entry = read_cache_entry(path, key_substr=key_substr, key_predicate=key_predicate)
+        entry = read_cache_entry(
+            path, key_substr=key_substr, key_predicate=key_predicate, raw_cache=raw_cache
+        )
         if entry is not None:
             yield entry

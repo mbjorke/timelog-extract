@@ -23,7 +23,12 @@ from pathlib import Path
 from typing import Optional
 
 from collectors.ai_logs import _anchors, _cwd_leaf, _meaningful_label
-from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
+from core.chromium_cache import (
+    CODEC_REINSTALL_HINT,
+    BoundedRawCache,
+    codec_available,
+    iter_cache_entries,
+)
 from core.repo_slug import resolve_path_repo_slug, slug_from_remote_url
 
 CLAUDE_DESKTOP_CODE_SOURCE = "Claude Desktop (Code)"
@@ -131,7 +136,7 @@ def _session_repo_slug(obj: dict) -> str:
     return ""
 
 
-def _session_meta(cache_dir: Path) -> dict[str, dict[str, str]]:
+def _session_meta(cache_dir: Path, *, raw_cache: dict | None = None) -> dict[str, dict[str, str]]:
     """Map session id → {title, slug} from cached session metadata.
 
     Claude Desktop also caches `/v1/sessions/<id>` detail and `/v1/sessions?…`
@@ -159,6 +164,7 @@ def _session_meta(cache_dir: Path) -> dict[str, dict[str, str]]:
         cache_dir,
         _SESSIONS_KEY_MARKER.rstrip("/"),
         key_predicate=lambda key: "/events" not in key,
+        raw_cache=raw_cache,
     ):
         try:
             payload = json.loads(entry.body)
@@ -182,7 +188,15 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
     # session id -> accumulator; uuid-dedupe spans overlapping cache entries
     # (the app re-fetches /events with after_id pagination).
     sessions: dict[str, dict] = {}
-    for entry in iter_cache_entries(cache_dir, _SESSIONS_KEY_MARKER, newer_than=dt_from):
+    # Shared with _session_meta below: both scan the same cache_dir (this pass
+    # date-filtered for events, that one unfiltered for titles/slugs), so a
+    # file read here is reused there instead of hitting disk twice. Bounded
+    # so the later unfiltered pass can't retain a very large cache directory's
+    # bytes in memory all at once (Qodo review, PR #388).
+    raw_cache = BoundedRawCache()
+    for entry in iter_cache_entries(
+        cache_dir, _SESSIONS_KEY_MARKER, newer_than=dt_from, raw_cache=raw_cache
+    ):
         if "/events" not in entry.key:
             continue
         try:
@@ -220,7 +234,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
             is_turn = str(ev.get("type") or "").strip().lower() in _TURN_TYPES
             acc["stamps"].append((ts, is_turn))
 
-    meta = _session_meta(cache_dir) if sessions else {}
+    meta = _session_meta(cache_dir, raw_cache=raw_cache) if sessions else {}
 
     results = []
     for sid, acc in sessions.items():

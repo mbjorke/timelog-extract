@@ -57,11 +57,32 @@ def _build_truth_payload_dict(report: ReportPayload) -> Dict[str, Any]:
     )
 
 
+def _print_silent_source_warnings(findings: list) -> None:
+    if not findings:
+        return
+    from core.source_liveness import silent_source_warning_lines
+    from outputs.terminal_theme import CLR_VALUE_ORANGE, WARN_ICON
+
+    for line in silent_source_warning_lines(findings):
+        report_console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{line}[/{CLR_VALUE_ORANGE}]")
+
+
 def run_timelog_cli(args: argparse.Namespace) -> None:
     """Run a full report for parsed CLI args and print or write outputs."""
     if getattr(args, "output_format", "terminal") == "json":
         args.quiet = True
     report = run_timelog_report(args.projects_config, args.date_from, args.date_to, args)
+
+    # Silent-source watchdog (GH-366): mark previously active sources that
+    # flatlined. Patches collector_status for the JSON payload; terminal
+    # warnings print below. Must never break a report.
+    silent_findings: list = []
+    try:
+        from core.source_liveness import apply_silent_source_watchdog
+
+        silent_findings = apply_silent_source_watchdog(report)
+    except Exception:  # noqa: BLE001 - watchdog is advisory, never fatal
+        logging.getLogger(__name__).debug("silent-source watchdog skipped", exc_info=True)
 
     want_json = getattr(args, "output_format", "terminal") == "json"
 
@@ -161,6 +182,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
                 f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
                 f"`gittan report --today --source-summary` to inspect collected evidence.[/{STYLE_MUTED}]"
             )
+        _print_silent_source_warnings(silent_findings)
         if report.args.invoice_pdf:
             try:
                 out = (
@@ -212,6 +234,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         billable_raw_by_project=billable_by_project,
         reported_billing=reported_billing,
     )
+    _print_silent_source_warnings(silent_findings)
     run_post_report_followups(report_console, report)
     if getattr(report.args, "weekly", False):
         _print_weekly(report.project_reports)

@@ -22,6 +22,7 @@ from core.cli_triage_map_context import build_triage_map_json_payload, load_tria
 from core.config import resolve_projects_config_path
 from core.onboarding_guidance import finish_review_guidance
 from outputs.terminal_theme import (
+    CLR_GREEN,
     CLR_VALUE_ORANGE,
     STYLE_BORDER,
     STYLE_DIM,
@@ -144,7 +145,7 @@ def run_url_mapping_review(
     profiles = load_triage_profiles(resolved_projects_config)
     project_names = sorted({str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()})
     if not rows:
-        console.print("[green]No URL candidates found in this range (gap-day Chrome evidence).[/green]")
+        console.print(f"[{CLR_GREEN}]No URL candidates found in this range (gap-day Chrome evidence).[/{CLR_GREEN}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=False)
 
     _render_candidates_table(console, rows)
@@ -204,7 +205,7 @@ def run_url_mapping_review(
     if review_more:
         review_rows = [row for row in rows if row.url_key not in auto_assigned]
         if not review_rows:
-            console.print("[green]No remaining rows to review manually.[/green]")
+            console.print(f"[{CLR_GREEN}]No remaining rows to review manually.[/{CLR_GREEN}]")
         else:
             _render_candidates_table(
                 console,
@@ -292,5 +293,5 @@ def run_url_mapping_review(
     if applied.get("errors"):
         console.print(applied)
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True, code=1)
-    console.print("[green]URL mapping apply complete.[/green]")
+    console.print(f"[{CLR_GREEN}]URL mapping apply complete.[/{CLR_GREEN}]")
     _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)

@@ -10,6 +10,7 @@ from typing import Optional
 import questionary
 import typer
 from questionary import Choice
+from rich import box
 from rich.console import Console
 from rich.table import Table
 
@@ -20,6 +21,13 @@ from core.cli_triage_map_candidates import UNCATEGORIZED, UrlCandidate, _auto_as
 from core.cli_triage_map_context import build_triage_map_json_payload, load_triage_map_candidates
 from core.config import resolve_projects_config_path
 from core.onboarding_guidance import finish_review_guidance
+from outputs.terminal_theme import (
+    CLR_VALUE_ORANGE,
+    STYLE_BORDER,
+    STYLE_DIM,
+    STYLE_LABEL,
+    STYLE_MUTED,
+)
 
 
 def _exit_url_mapping_review(
@@ -41,15 +49,17 @@ def _exit_url_mapping_review(
 def _render_candidates_table(
     console: Console, rows: list[UrlCandidate], *, title: str = "URL candidates (Uncategorized)"
 ) -> None:
-    table = Table(title=title)
-    table.add_column("Title", overflow="fold")
-    table.add_column("URL key", overflow="fold")
-    table.add_column("Suggested")
-    table.add_column("Confidence")
-    table.add_column("Impact (h)", justify="right")
-    table.add_column("Events", justify="right")
-    table.add_column("Days", justify="right")
-    table.add_column("Last seen")
+    table = Table(title=title, box=box.ROUNDED)
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Title", overflow="fold", style=STYLE_LABEL)
+    table.add_column("URL key", overflow="fold", style=STYLE_MUTED)
+    table.add_column("Suggested", style=STYLE_LABEL)
+    table.add_column("Confidence", style=STYLE_MUTED)
+    table.add_column("Impact (h)", justify="right", style=CLR_VALUE_ORANGE)
+    table.add_column("Events", justify="right", style=STYLE_MUTED)
+    table.add_column("Days", justify="right", style=STYLE_DIM)
+    table.add_column("Last seen", style=STYLE_DIM)
     for row in rows:
         table.add_row(
             row.title,
@@ -153,7 +163,7 @@ def run_url_mapping_review(
             default="high",
         ).ask()
         if choice is None:
-            console.print("[yellow]Cancelled before writing config.[/yellow]")
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
             _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
         if choice == "high":
@@ -189,7 +199,7 @@ def run_url_mapping_review(
 
     review_more = questionary.confirm("Review/edit remaining rows manually before apply?", default=False).ask()
     if review_more is None:
-        console.print("[yellow]Cancelled before writing config.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
     if review_more:
         review_rows = [row for row in rows if row.url_key not in auto_assigned]
@@ -216,7 +226,7 @@ def run_url_mapping_review(
                 ],
             ).ask()
             if edit_choice is None:
-                console.print("[yellow]Cancelled before writing config.[/yellow]")
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
                 _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             if edit_choice == "__done__":
                 break
@@ -235,7 +245,7 @@ def run_url_mapping_review(
                 default=current if current in project_names else suggested_default,
             ).ask()
             if selected_project is None:
-                console.print("[yellow]Cancelled before writing config.[/yellow]")
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
                 _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             assignment_by_key[row.url_key] = None if selected_project == "Skip this URL key" else str(selected_project)
 
@@ -253,7 +263,7 @@ def run_url_mapping_review(
         )
 
     if not decisions:
-        console.print("[yellow]No decisions selected. Nothing to apply.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]No decisions selected. Nothing to apply.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     preview = apply_triage_decisions_payload(
@@ -269,7 +279,7 @@ def run_url_mapping_review(
     console.print(preview.get("preview", "No preview available."))
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
     if not confirmed:
-        console.print("[yellow]Cancelled before writing config.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     applied = apply_triage_decisions_payload(

@@ -9,3 +9,7 @@
 ## 2026-07-17 - Finish the PR after review comments are addressed
 **Learning:** Palette kept opening new PRs for the same `sources` UX brief (#375–#387) instead of finishing the open one. Jules often has **no `gh` CLI** — merge via the GitHub UI (Squash and merge) if available; otherwise comment that the PR is ready to merge and stop. Leaving it open without a hand-off invites tomorrow’s duplicate; a stale tip squash-merged as #387 deleted unrelated `main` work.
 **Action:** Follow `docs/contributing/jules-standing-instructions.md` §5: fix review threads on the existing PR, sync with `main`, then merge in the GitHub UI **or** post a ready-to-merge comment. Do not open another Palette PR for the same outcome. Never land a tip that deletes files already on `main`.
+
+## 2026-07-17 - Aligning `review` URL candidate table and cancel actions
+**Learning:** Table components rendering dense text like URL candidates can feel unpolished without a clear boundary and semantic styles. Also, hardcoded colors like `[yellow]` break visual cohesion.
+**Action:** Aligned `_render_candidates_table` in `core/cli_url_mapping.py` with standard `ROUNDED` box styling, `STYLE_BORDER`, and shared theme tokens. Replaced ad-hoc yellow highlights on cancellation with `CLR_VALUE_ORANGE`.

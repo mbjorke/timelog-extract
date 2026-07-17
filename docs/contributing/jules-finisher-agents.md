@@ -16,6 +16,15 @@ merges only the safe class.
 Pick **Cursor cloud** or **Claude GitHub** based on which quota/credits you have
 left that day. Same rules either way.
 
+> **Canonical identifiers in this doc.** The handles and slug below are the real,
+> canonical operational values for *this* setup — substitute your own when
+> adapting:
+> - `google-labs-jules[bot]` — the Jules bot's author handle (the exact string
+>   the finisher's author hard-stop must match; not a placeholder).
+> - `OWNER/REPO` = `mbjorke/timelog-extract` — this repository.
+> - `@cursor` / `@claude` — the mention handles that actually trigger each
+>   finisher; they are commands you type, not example names.
+
 ## Shared merge rules (both finishers)
 
 Run from repo root on the Jules PR number `N`:

@@ -14,7 +14,8 @@ from core.mapping_review import (
 
 
 def _print_mapping_cancelled(console) -> None:
-    console.print("[yellow]Cancelled — no mapping changes saved.[/yellow]")
+    from outputs.terminal_theme import CLR_VALUE_ORANGE
+    console.print(f"[{CLR_VALUE_ORANGE}]Cancelled — no mapping changes saved.[/{CLR_VALUE_ORANGE}]")
 
 
 def prompt_new_project_fields(

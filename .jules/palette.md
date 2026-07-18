@@ -9,3 +9,7 @@
 ## 2026-07-17 - Finish the PR after review comments are addressed
 **Learning:** Palette kept opening new PRs for the same `sources` UX brief (#375–#387) instead of finishing the open one. Jules often has **no `gh` CLI** — merge via the GitHub UI (Squash and merge) if available; otherwise comment that the PR is ready to merge and stop. Leaving it open without a hand-off invites tomorrow’s duplicate; a stale tip squash-merged as #387 deleted unrelated `main` work.
 **Action:** Follow `docs/contributing/jules-standing-instructions.md` §5: fix review threads on the existing PR, sync with `main`, then merge in the GitHub UI **or** post a ready-to-merge comment. Do not open another Palette PR for the same outcome. Never land a tip that deletes files already on `main`.
+
+## 2026-07-18 - Standardize Interactive UX Cancellation Messages with Official Theme Accent
+**Learning:** Hardcoded coloring like `[yellow]` inside interactive commands (e.g., `review` / URL mapping) violates the repository's terminal style guide, which mandates using official theme tokens (`CLR_VALUE_ORANGE`) instead of arbitrary colors for consistent accenting and palette compliance.
+**Action:** Replaced ad-hoc `[yellow]` cancellation prints in `core/cli_url_mapping.py` and `core/mapping_review_flow.py` with the shared `CLR_VALUE_ORANGE` theme token, and updated imports accordingly.

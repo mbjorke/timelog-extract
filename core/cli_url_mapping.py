@@ -20,6 +20,7 @@ from core.cli_triage_map_candidates import UNCATEGORIZED, UrlCandidate, _auto_as
 from core.cli_triage_map_context import build_triage_map_json_payload, load_triage_map_candidates
 from core.config import resolve_projects_config_path
 from core.onboarding_guidance import finish_review_guidance
+from outputs.terminal_theme import CLR_VALUE_ORANGE
 
 
 def _exit_url_mapping_review(
@@ -153,7 +154,7 @@ def run_url_mapping_review(
             default="high",
         ).ask()
         if choice is None:
-            console.print("[yellow]Cancelled before writing config.[/yellow]")
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
             _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
         if choice == "high":
@@ -189,7 +190,7 @@ def run_url_mapping_review(
 
     review_more = questionary.confirm("Review/edit remaining rows manually before apply?", default=False).ask()
     if review_more is None:
-        console.print("[yellow]Cancelled before writing config.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
     if review_more:
         review_rows = [row for row in rows if row.url_key not in auto_assigned]
@@ -216,7 +217,7 @@ def run_url_mapping_review(
                 ],
             ).ask()
             if edit_choice is None:
-                console.print("[yellow]Cancelled before writing config.[/yellow]")
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
                 _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             if edit_choice == "__done__":
                 break
@@ -235,7 +236,7 @@ def run_url_mapping_review(
                 default=current if current in project_names else suggested_default,
             ).ask()
             if selected_project is None:
-                console.print("[yellow]Cancelled before writing config.[/yellow]")
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
                 _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
             assignment_by_key[row.url_key] = None if selected_project == "Skip this URL key" else str(selected_project)
 
@@ -269,7 +270,7 @@ def run_url_mapping_review(
     console.print(preview.get("preview", "No preview available."))
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
     if not confirmed:
-        console.print("[yellow]Cancelled before writing config.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     applied = apply_triage_decisions_payload(

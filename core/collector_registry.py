@@ -52,7 +52,18 @@ def build_collector_specs(
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
     mail_mode = getattr(args, "mail_source", "auto")
-    mail_enabled = mail_mode in {"on", "auto"}
+    # auto + missing mail_root: quietly disable, but keep the specific detect reason
+    # (not the generic consent/off message). Explicit off still uses consent wording.
+    if mail_mode == "off":
+        mail_enabled = False
+        mail_reason: Optional[str] = "Consent/source setting disabled"
+    elif mail_mode == "auto" and mail_root is None:
+        mail_enabled = False
+        mail_reason = mail_msg
+    else:
+        # "on", or "auto" with a detected root
+        mail_enabled = True
+        mail_reason = None if mail_root is not None else mail_msg
     gh_enabled, gh_reason = github_source_enabled(args)
     toggl_enabled, toggl_reason = toggl_source_enabled(args)
     calendar_enabled = getattr(args, "calendar_source", "off") == "on"
@@ -107,9 +118,7 @@ def build_collector_specs(
             ),
             "mail",
             enabled=mail_enabled,
-            reason="Consent/source setting disabled"
-            if not mail_enabled
-            else (None if mail_root is not None else mail_msg),
+            reason=mail_reason,
         ),
         CollectorSpec(
             "TIMELOG.md",

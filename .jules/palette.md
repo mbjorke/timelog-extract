@@ -18,6 +18,10 @@
 **Learning:** Hardcoded coloring like `[yellow]` inside interactive commands (e.g., `review` / URL mapping) violates the repository's terminal style guide, which mandates using official theme tokens (`CLR_VALUE_ORANGE`) instead of arbitrary colors for consistent accenting and palette compliance.
 **Action:** Replaced ad-hoc `[yellow]` cancellation prints in `core/cli_url_mapping.py` and `core/mapping_review_flow.py` with the shared `CLR_VALUE_ORANGE` theme token, and updated imports accordingly.
 
+## 2026-07-19 - Demoting expected-absence warnings in passive collectors
+**Learning:** Hard-coded warning diagnostics from passive context collectors (like Apple Mail) on expected-absence systems (e.g., Linux or macOS without Mail) produce unnecessary clutter on every command run. When a source's mode is set to "auto" (default), missing dependencies or directories should quietly disable the source rather than issuing a warning alert.
+**Action:** Changed Apple Mail collector registration to only enable the collector if `mail_source` is explicitly `"on"`, or if `mail_source` is `"auto"` and `mail_root` exists. This prevents expected-absence warning diagnostics from printing to stderr during routine command execution while still alerting when explicitly requested.
+
 ## 2026-07-20 - Non-interactive Timeframe Option Support for CLI Analysis Commands
 **Learning:** Interactive commands like `sources` can be annoying and disrupt scripts/non-interactive environments when they force prompt-driven timeframe selections. Adding standard CLI timeframe flags and utilizing `resolve_date_window` with `prompt_if_missing` conditional flows delivers seamless, scriptable execution without breaking interactive convenience.
 **Action:** Added standard timeframe options (`--from`, `--to`, `--today`, `--yesterday`, `--last-3-days`, `--last-week`, `--last-14-days`, `--last-month`) to the `sources` command in `core/cli_doctor_sources_projects.py`. Integrated `resolve_date_window(..., prompt_if_missing=...)` to bypass interactive prompting when flags are provided, and updated tests in `tests/test_cli_sources.py` accordingly.

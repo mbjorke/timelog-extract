@@ -14,7 +14,7 @@ class CliSourcesTests(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
 
-    @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
+    @patch("core.cli_date_range.prompt_for_timeframe")
     @patch("core.report_service.run_timelog_report")
     @patch("core.analytics.group_by_day")
     @patch("core.analytics.estimate_hours_by_day")
@@ -63,7 +63,7 @@ class CliSourcesTests(unittest.TestCase):
         # Check Next steps guidance suggests review
         self.assertIn("Next: run `gittan review` to map uncategorized domains to project buckets.", output)
 
-    @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
+    @patch("core.cli_date_range.prompt_for_timeframe")
     @patch("core.report_service.run_timelog_report")
     @patch("core.analytics.group_by_day")
     @patch("core.analytics.estimate_hours_by_day")
@@ -107,9 +107,9 @@ class CliSourcesTests(unittest.TestCase):
         self.assertIn("Source Importance Analysis (2026-05-01 to 2026-05-01)", output)
         self.assertIn("GitHub", output)
         # Check Next steps guidance suggests report
-        self.assertIn("Next: run `gittan report --today` to review your daily project timeline.", output)
+        self.assertIn("gittan report --from 2026-05-01 --to 2026-05-01", output)
 
-    @patch("core.cli_doctor_sources_projects.prompt_for_timeframe")
+    @patch("core.cli_date_range.prompt_for_timeframe")
     @patch("core.report_service.run_timelog_report")
     def test_sources_empty_state(self, mock_report, mock_prompt):
         """Should show empty state warning and suggestion to run 'gittan doctor'."""
@@ -129,6 +129,30 @@ class CliSourcesTests(unittest.TestCase):
 
         self.assertIn("No data found for this period to analyze.", output)
         self.assertIn("Next: widen the date range or run `gittan doctor` to verify source access.", output)
+
+    @patch("core.cli_date_range.prompt_for_timeframe")
+    @patch("core.report_service.run_timelog_report")
+    @patch("core.analytics.group_by_day")
+    @patch("core.analytics.estimate_hours_by_day")
+    def test_sources_with_today_option(
+        self, mock_estimate, mock_group, mock_report, mock_prompt
+    ):
+        """Should skip prompt and run successfully when --today is passed."""
+        report = MagicMock()
+        report.all_events = [
+            {"source": "GitHub", "project": "project-alpha", "detail": "commit"},
+        ]
+        mock_report.return_value = report
+
+        mock_group.return_value = {}
+        mock_estimate.return_value = {}
+
+        result = self.runner.invoke(app, ["sources", "--today"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_prompt.assert_not_called()
+
+        output = _plain(result.output)
+        self.assertIn("Source Importance Analysis", output)
 
 
 if __name__ == "__main__":

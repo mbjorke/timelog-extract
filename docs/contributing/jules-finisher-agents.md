@@ -16,6 +16,15 @@ merges only the safe class.
 Pick **Cursor cloud** or **Claude GitHub** based on which quota/credits you have
 left that day. Same rules either way.
 
+> **Canonical identifiers in this doc.** The handles and slug below are the real,
+> canonical operational values for *this* setup — substitute your own when
+> adapting:
+> - `google-labs-jules[bot]` — the Jules bot's author handle (the exact string
+>   the finisher's author hard-stop must match; not a placeholder).
+> - `OWNER/REPO` = `mbjorke/timelog-extract` — this repository.
+> - `@cursor` / `@claude` — the mention handles that actually trigger each
+>   finisher; they are commands you type, not example names.
+
 ## Shared merge rules (both finishers)
 
 Run from repo root on the Jules PR number `N`:
@@ -76,11 +85,11 @@ Paste into Cursor Automations (edit scopes/tools in the UI):
 | --- | --- |
 | **Name** | Jules finisher (SAFE merge) |
 | **Description** | After Jules marks a PR ready, run merge-gate + classify; squash-merge only SAFE |
-| **Trigger** | PR comment contains `ready to merge`, **or** label `jules-merge-ready` added, **or** CI completed success on a PR authored by `google-labs-jules[bot]` |
+| **Trigger** | **Must be scoped to Jules PRs.** Prefer: CI completed success **and** author is `google-labs-jules[bot]`. If the product also allows comment/label triggers, combine with an author filter — never “any PR comment contains `ready to merge`” alone. Label `jules-merge-ready` is fine only when the automation still exits immediately unless the PR author is Jules. |
 | **Repo scope** | `mbjorke/timelog-extract` (this repo only) |
 | **Tools** | Shell / repo checkout, GitHub comment, approve (optional), GitHub MCP or `gh` with merge permission |
-| **Instructions** | Use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
-| **To finish in editor** | Pick exact trigger event(s), attach GitHub MCP or secrets for `gh`, enable only if branch protection allows the Cursor actor to merge/approve |
+| **Instructions** | **First step (hard stop):** if PR author is not `google-labs-jules[bot]`, comment “not a Jules PR — skipping” and exit. Then use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
+| **To finish in editor** | Wire the Jules-author filter into the trigger if the UI supports it. If the UI **cannot** filter by author, do **not** enable broad comment/label triggers — keep hands-off automation disabled and finish manually (or use a Jules-only label applied by a trusted workflow); the hard-stop first step is defense in depth, not the trigger scope. Attach GitHub MCP or secrets for `gh`; enable only if branch protection allows the Cursor actor to merge/approve |
 
 Safer variant: Automation only **approves** + enables GitHub **auto-merge**; GitHub completes the squash when required checks pass. Finisher still must have run merge-gate in the prompt before approving.
 

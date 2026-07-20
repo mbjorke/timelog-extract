@@ -106,7 +106,7 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
 
     total_hours = round(sum(d["hours"] for d in per_day.values()), 2)
     uncategorized = sum(1 for e in events if e["project"] == UNCATEGORIZED)
-    return {
+    result = {
         "events": len(events),
         "classify_s": round(t_classify, 4),
         "group_s": round(t_group, 4),
@@ -114,6 +114,33 @@ def run_benchmark(dataset_path: str, gap: int, min_session: int, min_passive: in
         "total_s": round(t_classify + t_group + t_estimate, 4),
         "total_hours": total_hours,
         "uncategorized": uncategorized,
+    }
+    result.update(_score_accuracy(events))
+    return result
+
+
+def _score_accuracy(events: list[dict]) -> dict:
+    """Score classification against generator ground truth, when present.
+
+    Datasets from older generator versions carry no ``expected_project``; those
+    score nothing rather than reporting a misleading zero.
+    """
+    scored = [e for e in events if "expected_project" in e]
+    if not scored:
+        return {}
+    correct = 0
+    noise_kept = 0  # noise correctly left uncategorized
+    for e in scored:
+        expected = e["expected_project"] or UNCATEGORIZED
+        if e["project"] == expected:
+            correct += 1
+            if e["expected_project"] is None:
+                noise_kept += 1
+    return {
+        "scored": len(scored),
+        "correct": correct,
+        "accuracy": round(correct / len(scored), 4),
+        "noise_correctly_uncategorized": noise_kept,
     }
 
 

@@ -13,3 +13,7 @@
 ## 2026-07-17 - Aligning `review` URL candidate table and cancel actions
 **Learning:** Table components rendering dense text like URL candidates can feel unpolished without a clear boundary and semantic styles. Also, hardcoded colors like `[yellow]` break visual cohesion.
 **Action:** Aligned `_render_candidates_table` in `core/cli_url_mapping.py` with standard `ROUNDED` box styling, `STYLE_BORDER`, and shared theme tokens. Replaced ad-hoc yellow highlights on cancellation with `CLR_VALUE_ORANGE`.
+
+## 2026-07-18 - Standardize Interactive UX Cancellation Messages with Official Theme Accent
+**Learning:** Hardcoded coloring like `[yellow]` inside interactive commands (e.g., `review` / URL mapping) violates the repository's terminal style guide, which mandates using official theme tokens (`CLR_VALUE_ORANGE`) instead of arbitrary colors for consistent accenting and palette compliance.
+**Action:** Replaced ad-hoc `[yellow]` cancellation prints in `core/cli_url_mapping.py` and `core/mapping_review_flow.py` with the shared `CLR_VALUE_ORANGE` theme token, and updated imports accordingly.

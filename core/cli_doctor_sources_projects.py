@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -14,7 +15,6 @@ import typer
 from core.chromium_cache import CODEC_REINSTALL_HINT
 from core.cli_app import app
 from core.cli_options import TimelogRunOptions
-from core.cli_prompts import prompt_for_timeframe
 from core.config import (
     default_projects_config_option,
     load_profiles,
@@ -321,13 +321,23 @@ def doctor(
 
 
 @app.command()
-def sources():
+def sources(
+    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
+    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
+    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
+    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
+    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
+    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
+    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
+    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
+):
     """Analyze which data sources are contributing the most to your reports."""
     from rich import box
     from rich.console import Console
     from rich.table import Table
 
     from core.analytics import estimate_hours_by_day, group_by_day
+    from core.cli_date_range import resolve_date_window
     from core.domain import session_duration_hours
     from core.report_service import (
         LOCAL_TZ,
@@ -337,17 +347,32 @@ def sources():
     )
     from core.sources import AI_SOURCES
 
-    picked = prompt_for_timeframe()
+    df_s, dt_s = resolve_date_window(
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
+        prompt_if_missing=not (
+            date_from or date_to or today or yesterday or last_3_days or last_week or last_14_days or last_month
+        ),
+    )
+
+    if df_s is None or dt_s is None:
+        raise typer.BadParameter("Could not resolve date range for sources.")
 
     options = TimelogRunOptions(
-        date_from=picked.get("date_from"),
-        date_to=picked.get("date_to"),
-        today=picked.get("today", False),
-        yesterday=picked.get("yesterday", False),
-        last_3_days=picked.get("last_3_days", False),
-        last_week=picked.get("last_week", False),
-        last_14_days=picked.get("last_14_days", False),
-        last_month=picked.get("last_month", False),
+        date_from=df_s,
+        date_to=dt_s,
+        today=today,
+        yesterday=yesterday,
+        last_3_days=last_3_days,
+        last_week=last_week,
+        last_14_days=last_14_days,
+        last_month=last_month,
         projects_config=default_projects_config_option(),
         quiet=True,
     )

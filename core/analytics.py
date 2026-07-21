@@ -10,7 +10,8 @@ from core.sources import session_is_presence_signal_only
 def get_date_range(date_from, date_to, local_tz):
     now_local = datetime.now(local_tz)
     if date_from:
-        start_local = datetime.strptime(date_from, "%Y-%m-%d").replace(
+        # fromisoformat is significantly faster than strptime.
+        start_local = datetime.fromisoformat(date_from).replace(
             hour=0, minute=0, second=0, microsecond=0, tzinfo=local_tz
         )
     else:
@@ -19,7 +20,8 @@ def get_date_range(date_from, date_to, local_tz):
         )
 
     if date_to:
-        end_local = datetime.strptime(date_to, "%Y-%m-%d").replace(
+        # fromisoformat is significantly faster than strptime.
+        end_local = datetime.fromisoformat(date_to).replace(
             hour=23, minute=59, second=59, microsecond=999999, tzinfo=local_tz
         )
     else:

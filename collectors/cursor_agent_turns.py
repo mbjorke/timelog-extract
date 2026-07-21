@@ -61,13 +61,12 @@ def _parse_log_ts(line: str, local_tz) -> datetime | None:
     if not match:
         return None
     try:
-        naive = datetime.strptime(match.group(1)[:23], "%Y-%m-%d %H:%M:%S.%f")
+        # fromisoformat accepts space separators and is ~30x faster than strptime.
+        # Slicing to at most 26 characters caps at 6 fractional digits (microseconds).
+        naive = datetime.fromisoformat(match.group(1)[:26])
+        return naive.replace(tzinfo=local_tz)
     except ValueError:
-        try:
-            naive = datetime.strptime(match.group(1)[:19], "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return None
-    return naive.replace(tzinfo=local_tz)
+        return None
 
 
 def _parse_hooks_bracket_ts(line: str, local_tz) -> datetime | None:

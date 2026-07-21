@@ -112,7 +112,7 @@ def parse_fork_log_ts(line: str, local_tz):
     m = _TS_PATTERN.match(line)
     if m:
         try:
-            # fromisoformat accepts space separators and is ~30x faster than strptime.
+            # fromisoformat accepts space separators; ~4.4x faster than strptime on this path.
             return datetime.fromisoformat(m.group(1)).replace(tzinfo=local_tz)
         except ValueError:
             return None

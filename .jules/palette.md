@@ -25,3 +25,7 @@
 ## 2026-07-20 - Non-interactive Timeframe Option Support for CLI Analysis Commands
 **Learning:** Interactive commands like `sources` can be annoying and disrupt scripts/non-interactive environments when they force prompt-driven timeframe selections. Adding standard CLI timeframe flags and utilizing `resolve_date_window` with `prompt_if_missing` conditional flows delivers seamless, scriptable execution without breaking interactive convenience.
 **Action:** Added standard timeframe options (`--from`, `--to`, `--today`, `--yesterday`, `--last-3-days`, `--last-week`, `--last-14-days`, `--last-month`) to the `sources` command in `core/cli_doctor_sources_projects.py`. Integrated `resolve_date_window(..., prompt_if_missing=...)` to bypass interactive prompting when flags are provided, and updated tests in `tests/test_cli_sources.py` accordingly.
+
+## 2026-07-21 - Standardizing `evidence-check` Output with Theme Tokens and Icon Redundancy
+**Learning:** Diagnostic checks like `evidence-check` can drift into plain, unstyled terminal text or hardcoded `[yellow]` or `[green]` strings that violate visual consistency with the official theme. Incorporating semantic Rich tags, standard theme tokens, and icon redundancy elevates trustworthiness and scannability.
+**Action:** Refactored the output of `gittan evidence-check` to leverage standard tokens (`STYLE_LABEL`, `STYLE_MUTED`, `CLR_VALUE_ORANGE`, `CLR_GREEN`), added `WARN_ICON`/`OK_ICON` redundancy to warnings and status messages, and used standard `[/]` closing tags to ensure reliable Rich parsing.

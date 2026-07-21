@@ -82,13 +82,23 @@ def load_gittan(day: str):
     return sessions
 
 
+def _client_label(n: int) -> str:
+    """Excel-style A, B, ... Z, AA, AB, ... so it stays readable past 26."""
+    label = ""
+    n += 1
+    while n > 0:
+        n, rem = divmod(n - 1, 26)
+        label = chr(ord("A") + rem) + label
+    return f"Client {label}"
+
+
 def build_masker(sessions):
     """Stable pseudonyms per project name, assigned in first-seen order."""
     mapping = {}
     for sess in sessions:
         for name in sess["projects"]:
             if name not in mapping and name != "Uncategorized":
-                mapping[name] = f"Client {chr(ord('A') + len(mapping))}"
+                mapping[name] = _client_label(len(mapping))
     mapping["Uncategorized"] = "Uncategorized"
     return mapping
 
@@ -98,8 +108,13 @@ def fmt_range(start, end):
 
 
 def render(day, spans, sessions, mask, from_hour, to_hour):
-    def in_window(start):
-        return from_hour <= start.hour < to_hour
+    def in_window(start, end):
+        # True interval overlap with [from_hour, to_hour): keep anything that
+        # touches the window, including a session that started just before it
+        # (start-hour-only checks drop those when zooming into a short call).
+        start_h = start.hour + start.minute / 60
+        end_h = end.hour + end.minute / 60
+        return start_h < to_hour and end_h > from_hour
 
     name_map = build_masker(sessions) if mask else {}
 
@@ -108,7 +123,7 @@ def render(day, spans, sessions, mask, from_hour, to_hour):
 
     left = []
     for span in spans:
-        if not in_window(span["start"]):
+        if not in_window(span["start"], span["end"]):
             continue
         title = span["title"]
         if mask and title not in ("", span["app"]):
@@ -118,7 +133,7 @@ def render(day, spans, sessions, mask, from_hour, to_hour):
 
     right = []
     for sess in sessions:
-        if not in_window(sess["start"]):
+        if not in_window(sess["start"], sess["end"]):
             continue
         top_projects = ", ".join(
             f"{project_label(p)} ({n})" for p, n in sess["projects"].most_common(2)
@@ -140,7 +155,7 @@ def render(day, spans, sessions, mask, from_hour, to_hour):
         print(f"  {left_cell:<{width}}  {right_cell}")
     print(
         f"\n  left: {len(left)} spans >= {MIN_SPAN_S // 60} min   "
-        f"right: {sum(1 for s in sessions if in_window(s['start']))} sessions"
+        f"right: {sum(1 for s in sessions if in_window(s['start'], s['end']))} sessions"
     )
 
 
@@ -151,6 +166,16 @@ def main() -> None:
     ap.add_argument("--to-hour", type=int, default=22)
     ap.add_argument("--mask", action="store_true", help="pseudonymize projects/titles")
     ns = ap.parse_args()
+
+    try:
+        datetime.strptime(ns.day, "%Y-%m-%d")
+    except ValueError:
+        ap.error(f"--day must be YYYY-MM-DD, got {ns.day!r}")
+    if not (0 <= ns.from_hour < ns.to_hour <= 24):
+        ap.error(f"need 0 <= --from-hour < --to-hour <= 24, got {ns.from_hour}..{ns.to_hour}")
+    for suffix in (f"gittan-{ns.day}.json", f"timely-{ns.day}-memories.tsv"):
+        if not (BENCH / suffix).exists():
+            ap.error(f"missing export: {BENCH / suffix} (run the ledger benchmark for {ns.day} first)")
 
     sessions = load_gittan(ns.day)
     # Anchor both columns to the report's local zone (carried on the Gittan

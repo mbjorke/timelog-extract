@@ -35,7 +35,14 @@ BENCH = Path("private/benchmarks")
 MIN_SPAN_S = 120  # hide micro-spans on the Timely side; keeps the view calm
 
 
-def load_timely(day: str):
+def load_timely(day: str, tz=None):
+    """Load Timely spans, converting UTC to ``tz``.
+
+    ``tz`` must be the same zone the Gittan sessions use (the report's local
+    offset), or the two columns and the hour-window filter misalign whenever
+    the machine's timezone differs from the export's. Falls back to system
+    local only when no target tz is available.
+    """
     spans = []
     with open(BENCH / f"timely-{day}-memories.tsv", encoding="utf-8") as fh:
         for row in csv.DictReader(fh, delimiter="\t"):
@@ -45,8 +52,8 @@ def load_timely(day: str):
             start = datetime.fromisoformat(row["start_utc"]).replace(tzinfo=timezone.utc)
             spans.append(
                 {
-                    "start": start.astimezone(),
-                    "end": (start + timedelta(seconds=secs)).astimezone(),
+                    "start": start.astimezone(tz),
+                    "end": (start + timedelta(seconds=secs)).astimezone(tz),
                     "app": row["app_name"],
                     "title": row["window_title"],
                 }
@@ -145,8 +152,12 @@ def main() -> None:
     ap.add_argument("--mask", action="store_true", help="pseudonymize projects/titles")
     ns = ap.parse_args()
 
-    spans = load_timely(ns.day)
     sessions = load_gittan(ns.day)
+    # Anchor both columns to the report's local zone (carried on the Gittan
+    # session timestamps), not the machine's, so times and the hour window
+    # line up regardless of where the renderer runs.
+    target_tz = sessions[0]["start"].tzinfo if sessions else None
+    spans = load_timely(ns.day, tz=target_tz)
     render(ns.day, spans, sessions, ns.mask, ns.from_hour, ns.to_hour)
 
 

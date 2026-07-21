@@ -52,7 +52,7 @@ def build_collector_specs(
 ) -> List[CollectorSpec]:
     chrome_enabled = getattr(args, "chrome_source", "on") == "on"
     mail_mode = getattr(args, "mail_source", "auto")
-    mail_enabled = mail_mode in {"on", "auto"}
+    mail_enabled = mail_mode == "on" or (mail_mode == "auto" and mail_root is not None)
     gh_enabled, gh_reason = github_source_enabled(args)
     toggl_enabled, toggl_reason = toggl_source_enabled(args)
     calendar_enabled = getattr(args, "calendar_source", "off") == "on"
@@ -108,7 +108,7 @@ def build_collector_specs(
             "mail",
             enabled=mail_enabled,
             reason="Consent/source setting disabled"
-            if not mail_enabled
+            if mail_mode == "off"
             else (None if mail_root is not None else mail_msg),
         ),
         CollectorSpec(

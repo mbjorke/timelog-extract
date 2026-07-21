@@ -9,3 +9,7 @@
 ## 2026-07-17 - Finish the PR after review comments are addressed
 **Learning:** Palette kept opening new PRs for the same `sources` UX brief (#375–#387) instead of finishing the open one. Jules often has **no `gh` CLI** — merge via the GitHub UI (Squash and merge) if available; otherwise comment that the PR is ready to merge and stop. Leaving it open without a hand-off invites tomorrow’s duplicate; a stale tip squash-merged as #387 deleted unrelated `main` work.
 **Action:** Follow `docs/contributing/jules-standing-instructions.md` §5: fix review threads on the existing PR, sync with `main`, then merge in the GitHub UI **or** post a ready-to-merge comment. Do not open another Palette PR for the same outcome. Never land a tip that deletes files already on `main`.
+
+## 2026-07-19 - Demoting expected-absence warnings in passive collectors
+**Learning:** Hard-coded warning diagnostics from passive context collectors (like Apple Mail) on expected-absence systems (e.g., Linux or macOS without Mail) produce unnecessary clutter on every command run. When a source's mode is set to "auto" (default), missing dependencies or directories should quietly disable the source rather than issuing a warning alert.
+**Action:** Changed Apple Mail collector registration to only enable the collector if `mail_source` is explicitly `"on"`, or if `mail_source` is `"auto"` and `mail_root` exists. This prevents expected-absence warning diagnostics from printing to stderr during routine command execution while still alerting when explicitly requested.

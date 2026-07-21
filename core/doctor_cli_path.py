@@ -73,9 +73,11 @@ def add_cli_path_rows(table: Table, *, home: Path) -> bool:
     """Warn when gittan exists but user script dirs are not on PATH."""
     path_exe = shutil.which("gittan")
     running = _running_gittan()
-    if running:
-        # Report the install that is actually executing, not whatever PATH
-        # resolves first — under a venv those differ and PATH is misleading.
+    if running and path_exe:
+        # gittan is genuinely on PATH; report the install that is actually
+        # executing (venv vs PATH can differ) and note when PATH resolves
+        # elsewhere. If path_exe is None, gittan runs but is NOT on PATH, so
+        # fall through to the warning + ensurepath/user-bin hints below.
         detail = f"[{STYLE_MUTED}]{running}[/{STYLE_MUTED}]"
         if path_exe and not _same_file(Path(path_exe), running):
             detail += (

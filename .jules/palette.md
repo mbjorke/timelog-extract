@@ -29,3 +29,7 @@
 ## 2026-07-21 - Standardizing `evidence-check` Output with Theme Tokens and Icon Redundancy
 **Learning:** Diagnostic checks like `evidence-check` can drift into plain, unstyled terminal text or hardcoded `[yellow]` or `[green]` strings that violate visual consistency with the official theme. Incorporating semantic Rich tags, standard theme tokens, and icon redundancy elevates trustworthiness and scannability.
 **Action:** Refactored the output of `gittan evidence-check` to leverage standard tokens (`STYLE_LABEL`, `STYLE_MUTED`, `CLR_VALUE_ORANGE`, `CLR_GREEN`), added `WARN_ICON`/`OK_ICON` redundancy to warnings and status messages, and used standard `[/]` closing tags to ensure reliable Rich parsing.
+
+## 2026-07-22 - Standardizing `reported` CLI Output and Empty States
+**Learning:** Legacy commands often output plain unstyled text, which breaks terminal cohesive aesthetic and scannability. Applying standardized Rich table semantics (`box.ROUNDED`, `STYLE_BORDER`, and specific column styling) along with standardized orange headline (`CLR_VALUE_ORANGE`) and muted (`STYLE_MUTED`) instruction next-steps for empty states preserves user flow, actionability, and visual consistency across the entire CLI app.
+**Action:** Redesigned the output of `gittan reported list` and empty states for both `reported list` and `reported review` in `core/cli_reported.py` with the official styling guidelines. Added a test suite `ReportedUXFormattingTests` in `tests/test_cli_reported.py` to prevent regressions.

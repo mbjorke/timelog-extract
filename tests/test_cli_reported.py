@@ -214,5 +214,43 @@ class SyncCommandTests(unittest.TestCase):
             self.assertIn("Auto-reported 1", result.output)
 
 
+class ReportedUXFormattingTests(unittest.TestCase):
+    def test_list_empty_state(self):
+        import re
+        tmp, store = _temp_store()
+        with tmp, store:
+            result = CliRunner().invoke(app, ["reported", "list"])
+            self.assertEqual(result.exit_code, 0)
+            normalized_output = re.sub(r"\s+", " ", result.output).strip()
+            self.assertIn("No confirmed reported time yet.", normalized_output)
+            self.assertIn("Next: use `gittan reported review` or `gittan reported add` to record reported time.", normalized_output)
+
+    def test_list_table_rendering(self):
+        tmp, store = _temp_store()
+        with tmp, store:
+            rt.append_record(rt.ReportedTimeRecord(
+                date="2026-06-18", project="Alpha-Project", hours=3.5, source="session", state="confirmed", origin_ref=["ref"]
+            ))
+            result = CliRunner().invoke(app, ["reported", "list"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Confirmed Reported Time", result.output)
+            self.assertIn("Date", result.output)
+            self.assertIn("Project", result.output)
+            self.assertIn("Hours", result.output)
+            self.assertIn("2026-06-18", result.output)
+            self.assertIn("Alpha-Project", result.output)
+            self.assertIn("3.50h", result.output)
+
+    def test_review_empty_state(self):
+        tmp, store = _temp_store()
+        with tmp, store, patch("core.report_service.run_timelog_report", return_value=SimpleNamespace()), patch(
+            "core.cli_reported.build_reported_proposals", return_value=[]
+        ):
+            result = CliRunner().invoke(app, ["reported", "review", "--today"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("No observed time to review for this period.", result.output)
+            self.assertIn("Next: run `gittan doctor` or try with a wider date range.", result.output)
+
+
 if __name__ == "__main__":
     unittest.main()

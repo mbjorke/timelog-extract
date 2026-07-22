@@ -32,19 +32,18 @@ def _fake_row():
 
 
 class NonTtyGuardTests(unittest.TestCase):
-    def test_interactive_review_on_non_tty_exits_cleanly(self):
+    def test_interactive_review_on_non_tty_exits_before_heavy_work(self):
         from core import cli_url_mapping
 
-        # A prompt call would mean the guard failed to fire.
-        def _boom(*_a, **_k):
-            raise AssertionError("questionary must not be reached without a TTY")
+        # The candidate load runs a report; a non-TTY interactive run must bail
+        # before it (performance) and never reach the load or a prompt.
+        def _must_not_run(*_a, **_k):
+            raise AssertionError("candidate load / prompt must not run without a TTY")
 
         out = io.StringIO()
-        with mock.patch.object(cli_url_mapping, "load_triage_map_candidates", return_value=[_fake_row()]), \
-             mock.patch.object(cli_url_mapping, "load_triage_profiles", return_value=[]), \
-             mock.patch.object(cli_url_mapping.sys.stdin, "isatty", return_value=False), \
-             mock.patch.object(cli_url_mapping.questionary, "select", _boom), \
-             mock.patch.object(cli_url_mapping.questionary, "confirm", _boom):
+        with mock.patch.object(cli_url_mapping, "should_prompt", return_value=False), \
+             mock.patch.object(cli_url_mapping, "load_triage_map_candidates", _must_not_run), \
+             mock.patch.object(cli_url_mapping.questionary, "select", _must_not_run):
             with redirect_stdout(out):
                 with self.assertRaises(typer.Exit) as ctx:
                     cli_url_mapping.run_url_mapping_review(last_week=True, json_out=False)
@@ -56,8 +55,9 @@ class NonTtyGuardTests(unittest.TestCase):
         from core import cli_url_mapping
 
         out = io.StringIO()
-        with mock.patch.object(cli_url_mapping, "load_triage_map_candidates", return_value=[_fake_row()]), \
-             mock.patch.object(cli_url_mapping.sys.stdin, "isatty", return_value=False):
+        # Even with no interactive terminal, --json must produce a plan.
+        with mock.patch.object(cli_url_mapping, "should_prompt", return_value=False), \
+             mock.patch.object(cli_url_mapping, "load_triage_map_candidates", return_value=[_fake_row()]):
             with redirect_stdout(out):
                 with self.assertRaises(typer.Exit) as ctx:
                     cli_url_mapping.run_url_mapping_review(last_week=True, json_out=True)

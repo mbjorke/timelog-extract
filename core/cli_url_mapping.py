@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -15,6 +14,7 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from core.anchor_nudge import should_prompt
 from core.cli_date_range import resolve_date_window
 from core.cli_triage import load_triage_profiles
 from core.cli_triage_apply import apply_triage_decisions_payload
@@ -124,6 +124,18 @@ def run_url_mapping_review(
         fallback_recent_days=7,
     )
     resolved_projects_config = str(Path(projects_config).expanduser()) if projects_config else str(resolve_projects_config_path())
+
+    # Interactive mapping needs a real terminal for the questionary prompts.
+    # Check before the expensive candidate load (which runs a report), and use
+    # the repo's shared gate (stdin AND stdout, exception-safe) so a redirected
+    # stdout or a closed fd exits cleanly instead of crashing mid-prompt.
+    if not json_out and not should_prompt():
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]`gittan review` needs an interactive terminal to map URLs. "
+            f"Use [bold]gittan review --json[/bold] for a machine-readable plan.[/{CLR_VALUE_ORANGE}]"
+        )
+        raise typer.Exit(code=1)
+
     rows = load_triage_map_candidates(
         date_from=date_from_s,
         date_to=date_to_s,
@@ -142,15 +154,6 @@ def run_url_mapping_review(
         )
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
-
-    # Interactive mapping needs a real terminal for the questionary prompts;
-    # without one, exit cleanly instead of crashing with a raw traceback.
-    if not sys.stdin.isatty():
-        console.print(
-            f"[{CLR_VALUE_ORANGE}]`gittan review` needs an interactive terminal to map URLs. "
-            f"Use [bold]gittan review --json[/bold] for a machine-readable plan.[/{CLR_VALUE_ORANGE}]"
-        )
-        raise typer.Exit(code=1)
 
     profiles = load_triage_profiles(resolved_projects_config)
     project_names = sorted({str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()})

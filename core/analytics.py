@@ -32,13 +32,29 @@ def get_date_range(date_from, date_to, local_tz):
 def group_by_day(events, local_tz, exclude_keywords=None):
     excl = [k.lower() for k in (exclude_keywords or [])]
     days = {}
+    last_y = last_m = last_d = -1
+    last_day_iso = ""
+
     for event in events:
-        detail_lower = event.get("detail", "").lower()
-        if excl and any(kw in detail_lower for kw in excl):
-            continue
+        if excl:
+            detail_lower = event.get("detail", "").lower()
+            if any(kw in detail_lower for kw in excl):
+                continue
         local_ts = event["timestamp"].astimezone(local_tz)
-        day = local_ts.date().isoformat()
-        days.setdefault(day, []).append({**event, "local_ts": local_ts})
+
+        # Performance optimization: cache local day ISO string formatting.
+        # Avoids repeated expensive .date().isoformat() calls on datetime.
+        y, m, d = local_ts.year, local_ts.month, local_ts.day
+        if y == last_y and m == last_m and d == last_d:
+            day = last_day_iso
+        else:
+            day = local_ts.date().isoformat()
+            last_y, last_m, last_d = y, m, d
+            last_day_iso = day
+
+        copied = event.copy()
+        copied["local_ts"] = local_ts
+        days.setdefault(day, []).append(copied)
     return days
 
 

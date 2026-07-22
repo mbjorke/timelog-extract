@@ -61,6 +61,9 @@ def load_store_state(events_directory: Path) -> Tuple[set, Dict[str, str]]:
 
     Used for idempotent dedup and to continue each month's hash chain. Missing
     store or unreadable/garbled lines degrade gracefully (skipped, never raise).
+
+    Fingerprints include both the stored value and a *canonical-source* recompute
+    so rename aliases (e.g. Windsurf → Devin Desktop) collide for capture dedup.
     """
     fingerprints: set = set()
     last_hash: Dict[str, str] = {}
@@ -81,6 +84,15 @@ def load_store_state(events_directory: Path) -> Tuple[set, Dict[str, str]]:
                     fp = rec.get("fingerprint")
                     if fp:
                         fingerprints.add(fp)
+                    # Alias-aware key so a later capture under the canonical
+                    # label is treated as the same observation.
+                    canon_fp = compute_evidence_fingerprint(
+                        canonical_source_name(rec.get("source")),
+                        rec.get("observed_at"),
+                        rec.get("detail"),
+                    )
+                    if canon_fp:
+                        fingerprints.add(canon_fp)
                     if rec.get("content_hash"):
                         last = rec["content_hash"]
         except OSError:
@@ -119,7 +131,18 @@ def capture_events(
     by_month_lines: Dict[str, List[str]] = {}
     for rec in records:
         fp = rec.get("fingerprint")
-        if not fp or fp in fingerprints or fp in seen_this_run:
+        canon_fp = compute_evidence_fingerprint(
+            canonical_source_name(rec.get("source")),
+            rec.get("observed_at"),
+            rec.get("detail"),
+        )
+        if (
+            not fp
+            or fp in fingerprints
+            or fp in seen_this_run
+            or canon_fp in fingerprints
+            or canon_fp in seen_this_run
+        ):
             skipped += 1
             continue
         month = _month_key(rec.get("observed_at", ""))
@@ -128,6 +151,9 @@ def capture_events(
         rec["prev_hash"] = last_hash.get(month)
         last_hash[month] = rec["content_hash"]
         seen_this_run.add(fp)
+        seen_this_run.add(canon_fp)
+        fingerprints.add(fp)
+        fingerprints.add(canon_fp)
         by_month_lines.setdefault(month, []).append(
             json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
         )
@@ -305,16 +331,30 @@ def replay_into_events(
     if not ev_dir.is_dir():
         return list(live_events), 0
 
+    # Dedup against live events using *canonical* source names so a stored
+    # legacy "Windsurf" record matches a live "Devin Desktop" observation
+    # instead of being replayed as a duplicate (CodeRabbit on #423).
     live_fps = {
-        compute_evidence_fingerprint(ev.get("source"), ev.get("timestamp"), ev.get("detail"))
+        compute_evidence_fingerprint(
+            canonical_source_name(ev.get("source")),
+            ev.get("timestamp"),
+            ev.get("detail"),
+        )
         for ev in live_events
     }
     window_from = dt_from.astimezone(timezone.utc)
     window_to = dt_to.astimezone(timezone.utc)
     restored: List[Dict[str, Any]] = []
     for _month, rec in read_records(ev_dir):
-        fp = rec.get("fingerprint")
-        if not fp or fp in live_fps:
+        raw_source = rec.get("source", "")
+        canon_source = canonical_source_name(raw_source)
+        stored_fp = rec.get("fingerprint")
+        canon_fp = compute_evidence_fingerprint(
+            canon_source, rec.get("observed_at"), rec.get("detail")
+        )
+        # Match either the stored fingerprint (same-label era) or a
+        # canonical recompute (rename / alias).
+        if (stored_fp and stored_fp in live_fps) or canon_fp in live_fps:
             continue
         try:
             obs_dt = datetime.fromisoformat(str(rec.get("observed_at")))
@@ -324,10 +364,12 @@ def replay_into_events(
             obs_dt = obs_dt.replace(tzinfo=timezone.utc)
         if not (window_from <= obs_dt <= window_to):
             continue
-        live_fps.add(fp)
+        live_fps.add(canon_fp)
+        if stored_fp:
+            live_fps.add(stored_fp)
         restored.append(
             {
-                "source": canonical_source_name(rec.get("source", "")),
+                "source": canon_source,
                 "timestamp": obs_dt,
                 "detail": rec.get("detail", ""),
                 "project": rec.get("project_at_capture", ""),

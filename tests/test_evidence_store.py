@@ -52,6 +52,36 @@ class TestEvidenceStore(unittest.TestCase):
         self.assertEqual(second["skipped"], 2)
         self.assertEqual(len(self._lines("2026-06")), 2)
 
+    def test_alias_source_capture_is_idempotent(self):
+        # Legacy Windsurf already in the store; Devin Desktop must not append again.
+        first = capture_events(
+            [_ev("Windsurf", "2026-06-18T09:00:00+00:00", "same-obs")],
+            base_dir=self.base,
+            captured_at="2026-06-18T10:00:00+00:00",
+        )
+        self.assertEqual(first["appended"], 1)
+        second = capture_events(
+            [_ev("Devin Desktop", "2026-06-18T09:00:00+00:00", "same-obs")],
+            base_dir=self.base,
+            captured_at="2026-06-19T10:00:00+00:00",
+        )
+        self.assertEqual(second["appended"], 0)
+        self.assertEqual(second["skipped"], 1)
+        self.assertEqual(len(self._lines("2026-06")), 1)
+
+    def test_alias_sources_dedupe_within_same_capture(self):
+        result = capture_events(
+            [
+                _ev("Windsurf", "2026-06-18T09:00:00+00:00", "same-obs"),
+                _ev("Devin Desktop", "2026-06-18T09:00:00+00:00", "same-obs"),
+            ],
+            base_dir=self.base,
+            captured_at="2026-06-18T10:00:00+00:00",
+        )
+        self.assertEqual(result["appended"], 1)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(len(self._lines("2026-06")), 1)
+
     def test_no_store_created_for_empty_events(self):
         result = capture_events([], base_dir=self.base)
         self.assertEqual(result["appended"], 0)
@@ -224,6 +254,32 @@ class TestEvidenceReplay(unittest.TestCase):
         events, restored = replay_into_events(live, self.win_from, self.win_to, base_dir=self.base)
         self.assertEqual(restored, 1)  # only stored-b is new
         self.assertEqual(len(events), 2)
+
+    def test_alias_source_does_not_duplicate_live_events(self):
+        # Stored as legacy Windsurf; live collector now emits Devin Desktop.
+        capture_events(
+            [
+                _ev("Windsurf", "2026-03-10T09:10:00+00:00", "legacy-windsurf"),
+            ],
+            base_dir=self.base,
+            captured_at="2026-03-10T10:00:00+00:00",
+        )
+        live = [
+            _ev(
+                "Devin Desktop",
+                datetime(2026, 3, 10, 9, 10, tzinfo=timezone.utc),
+                "legacy-windsurf",
+            ),
+            # Keep setUp Cursor rows from restoring so the count is unambiguous.
+            _ev("Cursor", datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc), "stored-a"),
+            _ev("Cursor", datetime(2026, 3, 10, 9, 5, tzinfo=timezone.utc), "stored-b"),
+        ]
+        events, restored = replay_into_events(live, self.win_from, self.win_to, base_dir=self.base)
+        self.assertEqual(restored, 0)
+        matching = [e for e in events if e.get("detail") == "legacy-windsurf"]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["source"], "Devin Desktop")
+        self.assertFalse(matching[0].get("replayed"))
 
     def test_window_filter_excludes_out_of_range(self):
         events, restored = replay_into_events(

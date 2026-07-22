@@ -105,16 +105,16 @@ class VSCodeCollectorTests(unittest.TestCase):
             self.assertEqual(self._collect(home), [])
 
     def test_skips_app_support_internal_paths(self):
-        # Shared /Users/... extractor stops at whitespace, so use a no-space
-        # internal tree here — the gate under test is _is_internal, not the
-        # macOS "Application Support" path shape.
+        # Real macOS internals include a space ("Application Support"). The shared
+        # /Users/... extractor truncates there; line-level internal matching must
+        # still drop the event (regression for PR #422 / kanin finding).
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             logs = home / "logs"
             logs.mkdir(parents=True)
             (logs / "main.log").write_text(
-                "2026-05-28 09:13:30.000 [info] wrote cache "
-                "/Users/me/Library/Caches/Code/CachedData/abc\n",
+                "2026-05-28 09:13:30.000 [info] wrote settings "
+                "/Users/me/Library/Application Support/Code/User/settings.json\n",
                 encoding="utf-8",
             )
             out = collect_fork_logs(
@@ -128,7 +128,7 @@ class VSCodeCollectorTests(unittest.TestCase):
                 source_name=SOURCE_NAME,
                 base_dirs=[home],
                 noise_fn=_VSCODE_NOISE,
-                internal_paths=["/Users/me/Library/Caches/Code"],
+                internal_paths=["/Users/me/Library/Application Support/Code"],
             )
             self.assertEqual(out, [])
 

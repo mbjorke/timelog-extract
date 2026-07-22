@@ -17,6 +17,14 @@ from core.cli_url_mapping import run_url_mapping_review
 from core.config import default_projects_config_option, resolve_projects_config_path
 from core.evidence_diagnostics import build_evidence_snapshot, build_evidence_warnings
 from core.onboarding_guidance import finish_review_guidance
+from outputs.terminal_theme import (
+    CLR_GREEN,
+    CLR_VALUE_ORANGE,
+    OK_ICON,
+    STYLE_LABEL,
+    STYLE_MUTED,
+    WARN_ICON,
+)
 
 
 @app.command()
@@ -201,34 +209,34 @@ def evidence_check(
     home = Path.home()
     snapshot = build_evidence_snapshot(report, home=home)
     warnings = build_evidence_warnings(snapshot, home=home)
-    console.print("[bold]Evidence check[/bold]")
-    console.print(f"- Observed timeline hours: {snapshot['observed_hours']:.1f}h")
-    console.print(f"- Screen Time hours: {snapshot['screen_time_hours']:.1f}h")
-    console.print(f"- Delta (Screen Time - observed): {snapshot['delta_hours']:+.1f}h")
+    console.print(f"[bold {STYLE_LABEL}]Evidence check[/]")
+    console.print(f"[{STYLE_MUTED}]- Observed timeline hours: [/][bold {CLR_VALUE_ORANGE}]{snapshot['observed_hours']:.1f}h[/]")
+    console.print(f"[{STYLE_MUTED}]- Screen Time hours: [/][bold {CLR_VALUE_ORANGE}]{snapshot['screen_time_hours']:.1f}h[/]")
+    console.print(f"[{STYLE_MUTED}]- Delta (Screen Time - observed): [/][bold {CLR_VALUE_ORANGE}]{snapshot['delta_hours']:+.1f}h[/]")
     source_counts = snapshot["source_counts"]
     if source_counts:
-        console.print("- Source counts (report-included evidence):")
+        console.print(f"[{STYLE_LABEL}]- Source counts (report-included evidence):[/]")
         for source, count in sorted(source_counts.items(), key=lambda item: (-item[1], item[0])):
-            console.print(f"  - {source}: {count}")
+            console.print(f"  [{STYLE_MUTED}]- {source}: {count}[/]")
     collected_but_excluded = snapshot.get("collected_but_excluded") or {}
     if collected_but_excluded:
-        console.print("- Collected but fully excluded (all rows uncategorized):")
+        console.print(f"[{STYLE_LABEL}]- Collected but fully excluded (all rows uncategorized):[/]")
         for source, count in sorted(collected_but_excluded.items(), key=lambda item: (-item[1], item[0])):
-            console.print(f"  - {source}: {count} (run `gittan review` to map URLs, or `gittan map` for anchors)")
+            console.print(f"  [{STYLE_MUTED}]- {source}: {count} (run `gittan review` to map URLs, or `gittan map` for anchors)[/]")
     silent_ai = snapshot.get("silent_ai_sources") or []
     if silent_ai:
         console.print(
-            f"- AI sources with no local evidence in this window: {', '.join(silent_ai)}"
+            f"[{STYLE_MUTED}]- AI sources with no local evidence in this window: {', '.join(silent_ai)}[/]"
         )
     excluded = int(snapshot.get("excluded_uncategorized_events") or 0)
     if excluded:
         console.print(
-            f"- Excluded uncategorized rows: {excluded} "
-            "(same filter as default `gittan report`; use `--include-uncategorized` on report to audit)"
+            f"[{STYLE_MUTED}]- Excluded uncategorized rows: {excluded} "
+            "(same filter as default `gittan report`; use `--include-uncategorized` on report to audit)[/]"
         )
     if warnings:
-        console.print("[yellow]Warnings[/yellow]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Warnings[/]")
         for warning in warnings:
-            console.print(f"- {warning}")
+            console.print(f"[{STYLE_MUTED}]- {warning}[/]")
     else:
-        console.print("[green]No major evidence gaps detected.[/green]")
+        console.print(f"{OK_ICON} [{CLR_GREEN}]No major evidence gaps detected.[/]")

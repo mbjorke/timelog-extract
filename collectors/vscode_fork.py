@@ -114,7 +114,8 @@ def parse_fork_log_ts(line: str, local_tz):
     m = _TS_PATTERN.match(line)
     if m:
         try:
-            return datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=local_tz)
+            # fromisoformat accepts space separators and is ~30x faster than strptime.
+            return datetime.fromisoformat(m.group(1)).replace(tzinfo=local_tz)
         except ValueError:
             return None
     m = _TS_ISO_BRACKET_PATTERN.match(line)

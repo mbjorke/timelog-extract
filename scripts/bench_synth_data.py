@@ -205,7 +205,8 @@ def generate(
 
     events: list[dict] = []
     day_counts = _day_event_counts(events_target, days)
-    revisit_pool: list[tuple[str, str]] = []  # (source, detail) for repeated browser titles
+    # (source, detail, expected_project) for repeated browser titles
+    revisit_pool: list[tuple[str, str, str | None]] = []
 
     for d, events_for_day in enumerate(day_counts):
         day_start = day0 + timedelta(days=d)
@@ -226,13 +227,31 @@ def generate(
                     prof = rng.choice(block_projects)
                 source = rng.choice(SOURCES_AI if rng.random() < 0.55 else SOURCES_PASSIVE)
                 if source == "Chrome" and revisit_pool and rng.random() < 0.25:
-                    src, detail = rng.choice(revisit_pool)
-                    events.append({"source": src, "timestamp": ts.isoformat(), "detail": detail})
+                    src, detail, expected = rng.choice(revisit_pool)
+                    events.append(
+                        {
+                            "source": src,
+                            "timestamp": ts.isoformat(),
+                            "detail": detail,
+                            "expected_project": expected,
+                        }
+                    )
                     continue
                 detail = make_detail(source, prof, rng)
+                # Ground truth: the profile the detail was built from, or None
+                # for noise. Lets a scorer measure classification accuracy
+                # instead of only timing the hot path.
+                expected = prof["name"] if prof else None
                 if source == "Chrome":
-                    revisit_pool.append((source, detail))
-                events.append({"source": source, "timestamp": ts.isoformat(), "detail": detail})
+                    revisit_pool.append((source, detail, expected))
+                events.append(
+                    {
+                        "source": source,
+                        "timestamp": ts.isoformat(),
+                        "detail": detail,
+                        "expected_project": expected,
+                    }
+                )
             cursor_h += block_len_min / 60.0 + rng.random() * 2 + 0.5
 
     events.sort(key=lambda e: e["timestamp"])
@@ -269,6 +288,11 @@ def main() -> None:
         help="IANA timezone for timestamps (default: UTC)",
     )
     ap.add_argument("--out", default="private/bench/synth_events.json")
+    ap.add_argument(
+        "--emit-config",
+        metavar="PATH",
+        help="Also write the generated profiles as a usable timelog_projects.json.",
+    )
     ns = ap.parse_args()
 
     data = generate(
@@ -283,6 +307,21 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data, ensure_ascii=False, indent=1))
     print(f"wrote {len(data['events'])} events / {ns.projects} profiles → {out}")
+
+    if ns.emit_config:
+        cfg_path = Path(ns.emit_config)
+        if cfg_path.exists():
+            raise SystemExit(
+                f"refusing to overwrite existing config: {cfg_path}\n"
+                "Point --emit-config at a new path (project config is critical local data)."
+            )
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        emit_profiles = [{**p, "project_id": p["name"]} for p in data["profiles"]]
+        cfg_path.write_text(
+            json.dumps({"projects": emit_profiles}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"wrote {len(data['profiles'])} profiles → {cfg_path}")
 
 
 if __name__ == "__main__":

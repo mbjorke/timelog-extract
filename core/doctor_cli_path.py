@@ -50,11 +50,52 @@ def _dir_on_path(bin_dir: Path) -> bool:
     return False
 
 
+def _running_gittan() -> Path | None:
+    """Return the gittan script next to the running interpreter, if present."""
+    if not sys.executable:
+        return None
+    # Deliberately not resolved: a venv's python is a symlink to the base
+    # interpreter, and resolving it would look for the script in the base
+    # install's bin instead of the venv's.
+    try:
+        bindir = Path(sys.executable).parent
+    except (OSError, RuntimeError, ValueError):
+        return None
+    # Windows installs the launcher as gittan.exe, POSIX as a bare script.
+    names = ("gittan.exe", "gittan") if sys.platform == "win32" else ("gittan",)
+    for name in names:
+        candidate = bindir / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _same_file(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve()
+    except OSError:
+        return False
+
+
 def add_cli_path_rows(table: Table, *, home: Path) -> bool:
     """Warn when gittan exists but user script dirs are not on PATH."""
-    gittan_exe = shutil.which("gittan")
-    if gittan_exe:
-        table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{gittan_exe}[/{STYLE_MUTED}]")
+    path_exe = shutil.which("gittan")
+    running = _running_gittan()
+    if running and path_exe:
+        # gittan is genuinely on PATH; report the install that is actually
+        # executing (venv vs PATH can differ) and note when PATH resolves
+        # elsewhere. If path_exe is None, gittan runs but is NOT on PATH, so
+        # fall through to the warning + ensurepath/user-bin hints below.
+        detail = f"[{STYLE_MUTED}]{running}[/{STYLE_MUTED}]"
+        if path_exe and not _same_file(Path(path_exe), running):
+            detail += (
+                f"\n[{STYLE_MUTED}]Note: [bold]gittan[/bold] on PATH resolves elsewhere "
+                f"({path_exe}) — a plain [bold]gittan[/bold] runs that one instead.[/{STYLE_MUTED}]"
+            )
+        table.add_row("CLI (gittan on PATH)", OK_ICON, detail)
+        return True
+    if path_exe:
+        table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{path_exe}[/{STYLE_MUTED}]")
         return True
     if sys.platform == "win32":
         table.add_row(

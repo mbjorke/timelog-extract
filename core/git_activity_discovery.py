@@ -20,7 +20,8 @@ def _parse_cursor_log_ts(line: str, local_tz: Any) -> datetime | None:
     match = _TS_PATTERN.match(line)
     if match:
         try:
-            return datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=local_tz)
+            # fromisoformat accepts space separators and is ~30x faster than strptime.
+            return datetime.fromisoformat(match.group(1)).replace(tzinfo=local_tz)
         except ValueError:
             return None
     match = _TS_ISO_BRACKET_PATTERN.match(line)

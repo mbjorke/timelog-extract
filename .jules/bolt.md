@@ -21,3 +21,7 @@
 ## 2026-07-19 - [Optimize Log Timestamp Parsing via fromisoformat]
 **Learning:** Parsing timestamps from massive IDE diagnostic and always-local logs is highly frequent in Gittan's collectors. Using `datetime.strptime` on every line is a significant CPU bottleneck. Switching to `datetime.fromisoformat` after slicing to 26 characters (to handle space separators and cap at microseconds) yields a ~4.4x to 6.0x speedup for parsing log timestamps.
 **Action:** Prefer `datetime.fromisoformat` over `datetime.strptime` for parsing ISO-like log timestamps in performance-sensitive I/O loops. Slice timezone-naive/millisecond strings to at most 26 characters to safely handle microsecond limits.
+
+## 2026-07-21 - [Optimize Date and Timestamp Parsing in Core & git_activity_discovery]
+**Learning:** Parsing simple ISO dates (like `YYYY-MM-DD` and `YYYY-MM-DD HH:MM:SS`) in hot paths (such as `core/analytics.py` date-range setup and `core/git_activity_discovery.py` Cursor log scanning) was using `datetime.strptime`, which parses strings via expensive regex and locale compilation. Switching to `datetime.fromisoformat` provides a ~32.7x to 37.1x micro-benchmark speedup, and decreases hotpath report compilation times noticeably.
+**Action:** Always prefer `datetime.fromisoformat` over `datetime.strptime` for standard ISO-8601 date and time parsing across core utilities and collectors alike.

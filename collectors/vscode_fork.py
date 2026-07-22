@@ -83,11 +83,13 @@ def enrich_ide_collector_versions(
     """Attach local install version metadata to IDE collector_status entries."""
     from collectors.antigravity import antigravity_base_dir
     from collectors.cursor import cursor_base_dir
+    from collectors.vscode import vscode_base_dirs
     from collectors.windsurf import windsurf_base_dirs
 
     ide_base_dirs = {
         "Cursor": [cursor_base_dir(home)],
         "Windsurf": windsurf_base_dirs(home),
+        "VS Code": vscode_base_dirs(home),
         "Antigravity": [antigravity_base_dir(home)],
     }
     for name, base_dirs in ide_base_dirs.items():
@@ -217,6 +219,12 @@ def collect_fork_logs(
             return True
         return any(path.startswith(marker) for marker in internals)
 
+    def _line_mentions_internal(line: str) -> bool:
+        # Full markers (incl. spaces in "Application Support") must be checked
+        # on the raw line — /Users/... extraction stops at whitespace and would
+        # otherwise attribute a truncated "/Users/.../Library/Application".
+        return any(marker in line for marker in internals)
+
     results = []
     for base_dir in base_dirs:
         logs_dir = base_dir / "logs"
@@ -237,10 +245,12 @@ def collect_fork_logs(
                         if m_id and workspace_map:
                             workspace_path = workspace_map.get(m_id.group(1))
                         if not workspace_path:
+                            if _line_mentions_internal(line):
+                                continue
                             m_path = _WORKSPACE_PATH_PATTERN.search(line)
                             if m_path and not _is_internal(m_path.group(1)):
                                 workspace_path = m_path.group(1)
-                        if not workspace_path:
+                        if not workspace_path or _is_internal(workspace_path):
                             continue
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name

@@ -19,6 +19,7 @@
 - Cursor logs + Cursor checkpoints
 - Antigravity (Google Antigravity IDE) logs
 - Windsurf (Codeium/Cognition IDE) logs
+- VS Code (stock `Code` / `Code - Insiders`) logs
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
 

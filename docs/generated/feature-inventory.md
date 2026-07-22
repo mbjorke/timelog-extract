@@ -10,7 +10,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | --- | --- |
 | Commands | 26 |
 | Command groups | 2 |
-| Collectors | 21 |
+| Collectors | 22 |
 | Per-project config fields | 18 |
 
 ## Commands
@@ -69,6 +69,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Lovable (desktop) | visits | (no spec) |
 | TIMELOG.md | timestamps | (no spec) |
 | Toggl | events | (no spec) |
+| VS Code | events | (no spec) |
 | Windsurf | events | (no spec) |
 | Zed | events | (no spec) |
 

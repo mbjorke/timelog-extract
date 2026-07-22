@@ -22,6 +22,7 @@ from collectors import (
     mail as mail_collector,
     timelog as timelog_collector,
     toggl as toggl_collector,
+    vscode as vscode_collector,
     windsurf as windsurf_collector,
     zed as zed_collector,
 )
@@ -371,6 +372,7 @@ def collect_runtime_events(
         cursor_collector=cursor_collector,
         antigravity_collector=antigravity_collector,
         windsurf_collector=windsurf_collector,
+        vscode_collector=vscode_collector,
         mail_collector=mail_collector,
         timelog_collector=timelog_collector,
         github_collector=github_collector,
@@ -401,6 +403,7 @@ def collect_runtime_events(
         collect_cursor=runtime_collectors.collect_cursor,
         collect_antigravity=runtime_collectors.collect_antigravity,
         collect_windsurf=runtime_collectors.collect_windsurf,
+        collect_vscode=runtime_collectors.collect_vscode,
         collect_cursor_checkpoints=runtime_collectors.collect_cursor_checkpoints,
         collect_codex_ide=runtime_collectors.collect_codex_ide,
         collect_apple_mail=runtime_collectors.collect_apple_mail,

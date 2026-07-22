@@ -28,6 +28,7 @@ class RuntimeCollectors:
         cursor_collector,
         antigravity_collector,
         windsurf_collector,
+        vscode_collector,
         mail_collector,
         timelog_collector,
         github_collector,
@@ -51,6 +52,7 @@ class RuntimeCollectors:
         self.cursor = cursor_collector
         self.antigravity = antigravity_collector
         self.windsurf = windsurf_collector
+        self.vscode = vscode_collector
         self.mail = mail_collector
         self.timelog = timelog_collector
         self.github = github_collector
@@ -232,6 +234,18 @@ class RuntimeCollectors:
 
     def collect_windsurf(self, profiles, dt_from, dt_to):
         return self.windsurf.collect_windsurf(
+            profiles,
+            dt_from,
+            dt_to,
+            self.home,
+            self.local_tz,
+            self.classify_project,
+            self.make_event,
+            noise_profile=self._noise_profile(),
+        )
+
+    def collect_vscode(self, profiles, dt_from, dt_to):
+        return self.vscode.collect_vscode(
             profiles,
             dt_from,
             dt_to,

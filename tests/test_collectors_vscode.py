@@ -104,6 +104,22 @@ class VSCodeCollectorTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_skips_run_in_terminal_tool_cwd_noise(self):
+        # Stock VS Code terminal.log attributes cwd via RunInTerminalTool; that
+        # is analyzer plumbing, not editing evidence (manual test on #422).
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "terminal.log",
+                [
+                    "2026-05-28 09:11:00.000 [info] "
+                    "RunInTerminalTool#CommandLineFileWriteAnalyzer: Detected cwd "
+                    '["file:///Users/me/Workspace/Project/project-alpha"]'
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
     def test_skips_app_support_internal_paths(self):
         # Real macOS internals include a space ("Application Support"). The shared
         # /Users/... extractor truncates there; line-level internal matching must

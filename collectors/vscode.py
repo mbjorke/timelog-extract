@@ -39,6 +39,11 @@ _VSCODE_NOISE = make_noise_filter(
         "unable to resolve your shell environment",
         "ptyhost was unable to resolve shell",
         "[stderr]",
+        # Copilot / agent terminal-tool analyzers — they log cwd as file://…
+        # and look like project work, but are IDE plumbing (not editing).
+        "runinterminaltool",
+        "commandlinefilewriteanalyzer",
+        "commandlineautoapproveanalyzer",
     ),
     ultra_strict=(
         # Prefer tagged/phrased signatures over lone tokens like "telemetry"

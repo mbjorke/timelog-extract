@@ -52,6 +52,36 @@ class TestEvidenceStore(unittest.TestCase):
         self.assertEqual(second["skipped"], 2)
         self.assertEqual(len(self._lines("2026-06")), 2)
 
+    def test_alias_source_capture_is_idempotent(self):
+        # Legacy Windsurf already in the store; Devin Desktop must not append again.
+        first = capture_events(
+            [_ev("Windsurf", "2026-06-18T09:00:00+00:00", "same-obs")],
+            base_dir=self.base,
+            captured_at="2026-06-18T10:00:00+00:00",
+        )
+        self.assertEqual(first["appended"], 1)
+        second = capture_events(
+            [_ev("Devin Desktop", "2026-06-18T09:00:00+00:00", "same-obs")],
+            base_dir=self.base,
+            captured_at="2026-06-19T10:00:00+00:00",
+        )
+        self.assertEqual(second["appended"], 0)
+        self.assertEqual(second["skipped"], 1)
+        self.assertEqual(len(self._lines("2026-06")), 1)
+
+    def test_alias_sources_dedupe_within_same_capture(self):
+        result = capture_events(
+            [
+                _ev("Windsurf", "2026-06-18T09:00:00+00:00", "same-obs"),
+                _ev("Devin Desktop", "2026-06-18T09:00:00+00:00", "same-obs"),
+            ],
+            base_dir=self.base,
+            captured_at="2026-06-18T10:00:00+00:00",
+        )
+        self.assertEqual(result["appended"], 1)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(len(self._lines("2026-06")), 1)
+
     def test_no_store_created_for_empty_events(self):
         result = capture_events([], base_dir=self.base)
         self.assertEqual(result["appended"], 0)

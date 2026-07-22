@@ -61,6 +61,9 @@ def load_store_state(events_directory: Path) -> Tuple[set, Dict[str, str]]:
 
     Used for idempotent dedup and to continue each month's hash chain. Missing
     store or unreadable/garbled lines degrade gracefully (skipped, never raise).
+
+    Fingerprints include both the stored value and a *canonical-source* recompute
+    so rename aliases (e.g. Windsurf → Devin Desktop) collide for capture dedup.
     """
     fingerprints: set = set()
     last_hash: Dict[str, str] = {}
@@ -81,6 +84,15 @@ def load_store_state(events_directory: Path) -> Tuple[set, Dict[str, str]]:
                     fp = rec.get("fingerprint")
                     if fp:
                         fingerprints.add(fp)
+                    # Alias-aware key so a later capture under the canonical
+                    # label is treated as the same observation.
+                    canon_fp = compute_evidence_fingerprint(
+                        canonical_source_name(rec.get("source")),
+                        rec.get("observed_at"),
+                        rec.get("detail"),
+                    )
+                    if canon_fp:
+                        fingerprints.add(canon_fp)
                     if rec.get("content_hash"):
                         last = rec["content_hash"]
         except OSError:
@@ -119,7 +131,18 @@ def capture_events(
     by_month_lines: Dict[str, List[str]] = {}
     for rec in records:
         fp = rec.get("fingerprint")
-        if not fp or fp in fingerprints or fp in seen_this_run:
+        canon_fp = compute_evidence_fingerprint(
+            canonical_source_name(rec.get("source")),
+            rec.get("observed_at"),
+            rec.get("detail"),
+        )
+        if (
+            not fp
+            or fp in fingerprints
+            or fp in seen_this_run
+            or canon_fp in fingerprints
+            or canon_fp in seen_this_run
+        ):
             skipped += 1
             continue
         month = _month_key(rec.get("observed_at", ""))
@@ -128,6 +151,9 @@ def capture_events(
         rec["prev_hash"] = last_hash.get(month)
         last_hash[month] = rec["content_hash"]
         seen_this_run.add(fp)
+        seen_this_run.add(canon_fp)
+        fingerprints.add(fp)
+        fingerprints.add(canon_fp)
         by_month_lines.setdefault(month, []).append(
             json.dumps(rec, ensure_ascii=False, separators=(",", ":"))
         )

@@ -1,18 +1,20 @@
 """Collector for stock Visual Studio Code activity.
 
-Reads the same VS Code log layout as the forks, under macOS application support:
+Reads macOS application-support data for:
 
 - ``Code`` — stable channel
 - ``Code - Insiders`` — Insiders channel
 
-Parsing/attribution lives in ``collectors.vscode_fork``; this module supplies
-base dirs, noise markers, and the display source name **VS Code**.
+Evidence comes from (1) the shared VS Code-fork log scrape and (2) workspace
+``chatSessions`` (Copilot / VS Code chat requests) — stock Code logs alone are
+thin compared with Cursor's proprietary extension logging.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from collectors.vscode_chat import collect_vscode_chat_sessions
 from collectors.vscode_fork import collect_fork_logs, make_noise_filter
 
 SOURCE_NAME = "VS Code"
@@ -75,9 +77,9 @@ def collect_vscode(
     make_event,
     noise_profile: str = "strict",
 ):
-    """Scrape stock VS Code logs into project-attributed events."""
+    """Scrape stock VS Code logs and workspace chat sessions into events."""
     base_dirs = vscode_base_dirs(home)
-    return collect_fork_logs(
+    events = collect_fork_logs(
         profiles,
         dt_from,
         dt_to,
@@ -91,3 +93,15 @@ def collect_vscode(
         internal_paths=[str(base) for base in base_dirs],
         noise_profile=noise_profile,
     )
+    events.extend(
+        collect_vscode_chat_sessions(
+            profiles,
+            dt_from,
+            dt_to,
+            home,
+            local_tz,
+            classify_project,
+            make_event,
+        )
+    )
+    return events

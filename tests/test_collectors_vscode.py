@@ -162,6 +162,43 @@ class VSCodeCollectorTests(unittest.TestCase):
             out = self._collect(home, noise_profile="ultra-strict")
             self.assertEqual(len(out), 1)
 
+    def test_collects_workspace_chat_session_requests(self):
+        # Stock Code logs are thin; Copilot/VS Code chatSessions carry real work.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "b" * 32
+            folder = "/Users/me/Workspace/Project/project-alpha"
+            self._write_workspace(home, wid, folder)
+            chat_dir = self._base(home) / "User" / "workspaceStorage" / wid / "chatSessions"
+            chat_dir.mkdir(parents=True, exist_ok=True)
+            ts_ms = int(
+                datetime(2026, 5, 28, 9, 30, tzinfo=timezone.utc).timestamp() * 1000
+            )
+            header = {
+                "version": 3,
+                "creationDate": ts_ms - 60_000,
+                "customTitle": "Ship the collector",
+                "sessionId": "sess-1",
+                "requests": [
+                    {
+                        "requestId": "request_1",
+                        "timestamp": ts_ms,
+                        "message": {"text": "SECRET PROMPT MUST NOT APPEAR"},
+                    }
+                ],
+            }
+            (chat_dir / "sess-1.jsonl").write_text(
+                json.dumps({"kind": 0, "v": header}) + "\n",
+                encoding="utf-8",
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Project Alpha")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["source"], "VS Code")
+            self.assertEqual(out[0]["project"], "Project Alpha")
+            self.assertIn("Copilot chat: Ship the collector", out[0]["detail"])
+            self.assertNotIn("SECRET", out[0]["detail"])
+            self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
+
 
 if __name__ == "__main__":
     unittest.main()

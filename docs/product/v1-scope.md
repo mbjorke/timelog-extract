@@ -19,6 +19,7 @@
 - Cursor logs + Cursor checkpoints
 - Antigravity (Google Antigravity IDE) logs
 - Devin Desktop (Cognition; formerly Windsurf) logs — also reads legacy Windsurf dirs
+- VS Code (stock `Code` / `Code - Insiders`) logs
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
 

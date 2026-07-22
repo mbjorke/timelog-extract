@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse, urlunparse
 
-from core.sources import AGENT_SOURCES, ATTENDED_SOURCES
+from core.sources import AGENT_SOURCES, ATTENDED_SOURCES, canonical_source_name
 
 GENERIC_TOOL_TERMS = {
     "cloudflare",
@@ -358,7 +358,7 @@ def classify_attendance(events: list[dict]) -> str:
     has_attended = False
     has_agent = False
     for event in events:
-        source = str(event.get("source") or "")
+        source = canonical_source_name(str(event.get("source") or ""))
         if source in ATTENDED_SOURCES:
             has_attended = True
         elif source in AGENT_SOURCES:

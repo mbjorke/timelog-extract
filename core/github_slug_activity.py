@@ -16,6 +16,7 @@ from core.github_slug_match import (
     profile_for_github_slug,
     split_github_slug,
 )
+from core.sources import canonical_source_name
 
 _SOURCE_WEIGHT: dict[str, int] = {
     "GitHub": 4,
@@ -26,6 +27,7 @@ _SOURCE_WEIGHT: dict[str, int] = {
     "Cursor": 1,
     "Cursor checkpoints": 1,
     "Devin Desktop": 1,
+    "VS Code": 1,
     "Antigravity": 1,
     "Codex IDE": 1,
     "TIMELOG.md": 2,
@@ -73,7 +75,7 @@ def collect_slug_activity_from_events(events: list[dict]) -> Counter[str]:
     counts: Counter[str] = Counter()
     for event in events:
         source = str(event.get("source") or "")
-        weight = _SOURCE_WEIGHT.get(source, 1)
+        weight = _SOURCE_WEIGHT.get(canonical_source_name(source), 1)
         haystack = f"{event.get('detail') or ''} {event.get('project') or ''}"
         for slug in github_slugs_in_text(haystack):
             if is_plausible_github_slug(slug):
@@ -158,7 +160,7 @@ def suggest_project_from_slug_activity(
             if not any(abs(ts - anchor) <= window for anchor in anchor_times):
                 continue
         source = str(event.get("source") or "")
-        weight = _SOURCE_WEIGHT.get(source, 1)
+        weight = _SOURCE_WEIGHT.get(canonical_source_name(source), 1)
         haystack = f"{event.get('detail') or ''} {event.get('project') or ''}"
         for slug in github_slugs_in_text(haystack):
             slug_weights[slug] += weight

@@ -9,7 +9,7 @@ from core.domain import (
     project_billable_raw_hours,
     session_duration_hours,
 )
-from core.sources import AI_SOURCES, GITHUB_SOURCE
+from core.sources import AI_SOURCES, DIRECT_WORK_EVIDENCE, GITHUB_SOURCE, get_source_role
 
 
 def _make_event(source, ts, detail, project):
@@ -41,6 +41,19 @@ class TestAttendanceClassification(unittest.TestCase):
             ),
             _make_event(
                 "Chrome", datetime(2026, 7, 2, 11, 5, tzinfo=timezone.utc), "StackOverflow", "P1"
+            ),
+        ]
+        self.assertEqual(classify_attendance(events), "attended")
+
+    def test_legacy_windsurf_alias_stays_attended_direct_work(self):
+        # Historical shadow-log / replay events still say "Windsurf".
+        self.assertEqual(get_source_role("Windsurf"), DIRECT_WORK_EVIDENCE)
+        events = [
+            _make_event(
+                "Windsurf",
+                datetime(2026, 7, 2, 11, 0, tzinfo=timezone.utc),
+                "Legacy log line",
+                "P1",
             ),
         ]
         self.assertEqual(classify_attendance(events), "attended")

@@ -275,6 +275,7 @@ def add_collector_doctor_rows(
     _row_readable_dir(ctx, "Cursor checkpoints", cursor_checkpoints)
 
     from collectors.antigravity import antigravity_base_dir
+    from collectors.vscode import vscode_base_dirs
     from collectors.windsurf import windsurf_base_dirs
 
     _row_logs_dir(ctx, "Antigravity", antigravity_base_dir(home) / "logs")
@@ -287,6 +288,15 @@ def add_collector_doctor_rows(
         _row(ctx, "Devin Desktop", ctx.warn_icon, "No read access")
     else:
         _row(ctx, "Devin Desktop", ctx.ok_icon, "Logs readable")
+
+    vscode_logs = [base / "logs" for base in vscode_base_dirs(home)]
+    vscode_present = [p for p in vscode_logs if p.exists()]
+    if not vscode_present:
+        _row(ctx, "VS Code", ctx.na_icon, "Not installed")
+    elif not any(os.access(p, os.R_OK) for p in vscode_present):
+        _row(ctx, "VS Code", ctx.warn_icon, "No read access")
+    else:
+        _row(ctx, "VS Code", ctx.ok_icon, "Logs readable")
 
     _add_codex_ide_row(ctx)
 

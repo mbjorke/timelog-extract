@@ -33,6 +33,7 @@ from core.evidence_record import (
     compute_evidence_fingerprint,
     evidence_record_from_event,
 )
+from core.sources import canonical_source_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -326,7 +327,7 @@ def replay_into_events(
         live_fps.add(fp)
         restored.append(
             {
-                "source": rec.get("source", ""),
+                "source": canonical_source_name(rec.get("source", "")),
                 "timestamp": obs_dt,
                 "detail": rec.get("detail", ""),
                 "project": rec.get("project_at_capture", ""),

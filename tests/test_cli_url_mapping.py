@@ -7,19 +7,27 @@ a terminal — it should print a friendly message and exit non-zero.
 from __future__ import annotations
 
 import io
+import json
+import os
+import subprocess
+import sys
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
 import typer
 
 from core.cli_triage_map_candidates import UrlCandidate
 
+ENTRY = Path(__file__).resolve().parent.parent / "timelog_extract.py"
+
 
 def _fake_row():
     return UrlCandidate(
         title="Example",
-        url_key="example.lovableproject.com",
+        url_key="customer-a.test",
         suggested_project="Uncategorized",
         confidence_label="low",
         confidence_score=0.0,
@@ -27,7 +35,7 @@ def _fake_row():
         events=3,
         days=1,
         last_seen="2026-07-21",
-        sample_urls=["https://example.lovableproject.com/"],
+        sample_urls=["https://customer-a.test/"],
     )
 
 
@@ -70,6 +78,33 @@ class NonTtyGuardTests(unittest.TestCase):
         raw = out.getvalue()
         self.assertTrue(raw.lstrip().startswith("{"), f"stdout not pure JSON: {raw[:60]!r}")
         json.loads(raw)
+
+
+class ReviewJsonCliContractTests(unittest.TestCase):
+    """End-to-end: the real `gittan review --json` command, not mocked internals."""
+
+    def test_review_json_stdout_is_pure_json_warnings_on_stderr(self):
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / "timelog_projects.json").write_text(
+                json.dumps({"projects": [{"name": "alpha", "match_terms": ["alpha"]}]}),
+                encoding="utf-8",
+            )
+            env = dict(os.environ)
+            env["GITTAN_HOME"] = str(home)
+            completed = subprocess.run(
+                [sys.executable, str(ENTRY), "review", "--json", "--last-week"],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env=env,
+            )
+
+        self.assertEqual(completed.returncode, 0, msg=completed.stderr or completed.stdout)
+        # stdout is a single JSON object; any collector warnings stay on stderr.
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload.get("command"), "gittan review")
 
 
 if __name__ == "__main__":

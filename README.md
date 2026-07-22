@@ -21,7 +21,7 @@ Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns 
 
 ## Install
 
-You need **Python 3.10+**. The fastest path is the one-line installer — it uses [pipx](https://pypa.github.io/pipx/) under the hood (falling back to `pip install --user` if pipx is missing) so `gittan` lands on your PATH:
+You need **Python 3.10+**. The fastest path is the one-line installer — it uses [pipx](http://web.archive.org/web/20231205060507/https://pypa.github.io/pipx/) under the hood (falling back to `pip install --user` if pipx is missing) so `gittan` lands on your PATH:
 
 ```bash
 curl -fsSL https://gittan.sh/install | bash

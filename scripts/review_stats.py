@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -158,7 +159,17 @@ def cmd_show(args: argparse.Namespace) -> int:
     total = len(rows)
     print(f"Gittan review ledger — {total} reviews ({LEDGER})")
 
-    sev_totals = {s: sum(r.get("findings", {}).get(s, 0) for r in rows) for s in SEVERITIES}
+    sev_totals = {s: 0 for s in SEVERITIES}
+    for i, r in enumerate(rows, 1):
+        f = r.get("findings")
+        if not isinstance(f, dict):
+            print(f"warning: skipping row {i} with invalid findings", file=sys.stderr)
+            continue
+        for s in SEVERITIES:
+            try:
+                sev_totals[s] += int(f.get(s, 0) or 0)
+            except (TypeError, ValueError):
+                print(f"warning: row {i} has non-numeric {s} finding", file=sys.stderr)
     findings = sum(sev_totals.values())
     per_review = findings / total if total else 0
     print(f"findings: {findings} total, {per_review:.2f} per review")
@@ -179,6 +190,14 @@ def cmd_show(args: argparse.Namespace) -> int:
 
 def _parse_iso(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def _percentile(sorted_vals: list[float], q: float) -> float:
+    """Nearest-rank percentile (q in [0,1]); sorted_vals must be ascending."""
+    if not sorted_vals:
+        return 0.0
+    idx = max(0, math.ceil(q * len(sorted_vals)) - 1)
+    return sorted_vals[idx]
 
 
 def cmd_github(args: argparse.Namespace) -> int:
@@ -209,7 +228,7 @@ def cmd_github(args: argparse.Namespace) -> int:
     print(f"GitHub — {n} merged PRs (last {args.limit} scanned)")
     if hours:
         hours.sort()
-        p90 = hours[min(len(hours) - 1, int(0.9 * len(hours)))]
+        p90 = _percentile(hours, 0.9)
         print(f"time-to-merge: median {median(hours):.1f}h, "
               f"p90 {p90:.1f}h, fastest {hours[0]:.1f}h, slowest {hours[-1]:.1f}h")
     print(f"review submissions: {bot_reviews} bot, {human_reviews} human "

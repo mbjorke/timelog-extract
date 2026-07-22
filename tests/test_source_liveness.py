@@ -189,15 +189,15 @@ class DetectSilentSourcesTests(unittest.TestCase):
             self.assertEqual(self._detect(events, home, status), [])
 
     def test_no_family_sibling_active_is_doctor_info_not_report_alarm(self):
-        # Windsurf was active recently but has no sibling log stream: silence
+        # Devin Desktop was active recently but has no sibling log stream: silence
         # just means the app was not used today — no report warning.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             _write_shadow_records(
                 home,
                 [
-                    _shadow_record("Windsurf", "2026-03-08"),
-                    _shadow_record("Windsurf", "2026-03-09"),
+                    _shadow_record("Devin Desktop", "2026-03-08"),
+                    _shadow_record("Devin Desktop", "2026-03-09"),
                 ],
             )
             events = [_event("Cursor", "2026-03-10")]
@@ -327,10 +327,10 @@ class WindowFallbackTests(unittest.TestCase):
         self.assertEqual(self._detect(events, status), [])
 
     def test_fallback_requires_family_sibling_on_silent_day(self):
-        # Windsurf (no sibling stream) idle on the last day while Cursor works:
+        # Devin Desktop (no sibling stream) idle on the last day while Cursor works:
         # normal tool choice, not an anomaly.
         events = [
-            _event("Windsurf", "2026-03-09"),
+            _event("Devin Desktop", "2026-03-09"),
             _event("Cursor", "2026-03-09"),
             _event("Cursor", "2026-03-10"),
         ]
@@ -430,7 +430,7 @@ class DoctorLivenessRowTests(unittest.TestCase):
                 home,
                 [
                     _shadow_record("Cursor (agent)", "2026-03-10"),
-                    _shadow_record("Windsurf", "2026-03-01"),
+                    _shadow_record("Devin Desktop", "2026-03-01"),
                 ],
             )
             rows = self._rows(home, date(2026, 3, 10))
@@ -440,8 +440,8 @@ class DoctorLivenessRowTests(unittest.TestCase):
         self.assertIn(
             f"of the last {LOOKBACK_DAYS} days", by_label["Cursor (agent)"][2]
         )
-        self.assertEqual(by_label["Windsurf"][1], "WARN")
-        self.assertIn("gone quiet", by_label["Windsurf"][2])
+        self.assertEqual(by_label["Devin Desktop"][1], "WARN")
+        self.assertIn("gone quiet", by_label["Devin Desktop"][2])
 
 
 if __name__ == "__main__":

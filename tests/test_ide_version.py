@@ -88,7 +88,7 @@ class EnrichIdeCollectorVersionsTests(unittest.TestCase):
             enrich_ide_collector_versions(status, home)
             self.assertEqual(status["Cursor"]["version"], "2.0.0")
 
-    def test_windsurf_uses_first_base_dir_with_version(self):
+    def test_devin_desktop_uses_first_base_dir_with_version(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             support = home / "Library" / "Application Support"
@@ -98,9 +98,29 @@ class EnrichIdeCollectorVersionsTests(unittest.TestCase):
                 json.dumps({"version": "1.94.0-next"}),
                 encoding="utf-8",
             )
-            status = {"Windsurf": {"enabled": True, "reason": "", "events": 1}}
+            status = {"Devin Desktop": {"enabled": True, "reason": "", "events": 1}}
             enrich_ide_collector_versions(status, home)
-            self.assertEqual(status["Windsurf"]["version"], "1.94.0-next")
+            self.assertEqual(status["Devin Desktop"]["version"], "1.94.0-next")
+
+    def test_devin_desktop_prefers_devin_product_json_over_legacy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            support = home / "Library" / "Application Support"
+            legacy = support / "Windsurf"
+            legacy.mkdir(parents=True)
+            (legacy / "product.json").write_text(
+                json.dumps({"version": "1.0.0-legacy"}),
+                encoding="utf-8",
+            )
+            devin = support / "Devin"
+            devin.mkdir(parents=True)
+            (devin / "product.json").write_text(
+                json.dumps({"version": "2.0.0-devin"}),
+                encoding="utf-8",
+            )
+            status = {"Devin Desktop": {"enabled": True, "reason": "", "events": 1}}
+            enrich_ide_collector_versions(status, home)
+            self.assertEqual(status["Devin Desktop"]["version"], "2.0.0-devin")
 
     def test_vscode_uses_first_base_dir_with_version(self):
         with tempfile.TemporaryDirectory() as tmp:

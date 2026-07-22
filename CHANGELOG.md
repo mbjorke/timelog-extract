@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Sources: **Devin Desktop** (Cognition; formerly Windsurf) — scan the macOS
+  Application Support `Devin` directory plus legacy `Windsurf` /
+  `Windsurf - Next` dirs; report/doctor source label is `Devin Desktop`.
 - Sources: **VS Code** (stock `Code` / `Code - Insiders`) via shared fork log
   scrape plus workspace ``chatSessions`` (Copilot / VS Code chat requests) —
   stock logs alone are too thin to match Cursor-class evidence.

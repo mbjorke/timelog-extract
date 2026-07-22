@@ -1,4 +1,4 @@
-"""Shared log collector for VS Code-fork IDEs (Antigravity, Windsurf, ...).
+"""Shared log collector for VS Code-fork IDEs (Antigravity, Devin Desktop, ...).
 
 These IDEs share the VS Code layout: an application-support directory with
 ``User/workspaceStorage/<id>/workspace.json`` folder mappings and a timestamped
@@ -88,7 +88,7 @@ def enrich_ide_collector_versions(
 
     ide_base_dirs = {
         "Cursor": [cursor_base_dir(home)],
-        "Windsurf": windsurf_base_dirs(home),
+        "Devin Desktop": windsurf_base_dirs(home),
         "VS Code": vscode_base_dirs(home),
         "Antigravity": [antigravity_base_dir(home)],
     }

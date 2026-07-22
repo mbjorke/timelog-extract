@@ -35,7 +35,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-from core.sources import COVERAGE_COMPARATOR, SOURCE_ROLES
+from core.sources import COVERAGE_COMPARATOR, SOURCE_ROLES, canonical_source_name
 
 #: Days of shadow-log history considered "recent" for the baseline.
 LOOKBACK_DAYS = 14
@@ -112,7 +112,7 @@ def events_by_source_day(events: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str
     """Per-source, per-day (ISO date) event counts."""
     out: Dict[str, Dict[str, int]] = {}
     for event in events or []:
-        source = str(event.get("source") or "")
+        source = canonical_source_name(str(event.get("source") or ""))
         day = _event_day(event)
         if not source or not day:
             continue
@@ -159,7 +159,7 @@ def shadow_baseline_by_source(
             continue
         if not (start <= day < window_start):
             continue
-        source = str(record.get("source") or "")
+        source = canonical_source_name(str(record.get("source") or ""))
         if not source:
             continue
         entry = baseline.setdefault(source, {"days": set(), "events": 0})

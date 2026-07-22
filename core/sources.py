@@ -18,7 +18,7 @@ SOURCE_ORDER = [
     "Cursor (agent)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
-    "Windsurf",
+    "Devin Desktop",
     "VS Code",
     "Codex IDE",
     "Conductor",
@@ -77,7 +77,7 @@ SOURCE_ROLES = {
     "Cursor (agent)": DIRECT_WORK_EVIDENCE,
     CURSOR_CHECKPOINTS_SOURCE: DIRECT_WORK_EVIDENCE,
     "Antigravity": DIRECT_WORK_EVIDENCE,
-    "Windsurf": DIRECT_WORK_EVIDENCE,
+    "Devin Desktop": DIRECT_WORK_EVIDENCE,
     "VS Code": DIRECT_WORK_EVIDENCE,
     "Codex IDE": DIRECT_WORK_EVIDENCE,
     "Conductor": DIRECT_WORK_EVIDENCE,
@@ -102,10 +102,22 @@ SOURCE_ROLES = {
     "Timely Memory": COVERAGE_COMPARATOR,
 }
 
+# Legacy display names that must keep the same role / attendance semantics as
+# their canonical successors (shadow-log replay, older doctor rows).
+SOURCE_ALIASES = {
+    "Windsurf": "Devin Desktop",
+}
+
+
+def canonical_source_name(source_name: str) -> str:
+    """Map legacy source labels to the current canonical display name."""
+    name = str(source_name or "")
+    return SOURCE_ALIASES.get(name, name)
+
 
 def get_source_role(source_name: str) -> str:
     """Evidence role for a source name; unknown sources default to passive context."""
-    return SOURCE_ROLES.get(str(source_name or ""), PASSIVE_CONTEXT)
+    return SOURCE_ROLES.get(canonical_source_name(source_name), PASSIVE_CONTEXT)
 
 
 PASSIVE_DURATION_SOURCES = frozenset(
@@ -118,7 +130,7 @@ PASSIVE_DURATION_SOURCES = frozenset(
 ATTENDED_SOURCES = {
     "Cursor",
     "Antigravity",
-    "Windsurf",
+    "Devin Desktop",
     "VS Code",
     "Codex IDE",
     "Zed",

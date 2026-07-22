@@ -1,12 +1,15 @@
-"""Collector for Windsurf IDE activity (Codeium/Cognition).
+"""Collector for Devin Desktop (formerly Windsurf) IDE activity.
 
-Windsurf is a VS Code fork sharing the Antigravity/Cursor layout:
-``~/Library/Application Support/Windsurf`` (and the beta ``Windsurf - Next``)
-hold ``User/workspaceStorage/<id>/workspace.json`` folder mappings and a
-timestamped ``logs/`` tree. Parsing/attribution lives in
-``collectors.vscode_fork``; this module only supplies Windsurf's base dirs,
-noise markers, and internal data dirs (Cascade/Devin agent stores under
-``~/.codeium`` are heartbeat-heavy and never user project work).
+Cognition rebranded Windsurf to Devin Desktop (2026). The app still uses the
+VS Code-fork layout under ``~/Library/Application Support``:
+
+- ``Devin`` — current product (post-migration)
+- ``Windsurf`` / ``Windsurf - Next`` — legacy dirs kept for historical logs
+
+Parsing/attribution lives in ``collectors.vscode_fork``; this module supplies
+base dirs, noise markers, and the display source name **Devin Desktop**.
+Cascade/Devin agent stores under ``~/.codeium`` are heartbeat-heavy and never
+user project work.
 """
 
 from __future__ import annotations
@@ -15,8 +18,11 @@ from pathlib import Path
 
 from collectors.vscode_fork import collect_fork_logs, make_noise_filter
 
-# Both the stable channel and the "Next" beta share the same layout.
-WINDSURF_APP_DIRS = ("Windsurf", "Windsurf - Next")
+# Display name in reports / doctor / collector_status (replaces "Windsurf").
+SOURCE_NAME = "Devin Desktop"
+
+# Prefer the current app dir first; keep legacy Windsurf paths for older logs.
+DEVIN_APP_DIRS = ("Devin", "Windsurf", "Windsurf - Next")
 
 _WINDSURF_NOISE = make_noise_filter(
     # Machine heartbeats, window/repo lifecycle, and connection churn fire on
@@ -73,9 +79,9 @@ _WINDSURF_NOISE = make_noise_filter(
 
 
 def windsurf_base_dirs(home: Path) -> list[Path]:
-    """Return the Windsurf application-support directories for ``home``."""
+    """Return Devin Desktop + legacy Windsurf application-support directories."""
     support = home / "Library" / "Application Support"
-    return [support / name for name in WINDSURF_APP_DIRS]
+    return [support / name for name in DEVIN_APP_DIRS]
 
 
 def collect_windsurf(
@@ -88,11 +94,11 @@ def collect_windsurf(
     make_event,
     noise_profile: str = "strict",
 ):
-    """Scrape Windsurf (stable + Next) logs into project-attributed events.
+    """Scrape Devin Desktop (+ legacy Windsurf) logs into project-attributed events.
 
-    Only the app-support base dirs are passed as ``internal_paths``; Windsurf's
-    home-level stores (~/.codeium, ~/.cache/devin, …) are already excluded by
-    the shared collector's home-dotpath rule.
+    Only the app-support base dirs are passed as ``internal_paths``; home-level
+    stores (~/.codeium, ~/.cache/devin, …) are already excluded by the shared
+    collector's home-dotpath rule.
     """
     base_dirs = windsurf_base_dirs(home)
     return collect_fork_logs(
@@ -103,7 +109,7 @@ def collect_windsurf(
         local_tz,
         classify_project,
         make_event,
-        source_name="Windsurf",
+        source_name=SOURCE_NAME,
         base_dirs=base_dirs,
         noise_fn=_WINDSURF_NOISE,
         internal_paths=[str(base) for base in base_dirs],

@@ -110,7 +110,7 @@ def build_collector_specs(
         CollectorSpec("Cursor", collect_cursor, "events"),
         CollectorSpec("Cursor checkpoints", collect_cursor_checkpoints, "events"),
         CollectorSpec("Antigravity", collect_antigravity, "events"),
-        CollectorSpec("Windsurf", collect_windsurf, "events"),
+        CollectorSpec("Devin Desktop", collect_windsurf, "events"),
         CollectorSpec("VS Code", collect_vscode, "events"),
         CollectorSpec("Codex IDE (OpenAI ~/.codex)", collect_codex_ide, "sessions"),
         CollectorSpec(

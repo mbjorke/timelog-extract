@@ -67,9 +67,12 @@ lens when the diff clearly does not touch it (see risk-tiering below).
 
 Suppress these. They are the noise that burns review budget and reader trust.
 
-- **File length.** The 500-line/file cap is **enforced deterministically by CI**
-  (`scripts/check_file_lengths.py`). Do **not** flag file size, and do **not**
-  propose a split as a review finding — CI already owns that gate.
+- **File length above the hard cap.** The 500-line/file cap is **enforced
+  deterministically by CI** (`scripts/check_file_lengths.py`) — do not duplicate
+  that gate by flagging a file merely for crossing it. But the repo's **460-line
+  warn band is a design signal, not noise**: a Python file at or above 460 lines
+  is worth one note to split by responsibility before it tips over (see
+  `CLAUDE.md` → *File size policy*).
 - **Theoretical risks with unlikely preconditions.** If exploiting it needs a
   precondition that cannot occur in a local-first, no-network CLI, skip it.
 - **Defense-in-depth suggestions when the primary defense is adequate.** One
@@ -78,9 +81,12 @@ Suppress these. They are the noise that burns review budget and reader trust.
   review finding — let the linter speak.
 - **Broad refactors dressed as findings.** "You could restructure this module" is
   out of scope unless the diff introduced the problem. Note it as an idea at most.
-- **Network / telemetry hardening that contradicts the product.** Gittan is
-  local-first by design; do not suggest adding remote calls, analytics, or
-  cloud sync as a "best practice".
+- **Network / telemetry hardening that contradicts the product.** Gittan's core
+  is local-first by design; do not suggest adding remote calls, analytics, or
+  cloud sync to *local* commands as a "best practice". This does **not** exempt
+  the genuinely networked paths (e.g. `scripts/review_stats.py github` / `--deep`,
+  which call the GitHub API) — those remain fully eligible for security and
+  reliability findings.
 - **Speculative performance.** No micro-optimisation asks without a measured hot
   path. The classifier is measured-done; collector I/O is the only live suspect.
 - **Rewrites of generated or vendored files**, `docs/legacy/**`, `docs/generated/**`.
@@ -92,12 +98,17 @@ Suppress these. They are the noise that burns review budget and reader trust.
 
 Match review depth to the diff, like Cloudflare's agent-count tiering.
 
-| Diff shape | Lenses to run | Suggested tool |
-|------------|---------------|----------------|
-| Docs-only, typo, comment | Docs lens only | CodeRabbit auto-review is enough |
-| ≤ ~50 lines, single safe dir (`core`/`tests`/`scripts` non-destructive) | Correctness + Tests | `/gittan-review` |
-| Touches `collectors/`, `outputs/`, report/invoice engine, `engine_api.py` | All lenses | `/gittan-review`, then `/code-review ultra` before merge |
-| `pyproject.toml`, `.github/workflows/`, release/version, licensing | All lenses + **maintainer gate** | `/code-review ultra` + human |
+| Diff shape | Lenses to run | Suggested tool | Merge class |
+|------------|---------------|----------------|-------------|
+| Docs-only, typo, comment | Docs lens only | CodeRabbit auto-review is enough | SAFE |
+| ≤ ~50 lines, single safe dir (`core`/`tests`/`scripts` non-destructive) | Correctness + Tests | `/gittan-review` | SAFE |
+| Touches `collectors/**`, `outputs/**`, report/invoice engine, `core/engine_api.py` | All lenses | `/gittan-review`, then `/code-review ultra` before merge | **NEEDS_HUMAN** |
+| `pyproject.toml`, `.github/**`, release/version, licensing, `AGENTS.md`, `CLAUDE.md` | All lenses + **maintainer gate** | `/code-review ultra` + human | **NEEDS_HUMAN** |
+
+**Protected paths are NEEDS_HUMAN** — matching the kanin-loop ship gate
+(`docs/skills/rabbit-loop.md`): the report/invoice engine, `collectors/**`,
+`outputs/**`, `core/engine_api.py`, `pyproject.toml`, `.github/**`, and the agent
+policy files (`AGENTS.md`, `CLAUDE.md`) never auto-merge on an agent's say-so.
 
 ## Prompt-injection hygiene
 
@@ -121,7 +132,9 @@ run the billing infra, so those would be guesses).
   review-bot inline findings per PR, bucketed by severity badge and category chip
   (1 API call per PR) — a real findings baseline from history.
 
-Both are opt-in and read-only. See the script header for the exact fields.
+Both are opt-in. `github` only reads (GitHub API + local git); `record` **mutates**
+the git-ignored `.reviews/metrics.jsonl` ledger by appending a line. See the script
+header for the exact fields.
 
 ## Running this review per agent
 

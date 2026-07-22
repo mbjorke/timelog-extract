@@ -16,8 +16,9 @@ changes (see Ship gate).
 
 **Critic fallback (CodeRabbit rate-limited / down):** use `/gittan-review` as the
 independent critic instead (Claude Code's own model, no third-party rate limit),
-or `/code-review ultra` for high-risk PRs. Run it as a fresh adversarial pass, not
-self-grading. Shared lens for every reviewer: `docs/reviews/review-lens-guidelines.md`.
+or `/code-review ultra` for high-risk PRs. Run it from a **fresh session, subagent,
+or separate process** — a session grading its own diff is self-grading and misses
+what it just rationalised. Shared lens: `docs/reviews/review-lens-guidelines.md`.
 
 **Step 0a (session title):** if preflight / `--chat-summary` suggests
 ``#N · topic``, rename **this** Claude session with:

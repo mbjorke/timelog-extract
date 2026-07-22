@@ -41,10 +41,15 @@ own review as the independent critic instead:
 
 It stays a *loop* either way: the critic (whichever one) grades the diff against a
 verifiable condition, you fix within the contract, autotests must pass, repeat to
-CONVERGED. The one rule that must hold: the critic is a **different system** from
-the generator's own working judgement — so if this same Claude Code session wrote
-the code, run `/gittan-review` as a fresh, adversarial pass (or hand it to a
-subagent / separate session), never as self-grading.
+CONVERGED.
+
+**The critic must be a genuinely separate process — not the same session.**
+CodeRabbit CLI already is (a separate binary). For the Claude Code fallback this is
+*not automatic*: a session grading its own diff is self-grading and reliably misses
+what it just rationalised. So run `/gittan-review` / `/code-review ultra` from a
+**fresh session, a subagent, or a separate process** — never as another turn of the
+session that wrote the code. (Observed in practice: an in-session `/gittan-review`
+converged clean on a diff a separate CodeRabbit CLI pass then found seven issues in.)
 
 ## The loop (converge-then-pause)
 

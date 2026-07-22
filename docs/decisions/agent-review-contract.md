@@ -26,7 +26,8 @@ This document sketches a **pre-agreed contract** so that:
 
 | Role | Typical tool | Responsibility |
 |------|----------------|----------------|
-| **Reviewer / signal** | CodeRabbit (GitHub app or `coderabbit` CLI) | Flag issues, severity, concrete suggestions. Does not replace maintainer judgment. |
+| **Primary reviewer / signal** | Claude Code `/gittan-review` (repo-native, no third-party rate limit) | Flag issues, severity, concrete suggestions. Does not replace maintainer judgment. |
+| **Secondary reviewer** | CodeRabbit (GitHub app or `coderabbit` CLI) | Independent second opinion; run as a separate process (see reviewer isolation in `docs/skills/rabbit-loop.md`). |
 | **Executor** | Human, or Cursor Cloud / IDE agent | Implement fixes **within the contract**; push commits; reply in thread with SHA. |
 | **Gate** | Maintainer | Approves anything outside the contract or that touches security, licensing, or release semantics. |
 

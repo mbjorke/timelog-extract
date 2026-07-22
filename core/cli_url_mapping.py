@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -141,6 +142,15 @@ def run_url_mapping_review(
         )
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
+
+    # Interactive mapping needs a real terminal for the questionary prompts;
+    # without one, exit cleanly instead of crashing with a raw traceback.
+    if not sys.stdin.isatty():
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]`gittan review` needs an interactive terminal to map URLs. "
+            f"Use [bold]gittan review --json[/bold] for a machine-readable plan.[/{CLR_VALUE_ORANGE}]"
+        )
+        raise typer.Exit(code=1)
 
     profiles = load_triage_profiles(resolved_projects_config)
     project_names = sorted({str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()})

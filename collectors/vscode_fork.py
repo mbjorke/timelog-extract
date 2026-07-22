@@ -83,11 +83,13 @@ def enrich_ide_collector_versions(
     """Attach local install version metadata to IDE collector_status entries."""
     from collectors.antigravity import antigravity_base_dir
     from collectors.cursor import cursor_base_dir
+    from collectors.vscode import vscode_base_dirs
     from collectors.windsurf import windsurf_base_dirs
 
     ide_base_dirs = {
         "Cursor": [cursor_base_dir(home)],
         "Windsurf": windsurf_base_dirs(home),
+        "VS Code": vscode_base_dirs(home),
         "Antigravity": [antigravity_base_dir(home)],
     }
     for name, base_dirs in ide_base_dirs.items():

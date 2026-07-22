@@ -80,6 +80,7 @@ class TogglSourceTests(unittest.TestCase):
                 collect_cursor=lambda *_: [],
                 collect_antigravity=lambda *_: [],
                 collect_windsurf=lambda *_: [],
+                collect_vscode=lambda *_: [],
                 collect_cursor_checkpoints=lambda *_: [],
                 collect_codex_ide=lambda *_: [],
                 collect_apple_mail=lambda *_: [],

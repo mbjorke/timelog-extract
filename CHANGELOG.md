@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Sources: **VS Code** (stock `Code` / `Code - Insiders` application-support
+  logs) via the shared VS Code-fork collector path.
 - Cursor (agent): when Multitask/Glass chats are missing from
   `composer.composerHeaders`, enrich labels from Glass PR tabs and/or the git
   branch under `workspace_roots` so detail can show `(@branch)` again ([#348](https://github.com/mbjorke/timelog-extract/issues/348)).

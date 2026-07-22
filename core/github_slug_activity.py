@@ -26,6 +26,7 @@ _SOURCE_WEIGHT: dict[str, int] = {
     "Cursor": 1,
     "Cursor checkpoints": 1,
     "Windsurf": 1,
+    "VS Code": 1,
     "Antigravity": 1,
     "Codex IDE": 1,
     "TIMELOG.md": 2,

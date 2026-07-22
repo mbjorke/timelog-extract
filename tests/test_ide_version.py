@@ -102,6 +102,20 @@ class EnrichIdeCollectorVersionsTests(unittest.TestCase):
             enrich_ide_collector_versions(status, home)
             self.assertEqual(status["Windsurf"]["version"], "1.94.0-next")
 
+    def test_vscode_uses_first_base_dir_with_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            support = home / "Library" / "Application Support"
+            code_dir = support / "Code"
+            code_dir.mkdir(parents=True)
+            (code_dir / "product.json").write_text(
+                json.dumps({"version": "1.99.0"}),
+                encoding="utf-8",
+            )
+            status = {"VS Code": {"enabled": True, "reason": "", "events": 1}}
+            enrich_ide_collector_versions(status, home)
+            self.assertEqual(status["VS Code"]["version"], "1.99.0")
+
 
 if __name__ == "__main__":
     unittest.main()

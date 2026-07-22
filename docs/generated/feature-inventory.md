@@ -69,6 +69,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Lovable (desktop) | visits | (no spec) |
 | TIMELOG.md | timestamps | (no spec) |
 | Toggl | events | (no spec) |
+| VS Code | events | (no spec) |
 | Windsurf | events | (no spec) |
 | Zed | events | (no spec) |
 

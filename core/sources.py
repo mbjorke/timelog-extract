@@ -19,6 +19,7 @@ SOURCE_ORDER = [
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
     "Windsurf",
+    "VS Code",
     "Codex IDE",
     "Conductor",
     "GitHub Copilot CLI",
@@ -77,6 +78,7 @@ SOURCE_ROLES = {
     CURSOR_CHECKPOINTS_SOURCE: DIRECT_WORK_EVIDENCE,
     "Antigravity": DIRECT_WORK_EVIDENCE,
     "Windsurf": DIRECT_WORK_EVIDENCE,
+    "VS Code": DIRECT_WORK_EVIDENCE,
     "Codex IDE": DIRECT_WORK_EVIDENCE,
     "Conductor": DIRECT_WORK_EVIDENCE,
     "GitHub Copilot CLI": DIRECT_WORK_EVIDENCE,
@@ -117,6 +119,7 @@ ATTENDED_SOURCES = {
     "Cursor",
     "Antigravity",
     "Windsurf",
+    "VS Code",
     "Codex IDE",
     "Zed",
     # Lovable (desktop) is an interactive AI builder — actively building in it is

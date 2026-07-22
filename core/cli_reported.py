@@ -30,6 +30,13 @@ from core.reported_time import (
     query,
     reported_hours_by_project_day,
 )
+from outputs.terminal_theme import (
+    CLR_SOURCE_BLUE,
+    CLR_VALUE_ORANGE,
+    STYLE_BORDER,
+    STYLE_LABEL,
+    STYLE_MUTED,
+)
 
 reported_app = typer.Typer(
     help="Review observed time into confirmed reported time, or add manual time.",
@@ -114,7 +121,10 @@ def reported_review(
     )
     proposals = build_reported_proposals(report, Path(git_repo).expanduser() if git_repo else None)
     if not proposals:
-        typer.echo("No observed time to review for this period.")
+        from rich.console import Console
+        console = Console()
+        console.print(f"[{CLR_VALUE_ORANGE}]No observed time to review for this period.[/{CLR_VALUE_ORANGE}]")
+        console.print(f"[{STYLE_MUTED}]Next: run `gittan doctor` or try with a wider date range.[/{STYLE_MUTED}]")
         return
 
     confirmed = edited = dismissed = skipped = already = 0
@@ -201,9 +211,25 @@ def reported_add(
 @reported_app.command("list")
 def reported_list():
     """Show confirmed reported hours per project + day."""
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
     totals = reported_hours_by_project_day()
     if not totals:
-        typer.echo("No confirmed reported time yet. Use `gittan reported review` or `add`.")
+        console.print(f"[{CLR_VALUE_ORANGE}]No confirmed reported time yet.[/{CLR_VALUE_ORANGE}]")
+        console.print(f"[{STYLE_MUTED}]Next: use `gittan reported review` or `gittan reported add` to record reported time.[/{STYLE_MUTED}]")
         return
+
+    table = Table(title="Confirmed Reported Time", box=box.ROUNDED)
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Date", style=STYLE_MUTED)
+    table.add_column("Project", style=CLR_SOURCE_BLUE)
+    table.add_column("Hours", justify="right", style=CLR_VALUE_ORANGE)
+
     for (project, day) in sorted(totals):
-        typer.echo(f"{day}  {project}  {totals[(project, day)]:.2f}h")
+        table.add_row(day, project, f"{totals[(project, day)]:.2f}h")
+
+    console.print(table)

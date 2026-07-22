@@ -52,14 +52,22 @@ def _dir_on_path(bin_dir: Path) -> bool:
 
 def _running_gittan() -> Path | None:
     """Return the gittan script next to the running interpreter, if present."""
+    if not sys.executable:
+        return None
     # Deliberately not resolved: a venv's python is a symlink to the base
     # interpreter, and resolving it would look for the script in the base
     # install's bin instead of the venv's.
     try:
-        candidate = Path(sys.executable).parent / "gittan"
+        bindir = Path(sys.executable).parent
     except (OSError, RuntimeError, ValueError):
         return None
-    return candidate if candidate.is_file() else None
+    # Windows installs the launcher as gittan.exe, POSIX as a bare script.
+    names = ("gittan.exe", "gittan") if sys.platform == "win32" else ("gittan",)
+    for name in names:
+        candidate = bindir / name
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _same_file(left: Path, right: Path) -> bool:

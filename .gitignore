@@ -55,3 +55,6 @@ cursor-extension/node_modules/
 
 # Local Briox credentials (never commit)
 .env.briox
+
+# Local review metrics ledger (scripts/review_stats.py)
+.reviews/

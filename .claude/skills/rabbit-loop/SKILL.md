@@ -14,6 +14,11 @@ runs autotests); you are the **generator**. After converging, the loop pushes +
 opens a PR and auto-merges the SAFE class; it pauses only for human-judgment
 changes (see Ship gate).
 
+**Critic fallback (CodeRabbit rate-limited / down):** use `/gittan-review` as the
+independent critic instead (Claude Code's own model, no third-party rate limit),
+or `/code-review ultra` for high-risk PRs. Run it as a fresh adversarial pass, not
+self-grading. Shared lens for every reviewer: `docs/reviews/review-lens-guidelines.md`.
+
 **Step 0a (session title):** if preflight / `--chat-summary` suggests
 ``#N · topic``, rename **this** Claude session with:
 

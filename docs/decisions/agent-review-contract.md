@@ -5,6 +5,13 @@ Date: 2026-04-18
 Last updated: 2026-04-18 (Copilot CLI remote section)  
 Owner: Maintainer + active agents
 
+> **Scope note.** This doc governs *how we respond* to findings (who may fix what,
+> by severity). *How findings are generated* — the lens each reviewer looks
+> through, including the what-NOT-to-flag list — lives in
+> [`../reviews/review-lens-guidelines.md`](../reviews/review-lens-guidelines.md).
+> Primary reviewer is now Claude Code `/gittan-review`; CodeRabbit is the
+> secondary opinion.
+
 ## Why
 
 Automated review (often **CodeRabbit** in this repo) produces **findings**; **execution** (fixes) may be done by a **human** or by a **Cursor agent** (or another coding agent). Those are different systems: there is **no** guaranteed machine-to-machine contract between “review bot” and “IDE agent” unless we **define one in the repo** and follow it manually or via vendor features.

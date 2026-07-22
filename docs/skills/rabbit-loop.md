@@ -7,8 +7,11 @@ hand-prompting turn-by-turn, run a **loop** where a generator produces work, an
 fixes within bounds, and the loop repeats until a **stopping condition** holds —
 with state on disk and the human staying engaged.
 
-The critic is **CodeRabbit** ("kanin"), run locally via its CLI, plus autotests.
-Both are different systems from the generator, so they do not self-grade its work.
+The critic is **CodeRabbit** ("kanin"), run locally via its CLI, plus autotests —
+or, when CodeRabbit is rate-limited or you want a stronger pass, Claude Code's own
+`/gittan-review` as the independent critic (see *Independent-critic fallback* under
+Roles). Both are different systems from the generator, so they do not self-grade
+its work.
 
 **Any coding agent can run this** — the engine is `scripts/rabbit_loop.sh` + this
 doc, not any one editor. See *Invoking it per agent* below.
@@ -21,9 +24,27 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 | Role | Who | Does |
 |------|-----|------|
 | Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
-| Critic 1 | **CodeRabbit CLI** | independent review of the local diff → structured findings |
+| Critic 1 | **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (500-line gate + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
+
+**Independent-critic fallback (rate limits / outages).** The lens critic does not
+have to be CodeRabbit. When `coderabbit review` is rate-limited, unauthenticated,
+or you want a stronger pass without spending free-tier budget, use Claude Code's
+own review as the independent critic instead:
+
+- **`/gittan-review`** — repo-native multi-lens review on the working diff. Runs
+  on Claude Code's model (no third-party rate limit); reports findings against the
+  same lens the whole repo shares (`docs/reviews/review-lens-guidelines.md`).
+- **`/code-review ultra`** — heavier multi-agent cloud pass for high-risk PRs
+  (report/invoice engine, `collectors/`, `outputs/`, packaging, CI).
+
+It stays a *loop* either way: the critic (whichever one) grades the diff against a
+verifiable condition, you fix within the contract, autotests must pass, repeat to
+CONVERGED. The one rule that must hold: the critic is a **different system** from
+the generator's own working judgement — so if this same Claude Code session wrote
+the code, run `/gittan-review` as a fresh, adversarial pass (or hand it to a
+subagent / separate session), never as self-grading.
 
 ## The loop (converge-then-pause)
 

@@ -117,7 +117,9 @@ run the billing infra, so those would be guesses).
   of severity / tier / verdict breakdowns. Render with `scripts/review_stats.py show`.
 - **GitHub, retroactively** (`scripts/review_stats.py github`): needs no
   instrumentation — reads merged PRs via `gh` for throughput, review cadence
-  (bot vs human), and time-to-merge distribution.
+  (bot vs human), and time-to-merge distribution. Add `--deep` to also count
+  review-bot inline findings per PR, bucketed by severity badge and category chip
+  (1 API call per PR) — a real findings baseline from history.
 
 Both are opt-in and read-only. See the script header for the exact fields.
 

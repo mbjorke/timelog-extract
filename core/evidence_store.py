@@ -305,16 +305,30 @@ def replay_into_events(
     if not ev_dir.is_dir():
         return list(live_events), 0
 
+    # Dedup against live events using *canonical* source names so a stored
+    # legacy "Windsurf" record matches a live "Devin Desktop" observation
+    # instead of being replayed as a duplicate (CodeRabbit on #423).
     live_fps = {
-        compute_evidence_fingerprint(ev.get("source"), ev.get("timestamp"), ev.get("detail"))
+        compute_evidence_fingerprint(
+            canonical_source_name(ev.get("source")),
+            ev.get("timestamp"),
+            ev.get("detail"),
+        )
         for ev in live_events
     }
     window_from = dt_from.astimezone(timezone.utc)
     window_to = dt_to.astimezone(timezone.utc)
     restored: List[Dict[str, Any]] = []
     for _month, rec in read_records(ev_dir):
-        fp = rec.get("fingerprint")
-        if not fp or fp in live_fps:
+        raw_source = rec.get("source", "")
+        canon_source = canonical_source_name(raw_source)
+        stored_fp = rec.get("fingerprint")
+        canon_fp = compute_evidence_fingerprint(
+            canon_source, rec.get("observed_at"), rec.get("detail")
+        )
+        # Match either the stored fingerprint (same-label era) or a
+        # canonical recompute (rename / alias).
+        if (stored_fp and stored_fp in live_fps) or canon_fp in live_fps:
             continue
         try:
             obs_dt = datetime.fromisoformat(str(rec.get("observed_at")))
@@ -324,10 +338,12 @@ def replay_into_events(
             obs_dt = obs_dt.replace(tzinfo=timezone.utc)
         if not (window_from <= obs_dt <= window_to):
             continue
-        live_fps.add(fp)
+        live_fps.add(canon_fp)
+        if stored_fp:
+            live_fps.add(stored_fp)
         restored.append(
             {
-                "source": canonical_source_name(rec.get("source", "")),
+                "source": canon_source,
                 "timestamp": obs_dt,
                 "detail": rec.get("detail", ""),
                 "project": rec.get("project_at_capture", ""),

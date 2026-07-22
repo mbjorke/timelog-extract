@@ -225,6 +225,32 @@ class TestEvidenceReplay(unittest.TestCase):
         self.assertEqual(restored, 1)  # only stored-b is new
         self.assertEqual(len(events), 2)
 
+    def test_alias_source_does_not_duplicate_live_events(self):
+        # Stored as legacy Windsurf; live collector now emits Devin Desktop.
+        capture_events(
+            [
+                _ev("Windsurf", "2026-03-10T09:10:00+00:00", "legacy-windsurf"),
+            ],
+            base_dir=self.base,
+            captured_at="2026-03-10T10:00:00+00:00",
+        )
+        live = [
+            _ev(
+                "Devin Desktop",
+                datetime(2026, 3, 10, 9, 10, tzinfo=timezone.utc),
+                "legacy-windsurf",
+            ),
+            # Keep setUp Cursor rows from restoring so the count is unambiguous.
+            _ev("Cursor", datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc), "stored-a"),
+            _ev("Cursor", datetime(2026, 3, 10, 9, 5, tzinfo=timezone.utc), "stored-b"),
+        ]
+        events, restored = replay_into_events(live, self.win_from, self.win_to, base_dir=self.base)
+        self.assertEqual(restored, 0)
+        matching = [e for e in events if e.get("detail") == "legacy-windsurf"]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["source"], "Devin Desktop")
+        self.assertFalse(matching[0].get("replayed"))
+
     def test_window_filter_excludes_out_of_range(self):
         events, restored = replay_into_events(
             [], datetime(2026, 4, 1, tzinfo=timezone.utc), datetime(2026, 4, 30, tzinfo=timezone.utc), base_dir=self.base

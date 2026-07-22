@@ -41,10 +41,13 @@ _VSCODE_NOISE = make_noise_filter(
         "[stderr]",
     ),
     ultra_strict=(
+        # Prefer tagged/phrased signatures over lone tokens like "telemetry"
+        # so a path/filename containing that word is not dropped as noise.
         "websocket connected",
         "websocket closed",
         "initialization complete",
-        "telemetry",
+        "telemetryservice",
+        "[telemetry]",
         "extensionservice#",
         "[vscodediagnosticsexecutor] execute:",
     ),

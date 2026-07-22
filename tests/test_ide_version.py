@@ -116,6 +116,21 @@ class EnrichIdeCollectorVersionsTests(unittest.TestCase):
             enrich_ide_collector_versions(status, home)
             self.assertEqual(status["VS Code"]["version"], "1.99.0")
 
+    def test_vscode_falls_back_to_insiders_product_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            support = home / "Library" / "Application Support"
+            insiders = support / "Code - Insiders"
+            insiders.mkdir(parents=True)
+            (insiders / "product.json").write_text(
+                json.dumps({"version": "1.100.0-insider"}),
+                encoding="utf-8",
+            )
+            status = {"VS Code": {"enabled": True, "reason": "", "events": 1}}
+            enrich_ide_collector_versions(status, home)
+            self.assertEqual(status["VS Code"]["version"], "1.100.0-insider")
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -10,7 +10,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | --- | --- |
 | Commands | 26 |
 | Command groups | 2 |
-| Collectors | 21 |
+| Collectors | 22 |
 | Per-project config fields | 18 |
 
 ## Commands

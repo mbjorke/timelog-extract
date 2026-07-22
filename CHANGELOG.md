@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Sources: **Devin Desktop** (Cognition; formerly Windsurf) — scan
+  `~/Library/Application Support/Devin` plus legacy `Windsurf` /
+  `Windsurf - Next` dirs; report/doctor source label is `Devin Desktop`.
 - Cursor (agent): when Multitask/Glass chats are missing from
   `composer.composerHeaders`, enrich labels from Glass PR tabs and/or the git
   branch under `workspace_roots` so detail can show `(@branch)` again ([#348](https://github.com/mbjorke/timelog-extract/issues/348)).

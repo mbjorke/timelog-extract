@@ -18,7 +18,7 @@ SOURCE_ORDER = [
     "Cursor (agent)",
     CURSOR_CHECKPOINTS_SOURCE,
     "Antigravity",
-    "Windsurf",
+    "Devin Desktop",
     "Codex IDE",
     "Conductor",
     "GitHub Copilot CLI",
@@ -76,7 +76,7 @@ SOURCE_ROLES = {
     "Cursor (agent)": DIRECT_WORK_EVIDENCE,
     CURSOR_CHECKPOINTS_SOURCE: DIRECT_WORK_EVIDENCE,
     "Antigravity": DIRECT_WORK_EVIDENCE,
-    "Windsurf": DIRECT_WORK_EVIDENCE,
+    "Devin Desktop": DIRECT_WORK_EVIDENCE,
     "Codex IDE": DIRECT_WORK_EVIDENCE,
     "Conductor": DIRECT_WORK_EVIDENCE,
     "GitHub Copilot CLI": DIRECT_WORK_EVIDENCE,
@@ -116,7 +116,7 @@ PASSIVE_DURATION_SOURCES = frozenset(
 ATTENDED_SOURCES = {
     "Cursor",
     "Antigravity",
-    "Windsurf",
+    "Devin Desktop",
     "Codex IDE",
     "Zed",
     # Lovable (desktop) is an interactive AI builder — actively building in it is

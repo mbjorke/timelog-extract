@@ -11,17 +11,17 @@ from tests.event_helpers import make_test_event
 
 
 class WindsurfCollectorTests(unittest.TestCase):
-    def _base(self, home: Path, app: str = "Windsurf") -> Path:
+    def _base(self, home: Path, app: str = "Devin") -> Path:
         return home / "Library" / "Application Support" / app
 
-    def _write_workspace(self, home: Path, wid: str, folder_path: str, app: str = "Windsurf") -> None:
+    def _write_workspace(self, home: Path, wid: str, folder_path: str, app: str = "Devin") -> None:
         ws = self._base(home, app) / "User" / "workspaceStorage" / wid
         ws.mkdir(parents=True, exist_ok=True)
         (ws / "workspace.json").write_text(
             json.dumps({"folder": f"file://{folder_path}"}), encoding="utf-8"
         )
 
-    def _write_log(self, home: Path, rel: str, lines: list[str], app: str = "Windsurf") -> None:
+    def _write_log(self, home: Path, rel: str, lines: list[str], app: str = "Devin") -> None:
         p = self._base(home, app) / "logs" / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -55,10 +55,26 @@ class WindsurfCollectorTests(unittest.TestCase):
             )
             out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
             self.assertEqual(len(out), 1)
-            self.assertEqual(out[0]["source"], "Windsurf")
+            self.assertEqual(out[0]["source"], "Devin Desktop")
             self.assertEqual(out[0]["project"], "Gittan CLI")
             # Working-directory leaf is preserved (privacy-safe, no /Users/ prefix).
             self.assertEqual(out[0]["anchors"]["dir"], "timelog-extract")
+
+    def test_scans_legacy_windsurf_base_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:00:00.000 [info] editing src/api.ts "
+                    "/Users/me/Workspace/Project/timelog-extract"
+                ],
+                app="Windsurf",
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["source"], "Devin Desktop")
 
     def test_maps_workspace_id_to_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -128,7 +144,7 @@ class WindsurfCollectorTests(unittest.TestCase):
             self.assertEqual(self._collect(home), [])
 
     def test_skips_app_support_internal_paths(self):
-        # Paths under Windsurf's own app-support dir are IDE internals, not work.
+        # Paths under Devin's own app-support dir are IDE internals, not work.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             internal = self._base(home) / "User" / "settings.json"

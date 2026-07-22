@@ -62,6 +62,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Conductor | events | (no spec) |
 | Cursor | events | (no spec) |
 | Cursor checkpoints | events | (no spec) |
+| Devin Desktop | events | (no spec) |
 | Gemini (web, specific URLs) | visits | (no spec) |
 | Gemini CLI | events | (no spec) |
 | GitHub | events | (no spec) |
@@ -69,7 +70,6 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Lovable (desktop) | visits | (no spec) |
 | TIMELOG.md | timestamps | (no spec) |
 | Toggl | events | (no spec) |
-| Windsurf | events | (no spec) |
 | Zed | events | (no spec) |
 
 ## Per-project config fields

@@ -282,11 +282,11 @@ def add_collector_doctor_rows(
     windsurf_logs = [base / "logs" for base in windsurf_base_dirs(home)]
     present = [p for p in windsurf_logs if p.exists()]
     if not present:
-        _row(ctx, "Windsurf", ctx.na_icon, "Not installed")
+        _row(ctx, "Devin Desktop", ctx.na_icon, "Not installed")
     elif not any(os.access(p, os.R_OK) for p in present):
-        _row(ctx, "Windsurf", ctx.warn_icon, "No read access")
+        _row(ctx, "Devin Desktop", ctx.warn_icon, "No read access")
     else:
-        _row(ctx, "Windsurf", ctx.ok_icon, "Logs readable")
+        _row(ctx, "Devin Desktop", ctx.ok_icon, "Logs readable")
 
     _add_codex_ide_row(ctx)
 

@@ -18,7 +18,7 @@
 - AI terminal/chat CLI session logs
 - Cursor logs + Cursor checkpoints
 - Antigravity (Google Antigravity IDE) logs
-- Windsurf (Codeium/Cognition IDE) logs
+- Devin Desktop (Cognition; formerly Windsurf) logs — also reads legacy Windsurf dirs
 - Codex IDE index
 - Project worklog (`TIMELOG.md`)
 

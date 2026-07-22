@@ -221,6 +221,14 @@ remove it, rerun tests, and document the correction in the PR notes.
 
 ## Review Cadence (CodeRabbit)
 
+- **Primary reviewer:** Claude Code `/gittan-review` (repo-native, runs on our own
+  model — no third-party rate limit). Use `/code-review ultra` for the heavy cloud
+  pass on high-risk PRs. **CodeRabbit is the secondary "second opinion", not a
+  gate.** This ordering is what de-risks Qodo going away and CodeRabbit's free-tier
+  rate limit.
+- **What every reviewer flags (and what NOT to flag):** see
+  `docs/reviews/review-lens-guidelines.md` — the single shared lens for
+  `/gittan-review`, `/code-review`, and `.coderabbit.yaml`.
 - **Severity and who may fix what:** see `docs/decisions/agent-review-contract.md` (draft contract between review signal and human/Cursor execution).
 - Keep PRs in Draft while actively iterating.
 - Push work in meaningful batches, not for every micro-change.

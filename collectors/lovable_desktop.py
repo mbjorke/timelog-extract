@@ -9,7 +9,7 @@ from typing import Callable, List
 from urllib.parse import urlparse
 
 from collectors.chrome import chrome_time_range, chrome_ts, query_chrome, thin_chrome_visit_rows
-from collectors.lovable_merge import _merge_storage_events
+from collectors.lovable_merge import _merge_storage_events, is_plausible_lovable_project_uuid
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE
 
 SOURCE_NAME = "Lovable (desktop)"
@@ -267,7 +267,7 @@ def _pick_storage_urls_from_blob(
         if not trimmed or not _is_plausible_lovable_storage_url(trimmed):
             continue
         uuid = _lovable_project_uuid_key(trimmed)
-        if not uuid:
+        if not uuid or not is_plausible_lovable_project_uuid(uuid):
             continue
         offset = _storage_url_last_offset(raw, trimmed)
         if offset < min_offset:
@@ -277,6 +277,8 @@ def _pick_storage_urls_from_blob(
     decoded = raw.decode("utf-8", "ignore")
     for match in _LOVABLE_PROJECT_UUID_RE.finditer(decoded):
         uuid = match.group(1).lower()
+        if not is_plausible_lovable_project_uuid(uuid):
+            continue
         if _is_analytics_uuid_context(decoded, match.start(), match.end()):
             continue
         offset = raw.rfind(uuid.encode("ascii", "ignore"))

@@ -291,6 +291,34 @@ class LovableCacheTests(unittest.TestCase):
             )
         self.assertEqual(events, [])
 
+    def test_cache_scan_skips_bare_uuid_noise_without_project_url(self):
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        junk = "00000000-0000-0000-0000-000000000000"
+        noise = "019f8f41-fa60-7a26-85d1-348d7e94480d"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            cache_path = cache_dir / "noise_0"
+            cache_path.write_bytes(
+                f"pad {junk} pad {noise} pad {_PROJECT_ALPHA} pad".encode("utf-8")
+            )
+            os.utime(cache_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        self.assertEqual(events, [])
+
     def test_cache_scan_skips_oversized_file(self):
         ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         with TemporaryDirectory() as tmp:

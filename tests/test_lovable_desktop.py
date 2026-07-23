@@ -216,6 +216,18 @@ class LovableDesktopTests(unittest.TestCase):
             files = _storage_signal_files(home)
             self.assertEqual(files, [wal])
 
+    def test_pick_storage_urls_skips_nil_and_non_v4_uuids(self):
+        blob = (
+            b"prefix " * 7000
+            + b"https://00000000-0000-0000-0000-000000000000.lovableproject.com/ "
+            + b"https://019f8f41-fa60-7a26-85d1-348d7e94480d.lovableproject.com/ "
+            + b"https://85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com/ tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=3, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("85f3c1b3", picked[0])
+
     def test_pick_storage_urls_skips_rudderstack_analytics_uuids(self):
         # RudderStack queue keys (rudder_<writeKey>.<uuid>.ack/.reclaimStart) are
         # telemetry message ids, not Lovable projects — they must not fabricate

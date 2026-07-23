@@ -10,6 +10,31 @@ _LOVABLE_PROJECT_UUID_RE = re.compile(
     r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
     re.IGNORECASE,
 )
+_NIL_PROJECT_UUID = "00000000-0000-0000-0000-000000000000"
+_MAX_PROJECT_UUID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+
+def is_plausible_lovable_project_uuid(uuid: str) -> bool:
+    """True for UUID v4 project ids — reject nil/max and UUID-shaped binary noise.
+
+    Chromium cache blobs contain many RFC-looking tokens (incl. v7 time UUIDs and
+    all-zero). Emitting those flooded ``gittan review`` with unmapped map nudges
+    after per-UUID merge (GH-448). Lovable project hosts observed in the wild are
+    UUID version 4 with RFC variant bits.
+    """
+    text = str(uuid or "").strip().lower()
+    if len(text) != 36 or text in {_NIL_PROJECT_UUID, _MAX_PROJECT_UUID}:
+        return False
+    parts = text.split("-")
+    if len(parts) != 5 or [len(p) for p in parts] != [8, 4, 4, 4, 12]:
+        return False
+    if parts[2][0] != "4" or parts[3][0] not in "89ab":
+        return False
+    try:
+        int(text.replace("-", ""), 16)
+    except ValueError:
+        return False
+    return True
 
 
 def _lovable_project_uuid_key(url: str) -> str:

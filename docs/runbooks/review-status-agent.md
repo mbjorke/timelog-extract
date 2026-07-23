@@ -61,7 +61,11 @@ to the executor that owns the work (do not merely log it):
   plus the in-contract bounds ("fix only these files; escalate X").
 - **Dispatch**: hand the packet to that executor through whatever mechanism the
   setup uses — spawn a scoped task, message the owning session, or post a scoped
-  PR comment. Then reply in each routed thread: `Routed to <executor> for fix.`
+  PR comment. One reliable dispatch is to **@-mention an agent bot on the PR**:
+  `@jules` works well for handing a bounded fix to Google Jules (its account logs
+  in as `google-labs-jules[bot]`, so match that login when collecting its replies).
+  `@coderabbitai` can apply small autofixes the same way. Then reply in each routed
+  thread: `Routed to <executor> for fix.`
 
 Routing key = **branch owner** (who) + **file area** (what the contract allows).
 

@@ -72,6 +72,13 @@ class PrivacyGuardTests(unittest.TestCase):
             with self.assertRaises(guard.ConfigError):
                 guard.load_sensitive_terms(broken)
 
+    def test_malformed_projects_shape_raises_config_error(self):
+        with TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.json"
+            cfg.write_text(json.dumps({"projects": {}}), encoding="utf-8")
+            with self.assertRaises(guard.ConfigError):
+                guard.load_sensitive_terms(cfg)
+
     def test_main_fails_closed_on_broken_config(self):
         with TemporaryDirectory() as tmp:
             broken = Path(tmp) / "config.json"
@@ -79,6 +86,16 @@ class PrivacyGuardTests(unittest.TestCase):
             doc = Path(tmp) / "doc.md"
             doc.write_text("anything\n", encoding="utf-8")
             with mock.patch.dict(os.environ, {"GITTAN_PROJECTS_CONFIG": str(broken)}):
+                rc = guard.main([str(doc)])
+            self.assertEqual(rc, 1)
+
+    def test_main_fails_closed_on_malformed_config_shape(self):
+        with TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.json"
+            cfg.write_text(json.dumps({"projects": {}}), encoding="utf-8")
+            doc = Path(tmp) / "doc.md"
+            doc.write_text("anything\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"GITTAN_PROJECTS_CONFIG": str(cfg)}):
                 rc = guard.main([str(doc)])
             self.assertEqual(rc, 1)
 

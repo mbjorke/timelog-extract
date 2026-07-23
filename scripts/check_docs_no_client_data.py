@@ -94,7 +94,10 @@ def load_sensitive_terms(config_path: Path) -> set[str]:
         raise ConfigError(f"cannot read/parse {config_path}: {exc}") from exc
     profiles = data.get("projects", data) if isinstance(data, dict) else data
     if not isinstance(profiles, list):
-        return set()
+        raise ConfigError(
+            f"invalid projects config shape in {config_path}: "
+            "expected a list at root or under 'projects'"
+        )
     allow = _allowlist()
     terms: set[str] = set()
     for prof in profiles:

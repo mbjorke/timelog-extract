@@ -39,9 +39,11 @@ Read submitted reviews, inline review comments, and unresolved review threads
 (bot and human). Record author, `file:line`, severity, and body.
 
 ### 2. Completeness gate — never treat "0 comments" as "reviewed"
-For each **expected** reviewer — CodeRabbit, the Cursor bot, and Qodo while it
-still exists — confirm it actually ran **since the last commit**. A PR with zero
-threads because a reviewer never ran is **not** reviewed.
+For each **expected** reviewer — CodeRabbit (free) and the Cursor bot — confirm it
+actually ran **since the last commit**. A PR with zero threads because a reviewer
+never ran is **not** reviewed. (Qodo's trial ended 2026-07-23 and won't be paid
+for, so the rule is now "CodeRabbit + one independent cross-check" — the Cursor
+bot, or `/gittan-review` run as a separate process — not "two external bots".)
 
 If CodeRabbit posted "Review limit reached", or has no review after the latest
 push, re-trigger **intentionally** (one trigger per stable batch — see the
@@ -97,6 +99,14 @@ then be resolved. Never silently resolve a thread.
 Never report a PR mergeable while unresolved threads remain **or** no independent
 review has landed. Run `scripts/rabbit_loop.sh --merge-gate --pr N`; `CLEAR` only,
 otherwise `BLOCKED`.
+
+**Green CI is not proof the fix survived.** When two agents touched the same PR,
+one can revert the other's fix while tests stay green (the tests that would catch
+it were moved or only cover the weaker condition). Before calling a
+security/correctness PR done, diff the actual fix artifact across commits to
+confirm the guard is still there — do not trust an agent's "all passing cleanly".
+(Regression: on #435 a Jules "relocate tests" commit dropped a restored redirect
+guard behind green tests.) Enforce one executor per finding (step 4).
 
 ### 7. Output
 One line per PR: `reviewers-run? | unresolved | findings by severity | routed-to | blocker`.

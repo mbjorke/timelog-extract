@@ -41,6 +41,11 @@ case "$1" in
     ;;
   pr)
     case "$args" in
+      *"--json author,isCrossRepository"*)
+        if [[ -z "${GH_STUB_AUTHOR+x}" ]]; then author="mbjorke"; else author="$GH_STUB_AUTHOR"; fi
+        if [[ -z "${GH_STUB_FORK+x}" ]]; then fork="false"; else fork="$GH_STUB_FORK"; fi
+        printf '%s\\t%s\\n' "$author" "$fork"
+        exit 0 ;;
       *headRefOid*) printf '%s\\n' "${GH_STUB_HEAD:-}" ;;
       *author*)     printf '%s\\n' "${GH_STUB_AUTHOR:-pr-author}" ;;
       *)

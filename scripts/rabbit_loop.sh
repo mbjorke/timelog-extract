@@ -13,7 +13,9 @@
 # Usage:
 #   scripts/rabbit_loop.sh [--base <branch>] [--light] [--no-tests] [--help]
 #   scripts/rabbit_loop.sh --classify-merge [--base <branch>]
-#   scripts/rabbit_loop.sh --merge-gate [--pr <number>]   # unresolved review threads
+#   scripts/rabbit_loop.sh --merge-gate [--pr <number>]   # author-gate + unresolved threads
+#   scripts/rabbit_loop.sh --classify-merge [--pr <number>]  # author-gate + ship class
+#   scripts/rabbit_loop.sh --author-gate --pr <number>    # internal author + not a fork
 #   scripts/rabbit_loop.sh --skip-workflow       # skip GitButler/multi-agent preflight
 #   scripts/rabbit_loop.sh --ack-workflow      # record workflow acknowledgement
 #   scripts/rabbit_loop.sh --skip-board-sync   # skip project-board PR sync on CONVERGED
@@ -66,6 +68,7 @@ RUN_TESTS=1
 CLASSIFY=0
 MANUAL_PLAN=0
 MERGE_GATE=0
+AUTHOR_GATE=0
 MERGE_GATE_PR=""
 SKIP_WORKFLOW=0
 ACK_WORKFLOW=0
@@ -177,6 +180,83 @@ _pr_review_signals() {
   echo "$n"
 }
 
+_validate_pr_number() {
+  local pr="$1"
+  [[ "$pr" =~ ^[1-9][0-9]*$ ]]
+}
+
+_resolve_pr_number() {
+  local pr="$1" errf="${2:-}" errf_local="" rc
+  if [[ -n "$pr" ]]; then
+    _validate_pr_number "$pr" || return 1
+    echo "$pr"
+    return 0
+  fi
+  if [[ -z "$errf" ]]; then
+    errf_local="$(mktemp)" || return 1
+    errf="$errf_local"
+  fi
+  set +e
+  pr="$(gh pr view --json number --jq .number 2>"$errf")"
+  rc=$?
+  set -e
+  if [[ $rc -ne 0 || -z "$pr" ]] || ! _validate_pr_number "$pr"; then
+    [[ -n "$errf_local" ]] && rm -f "$errf_local"
+    return 1
+  fi
+  [[ -n "$errf_local" ]] && rm -f "$errf_local"
+  echo "$pr"
+  return 0
+}
+
+# Hard security boundary: only PRs authored by verified internal identities on
+# THIS repo may be auto-merged. External/first-time contributors open PRs from
+# forks; internal automation pushes branches to this repo. A fork PR (or an
+# unrecognised author) is never auto-mergeable regardless of SAFE/classify — it
+# requires a human. Decides only on verifiable GitHub metadata (author login,
+# fork status); it NEVER checks out or runs the PR's code. Fails closed.
+# Allowlist is overridable via GITTAN_INTERNAL_AUTHORS (space-separated logins).
+author_gate() {
+  local pr="$1" meta author fork err=0
+  command -v gh >/dev/null 2>&1 || {
+    echo "AUTHOR_GATE: BLOCKED (gh CLI not found — cannot verify author)"; return 1
+  }
+  if [[ -z "$pr" ]]; then
+    echo "AUTHOR_GATE: BLOCKED (no PR number — pass --pr <number>)"; return 1
+  fi
+  if ! _validate_pr_number "$pr"; then
+    echo "AUTHOR_GATE: BLOCKED (invalid PR number '$pr' — must be a positive decimal integer)"
+    return 1
+  fi
+  meta="$(gh pr view "$pr" --json author,isCrossRepository \
+    --jq '(.author.login // "") + "\t" + (.isCrossRepository | tostring)' 2>/dev/null)" || err=1
+  if [[ $err -eq 1 || -z "$meta" ]]; then
+    echo "AUTHOR_GATE: BLOCKED (could not verify author for PR #$pr — fail closed)"; return 1
+  fi
+  author="${meta%%$'\t'*}"
+  fork="${meta##*$'\t'}"
+  if [[ -z "$author" ]]; then
+    echo "AUTHOR_GATE: BLOCKED (PR #$pr has empty author login — fail closed)"
+    return 1
+  fi
+  if [[ "$fork" != "false" ]]; then
+    if [[ "$fork" == "true" ]]; then
+      echo "AUTHOR_GATE: BLOCKED (PR #$pr is from a fork by external author '$author' — human review required, never auto-merge)"
+    else
+      echo "AUTHOR_GATE: BLOCKED (PR #$pr fork status is not explicitly same-repo — fail closed)"
+    fi
+    return 1
+  fi
+  local allow="${GITTAN_INTERNAL_AUTHORS:-mbjorke google-labs-jules[bot]}"
+  case " $allow " in
+    *" $author "*)
+      echo "AUTHOR_GATE: INTERNAL (PR #$pr by $author)"; return 0 ;;
+    *)
+      echo "AUTHOR_GATE: BLOCKED (PR #$pr author '$author' is not an allowlisted internal identity — human review required)"
+      return 1 ;;
+  esac
+}
+
 merge_gate() {
   local pr="$1" unresolved count more rc err errf owner repo rsig
   command -v gh >/dev/null 2>&1 || {
@@ -187,7 +267,7 @@ merge_gate() {
   }
   if [[ -z "$pr" ]]; then
     set +e
-    pr="$(gh pr view --json number --jq .number 2>"$errf")"
+    pr="$(_resolve_pr_number "" "$errf")"
     rc=$?
     set -e
     if [[ $rc -ne 0 || -z "$pr" ]]; then
@@ -195,7 +275,12 @@ merge_gate() {
       echo "MERGE_GATE: BLOCKED (could not resolve an open PR for the current branch${err:+ — gh: $err} — pass --pr <number>)"
       return 1
     fi
+  elif ! _validate_pr_number "$pr"; then
+    rm -f "$errf"
+    echo "MERGE_GATE: BLOCKED (invalid PR number '$pr' — must be a positive decimal integer)"
+    return 1
   fi
+  author_gate "$pr" || { rm -f "$errf"; return 1; }
   owner="$(gh repo view --json owner --jq .owner.login 2>/dev/null || true)"
   repo="$(gh repo view --json name --jq .name 2>/dev/null || true)"
   # Single-page read capped at 100 threads; hasNextPage=true blocks below so a
@@ -306,6 +391,7 @@ while [[ $# -gt 0 ]]; do
     --no-tests) RUN_TESTS=0; shift ;;
     --classify-merge) CLASSIFY=1; shift ;;
     --merge-gate) MERGE_GATE=1; shift ;;
+    --author-gate) AUTHOR_GATE=1; shift ;;
     --pr) MERGE_GATE_PR="${2:?--pr needs a PR number}"; shift 2 ;;
     --manual-test-plan) MANUAL_PLAN=1; shift ;;
     --skip-workflow) SKIP_WORKFLOW=1; shift ;;
@@ -331,6 +417,12 @@ if [[ $CLASSIFY_MOVE -eq 1 ]]; then
   _classify_movement "$CLASSIFY_MOVE_BR" "$CLASSIFY_MOVE_SHA"; exit 0
 fi
 
+# Author gate: verify the PR is from an internal identity (not a fork/external
+# contributor) before any auto-merge. Pure gh metadata; never runs PR code.
+if [[ $AUTHOR_GATE -eq 1 ]]; then
+  author_gate "$MERGE_GATE_PR"; exit $?
+fi
+
 # Merge gate: pure gh query; no CodeRabbit call needed.
 if [[ $MERGE_GATE -eq 1 ]]; then
   merge_gate "$MERGE_GATE_PR"; exit $?
@@ -342,7 +434,15 @@ if [[ $CLASSIFY -eq 1 || $MANUAL_PLAN -eq 1 ]]; then
   if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
     echo "rabbit_loop: base ref '$BASE' not found (try \`git fetch origin\`)." >&2; exit 2
   fi
-  [[ $CLASSIFY -eq 1 ]] && { classify_merge "$BASE"; exit $?; }
+  [[ $CLASSIFY -eq 1 ]] && {
+    local pr
+    pr="$(_resolve_pr_number "$MERGE_GATE_PR")" || {
+      echo "MERGE_CLASS: NEEDS_HUMAN (could not resolve PR for author gate — pass --pr <number>)"
+      exit 1
+    }
+    author_gate "$pr" || exit $?
+    classify_merge "$BASE"; exit $?
+  }
   manual_test_plan "$BASE"; exit 0
 fi
 

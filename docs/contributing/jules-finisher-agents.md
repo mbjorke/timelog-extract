@@ -30,18 +30,21 @@ left that day. Same rules either way.
 Run from repo root on the Jules PR number `N`:
 
 ```bash
-scripts/rabbit_loop.sh --merge-gate --pr N
-# must print MERGE_GATE: CLEAR — else reply/resolve threads and stop
+scripts/rabbit_loop.sh --author-gate --pr N
+# must print AUTHOR_GATE: INTERNAL — fork/external/unlisted authors BLOCK
 
-scripts/rabbit_loop.sh --classify-merge
-# MERGE_CLASS: SAFE → squash-merge allowed
+scripts/rabbit_loop.sh --merge-gate --pr N
+# runs author-gate first; must print MERGE_GATE: CLEAR — else reply/resolve threads and stop
+
+scripts/rabbit_loop.sh --classify-merge --pr N
+# runs author-gate first; MERGE_CLASS: SAFE → squash-merge allowed
 # MERGE_CLASS: NEEDS_HUMAN → do NOT merge; comment + leave for maintainer
 #   (optional: scripts/rabbit_handoff.sh --issue <linked-issue>)
 ```
 
 Only merge when:
 
-1. Author is `google-labs-jules[bot]` (or head branch clearly Jules/`task/…` from a Jules brief).
+1. `AUTHOR_GATE: INTERNAL` (verified internal author on this repo, not a fork).
 2. PR body or a comment contains **ready to merge** / label `jules-merge-ready` (optional but preferred).
 3. CI green on the tip.
 4. `MERGE_GATE: CLEAR`.
@@ -63,10 +66,15 @@ You are the Jules finisher for this repo (timelog-extract / Gittan).
 
 1. Confirm this PR is from google-labs-jules[bot] (or a Jules task branch).
 2. Checkout the PR head. Run from repo root:
+   - bash scripts/rabbit_loop.sh --author-gate --pr <N>   # FIRST — hard boundary
    - bash scripts/run_autotests.sh   # if not already green on CI
    - bash scripts/rabbit_loop.sh --merge-gate --pr <N>
    - bash scripts/rabbit_loop.sh --classify-merge
-3. If MERGE_GATE is not CLEAR, or MERGE_CLASS is NEEDS_HUMAN: comment why and stop.
+3. If AUTHOR_GATE is BLOCKED (fork / external / unverified author): **stop, do not
+   merge, do not approve** — external contributions require a human. This is a
+   code-enforced boundary, not a branch-name heuristic (incident: external fork
+   PR #N). If MERGE_GATE is not CLEAR, or MERGE_CLASS is NEEDS_HUMAN: comment
+   why and stop.
 4. Sanity: `git diff --name-status origin/main...HEAD` must not show unexpected
    deletions of files that exist on origin/main (especially core/, scripts/,
    docs/contributing/, tests/). If it does, sync/fix or stop — do not merge.
@@ -105,9 +113,12 @@ Follow docs/contributing/jules-finisher-agents.md (Shared merge rules).
 Steps:
 1. Verify author is google-labs-jules[bot] (or Jules task branch).
 2. On the PR head, run:
+   bash scripts/rabbit_loop.sh --author-gate --pr <this-PR-number>
+   bash scripts/cli_impact_smoke.sh
+   bash scripts/run_autotests.sh
    bash scripts/rabbit_loop.sh --merge-gate --pr <this-PR-number>
-   bash scripts/rabbit_loop.sh --classify-merge
-3. If not CLEAR or not SAFE: comment the blocker and stop. Do not merge.
+   bash scripts/rabbit_loop.sh --classify-merge --pr <this-PR-number>
+3. If AUTHOR_GATE is BLOCKED, or MERGE_GATE is not CLEAR, or MERGE_CLASS is not SAFE: comment the blocker and stop. Do not merge.
 4. Check for stale-tip wipes vs origin/main (unexpected deletions). If found, stop.
 5. If SAFE + CLEAR + CI green: `gh pr merge <N> --squash --delete-branch`.
 6. Comment the result on the PR.

@@ -46,6 +46,21 @@ _VSCODE_NOISE = make_noise_filter(
         "runinterminaltool",
         "commandlinefilewriteanalyzer",
         "commandlineautoapproveanalyzer",
+        # Agent handoff IPC — not editing evidence (often floods when Code has
+        # the same repo open as Cursor).
+        "agentshandoff",
+        # Pylance / basedpyright File Graph + indexer heartbeats (FG(…)/IDX(…)).
+        "fg(",
+        "idx(",
+        "setting pythonpath for service",
+        "no include entries specified",
+        "reloading configuration file",
+        "loading pyproject.toml",
+        "discovered env:",
+        "test-by-project",
+        "changed environment from",
+        "active interpreter [",
+        "starting service instance",
     ),
     ultra_strict=(
         # Prefer tagged/phrased signatures over lone tokens like "telemetry"

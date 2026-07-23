@@ -187,13 +187,15 @@ def build_unanchored_anchors_nudge(
         anchors = unanchored_anchors_for_report(report, min_hits=min_hits)
     if not anchors:
         return None
-    listed = ", ".join(
-        f"{a['value']} ({ANCHOR_KIND_LABELS.get(a['kind'], a['kind'])}, {a['hits']})"
-        for a in anchors[:5]
-    )
     stable = [a for a in anchors if a.get("kind") in {"repo", "dir"}]
     ephemeral = [a for a in anchors if a.get("kind") in {"branch", "label"}]
-
+    # Lead with durable kinds so the nudge matches what `gittan map` / status
+    # will actually offer (branch/title are context-only).
+    ordered = stable + [a for a in anchors if a.get("kind") not in {"repo", "dir"}]
+    listed = ", ".join(
+        f"{a['value']} ({ANCHOR_KIND_LABELS.get(a['kind'], a['kind'])}, {a['hits']})"
+        for a in ordered[:5]
+    )
     lines = [
         f"Nudge: {len(anchors)} unmapped activity anchor"
         f"{'' if len(anchors) == 1 else 's'} with activity: {listed}."

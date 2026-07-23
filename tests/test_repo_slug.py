@@ -78,6 +78,25 @@ class PathAttributionAnchorTests(unittest.TestCase):
         self.assertIsNone(path_attribution_anchor(""))
         self.assertIsNone(path_attribution_anchor(None))
 
+    def test_truncated_application_support_path_is_none(self):
+        # /Users/... extractors stop at whitespace → ".../Library/Application".
+        self.assertIsNone(
+            path_attribution_anchor("/Users/me/Library/Application")
+        )
+        self.assertIsNone(
+            path_attribution_anchor("/Users/me/Library/Application/")
+        )
+
+    def test_junk_dir_leaves_are_none(self):
+        with TemporaryDirectory() as tmp:
+            for leaf in ("application", "library", "users", "home"):
+                plain = Path(tmp) / leaf
+                plain.mkdir()
+                self.assertIsNone(
+                    path_attribution_anchor(str(plain)),
+                    msg=f"expected junk leaf {leaf!r} rejected",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

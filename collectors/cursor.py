@@ -74,6 +74,10 @@ _BASE_NOISE_MARKERS = (
         # MCP browser-tool action failures (cursor-ide-browser write errors on idle days).
         "browser_click.json",
         "error writing serv",
+        # Hooks / customization discovery (same shape as stock Code customizationsDebug).
+        "[local]",
+        "  root:",
+        "file watcher",
     )
 _STRICT_NOISE_MARKERS = (
     # Reserved: ambiguous signals to drop under strict but keep under lenient.
@@ -123,6 +127,52 @@ def _is_cursor_diagnostic_noise(line: str, noise_profile: str = "strict") -> boo
 def cursor_base_dir(home: Path) -> Path:
     """Return the Cursor application-support directory for ``home``."""
     return home / "Library" / "Application Support" / "Cursor"
+
+
+def _is_cursor_internal_path(path: str, line: str, home: Path) -> bool:
+    """True for Cursor's own data dirs or truncated Application Support paths.
+
+    The ``/Users/...`` extractor stops at whitespace, so
+    ``…/Library/Application Support/Cursor/…`` becomes
+    ``…/Library/Application`` and would otherwise map as ``dir=application``.
+    """
+    if not path:
+        return True
+    cursor_root = str(cursor_base_dir(home))
+    # Full marker (with spaces) on the raw line — same pattern as vscode_fork.
+    if cursor_root in line or "/Library/Application Support/Cursor" in line:
+        return True
+    if path.startswith(cursor_root):
+        return True
+    if path.rstrip("/").endswith("/Library/Application"):
+        return True
+    home_dot_prefix = str(home).rstrip("/") + "/."
+    if path.startswith(home_dot_prefix):
+        return True
+    return False
+
+
+def _is_ide_metadata_workspace(path: str) -> bool:
+    """True when the path is an IDE agent/skill tree, not the project root.
+
+    Descendants match ``{marker}/``; exact leaf matches ``endswith(marker)``.
+    Keep the marker set aligned with ``vscode_fork._IDE_METADATA_PATH_MARKERS``.
+    """
+    if not path:
+        return True
+    norm = path.rstrip("/")
+    return any(
+        f"{marker}/" in path or norm.endswith(marker)
+        for marker in (
+            "/.cursor",
+            "/.claude",
+            "/.vscode",
+            "/.agents",
+            "/.github/agents",
+            "/.github/skills",
+            "/.copilot",
+        )
+    )
 
 
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
@@ -178,6 +228,7 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
                             continue
                         workspace_path = None
+                        from_line_path = False
                         m_id = workspace_id_pattern.search(line)
                         if m_id and workspace_map:
                             workspace_id = m_id.group(1) or m_id.group(2)
@@ -186,7 +237,16 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                             m_path = workspace_path_pattern.search(line)
                             if m_path:
                                 workspace_path = m_path.group(1)
+                                from_line_path = True
                         if not workspace_path:
+                            continue
+                        # Line-extracted paths need the Application Support guard;
+                        # mapped workspace folders are already the project root.
+                        if from_line_path and _is_cursor_internal_path(
+                            workspace_path, line, home
+                        ):
+                            continue
+                        if _is_ide_metadata_workspace(workspace_path):
                             continue
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name

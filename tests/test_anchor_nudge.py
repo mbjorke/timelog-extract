@@ -37,6 +37,22 @@ class StatusAnchorLineTests(unittest.TestCase):
         self.assertIn("+2 more", line)
         self.assertIn("gittan map", line)
 
+    def test_lists_durable_kinds_before_ephemeral(self):
+        # High-hit session titles must not bury the repo/dir the map flow offers.
+        line = status_anchor_line(
+            [
+                {"kind": "label", "value": "pull requests", "hits": 201},
+                {"kind": "dir", "value": "application", "hits": 90},
+                {"kind": "branch", "value": "head", "hits": 66},
+                {"kind": "repo", "value": "owner-a/project-alpha", "hits": 44},
+            ]
+        )
+        durable_pos = line.index("application")
+        repo_pos = line.index("owner-a/project-alpha")
+        ephemeral_pos = line.index("pull requests")
+        self.assertLess(durable_pos, ephemeral_pos)
+        self.assertLess(repo_pos, ephemeral_pos)
+
 
 class InteractiveAnchorFlowTests(unittest.TestCase):
     def _cfg(self, payload) -> Path:

@@ -32,12 +32,20 @@ def _kind_label(kind: str) -> str:
     return ANCHOR_KIND_LABELS.get(str(kind), str(kind) or "anchor")
 
 
+def _display_ordered_anchors(anchors: list[dict]) -> list[dict]:
+    """Lead with durable repo/dir so the warning matches the interactive offer."""
+    durable = [a for a in anchors if str(a.get("kind", "")).strip() in _DURABLE_KINDS]
+    ephemeral = [a for a in anchors if str(a.get("kind", "")).strip() not in _DURABLE_KINDS]
+    return durable + ephemeral
+
+
 def status_anchor_line(anchors: list[dict]) -> str | None:
     """One-line status warning for unmapped activity anchors, or None."""
     if not anchors:
         return None
+    ordered = _display_ordered_anchors(anchors)
     listed = ", ".join(
-        f"{a['value']} ({_kind_label(a.get('kind', ''))}, {a['hits']})" for a in anchors[:3]
+        f"{a['value']} ({_kind_label(a.get('kind', ''))}, {a['hits']})" for a in ordered[:3]
     )
     more = "" if len(anchors) <= 3 else f" +{len(anchors) - 3} more"
     plural = "" if len(anchors) == 1 else "s"

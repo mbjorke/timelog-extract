@@ -199,6 +199,99 @@ class VSCodeCollectorTests(unittest.TestCase):
             self.assertNotIn("SECRET", out[0]["detail"])
             self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
 
+    def test_skips_agents_handoff_ipc_noise(self):
+        # Stock Code floods AgentsHandoff when the same repo is also open in Cursor.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:35:00.000 [info] [AgentsHandoff] IPC received: "
+                    "folderUri=file:///Users/me/Workspace/Project/project-alpha"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_skips_truncated_application_path_leaf(self):
+        # Truncated Application Support path must not become dir=application.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:00.000 [info] indexing "
+                    "/Users/me/Library/Application Support/Code/logs/skills"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_keeps_prefixed_vscode_dir_name(self):
+        # Bare ``/.vscode`` must not match ``/.vscode-test`` / ``/.vscode-community``.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:30.000 [info] editing src/api.ts "
+                    "/Users/me/Workspace/Project/.vscode-community"
+                ],
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Project Community")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["project"], "Project Community")
+            self.assertEqual(out[0]["anchors"]["dir"], ".vscode-community")
+
+    def test_skips_exact_vscode_metadata_leaf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:40.000 [info] indexing "
+                    "/Users/me/Workspace/Project/project-alpha/.vscode"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_skips_pylance_fg_and_customization_discovery(self):
+        # Stock Code keeps the repo open → Pylance FG + agent/skill discovery
+        # floods look like "VS Code instead of Cursor" in the timeline.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "window1/exthost/ms-python.python/Python Language Server.log",
+                [
+                    "2026-05-28 09:37:00.000 [info] (1): FG(project-alpha): "
+                    "Loading pyproject.toml file at "
+                    "/Users/me/Workspace/Project/project-alpha/pyproject.toml"
+                ],
+            )
+            self._write_log(
+                home,
+                "window1/customizationsDebug.log",
+                [
+                    "2026-05-28 09:37:01.000 [info]   Root: "
+                    "/Users/me/Workspace/Project/project-alpha",
+                    "2026-05-28 09:37:01.100 [info]        [local] "
+                    "/Users/me/Workspace/Project/project-alpha/.github/agents",
+                ],
+            )
+            self._write_log(
+                home,
+                "window1/renderer.log",
+                [
+                    "2026-05-28 09:37:02.000 [error] [File Watcher ('parcel')] "
+                    "Events were dropped (path: "
+                    "/Users/me/Workspace/Project/project-alpha)"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
 
 if __name__ == "__main__":
     unittest.main()

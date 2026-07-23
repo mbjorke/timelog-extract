@@ -32,6 +32,30 @@ _WORKSPACE_ID_PATTERN = re.compile(r"workspaceStorage/([^/\s\"']+)")
 # so workspace paths in the logs are always absolute /Users/... paths.
 _WORKSPACE_PATH_PATTERN = re.compile(r"(/Users/[^\"'\s]+)")
 
+# Tool/agent metadata trees under a real workspace — indexing them is IDE
+# plumbing (skills/agents/hooks), not user editing. Descendants match
+# ``{marker}/``; exact leaf matches ``endswith(marker)`` so a path like
+# ``…/.vscode-test`` is not treated as ``…/.vscode``.
+_IDE_METADATA_PATH_MARKERS = (
+    "/.cursor",
+    "/.claude",
+    "/.vscode",
+    "/.agents",
+    "/.github/agents",
+    "/.github/skills",
+    "/.copilot",
+)
+
+# Log basenames that are pure IDE plumbing (never editing evidence). Matched
+# case-insensitively against ``Path.name``.
+_SKIP_LOG_BASENAMES = frozenset(
+    {
+        "customizationsdebug.log",  # agent/skill discovery floods (stock Code)
+        "python language server.log",  # Pylance FG/IDX heartbeats
+        "filewatcher.log",
+    }
+)
+
 # Operational noise common to every fork, filtered at every noise profile.
 SHARED_BASE_NOISE = (
     "error getting submodules",
@@ -54,6 +78,11 @@ SHARED_BASE_NOISE = (
     # Config-path polling ("User config path:", "Claude user config path:").
     "user config path:",
     "canvas sdk mirror",
+    # FSEvents / parcel watcher drops — not editing evidence.
+    "file watcher",
+    # Agent/skill customization discovery (customizationsDebug / hooks).
+    "[local]",
+    "  root:",
 )
 
 
@@ -217,6 +246,15 @@ def collect_fork_logs(
             return False
         if path.startswith(home_dot_prefix):
             return True
+        # Truncated "…/Library/Application Support/…" (space stops the extractor).
+        if path.rstrip("/").endswith("/Library/Application"):
+            return True
+        norm = path.rstrip("/")
+        if any(
+            f"{marker}/" in path or norm.endswith(marker)
+            for marker in _IDE_METADATA_PATH_MARKERS
+        ):
+            return True
         return any(path.startswith(marker) for marker in internals)
 
     def _line_mentions_internal(line: str) -> bool:
@@ -232,6 +270,8 @@ def collect_fork_logs(
             continue
         workspace_map = load_fork_workspaces(base_dir)
         for log_file in logs_dir.glob("**/*.log"):
+            if log_file.name.lower() in _SKIP_LOG_BASENAMES:
+                continue
             try:
                 with open(log_file, encoding="utf-8", errors="replace") as fh:
                     for line in fh:

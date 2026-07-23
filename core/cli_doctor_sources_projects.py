@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -14,9 +13,7 @@ import typer
 
 from core.chromium_cache import CODEC_REINSTALL_HINT
 from core.cli_app import app
-from core.cli_options import TimelogRunOptions
 from core.config import (
-    default_projects_config_option,
     load_profiles,
     projects_config_resolution_warnings,
     resolve_profile_worklog_paths,
@@ -38,13 +35,10 @@ from core.onboarding_guidance import (
 from core.workspace_root import runtime_workspace_root
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import (
-    CLR_SOURCE_BLUE,
-    CLR_VALUE_ORANGE,
     FAIL_ICON,
     NA_ICON,
     OK_ICON,
     STYLE_BORDER,
-    STYLE_DIM,
     STYLE_LABEL,
     STYLE_MUTED,
     WARN_ICON,
@@ -169,26 +163,92 @@ def doctor(
             style_muted=STYLE_MUTED,
             home=home,
         )
+        # Check for shadow log capture errors (GH-408)
+        capture_errors_file = home / ".gittan" / "capture-errors.jsonl"
+        if capture_errors_file.exists():
+            try:
+                import json
+                with capture_errors_file.open(encoding="utf-8") as f:
+                    errors = [json.loads(line) for line in f if line.strip()]
+                if errors:
+                    latest_err = errors[-1]
+                    table.add_row(
+                        "Capture errors",
+                        FAIL_ICON,
+                        f"[{STYLE_MUTED}]Recent capture failure: {latest_err.get('error')} (last: {latest_err.get('timestamp')})[/{STYLE_MUTED}]",
+                    )
+            except Exception:
+                pass
         using_single_worklog = bool(worklog) or bool(workspace_worklog)
         if using_single_worklog:
-            worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
+            if not worklog_path.exists():
+                table.add_row("Worklog (Local)", FAIL_ICON, f"[{STYLE_MUTED}]Not found: {worklog_path}[/{STYLE_MUTED}]")
+                worklog_ok = False
+            elif not os.access(worklog_path, os.R_OK):
+                table.add_row("Worklog (Local)", WARN_ICON, f"[{STYLE_MUTED}]No read permission: {worklog_path}[/{STYLE_MUTED}]")
+                worklog_ok = False
+            else:
+                try:
+                    from datetime import timezone
+                    mtime = datetime.fromtimestamp(worklog_path.stat().st_mtime, timezone.utc)
+                    age_days = (datetime.now(timezone.utc) - mtime).days
+                    if age_days >= 7:
+                        dt_str = mtime.date().isoformat()
+                        table.add_row(
+                            "Worklog (Local)",
+                            WARN_ICON,
+                            f"[{STYLE_MUTED}]Stale capture: no writes in last 7 days (last modified: {dt_str})[/{STYLE_MUTED}]",
+                        )
+                    else:
+                        table.add_row("Worklog (Local)", OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
+                except OSError:
+                    table.add_row("Worklog (Local)", OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
+                worklog_ok = True
         elif profile_worklogs:
             accessible = [path for path in profile_worklogs if path.exists() and os.access(path, os.R_OK)]
             total = len(profile_worklogs)
             readable = len(accessible)
+            stale_paths = []
+            for path in accessible:
+                try:
+                    from datetime import timezone
+                    mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+                    if (datetime.now(timezone.utc) - mtime).days >= 7:
+                        stale_paths.append((path, mtime))
+                except OSError:
+                    continue
+
             if readable == total:
-                table.add_row(
-                    "Worklogs (Per-project)",
-                    OK_ICON,
-                    f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
-                )
+                if stale_paths:
+                    oldest_date = min(stale_paths, key=lambda x: x[1])[1].date().isoformat()
+                    table.add_row(
+                        "Worklogs (Per-project)",
+                        WARN_ICON,
+                        f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible) — "
+                        f"Stale capture: {len(stale_paths)} worklog(s) have no writes in last 7 days (oldest: {oldest_date})[/{STYLE_MUTED}]",
+                    )
+                else:
+                    table.add_row(
+                        "Worklogs (Per-project)",
+                        OK_ICON,
+                        f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
+                    )
                 worklog_ok = True
             elif readable > 0:
-                table.add_row(
-                    "Worklogs (Per-project)",
-                    WARN_ICON,
-                    f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
-                )
+                if stale_paths:
+                    oldest_date = min(stale_paths, key=lambda x: x[1])[1].date().isoformat()
+                    table.add_row(
+                        "Worklogs (Per-project)",
+                        WARN_ICON,
+                        f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible) — "
+                        f"Stale capture: {len(stale_paths)} worklog(s) have no writes in last 7 days (oldest: {oldest_date})[/{STYLE_MUTED}]",
+                    )
+                else:
+                    table.add_row(
+                        "Worklogs (Per-project)",
+                        WARN_ICON,
+                        f"[{STYLE_MUTED}]Per-project worklogs configured ({readable}/{total} accessible)[/{STYLE_MUTED}]",
+                    )
                 worklog_ok = True
             else:
                 table.add_row(
@@ -198,7 +258,29 @@ def doctor(
                 )
                 worklog_ok = False
         else:
-            worklog_ok = doctor_check_file(table, worklog_path, "Worklog (Local)", check_style)
+            if not worklog_path.exists():
+                table.add_row("Worklog (Local)", FAIL_ICON, f"[{STYLE_MUTED}]Not found: {worklog_path}[/{STYLE_MUTED}]")
+                worklog_ok = False
+            elif not os.access(worklog_path, os.R_OK):
+                table.add_row("Worklog (Local)", WARN_ICON, f"[{STYLE_MUTED}]No read permission: {worklog_path}[/{STYLE_MUTED}]")
+                worklog_ok = False
+            else:
+                try:
+                    from datetime import timezone
+                    mtime = datetime.fromtimestamp(worklog_path.stat().st_mtime, timezone.utc)
+                    age_days = (datetime.now(timezone.utc) - mtime).days
+                    if age_days >= 7:
+                        dt_str = mtime.date().isoformat()
+                        table.add_row(
+                            "Worklog (Local)",
+                            WARN_ICON,
+                            f"[{STYLE_MUTED}]Stale capture: no writes in last 7 days (last modified: {dt_str})[/{STYLE_MUTED}]",
+                        )
+                    else:
+                        table.add_row("Worklog (Local)", OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
+                except OSError:
+                    table.add_row("Worklog (Local)", OK_ICON, f"[{STYLE_MUTED}]Accessible[/{STYLE_MUTED}]")
+                worklog_ok = True
         coverage = assess_config_git_coverage(_profiles)
         coverage_icon = OK_ICON if coverage.status == "ok" else WARN_ICON if coverage.status == "warn" else NA_ICON
         coverage_detail = coverage.detail
@@ -320,170 +402,3 @@ def doctor(
     )
 
 
-@app.command()
-def sources(
-    date_from: Annotated[Optional[datetime], typer.Option("--from", formats=["%Y-%m-%d"], help="Start date (YYYY-MM-DD)")] = None,
-    date_to: Annotated[Optional[datetime], typer.Option("--to", formats=["%Y-%m-%d"], help="End date (YYYY-MM-DD)")] = None,
-    today: Annotated[bool, typer.Option(help="Limit to today.")] = False,
-    yesterday: Annotated[bool, typer.Option(help="Limit to yesterday.")] = False,
-    last_3_days: Annotated[bool, typer.Option(help="Limit to last 3 days.")] = False,
-    last_week: Annotated[bool, typer.Option(help="Limit to last 7 days.")] = False,
-    last_14_days: Annotated[bool, typer.Option(help="Limit to last 14 days.")] = False,
-    last_month: Annotated[bool, typer.Option(help="Limit to last 30 days.")] = False,
-):
-    """Analyze which data sources are contributing the most to your reports."""
-    from rich import box
-    from rich.console import Console
-    from rich.table import Table
-
-    from core.analytics import estimate_hours_by_day, group_by_day
-    from core.cli_date_range import resolve_date_window
-    from core.domain import session_duration_hours
-    from core.report_service import (
-        LOCAL_TZ,
-        _compute_sessions,
-        _session_duration_hours,
-        run_timelog_report,
-    )
-    from core.sources import AI_SOURCES
-
-    df_s, dt_s = resolve_date_window(
-        date_from=date_from,
-        date_to=date_to,
-        today=today,
-        yesterday=yesterday,
-        last_3_days=last_3_days,
-        last_week=last_week,
-        last_14_days=last_14_days,
-        last_month=last_month,
-        prompt_if_missing=not (
-            date_from or date_to or today or yesterday or last_3_days or last_week or last_14_days or last_month
-        ),
-    )
-
-    if df_s is None or dt_s is None:
-        raise typer.BadParameter("Could not resolve date range for sources.")
-
-    options = TimelogRunOptions(
-        date_from=df_s,
-        date_to=dt_s,
-        today=today,
-        yesterday=yesterday,
-        last_3_days=last_3_days,
-        last_week=last_week,
-        last_14_days=last_14_days,
-        last_month=last_month,
-        projects_config=default_projects_config_option(),
-        quiet=True,
-    )
-
-    console = Console()
-    with console.status(f"[bold {STYLE_LABEL}]Analyzing source importance...", spinner="dots"):
-        report = run_timelog_report(options.projects_config, options.date_from, options.date_to, options)
-
-    if not report.all_events:
-        console.print(
-            f"[{CLR_VALUE_ORANGE}]No data found for this period to analyze.[/{CLR_VALUE_ORANGE}]"
-        )
-        console.print(
-            f"[{STYLE_MUTED}]Next: widen the date range or run `gittan doctor` to verify source access.[/{STYLE_MUTED}]"
-        )
-        return
-
-    source_counts = defaultdict(int)
-    source_hours = defaultdict(float)
-
-    for event in report.all_events:
-        source_counts[event["source"]] += 1
-
-    raw_grouped = group_by_day(report.all_events, local_tz=LOCAL_TZ)
-    raw_overall = estimate_hours_by_day(
-        raw_grouped,
-        gap_minutes=15,
-        min_session_minutes=15,
-        min_session_passive_minutes=5,
-        compute_sessions_fn=_compute_sessions,
-        session_duration_hours_fn=_session_duration_hours,
-    )
-
-    uncategorized_count = defaultdict(int)
-    uncategorized_samples = defaultdict(list)
-    for day_data in raw_overall.values():
-        for session in day_data["sessions"]:
-            start, end, session_events = session[:3]
-            dur = session_duration_hours(session_events, start, end, 15, 5, AI_SOURCES)
-
-            session_counts = defaultdict(int)
-            for e in session_events:
-                if e.get("project") == "Uncategorized":
-                    src = e["source"]
-                    uncategorized_count[src] += 1
-                    detail = e.get("detail", "")
-                    if detail and detail not in uncategorized_samples[src] and len(uncategorized_samples[src]) < 3:
-                        uncategorized_samples[src].append(detail)
-                session_counts[e["source"]] += 1
-
-            total_session_events = len(session_events)
-            if total_session_events > 0:
-                for src, count in session_counts.items():
-                    share = dur * (count / total_session_events)
-                    source_hours[src] += share
-
-    table = Table(
-        title=f"Source Importance Analysis ({options.date_from} to {options.date_to})",
-        box=box.ROUNDED,
-    )
-    table.border_style = STYLE_BORDER
-    table.header_style = f"bold {STYLE_LABEL}"
-    table.add_column("Source", style=CLR_SOURCE_BLUE)
-    table.add_column("Events", justify="right", style=STYLE_MUTED)
-    table.add_column("Uncat.", justify="right", style=CLR_VALUE_ORANGE)
-    table.add_column("Samples (Uncat)", style=STYLE_DIM, max_width=40)
-    table.add_column("Est. Hours Impact", justify="right", style=CLR_VALUE_ORANGE)
-    table.add_column("Weight %", justify="right", style=STYLE_DIM)
-
-    total_impact_h = sum(source_hours.values())
-    sorted_sources = sorted(source_counts.keys(), key=lambda s: source_hours[s], reverse=True)
-
-    for src in sorted_sources:
-        pct = (source_hours[src] / total_impact_h * 100) if total_impact_h > 0 else 0
-        samples_text = " | ".join(uncategorized_samples[src])
-        table.add_row(
-            src,
-            str(source_counts[src]),
-            str(uncategorized_count[src]),
-            samples_text,
-            f"{source_hours[src]:.1f}h",
-            f"{pct:.1f}%",
-        )
-
-    console.print(table)
-    console.print(
-        f"\n[{STYLE_DIM}]Note: 'Est. Hours Impact' represents how much of your total session time is 'backed' by this "
-        f"specific source.[/{STYLE_DIM}]\n"
-    )
-
-    total_uncategorized = sum(uncategorized_count.values())
-    if total_uncategorized > 0:
-        console.print(
-            f"[{STYLE_MUTED}]Next: run `gittan review` to map uncategorized domains to project buckets.[/{STYLE_MUTED}]"
-        )
-    else:
-        report_cmd = "gittan report"
-        if options.today:
-            report_cmd += " --today"
-        elif options.yesterday:
-            report_cmd += " --yesterday"
-        elif options.last_3_days:
-            report_cmd += " --last-3-days"
-        elif options.last_week:
-            report_cmd += " --last-week"
-        elif options.last_14_days:
-            report_cmd += " --last-14-days"
-        elif options.last_month:
-            report_cmd += " --last-month"
-        elif options.date_from and options.date_to:
-            report_cmd += f" --from {options.date_from} --to {options.date_to}"
-        console.print(
-            f"[{STYLE_MUTED}]Next: run `{report_cmd}` to review your daily project timeline.[/{STYLE_MUTED}]"
-        )

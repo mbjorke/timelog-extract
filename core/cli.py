@@ -22,6 +22,7 @@ from core import (
     cli_reported,  # noqa: F401
     cli_review,  # noqa: F401
     cli_search,  # noqa: F401
+    cli_sources,  # noqa: F401
     cli_toggl_sync,  # noqa: F401
     cli_ux,  # noqa: F401
 )

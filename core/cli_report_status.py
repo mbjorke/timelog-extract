@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Optional
 
 import click
@@ -432,6 +433,21 @@ def status(
         if nudge:
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         _print_status_anchor_nudge(console, report, anchor_nudge=anchor_nudge)
+        # Check for shadow log capture errors (GH-408)
+        capture_errors_file = Path.home() / ".gittan" / "capture-errors.jsonl"
+        if capture_errors_file.exists():
+            try:
+                import json
+                with capture_errors_file.open(encoding="utf-8") as f:
+                    errors = [json.loads(line) for line in f if line.strip()]
+                if errors:
+                    latest_err = errors[-1]
+                    console.print(
+                        f"{FAIL_ICON} [bold {CLR_VALUE_ORANGE}]Shadow log capture failure: {latest_err.get('error')} "
+                        f"(last: {latest_err.get('timestamp')})[/bold {CLR_VALUE_ORANGE}]"
+                    )
+            except Exception:
+                pass
         timelog_projects = sorted(
             {
                 str(event.get("project", "")).strip()

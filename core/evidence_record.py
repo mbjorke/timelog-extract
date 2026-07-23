@@ -96,7 +96,7 @@ def evidence_record_from_event(
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "fingerprint": compute_evidence_fingerprint(source, observed_at, detail),
         "source": source,
-        "source_provenance": source_provenance,
+        "source_provenance": source_provenance or event.get("source_provenance"),
         "observed_at": _normalize_observed_at(observed_at),
         "captured_at": _normalize_observed_at(captured_at),
         "detail": detail,

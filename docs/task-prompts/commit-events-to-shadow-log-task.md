@@ -123,15 +123,16 @@ Scenario: Ledger write failure is not silent
 ## Traceability
 
 - story_id: GH-408 (https://github.com/mbjorke/timelog-extract/issues/408)
-- spec_status: draft
-- implementation_status: not built
+- spec_status: approved
+- implementation_status: built
 - created_at: 2026-07-20
-- last_updated_at: 2026-07-20
+- last_updated_at: 2026-07-23
 - implementation.pr: pending
-- implementation.branch: pending
+- implementation.branch: task/commit-events-to-shadow-log-408
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: tests/test_global_timelog_hook_script.py, tests/test_doctor_staleness_and_errors.py
+- validation.decision: GO
 - changelog:
   - 2026-07-20: Initial draft from product-owner pass after the silent
     worklog-capture incident (hook hash-naming + missing-file fallback).
+  - 2026-07-23: Implemented git-commit event write, error logging, and staleness doctor checks.

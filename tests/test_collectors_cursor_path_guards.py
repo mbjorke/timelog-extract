@@ -79,6 +79,48 @@ class CursorPathGuardTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_skips_exact_copilot_metadata_leaf(self):
+        # Align with vscode_fork: trailing ``/.copilot`` is IDE metadata.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "d" * 32
+            self._write_workspace(
+                home, wid, "/Users/me/Workspace/Project/project-alpha/.copilot"
+            )
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 10:06:00 [info] indexing skills "
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_keeps_prefixed_vscode_workspace_leaf(self):
+        # ``/.vscode`` must not swallow ``/.vscode-community``.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            wid = "e" * 32
+            self._write_workspace(
+                home, wid, "/Users/me/Workspace/Project/.vscode-community"
+            )
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    (
+                        "2026-04-22 10:07:00 [info] focus "
+                        "workspaceStorage/" + wid
+                    )
+                ],
+            )
+            out = self._collect(home)
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["anchors"]["dir"], ".vscode-community")
+
     def test_skips_github_agents_metadata_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

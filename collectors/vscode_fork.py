@@ -33,20 +33,17 @@ _WORKSPACE_ID_PATTERN = re.compile(r"workspaceStorage/([^/\s\"']+)")
 _WORKSPACE_PATH_PATTERN = re.compile(r"(/Users/[^\"'\s]+)")
 
 # Tool/agent metadata trees under a real workspace — indexing them is IDE
-# plumbing (skills/agents/hooks), not user editing. Paths are matched with
-# slash-bounded markers so a project named "my-claude-app" is not dropped.
+# plumbing (skills/agents/hooks), not user editing. Descendants match
+# ``{marker}/``; exact leaf matches ``endswith(marker)`` so a path like
+# ``…/.vscode-test`` is not treated as ``…/.vscode``.
 _IDE_METADATA_PATH_MARKERS = (
-    "/.cursor/",
-    "/.claude/",
-    "/.vscode/",
-    "/.agents/",
-    "/.github/agents",
-    "/.github/skills",
-    "/.copilot/",
     "/.cursor",
     "/.claude",
     "/.vscode",
     "/.agents",
+    "/.github/agents",
+    "/.github/skills",
+    "/.copilot",
 )
 
 # Log basenames that are pure IDE plumbing (never editing evidence). Matched
@@ -254,8 +251,7 @@ def collect_fork_logs(
             return True
         norm = path.rstrip("/")
         if any(
-            marker in path
-            or norm.endswith(marker.rstrip("/"))
+            f"{marker}/" in path or norm.endswith(marker)
             for marker in _IDE_METADATA_PATH_MARKERS
         ):
             return True

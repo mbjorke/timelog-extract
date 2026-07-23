@@ -153,24 +153,25 @@ def _is_cursor_internal_path(path: str, line: str, home: Path) -> bool:
 
 
 def _is_ide_metadata_workspace(path: str) -> bool:
-    """True when the path is an IDE agent/skill tree, not the project root."""
+    """True when the path is an IDE agent/skill tree, not the project root.
+
+    Descendants match ``{marker}/``; exact leaf matches ``endswith(marker)``.
+    Keep the marker set aligned with ``vscode_fork._IDE_METADATA_PATH_MARKERS``.
+    """
     if not path:
         return True
     norm = path.rstrip("/")
-    for marker in (
-        "/.cursor/",
-        "/.claude/",
-        "/.vscode/",
-        "/.agents/",
-        "/.github/agents",
-        "/.github/skills",
-        "/.copilot/",
-    ):
-        if marker in path:
-            return True
     return any(
-        norm.endswith(m)
-        for m in ("/.cursor", "/.claude", "/.vscode", "/.agents")
+        f"{marker}/" in path or norm.endswith(marker)
+        for marker in (
+            "/.cursor",
+            "/.claude",
+            "/.vscode",
+            "/.agents",
+            "/.github/agents",
+            "/.github/skills",
+            "/.copilot",
+        )
     )
 
 

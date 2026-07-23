@@ -227,6 +227,36 @@ class VSCodeCollectorTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_keeps_prefixed_vscode_dir_name(self):
+        # Bare ``/.vscode`` must not match ``/.vscode-test`` / ``/.vscode-community``.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:30.000 [info] editing src/api.ts "
+                    "/Users/me/Workspace/Project/.vscode-community"
+                ],
+            )
+            out = self._collect(home, classify=lambda _h, _p: "Project Community")
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["project"], "Project Community")
+            self.assertEqual(out[0]["anchors"]["dir"], ".vscode-community")
+
+    def test_skips_exact_vscode_metadata_leaf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:40.000 [info] indexing "
+                    "/Users/me/Workspace/Project/project-alpha/.vscode"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
     def test_skips_pylance_fg_and_customization_discovery(self):
         # Stock Code keeps the repo open → Pylance FG + agent/skill discovery
         # floods look like "VS Code instead of Cursor" in the timeline.

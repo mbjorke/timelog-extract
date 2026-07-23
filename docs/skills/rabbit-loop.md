@@ -152,8 +152,9 @@ scripts/rabbit_loop.sh --base origin/main # explicit base (default)
 scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
 scripts/rabbit_loop.sh --skip-workflow    # emergency: skip multi-agent preflight
-scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
-scripts/rabbit_loop.sh --merge-gate       # last gate: CLEAR needs 0 threads AND an independent review; else BLOCKED
+scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN (runs author-gate first)
+scripts/rabbit_loop.sh --merge-gate       # last gate: CLEAR needs internal author + 0 threads + an independent review; else BLOCKED
+scripts/rabbit_loop.sh --author-gate --pr N  # explicit internal-author check (also runs inside the gates above)
 ```
 
 ### Invoking it per agent
@@ -196,12 +197,12 @@ Once `scripts/rabbit_loop.sh` reports `RABBIT_LOOP: CONVERGED`, the loop may shi
 when a human would merely *run* a command a script already ran.
 
 ```bash
-scripts/rabbit_loop.sh --classify-merge     # MERGE_CLASS: SAFE | NEEDS_HUMAN
+scripts/rabbit_loop.sh --classify-merge [--pr N]   # MERGE_CLASS: SAFE | NEEDS_HUMAN
 ```
 
 1. **Push** the branch and **open or update the PR** (English title/body per `AGENTS.md`;
    include the converged CodeRabbit summary and any escalations — no private customer data).
-2. **Classify** the committed diff vs `origin/main`:
+2. **Classify** the committed diff vs `origin/main` (pass `--pr N` so author-gate runs first):
    - **NEEDS_HUMAN** — touches a **human-judgment surface** where CI + CodeRabbit + autotests
      can't judge correctness: the report/invoice number engine (`core/domain.py`,
      `core/analytics.py`, `core/project_hours.py`, `core/pipeline.py`, `core/truth_payload.py`,
@@ -219,6 +220,15 @@ Adjust `_judgment_required()` in `scripts/rabbit_loop.sh` deliberately.
 
 **Never auto-merge** — regardless of class — if CodeRabbit did not complete cleanly, tests are
 not green, or any escalation is unresolved. Auto-merge requires `CONVERGED` **and** `SAFE`.
+
+**Author gate (mandatory before merge-gate and classify-merge).** Fork PRs and
+unlisted authors must never auto-merge. `--merge-gate` and `--classify-merge`
+run `author_gate` first; pass `--pr N` when the current branch has no open PR
+(e.g. GitButler lanes). Standalone check:
+
+```bash
+scripts/rabbit_loop.sh --author-gate --pr N   # AUTHOR_GATE: INTERNAL | BLOCKED
+```
 
 **Merge gate (mandatory, even for SAFE): zero unresolved review threads.** GitHub-app
 reviewers (CodeRabbit, Qodo, humans) post threads the local CLI loop never sees, so

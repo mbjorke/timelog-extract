@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import questionary
-from rich.panel import Panel
 
 from core.config import (
     backup_projects_config_if_exists,
@@ -15,9 +14,15 @@ from core.config import (
     save_projects_config_payload,
 )
 from core.mapping_assistant import reload_projects_after_evidence_mapping
-from core.setup_project_identity_candidates import print_customer_candidates_table
+from core.setup_project_identity_batch import collect_batch_mappings
+from core.setup_project_identity_candidates import (
+    customer_identity_key as _customer_identity_key,
+    print_customer_candidates_table,
+    project_correctly_linked_to_customer,
+    project_stem_matches_customer,
+)
 from outputs.cli_heroes import print_command_hero
-from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
+from outputs.terminal_theme import STYLE_LABEL, STYLE_MUTED
 
 
 def _ux_alpha_key(value: str) -> tuple[str, str]:
@@ -27,30 +32,6 @@ def _ux_alpha_key(value: str) -> tuple[str, str]:
 def _slug(text: str) -> str:
     clean = re.sub(r"[^a-z0-9]+", "-", (text or "").strip().lower()).strip("-")
     return clean
-
-
-def _compact(text: str) -> str:
-    return "".join(ch for ch in (text or "").lower() if ch.isalnum())
-
-
-def _customer_identity_key(value: str) -> str:
-    """
-    Best-effort identity key for deduping common customer variants.
-
-    Minimal-risk goal: collapse obvious duplicates users enter/see in onboarding:
-    - casing differences: "AX Finans" vs "ax-finans"
-    - domain vs bare root: "blueberry.ax" vs "Blueberry"
-    """
-    s = str(value or "").strip().lower()
-    if not s:
-        return ""
-    # URLs/domains: use the leftmost label (before first dot) as "root".
-    if "." in s:
-        s = s.split(".", 1)[0].strip()
-    # If any path-like value appears, keep only the last segment.
-    if "/" in s:
-        s = s.rsplit("/", 1)[-1].strip()
-    return _compact(s)
 
 
 def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict[str, list[str]]:
@@ -70,6 +51,7 @@ def _detect_customer_slug_collisions(projects: Iterable[dict[str, Any]]) -> dict
 
 def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
     # Prefer user-curated customer labels over placeholder customer=name rows.
+    # Prefer domain-shaped labels when ranking (strongest matching signal).
     curated: list[str] = []
     seen_keys: set[str] = set()
     for p in projects:
@@ -85,8 +67,7 @@ def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
         curated.append(customer)
         seen_keys.add(key)
     if curated:
-        return curated
-    # Fallback: still list existing customer values if no curated set exists yet.
+        return sorted(curated, key=lambda value: (0 if "." in value else 1, value.casefold(), value))
     any_customers: list[str] = []
     seen_keys = set()
     for p in projects:
@@ -98,10 +79,13 @@ def _existing_customers(projects: list[dict[str, Any]]) -> list[str]:
             continue
         any_customers.append(customer)
         seen_keys.add(key)
-    return any_customers
+    return sorted(any_customers, key=lambda value: (0 if "." in value else 1, value.casefold(), value))
 
 
-def _candidate_projects_for_customer_mapping(projects: list[dict[str, Any]]) -> list[str]:
+def _candidate_projects_for_customer_mapping(
+    projects: list[dict[str, Any]],
+    customers: list[str] | None = None,
+) -> list[str]:
     candidates: list[str] = []
     for p in projects:
         name = str(p.get("name", "")).strip()
@@ -109,15 +93,21 @@ def _candidate_projects_for_customer_mapping(projects: list[dict[str, Any]]) -> 
             continue
         customer = str(p.get("customer", "")).strip()
         default_client = str(p.get("default_client", "")).strip()
-        # Heuristic: rows with empty customer/default_client or placeholder customer=name
-        # are likely unresolved and worth confirming in onboarding.
-        unresolved = (
-            not customer
-            or customer.lower() == name.lower()
-            or not default_client
-        )
+        unresolved = not customer or customer.lower() == name.lower() or not default_client
         if unresolved and name not in candidates:
             candidates.append(name)
+
+    for customer_label in customers or []:
+        for p in projects:
+            if not isinstance(p, dict):
+                continue
+            name = str(p.get("name", "")).strip()
+            if not name or name in candidates:
+                continue
+            if project_correctly_linked_to_customer(p, customer_label):
+                continue
+            if project_stem_matches_customer(name, customer_label):
+                candidates.append(name)
     return sorted(candidates, key=_ux_alpha_key)
 
 
@@ -128,11 +118,7 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
         return candidates
     mode = questionary.select(
         "How many project candidates do you want to map now?",
-        choices=[
-            "Map all",
-            "Pick specific projects...",
-            "Cancel setup",
-        ],
+        choices=["Map all", "Pick specific projects...", "Cancel setup"],
         default="Map all",
     ).ask()
     if mode == "Cancel setup":
@@ -148,10 +134,6 @@ def _select_candidate_scope(candidates: list[str]) -> list[str]:
     return candidates
 
 
-def _print_customer_candidates_table(console, projects: list[dict[str, Any]], existing_customers: list[str]) -> None:
-    print_customer_candidates_table(console, projects, existing_customers)
-
-
 def _ask_customer_list(
     console,
     projects: list[dict[str, Any]],
@@ -159,11 +141,10 @@ def _ask_customer_list(
     *,
     initial_customers: list[str] | None = None,
 ) -> list[str]:
-    # Start empty by default for first-time UX; detected candidates are shown as hints only.
     current: list[str] = list(initial_customers or [])
     while True:
         if existing_customers:
-            _print_customer_candidates_table(console, projects, existing_customers)
+            print_customer_candidates_table(console, projects, existing_customers)
         console.print("Domains give the strongest matching signal.")
         console.print("Examples: acme.com, northwind.io, summithealth.co")
         raw = questionary.text(
@@ -230,40 +211,6 @@ def _apply_customer_to_projects(payload: dict[str, Any], *, customer_label: str,
     return updated
 
 
-def _print_project_selection_frame(console, *, customer_label: str, choices: list[str]) -> None:
-    shown_limit = 14
-    shown = choices[:shown_limit]
-    body_lines = [
-        f"[{STYLE_MUTED}]Customer:[/] [{STYLE_LABEL}]{customer_label}[/]",
-        f"[{STYLE_MUTED}]Candidates:[/] {len(choices)}",
-        f"[{STYLE_MUTED}]Use:[/] <space> select, <a> toggle all, <i> invert, <enter> confirm",
-        "",
-    ]
-    body_lines.extend([f"  - [yellow]{name}[/yellow]" for name in shown])
-    if len(choices) > shown_limit:
-        body_lines.append(f"[{STYLE_MUTED}]... and {len(choices) - shown_limit} more[/]")
-    console.print(
-        Panel(
-            "\n".join(body_lines),
-            title="Project Mapping Selection",
-            border_style=STYLE_BORDER,
-            title_align="left",
-            expand=False,
-        )
-    )
-
-
-def _pick_projects_with_helpers(console, *, customer_label: str, prompt: str, unresolved: list[str]) -> list[str] | None:
-    if not unresolved:
-        return []
-    choices = sorted(unresolved, key=_ux_alpha_key)
-    _print_project_selection_frame(console, customer_label=customer_label, choices=choices)
-    picked = questionary.checkbox(prompt, choices=choices).ask()
-    if picked is None:
-        return None
-    return [str(item) for item in (picked or [])]
-
-
 def _collect_batch_mappings(
     console,
     *,
@@ -271,124 +218,14 @@ def _collect_batch_mappings(
     candidates: list[str],
     customers: list[str],
 ) -> tuple[list[str], dict[str, str | None]]:
-    action_create = ("action", "create_customer")
-    action_edit = ("action", "edit_customers")
-    action_skip = ("action", "skip_projects")
-    action_finish = ("action", "finish_mapping")
-    action_cancel = ("action", "cancel_setup")
-    # Legacy sentinels remain accepted for test mocks and old scripted flows.
-    legacy_action_create = "__create_customer__"
-    legacy_action_edit = "__edit_customers__"
-    legacy_action_skip = "__skip_projects__"
-    legacy_action_finish = "__finish_mapping__"
-    legacy_action_cancel = "__cancel_setup__"
-    skip_assignment = None
-    def _short_preview(items: list[str], *, limit: int = 6) -> str:
-        items_sorted = sorted(items, key=_ux_alpha_key)
-        shown = ", ".join(items_sorted[:limit])
-        if len(items_sorted) <= limit:
-            return shown
-        return f"{shown}, … +{len(items_sorted) - limit} more"
-
-    assignments: dict[str, str | None] = {}
-    total_candidates = len(candidates)
-    customers = sorted(customers, key=_ux_alpha_key)
-    sticky_customer = customers[0] if customers else ""
-    while True:
-        unresolved = sorted([name for name in candidates if name not in assignments], key=_ux_alpha_key)
-        if not unresolved:
-            break
-        decided = total_candidates - len(unresolved)
-        default_choice = sticky_customer if sticky_customer in customers else customers[0]
-        action = questionary.select(
-            f"Choose customer for batch mapping (decided {decided}/{total_candidates}, remaining {len(unresolved)}; then select projects with checkboxes):",
-            choices=[
-                *[questionary.Choice(title=customer, value=customer) for customer in customers],
-                questionary.Choice(title="Create new customer...", value=action_create),
-                questionary.Choice(title="Edit customer list...", value=action_edit),
-                questionary.Choice(title="Skip selected projects...", value=action_skip),
-                questionary.Choice(title="Finish mapping", value=action_finish),
-                questionary.Choice(title="Cancel setup", value=action_cancel),
-            ],
-            default=default_choice,
-        ).ask()
-        if action is None:
-            console.print("[yellow]Setup cancelled by user.[/yellow]")
-            raise KeyboardInterrupt("setup cancelled by user")
-        if action in {action_cancel, legacy_action_cancel}:
-            console.print("[yellow]Setup cancelled by user.[/yellow]")
-            raise KeyboardInterrupt("setup cancelled by user")
-        if action in {action_finish, legacy_action_finish}:
-            break
-        if action in {action_edit, legacy_action_edit}:
-            customers = _ask_customer_list(
-                console,
-                projects,
-                _existing_customers(projects),
-                initial_customers=customers,
-            )
-            if not customers:
-                console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
-                return [], {}
-            if sticky_customer not in customers:
-                sticky_customer = customers[0]
-            continue
-        if action in {action_create, legacy_action_create}:
-            created = (questionary.text("Customer name:", default="").ask() or "").strip()
-            if not created:
-                continue
-            created_key = _customer_identity_key(created)
-            existing = next((value for value in customers if _customer_identity_key(value) == created_key), None)
-            canonical = existing or created
-            if existing is None:
-                customers.append(canonical)
-                customers = sorted(customers, key=_ux_alpha_key)
-            sticky_customer = canonical
-            picked = _pick_projects_with_helpers(
-                console,
-                customer_label=canonical,
-                prompt=f"Select project(s) to map to '{canonical}':",
-                unresolved=unresolved,
-            )
-            if picked is None:
-                continue
-            for item in picked:
-                assignments[str(item)] = canonical
-            console.print(
-                f"[{STYLE_MUTED}]Planned:[/] {canonical} <- {(_short_preview(picked) if picked else 'no projects selected')}"
-            )
-            continue
-        if action in {action_skip, legacy_action_skip}:
-            skipped = _pick_projects_with_helpers(
-                console,
-                customer_label="Skip selected projects",
-                prompt="Select project(s) to skip for now:",
-                unresolved=unresolved,
-            )
-            if skipped is None:
-                continue
-            for item in skipped:
-                assignments[str(item)] = skip_assignment
-            console.print(
-                f"[{STYLE_MUTED}]Planned:[/] skip {(_short_preview(skipped) if skipped else 'no projects selected')}"
-            )
-            continue
-        customer_choice = str(action)
-        sticky_customer = customer_choice
-        picked = _pick_projects_with_helpers(
-            console,
-            customer_label=customer_choice,
-            prompt=f"Select project(s) to map to '{customer_choice}':",
-            unresolved=unresolved,
-        )
-        if picked is None:
-            continue
-        for item in picked:
-            assignments[str(item)] = customer_choice
-        console.print(
-            f"[{STYLE_MUTED}]Planned:[/] {customer_choice} <- {(_short_preview(picked) if picked else 'no projects selected')}"
-        )
-    return customers, assignments
+    return collect_batch_mappings(
+        console,
+        projects=projects,
+        candidates=candidates,
+        customers=customers,
+        ask_customer_list=_ask_customer_list,
+        existing_customers=_existing_customers,
+    )
 
 
 def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) -> str:
@@ -428,7 +265,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         console.print(f"[{STYLE_MUTED}]No customers provided. Skipping this step.[/]")
         return "No customers provided"
 
-    candidates = _candidate_projects_for_customer_mapping(projects)
+    candidates = _candidate_projects_for_customer_mapping(projects, customers=customers)
     if not candidates:
         console.print(f"[{STYLE_MUTED}]No unresolved project->customer mappings found. Skipping.[/]")
         return "No unresolved mappings"
@@ -441,7 +278,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
     console.print("[bold]Potential project mappings found.[/bold]")
     console.print(f"[{STYLE_MUTED}]Batch map projects with checkboxes before save.[/]")
 
-    planned_updates: list[tuple[str, list[str]]] = []  # (customer, [project_names...])
+    planned_updates: list[tuple[str, list[str]]] = []
     _, selections = _collect_batch_mappings(
         console,
         projects=projects,
@@ -452,8 +289,7 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         console.print(f"[{STYLE_MUTED}]No mappings selected. Nothing to save.[/]")
         return "No mappings selected"
 
-    for project_name in candidates:
-        customer_choice = selections.get(project_name)
+    for project_name, customer_choice in selections.items():
         if customer_choice is None:
             continue
         planned_updates.append((customer_choice, [project_name]))
@@ -491,7 +327,5 @@ def run_project_identity_wizard(console, *, config_path: Path, dry_run: bool) ->
         save_projects_config_payload(config_path, payload)
         console.print(f"[green]Saved.[/green] Updated {updated} project(s).")
         return "Confirmed"
-    else:
-        console.print(f"[{STYLE_MUTED}]No projects were updated.[/]")
-        return "Nothing to save"
-
+    console.print(f"[{STYLE_MUTED}]No projects were updated.[/]")
+    return "Nothing to save"

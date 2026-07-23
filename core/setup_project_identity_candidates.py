@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,144 @@ from core.git_project_bootstrap import (
     parse_github_origin,
 )
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
+
+
+def _compact_identity(text: str) -> str:
+    return "".join(ch for ch in (text or "").lower() if ch.isalnum())
+
+
+def customer_identity_key(value: str) -> str:
+    """
+    Best-effort identity key for deduping common customer variants.
+
+    Minimal-risk goal: collapse obvious duplicates users enter/see in onboarding:
+    - casing differences: "AX Finans" vs "ax-finans"
+    - domain vs bare root: "blueberry.ax" vs "Blueberry"
+    """
+    s = str(value or "").strip().lower()
+    if not s:
+        return ""
+    # URLs/domains: use the leftmost label (before first dot) as "root".
+    if "." in s:
+        s = s.split(".", 1)[0].strip()
+    # If any path-like value appears, keep only the last segment.
+    if "/" in s:
+        s = s.rsplit("/", 1)[-1].strip()
+    return _compact_identity(s)
+
+
+def project_stem_matches_customer(project_name: str, customer: str) -> bool:
+    """True when a project name/slug clearly belongs to a customer domain/label."""
+    cust_key = customer_identity_key(customer)
+    if not cust_key or len(cust_key) < 3:
+        return False
+    name = str(project_name or "").strip()
+    if not name:
+        return False
+    name_key = customer_identity_key(name)
+    if name_key == cust_key:
+        return True
+    # Token / prefix: "customer-a-web" for "customer-a.test", "acme-api" for "acme.com".
+    compact_name = _compact_identity(name)
+    if compact_name == cust_key or compact_name.startswith(cust_key):
+        return True
+    slug_tokens = [t for t in re.split(r"[^a-z0-9]+", name.lower()) if t]
+    return cust_key in slug_tokens
+
+
+def project_correctly_linked_to_customer(project: dict[str, Any], customer: str) -> bool:
+    """True when customer + default_client already point at this customer (non-placeholder)."""
+    name = str(project.get("name", "")).strip()
+    cust = str(project.get("customer", "")).strip()
+    default_client = str(project.get("default_client", "")).strip()
+    if not name or not cust or not default_client:
+        return False
+    if cust.lower() == name.lower():
+        return False
+    key = customer_identity_key(customer)
+    if not key:
+        return False
+    return customer_identity_key(cust) == key and customer_identity_key(default_client) == key
+
+
+def batch_choices_for_customer(
+    projects: list[dict[str, Any]],
+    *,
+    customer: str,
+    unresolved: list[str],
+) -> tuple[list[str], list[str], list[str]]:
+    """
+    Build checkbox choices for one customer batch-mapping step.
+
+    Returns (choices_ordered, suggested_names, already_linked_names).
+
+    Stem-matching projects for this customer are offered even when the global
+    unresolved pool excluded them (e.g. linked to a different customer). Projects
+    already correctly linked to this customer are listed separately for the UI;
+    they are still included in choices (pre-checked) so the natural match is visible.
+    """
+    by_name: dict[str, dict[str, Any]] = {}
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+        name = str(project.get("name", "")).strip()
+        if name and name not in by_name:
+            by_name[name] = project
+
+    already_linked = sorted(
+        [
+            name
+            for name, project in by_name.items()
+            if project_correctly_linked_to_customer(project, customer)
+        ],
+        key=lambda value: (value.casefold(), value),
+    )
+    already_set = set(already_linked)
+
+    suggested: list[str] = []
+    seen: set[str] = set()
+    for name, project in by_name.items():
+        if name in already_set:
+            continue
+        if not project_stem_matches_customer(name, customer):
+            continue
+        suggested.append(name)
+        seen.add(name)
+    # Unresolved stem matches (may already be in suggested via by_name scan).
+    for name in unresolved:
+        if name in already_set or name in seen:
+            continue
+        if project_stem_matches_customer(name, customer):
+            suggested.append(name)
+            seen.add(name)
+    suggested = sorted(suggested, key=lambda value: (value.casefold(), value))
+
+    other = sorted(
+        [name for name in unresolved if name not in seen and name not in already_set],
+        key=lambda value: (value.casefold(), value),
+    )
+    # When the customer has a clear stem/already-linked signal, only offer those
+    # projects — do not dump unrelated unresolved leftovers into the checkbox.
+    if already_linked or suggested:
+        choices = [*already_linked, *suggested]
+    else:
+        choices = other
+    return choices, suggested, already_linked
+
+
+def _slug_activity_ts(slug: str, owner_top_activity: dict[str, list[tuple[int, str]]]) -> int:
+    owner = slug.split("/", 1)[0].strip().lower()
+    for ts, item in owner_top_activity.get(owner, []):
+        if item == slug:
+            return int(ts)
+    return 0
+
+
+def _customer_owns_github_owner(customer: str, owner: str) -> bool:
+    """True when customer label identity matches the GitHub owner (not a shared personal org)."""
+    cust_key = customer_identity_key(customer)
+    owner_key = customer_identity_key(owner)
+    return bool(cust_key and owner_key and cust_key == owner_key)
 
 
 def _normalize_github_slug_hint(term: str) -> str:
@@ -163,41 +302,88 @@ def _local_owner_activity_summary() -> tuple[dict[str, int], dict[str, str], dic
     return owner_counts, owner_best_slug, owner_top_activity
 
 
+def _customer_slug_hints(projects: list[dict[str, Any]], customer: str) -> list[str]:
+    slug_hints: list[str] = []
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+        if str(project.get("customer", "")).strip() != customer:
+            continue
+        for term in project.get("match_terms", []) or []:
+            slug = _normalize_github_slug_hint(str(term))
+            if slug and slug not in slug_hints:
+                slug_hints.append(slug)
+    return slug_hints
+
+
 def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str]) -> list[tuple[str, str, str, str]]:
+    """
+    Build hint rows for detected customers.
+
+    Domains are the strongest signal. Do not attribute a shared personal GitHub
+    owner's full local repo dump to every customer that happens to reference one
+    of that owner's slugs — that makes unrelated customers look identical.
+    """
     owner_counts, owner_best_slug, owner_top_activity = _local_owner_activity_summary()
     current_hint = discover_git_project_hints(Path.cwd())
     current_owner = (current_hint.remote_owner or "").strip().lower() if current_hint else ""
     current_repo = (current_hint.remote_repo or "").strip().lower() if current_hint else ""
+
+    hints_by_customer = {customer: _customer_slug_hints(projects, customer) for customer in customers}
+    owner_customer_claims: dict[str, set[str]] = {}
+    for customer, hints in hints_by_customer.items():
+        for slug in hints:
+            owner = slug.split("/", 1)[0].strip().lower()
+            if owner:
+                owner_customer_claims.setdefault(owner, set()).add(customer)
+
     rows: list[tuple[str, str, str, str]] = []
     for customer in sorted(customers, key=lambda value: (str(value).casefold(), str(value))):
-        slug_hints: list[str] = []
-        for project in projects:
-            if not isinstance(project, dict):
-                continue
-            p_customer = str(project.get("customer", "")).strip()
-            if p_customer != customer:
-                continue
-            for term in project.get("match_terms", []) or []:
-                slug = _normalize_github_slug_hint(str(term))
-                if slug and slug not in slug_hints:
-                    slug_hints.append(slug)
-
+        slug_hints = list(hints_by_customer.get(customer, []))
         preferred = ""
-        owner_key = customer.strip().lower()
-        if slug_hints:
-            owner_key = slug_hints[0].split("/", 1)[0].strip().lower()
-        elif "." in owner_key:
-            owner_key = owner_key.split(".", 1)[0].strip().lower()
-        if current_owner and current_repo and owner_key == current_owner:
-            current_slug = f"{current_owner}/{current_repo}"
-            if current_slug in slug_hints:
-                preferred = current_slug
-        if not preferred and owner_key in owner_best_slug:
-            preferred = owner_best_slug[owner_key]
-        if not preferred and slug_hints:
-            preferred = slug_hints[0]
+        owner_key = ""
+        expand_owner_activity = False
 
-        if preferred:
+        if slug_hints:
+            owners = {slug.split("/", 1)[0].strip().lower() for slug in slug_hints if "/" in slug}
+            # Prefer an owner that belongs to this customer label; else first hint owner.
+            matched_owners = [owner for owner in sorted(owners) if _customer_owns_github_owner(customer, owner)]
+            owner_key = matched_owners[0] if matched_owners else next(iter(sorted(owners)), "")
+            shared = len(owner_customer_claims.get(owner_key, set())) > 1
+            expand_owner_activity = bool(matched_owners) or (bool(owner_key) and not shared)
+            if current_owner and current_repo and owner_key == current_owner:
+                current_slug = f"{current_owner}/{current_repo}"
+                if current_slug in slug_hints:
+                    preferred = current_slug
+            if not preferred and expand_owner_activity and owner_key in owner_best_slug:
+                preferred = owner_best_slug[owner_key]
+            if not preferred:
+                preferred = slug_hints[0]
+        else:
+            # Domain stem may match a GitHub owner — only expand when exclusive.
+            # owner_best_slug / owner_customer_claims use raw lowercase owner keys;
+            # customer_identity_key compacts labels ("my-company.io" → "mycompany"),
+            # so match owners via the same compact key space.
+            stem = customer_identity_key(customer)
+            owner_key = ""
+            if stem:
+                for owner in sorted(owner_best_slug):
+                    if customer_identity_key(owner) == stem:
+                        owner_key = owner
+                        break
+            if owner_key:
+                shared = len(owner_customer_claims.get(owner_key, set())) > 1
+                # Bare stem with no project hints: allow activity only when owner isn't
+                # already claimed by other customers' match_terms.
+                if not shared:
+                    expand_owner_activity = True
+                    preferred = owner_best_slug[owner_key]
+
+        if not preferred:
+            rows.append((customer, "n/a", "n/a", "n/a"))
+            continue
+
+        if expand_owner_activity and owner_key:
             count = max(len(slug_hints), owner_counts.get(owner_key, 0))
             top_pairs = list(owner_top_activity.get(owner_key, []))
             if not top_pairs:
@@ -207,12 +393,19 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
                 filtered = [(ts, slug) for ts, slug in top_pairs if slug != current_slug]
                 current_ts = _git_last_commit_epoch(Path.cwd())
                 top_pairs = [(current_ts, current_slug), *filtered]
-            shown_pairs = top_pairs[:15]
-            top_lines = [f"{_activity_dot(ts)} github.com/{slug.lstrip('/')}" for ts, slug in shown_pairs]
-            most_active = f"github.com/{preferred.lstrip('/')}" if preferred else "n/a"
-            rows.append((customer, str(count), most_active, "\n".join(top_lines) if top_lines else "n/a"))
         else:
-            rows.append((customer, "n/a", "n/a", "n/a"))
+            # Customer-specific hints only — avoids duplicate personal-repo walls.
+            ranked = sorted(
+                slug_hints,
+                key=lambda slug: (-_slug_activity_ts(slug, owner_top_activity), slug),
+            )
+            top_pairs = [(_slug_activity_ts(slug, owner_top_activity), slug) for slug in ranked]
+            count = len(slug_hints)
+
+        shown_pairs = top_pairs[:15]
+        top_lines = [f"{_activity_dot(ts)} github.com/{slug.lstrip('/')}" for ts, slug in shown_pairs]
+        most_active = f"github.com/{preferred.lstrip('/')}"
+        rows.append((customer, str(count), most_active, "\n".join(top_lines) if top_lines else "n/a"))
     return rows
 
 

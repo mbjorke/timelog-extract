@@ -111,7 +111,7 @@ You usually do not need to set any env vars; check the active path with `gittan 
 |------|---------|
 | Interactive report (asks for dates if you omit them) | `gittan report` |
 | Today / last week / range | `gittan report --today` · `--last-week` · `--from YYYY-MM-DD --to YYYY-MM-DD` |
-| Map URL hosts to projects | `gittan review` (or `gittan review --json` for read-only candidates) |
+| Map new remotes + URL hosts to projects | `gittan review` (or `gittan review --json` for read-only candidates) |
 | Clean up uncategorized time (legacy) | `gittan review --uncategorized` |
 | Quick totals | `gittan status --today` |
 | Collector status | `gittan sources` |

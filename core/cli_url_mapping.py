@@ -25,10 +25,15 @@ from core.cli_review_create_project import (
     propose_create_from_candidate,
     skip_choice_label,
 )
+from core.cli_review_remotes import (
+    build_review_remote_mapping,
+    new_remote_candidates_payload,
+    run_review_new_remotes_step,
+)
 from core.cli_triage import load_triage_profiles
 from core.cli_triage_apply import apply_triage_decisions_payload
 from core.cli_triage_map_candidates import UNCATEGORIZED, UrlCandidate, _auto_assign_high
-from core.cli_triage_map_context import build_triage_map_json_payload, load_triage_map_candidates
+from core.cli_triage_map_context import build_triage_map_json_payload, load_triage_map_session
 from core.config import resolve_projects_config_path
 from core.onboarding_guidance import finish_review_guidance
 from outputs.terminal_theme import (
@@ -209,7 +214,7 @@ def run_url_mapping_review(
         )
         raise typer.Exit(code=1)
 
-    rows = load_triage_map_candidates(
+    rows, report = load_triage_map_session(
         date_from=date_from_s,
         date_to=date_to_s,
         projects_config=resolved_projects_config,
@@ -219,20 +224,44 @@ def run_url_mapping_review(
         max_days=max_days,
     )
     if json_out:
+        # Skip remote `gh` listing for --json (keep stdout fast/pure); interactive
+        # review still uses full discovery so Add/Map matches setup/map.
+        remote_review = build_review_remote_mapping(report, gh_discovery=False)
         payload = build_triage_map_json_payload(
             date_from=date_from_s,
             date_to=date_to_s,
             projects_config=resolved_projects_config,
             rows=rows,
+            new_remote_repositories=new_remote_candidates_payload(remote_review),
         )
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         raise typer.Exit(code=0)
 
     profiles = load_triage_profiles(resolved_projects_config)
+    remotes_applied = run_review_new_remotes_step(
+        console,
+        report,
+        projects_config=resolved_projects_config,
+        profiles=profiles,
+    )
+    if remotes_applied:
+        profiles = load_triage_profiles(resolved_projects_config)
     project_names = sorted({str(p.get("name", "")).strip() for p in profiles if str(p.get("name", "")).strip()})
     if not rows:
-        console.print(f"[{CLR_GREEN}]No URL candidates found in this range (gap-day Chrome evidence).[/{CLR_GREEN}]")
-        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=False)
+        if remotes_applied:
+            console.print(
+                f"[{CLR_GREEN}]Remote mapping saved. No URL candidates in this range "
+                f"(gap-day Chrome evidence).[/{CLR_GREEN}]"
+            )
+        else:
+            console.print(
+                f"[{CLR_GREEN}]No URL candidates found in this range (gap-day Chrome evidence).[/{CLR_GREEN}]"
+            )
+        _exit_url_mapping_review(
+            console,
+            projects_config=resolved_projects_config,
+            has_candidates=bool(remotes_applied),
+        )
 
     decidable_rows, parked_rows = partition_candidates(rows)
     if decidable_rows:

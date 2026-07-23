@@ -171,14 +171,16 @@ def apply_mapping_changes(
         )
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
-        console.print(f"[dim]Backup:[/dim] {backup}")
+        console.print(f"[dim]Backup before write:[/dim] {backup}")
     save_projects_config_payload(cfg_path, payload)
     if additions:
         summary = ", ".join(
             f"{value}→{name}"
             for name, _rtype, value, _customer, _title in (_unpack_mapping_addition(item) for item in additions)
         )
-        console.print(f"[green]Mapped {len(additions)} signal(s): {summary}[/green]")
+        console.print(
+            f"[green]Wrote {len(additions)} mapping change(s) to projects config: {summary}[/green]"
+        )
     if removed:
         console.print(
             f"[green]Removed {removed} duplicate github slug(s) from sibling profiles "

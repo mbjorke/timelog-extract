@@ -60,7 +60,7 @@ class NonTtyGuardTests(unittest.TestCase):
 
         out = io.StringIO()
         with mock.patch.object(cli_url_mapping, "should_prompt", return_value=False), \
-             mock.patch.object(cli_url_mapping, "load_triage_map_candidates", _must_not_run), \
+             mock.patch.object(cli_url_mapping, "load_triage_map_session", _must_not_run), \
              mock.patch.object(cli_url_mapping.questionary, "select", _must_not_run):
             with redirect_stdout(out):
                 with self.assertRaises(typer.Exit) as ctx:
@@ -73,9 +73,17 @@ class NonTtyGuardTests(unittest.TestCase):
         from core import cli_url_mapping
 
         out = io.StringIO()
+        report = mock.Mock(profiles=[], all_events=[], included_events=[], dt_from=None, dt_to=None)
         # Even with no interactive terminal, --json must produce a plan.
         with mock.patch.object(cli_url_mapping, "should_prompt", return_value=False), \
-             mock.patch.object(cli_url_mapping, "load_triage_map_candidates", return_value=[_fake_row()]):
+             mock.patch.object(
+                 cli_url_mapping, "load_triage_map_session", return_value=([_fake_row()], report)
+             ), \
+             mock.patch.object(
+                 cli_url_mapping,
+                 "build_review_remote_mapping",
+                 return_value=mock.Mock(new_projects=[], change_count=lambda: 0),
+             ):
             with redirect_stdout(out):
                 with self.assertRaises(typer.Exit) as ctx:
                     cli_url_mapping.run_url_mapping_review(last_week=True, json_out=True)
@@ -87,7 +95,9 @@ class NonTtyGuardTests(unittest.TestCase):
 
         raw = out.getvalue()
         self.assertTrue(raw.lstrip().startswith("{"), f"stdout not pure JSON: {raw[:60]!r}")
-        json.loads(raw)
+        payload = json.loads(raw)
+        self.assertIn("new_remote_repositories", payload)
+        self.assertEqual(payload.get("new_remote_count"), 0)
 
 
 class ReviewJsonCliContractTests(unittest.TestCase):

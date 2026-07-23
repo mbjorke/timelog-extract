@@ -29,6 +29,8 @@ profiles = data.get("projects", data) if isinstance(data, dict) else data
 if not isinstance(profiles, list):
     sys.exit(0)
 
+project_id = repo
+worklog_path = None
 target = norm(repo)
 for profile in profiles:
     if not isinstance(profile, dict):
@@ -40,6 +42,7 @@ for profile in profiles:
     names = [identity, profile.get("name"), profile.get("canonical_project")]
     names.extend(profile.get("aliases") or [])
     if target and target in {norm(n) for n in names if n}:
+        project_id = identity
         worklog = profile.get("worklog")
         if worklog:
             path = os.path.expanduser(worklog)
@@ -47,10 +50,52 @@ for profile in profiles:
                 # Relative worklogs resolve against the config directory,
                 # matching core/config.py, not the repo cwd.
                 path = os.path.join(os.path.dirname(cfg), path)
-            print(path)
+            worklog_path = path
         else:
-            print(os.path.join(home, ".gittan", "worklogs", identity + ".md"))
+            worklog_path = os.path.join(home, ".gittan", "worklogs", identity + ".md")
         break
+
+if worklog_path:
+    print(worklog_path)
+
+try:
+    shadow_log_state = str(data.get("shadow_log", "off")).strip().lower()
+    if shadow_log_state == "on":
+        subject = os.environ.get("GITTAN_HOOK_SUBJECT", "").strip()
+        branch = os.environ.get("GITTAN_HOOK_BRANCH", "").strip()
+        commit_hash = os.environ.get("GITTAN_HOOK_HASH", "").strip()
+        if subject:
+            from datetime import datetime, timezone
+            from pathlib import Path
+            event = {
+                "source": "git-commit",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "detail": f"[{repo}:{branch}] {subject}" if branch else f"[{repo}] {subject}",
+                "project": project_id,
+                "source_provenance": {
+                    "repo": repo,
+                    "branch": branch,
+                    "subject": subject,
+                    "commit": commit_hash,
+                }
+            }
+            try:
+                from core.evidence_store import capture_events
+                capture_events([event], home=Path(home))
+            except Exception as exc:
+                err_file = Path(home) / ".gittan" / "capture-errors.jsonl"
+                try:
+                    err_file.parent.mkdir(parents=True, exist_ok=True)
+                    with err_file.open("a", encoding="utf-8") as ef:
+                        ef.write(json.dumps({
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "error": str(exc),
+                            "source": "git-commit",
+                        }, ensure_ascii=False) + "\\n")
+                except Exception:
+                    pass
+except Exception:
+    pass
 """
 
 HOOK_BODY = dedent(
@@ -103,7 +148,10 @@ HOOK_BODY = dedent(
     # project identity. Path-derived ids were tried before and are wrong here:
     # worktrees and moved repos change the path, so the same project silently
     # split across several files. project_id is stable; the path is not.
-    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" python3 -c '
+    GITTAN_HOOK_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    GITTAN_HOOK_HASH="$(git rev-parse HEAD 2>/dev/null || true)"
+    SUBJECT="$(git log -1 --pretty=%s)"
+    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" GITTAN_HOOK_BRANCH="$GITTAN_HOOK_BRANCH" GITTAN_HOOK_SUBJECT="$SUBJECT" GITTAN_HOOK_HASH="$GITTAN_HOOK_HASH" python3 -c '
     @RESOLVER_PY@' 2>/dev/null || true)"
     if [[ -z "${PROJECT_WORKLOG:-}" ]]; then
       # Unknown repo: still central, still no hash — a plain name a human can
@@ -123,7 +171,6 @@ HOOK_BODY = dedent(
     fi
     mkdir -p "$(dirname "$TIMELOG_FILE")"
     TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"
-    SUBJECT="$(git log -1 --pretty=%s)"
 
     if [[ ! -f "$TIMELOG_FILE" ]]; then
       {

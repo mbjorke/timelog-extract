@@ -106,6 +106,7 @@ SOURCE_ROLES = {
 # their canonical successors (shadow-log replay, older doctor rows).
 SOURCE_ALIASES = {
     "Windsurf": "Devin Desktop",
+    "git-commit": "Git commits",
 }
 
 

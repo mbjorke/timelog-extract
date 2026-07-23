@@ -67,13 +67,17 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         zsh = shutil.which("zsh")
         if not zsh:
             self.skipTest("zsh not found")
-        start = HOOK_BODY.index('PROJECT_WORKLOG="$(GITTAN_HOOK_REPO=')
+        start = HOOK_BODY.index('GITTAN_HOOK_BRANCH="$(git rev-parse')
         end = HOOK_BODY.index('if [[ -z "${CONFIGURED_CANDIDATE:-}"')
         resolver = textwrap.dedent(HOOK_BODY[start:end])
         snippet = 'set -euo pipefail\nROOT_DIR="${1:?}"\nREPO_BASENAME="${ROOT_DIR##*/}"\n' + resolver + '\ntest -n "$PROJECT_WORKLOG"\nprint -r -- "$PROJECT_WORKLOG"\n'
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "sample-repo"
             repo.mkdir()
+            subprocess.run(["git", "init"], cwd=repo, capture_output=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, capture_output=True)
+            subprocess.run(["git", "commit", "--allow-empty", "-m", "initial commit"], cwd=repo, capture_output=True)
             (Path(tmp) / "cfg.json").write_text(
                 json.dumps({"projects": [{"name": "sample-repo", "project_id": "sample-repo"}]}),
                 encoding="utf-8",
@@ -88,6 +92,114 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
             self.assertTrue(proc.stdout.strip().endswith("worklogs/sample-repo.md"), proc.stdout)
             self.assertNotIn("-", Path(proc.stdout.strip()).stem[len("sample-repo"):])
+
+    def test_resolver_writes_to_shadow_log_when_enabled(self):
+        """When GITTAN_HOOK_SUBJECT is set and shadow_log is enabled, write the event."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            gittan_dir = home_dir / ".gittan"
+            gittan_dir.mkdir()
+
+            cfg_path = gittan_dir / "timelog_projects.json"
+            cfg_path.write_text(
+                json.dumps({
+                    "shadow_log": "on",
+                    "projects": [
+                        {"name": "test-repo", "project_id": "test-project"}
+                    ]
+                }),
+                encoding="utf-8",
+            )
+
+            from core.global_timelog_hook_script import _RESOLVER_PY
+            env = {
+                "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                "GITTAN_HOOK_REPO": "test-repo",
+                "GITTAN_HOOK_SUBJECT": "feat: amazing feature",
+                "GITTAN_HOOK_BRANCH": "task/feature-1",
+                "GITTAN_HOOK_HASH": "12345678abcdef",
+                "HOME": str(home_dir),
+                "PYTHONPATH": os.environ.get("PYTHONPATH", "") + os.pathsep + str(Path(__file__).parent.parent.resolve()),
+            }
+
+            proc = subprocess.run(
+                [sys.executable, "-c", _RESOLVER_PY],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+            self.assertIn("worklogs/test-project.md", proc.stdout)
+
+            events_dir = gittan_dir / "evidence" / "events"
+            self.assertTrue(events_dir.is_dir())
+
+            jsonl_files = list(events_dir.glob("*.jsonl"))
+            self.assertEqual(len(jsonl_files), 1)
+
+            records = [json.loads(line) for line in jsonl_files[0].read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(records), 1)
+            self.assertEqual(records[0]["source"], "git-commit")
+            from core.sources import canonical_source_name
+            self.assertEqual(canonical_source_name(records[0]["source"]), "Git commits")
+            self.assertEqual(records[0]["project_at_capture"], "test-project")
+            self.assertIn("[test-repo:task/feature-1] feat: amazing feature", records[0]["detail"])
+            self.assertEqual(records[0]["source_provenance"]["repo"], "test-repo")
+            self.assertEqual(records[0]["source_provenance"]["branch"], "task/feature-1")
+            self.assertEqual(records[0]["source_provenance"]["subject"], "feat: amazing feature")
+            self.assertEqual(records[0]["source_provenance"]["commit"], "12345678abcdef")
+
+    def test_resolver_writes_to_capture_errors_on_failure(self):
+        """When shadow log capture fails, write to capture-errors.jsonl."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            gittan_dir = home_dir / ".gittan"
+            gittan_dir.mkdir()
+
+            # Make the evidence directory a file so that write/mkdir fails!
+            evidence_file = gittan_dir / "evidence"
+            evidence_file.touch()
+
+            cfg_path = gittan_dir / "timelog_projects.json"
+            cfg_path.write_text(
+                json.dumps({
+                    "shadow_log": "on",
+                    "projects": [
+                        {"name": "test-repo", "project_id": "test-project"}
+                    ]
+                }),
+                encoding="utf-8",
+            )
+
+            from core.global_timelog_hook_script import _RESOLVER_PY
+            env = {
+                "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                "GITTAN_HOOK_REPO": "test-repo",
+                "GITTAN_HOOK_SUBJECT": "feat: amazing feature",
+                "GITTAN_HOOK_BRANCH": "task/feature-1",
+                "GITTAN_HOOK_HASH": "12345678abcdef",
+                "HOME": str(home_dir),
+                "PYTHONPATH": os.environ.get("PYTHONPATH", "") + os.pathsep + str(Path(__file__).parent.parent.resolve()),
+            }
+
+            proc = subprocess.run(
+                [sys.executable, "-c", _RESOLVER_PY],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+
+            err_file = home_dir / ".gittan" / "capture-errors.jsonl"
+            self.assertTrue(err_file.exists())
+            errors = [json.loads(line) for line in err_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(errors), 1)
+            self.assertIn("Not a directory", errors[0]["error"])
+            self.assertEqual(errors[0]["source"], "git-commit")
 
 
 if __name__ == "__main__":

@@ -118,8 +118,6 @@ def batch_choices_for_customer(
             continue
         if not project_stem_matches_customer(name, customer):
             continue
-        if project_correctly_linked_to_customer(project, customer):
-            continue
         suggested.append(name)
         seen.add(name)
     # Unresolved stem matches (may already be in suggested via by_name scan).
@@ -363,9 +361,17 @@ def _customer_candidate_rows(projects: list[dict[str, Any]], customers: list[str
                 preferred = slug_hints[0]
         else:
             # Domain stem may match a GitHub owner — only expand when exclusive.
+            # owner_best_slug / owner_customer_claims use raw lowercase owner keys;
+            # customer_identity_key compacts labels ("my-company.io" → "mycompany"),
+            # so match owners via the same compact key space.
             stem = customer_identity_key(customer)
-            if stem and stem in owner_best_slug:
-                owner_key = stem
+            owner_key = ""
+            if stem:
+                for owner in sorted(owner_best_slug):
+                    if customer_identity_key(owner) == stem:
+                        owner_key = owner
+                        break
+            if owner_key:
                 shared = len(owner_customer_claims.get(owner_key, set())) > 1
                 # Bare stem with no project hints: allow activity only when owner isn't
                 # already claimed by other customers' match_terms.

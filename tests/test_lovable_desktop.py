@@ -132,28 +132,89 @@ class LovableDesktopTests(unittest.TestCase):
         self.assertIn("8614fa76", picked[0])
         self.assertNotIn("80f778b5", picked[0])
 
-    def test_merge_storage_events_collapses_same_second_file_burst(self):
+    def test_merge_storage_events_collapses_same_uuid_file_burst(self):
         ts = datetime(2026, 6, 11, 9, 48, tzinfo=timezone.utc)
         events = [
             {
                 "timestamp": ts,
-                "detail": "storage signal — https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/",
+                "detail": "storage signal — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovable.app/",
             },
             {
                 "timestamp": ts,
-                "detail": "storage signal — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
+                "detail": (
+                    "Project Alpha — Horse Haven — "
+                    "https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/"
+                ),
+                "project": "project-alpha",
             },
         ]
         merged = _merge_storage_events(events, merge_seconds=900)
         self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["project"], "project-alpha")
         self.assertIn("62146e85", merged[0]["detail"])
 
+    def test_merge_storage_events_keeps_distinct_uuids_within_window(self):
+        ts = datetime(2026, 6, 11, 9, 48, tzinfo=timezone.utc)
+        events = [
+            {
+                "timestamp": ts,
+                "project": "project-alpha",
+                "detail": (
+                    "project-alpha — Horse Haven — "
+                    "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/"
+                ),
+            },
+            {
+                "timestamp": ts,
+                "project": "Uncategorized",
+                "detail": (
+                    "unmapped Lovable (62146e85…) — map UUID via gittan review — "
+                    "https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/"
+                ),
+            },
+        ]
+        merged = _merge_storage_events(events, merge_seconds=900)
+        self.assertEqual(len(merged), 2)
+        details = " ".join(event["detail"] for event in merged)
+        self.assertIn("80f778b5", details)
+        self.assertIn("62146e85", details)
+
     def test_pick_storage_urls_reads_bare_leveldb_uuid_tokens(self):
-        blob = b"prefix " * 7000 + b"editor-store-62146e85-26f9-4cf9-b3f2-601c44411dda\x00tail"
+        # Bare UUID tokens still count when they are not sticky editor-store keys.
+        blob = b"prefix " * 7000 + b"active-project-62146e85-26f9-4cf9-b3f2-601c44411dda\x00tail"
         urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
         picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
         self.assertEqual(len(picked), 1)
         self.assertIn("62146e85", picked[0])
+
+    def test_pick_storage_urls_skips_sticky_editor_store_uuids(self):
+        # editor-store-<uuid> persists after the tab closes; LevelDB key order can
+        # put it in the physical tail while another project is actually open.
+        blob = (
+            b"prefix " * 7000
+            + b"https://85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com/ "
+            + b"editor-store-93be36fa-0cb1-4113-9d77-af5a6a1625a0\x00tail"
+        )
+        urls = _filter_lovable_storage_urls(_extract_lovable_urls(blob), lovable_noise_profile="balanced")
+        picked = _pick_storage_urls_from_blob(blob, urls, limit=1, tail_bytes=768)
+        self.assertEqual(len(picked), 1)
+        self.assertIn("85f3c1b3", picked[0])
+        self.assertNotIn("93be36fa", picked[0])
+
+    def test_storage_signal_files_use_wal_logs_not_sstables(self):
+        from collectors.lovable_desktop import _storage_signal_files
+
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            root = lovable_desktop_root(home)
+            leveldb = root / "Local Storage" / "leveldb"
+            leveldb.mkdir(parents=True)
+            (leveldb / "001665.ldb").write_bytes(b"editor-store-93be36fa-0cb1-4113-9d77-af5a6a1625a0")
+            (leveldb / "MANIFEST-000001").write_bytes(b"https://93be36fa-0cb1-4113-9d77-af5a6a1625a0.lovableproject.com/")
+            wal = leveldb / "001668.log"
+            wal.write_bytes(b"https://85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com/")
+            files = _storage_signal_files(home)
+            self.assertEqual(files, [wal])
 
     def test_pick_storage_urls_skips_rudderstack_analytics_uuids(self):
         # RudderStack queue keys (rudder_<writeKey>.<uuid>.ack/.reclaimStart) are

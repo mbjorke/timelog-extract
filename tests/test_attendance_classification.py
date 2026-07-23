@@ -340,5 +340,55 @@ class TestBillableReportedLayer(unittest.TestCase):
         self.assertAlmostEqual(sum(result.values()), 5.5)
 
 
+class TestSessionProjectLabels(unittest.TestCase):
+    """GH-448: presence-only projects must not lead mixed-session titles."""
+
+    def test_presence_only_project_sorted_after_authorship(self):
+        from core.sources import session_project_labels
+
+        events = [
+            _make_event(
+                "Cursor",
+                datetime(2026, 7, 23, 16, 5, tzinfo=timezone.utc),
+                "edit collectors",
+                "timelog-extract",
+            ),
+            _make_event(
+                "Chrome",
+                datetime(2026, 7, 23, 16, 10, tzinfo=timezone.utc),
+                "docs",
+                "blueberry",
+            ),
+            _make_event(
+                "Worklog",
+                datetime(2026, 7, 23, 16, 20, tzinfo=timezone.utc),
+                "notes",
+                "timelog-extract",
+            ),
+            _make_event(
+                "Lovable (desktop)",
+                datetime(2026, 7, 23, 16, 43, tzinfo=timezone.utc),
+                "Horse Haven — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
+                "project-alpha",
+            ),
+        ]
+        labels = session_project_labels(events)
+        self.assertEqual(labels[0], "timelog-extract")
+        self.assertIn("blueberry", labels)
+        self.assertEqual(labels[-1], "project-alpha")
+        # Alphabetical alone would put project-alpha first (capital P vs lowercase).
+        self.assertNotEqual(labels[0], "project-alpha")
+
+    def test_authorship_count_orders_before_alpha(self):
+        from core.sources import session_project_labels
+
+        events = [
+            _make_event("Cursor", datetime(2026, 7, 23, 16, 1, tzinfo=timezone.utc), "a", "zebra"),
+            _make_event("Cursor", datetime(2026, 7, 23, 16, 2, tzinfo=timezone.utc), "b", "zebra"),
+            _make_event("Chrome", datetime(2026, 7, 23, 16, 3, tzinfo=timezone.utc), "c", "alpha"),
+        ]
+        self.assertEqual(session_project_labels(events), ["zebra", "alpha"])
+
+
 if __name__ == "__main__":
     unittest.main()

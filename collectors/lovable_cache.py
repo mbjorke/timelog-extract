@@ -14,10 +14,10 @@ from collectors.lovable_desktop import (
     SOURCE_NAME,
     _format_lovable_event_detail,
     _is_analytics_uuid_context,
-    _merge_storage_events,
     _synthetic_lovable_project_url,
     lovable_desktop_root,
 )
+from collectors.lovable_merge import _merge_storage_events
 from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
 
 _PROJECTS_SEARCH_MARKER = "projects/search"

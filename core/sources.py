@@ -203,3 +203,25 @@ def session_is_presence_signal_only(events: list) -> bool:
     if not sources:
         return True
     return sources <= PRESENCE_SIGNAL_SOURCES
+
+
+def session_project_labels(events: list) -> list[str]:
+    """Order projects for mixed-session titles: authorship before presence-only.
+
+    A single Lovable (desktop) presence row must not lead the label when the
+    session is overwhelmingly Cursor/Chrome/Worklog on other projects (GH-448).
+    """
+    authorship: dict[str, int] = {}
+    presence: dict[str, int] = {}
+    for event in events or []:
+        project = str(event.get("project") or "").strip() or "Uncategorized"
+        if is_presence_signal_source(str(event.get("source") or "")):
+            presence[project] = presence.get(project, 0) + 1
+        else:
+            authorship[project] = authorship.get(project, 0) + 1
+    auth_ordered = sorted(authorship.keys(), key=lambda name: (-authorship[name], name.lower()))
+    presence_only = sorted(
+        (name for name in presence if name not in authorship),
+        key=lambda name: (-presence[name], name.lower()),
+    )
+    return auth_ordered + presence_only

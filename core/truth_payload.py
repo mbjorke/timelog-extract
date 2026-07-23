@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Tuple
 
 from core.cli import package_version
+from core.sources import session_project_labels
 
 TRUTH_PAYLOAD_VERSION = "1"
 
@@ -80,7 +81,7 @@ def _serialize_session(
         min_session_minutes,
         min_session_passive_minutes,
     )
-    projects = sorted({e.get("project", "") for e in session_events})
+    projects = session_project_labels(session_events)
     sources = sorted({e.get("source", "") for e in session_events})
     if attendance is None:
         attendance = session_events[0].get("attendance") if session_events and "attendance" in session_events[0] else None

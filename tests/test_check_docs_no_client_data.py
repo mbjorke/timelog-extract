@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 import scripts.check_docs_no_client_data as guard
 
@@ -60,9 +62,25 @@ class PrivacyGuardTests(unittest.TestCase):
             doc.write_text("acmecorporation is a different word\n", encoding="utf-8")
             self.assertEqual(guard.scan_file(doc, terms), [])
 
-    def test_no_config_yields_empty_terms(self):
+    def test_absent_config_skips_but_broken_config_fails_closed(self):
         with TemporaryDirectory() as tmp:
+            # Genuinely absent → empty set (caller skips; e.g. CI).
             self.assertEqual(guard.load_sensitive_terms(Path(tmp) / "missing.json"), set())
+            # Present but unparseable → ConfigError (caller must fail closed).
+            broken = Path(tmp) / "broken.json"
+            broken.write_text("{ not valid json", encoding="utf-8")
+            with self.assertRaises(guard.ConfigError):
+                guard.load_sensitive_terms(broken)
+
+    def test_main_fails_closed_on_broken_config(self):
+        with TemporaryDirectory() as tmp:
+            broken = Path(tmp) / "config.json"
+            broken.write_text("{ broken", encoding="utf-8")
+            doc = Path(tmp) / "doc.md"
+            doc.write_text("anything\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"GITTAN_PROJECTS_CONFIG": str(broken)}):
+                rc = guard.main([str(doc)])
+            self.assertEqual(rc, 1)
 
 
 if __name__ == "__main__":

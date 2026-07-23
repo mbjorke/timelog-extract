@@ -42,9 +42,19 @@ def _config_path() -> Path:
     env = os.environ.get("GITTAN_PROJECTS_CONFIG")
     if env:
         return Path(env).expanduser()
-    home = os.environ.get("GITTAN_HOME")
-    base = Path(home).expanduser() if home else Path.home() / ".gittan"
-    return base / "timelog_projects.json"
+    # Prefer the repo's canonical resolver so the guard reads the exact config
+    # the tool uses (it honours GITTAN_HOME and the profile-home fallback).
+    try:
+        repo_root = Path(__file__).resolve().parent.parent
+        if str(repo_root) not in sys.path:
+            sys.path.insert(0, str(repo_root))
+        from core.config import resolve_projects_config_path
+
+        return Path(resolve_projects_config_path())
+    except Exception:
+        home = os.environ.get("GITTAN_HOME")
+        base = Path(home).expanduser() if home else Path.home() / ".gittan"
+        return base / "timelog_projects.json"
 
 
 def _allowlist() -> set[str]:
@@ -64,12 +74,24 @@ def _is_self_reference(term: str, allow: set[str]) -> bool:
     return bool(words & allow) or term.lower() in allow
 
 
+class ConfigError(Exception):
+    """The config exists but could not be read/parsed (fail closed, not skip)."""
+
+
 def load_sensitive_terms(config_path: Path) -> set[str]:
-    """Client/customer identifiers to keep out of committed docs."""
+    """Client/customer identifiers to keep out of committed docs.
+
+    A genuinely absent config (e.g. CI, where it is gitignored) yields an empty
+    set → the caller skips. A config that *exists* but is unreadable or invalid
+    raises ConfigError so the caller can fail closed — a broken config must not
+    silently disable the guard.
+    """
+    if not config_path.exists():
+        return set()
     try:
         data = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return set()
+    except (OSError, ValueError) as exc:
+        raise ConfigError(f"cannot read/parse {config_path}: {exc}") from exc
     profiles = data.get("projects", data) if isinstance(data, dict) else data
     if not isinstance(profiles, list):
         return set()
@@ -119,8 +141,10 @@ def scan_file(path: Path, terms: set[str]) -> list[tuple[int, str]]:
 
 def _staged_files() -> list[str]:
     try:
+        # Include R (renames): a renamed docs file must still be scanned;
+        # --name-only reports the new path for a rename.
         out = subprocess.run(
-            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
             capture_output=True, text=True, check=True,
         ).stdout
     except (OSError, subprocess.CalledProcessError):
@@ -132,13 +156,19 @@ def _should_scan(name: str) -> bool:
     return name.startswith(SCAN_PREFIXES) and name.endswith(SCAN_SUFFIXES)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("files", nargs="*", help="files to scan (default: use --staged)")
     ap.add_argument("--staged", action="store_true", help="scan git-staged docs files")
-    ns = ap.parse_args()
+    ns = ap.parse_args(argv)
 
-    terms = load_sensitive_terms(_config_path())
+    try:
+        terms = load_sensitive_terms(_config_path())
+    except ConfigError as exc:
+        # Fail closed: a present-but-broken config must not silently disable
+        # the guard (that would let a leak through on a bad edit / permissions).
+        print(f"check-docs-no-client-data: config unreadable — blocking: {exc}", file=sys.stderr)
+        return 1
     if not terms:
         # No local config (e.g. CI) → nothing client-specific to check. Not a
         # failure: the pre-commit layer is where this guard has teeth.

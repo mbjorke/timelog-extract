@@ -435,7 +435,8 @@ if [[ $CLASSIFY -eq 1 || $MANUAL_PLAN -eq 1 ]]; then
     echo "rabbit_loop: base ref '$BASE' not found (try \`git fetch origin\`)." >&2; exit 2
   fi
   [[ $CLASSIFY -eq 1 ]] && {
-    local pr
+    # NB: no `local` here — this block runs at script top level, not in a function,
+    # where `local` errors out under `set -e` and kills --classify-merge.
     pr="$(_resolve_pr_number "$MERGE_GATE_PR")" || {
       echo "MERGE_CLASS: NEEDS_HUMAN (could not resolve PR for author gate — pass --pr <number>)"
       exit 1

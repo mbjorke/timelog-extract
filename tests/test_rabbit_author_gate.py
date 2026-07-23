@@ -109,6 +109,36 @@ class RabbitAuthorGateTests(unittest.TestCase):
         self.assertEqual(p.returncode, 1)
         self.assertIn("not explicitly same-repo", p.stdout)
 
+    def test_bot_login_with_glob_metachars_is_matched_literally(self):
+        # google-labs-jules[bot] contains `[bot]` — a glob character class if the
+        # allowlist `case` pattern left `$author` unquoted. The code quotes it, so
+        # the bot login must match the allowlist literally and read as INTERNAL.
+        p = self._run(
+            author="google-labs-jules[bot]",
+            fork="false",
+            allow="mbjorke google-labs-jules[bot]",
+        )
+        self.assertEqual(p.returncode, 0, msg=p.stdout + p.stderr)
+        self.assertIn("INTERNAL", p.stdout)
+
+    def test_classify_merge_pr_reaches_classification(self):
+        # Regression: a top-level `local pr` (not inside a function) errored under
+        # `set -e` and killed --classify-merge before it could classify. The --pr
+        # path routes through author_gate first, so an internal author must pass.
+        env = dict(self.env)
+        env["GH_STUB_AUTHOR"] = "mbjorke"
+        env["GH_STUB_FORK"] = "false"
+        p = subprocess.run(
+            ["bash", str(SCRIPT), "--classify-merge", "--pr", "5", "--base", "HEAD"],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=60,
+            cwd=SCRIPT.parent.parent,
+        )
+        self.assertNotIn("can only be used in a function", p.stdout + p.stderr)
+        self.assertIn("MERGE_CLASS", p.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

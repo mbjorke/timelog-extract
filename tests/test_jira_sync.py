@@ -15,7 +15,7 @@ _EMPTY_HOME = Path("/nonexistent-gittan-home-for-tests")
 
 from typer.testing import CliRunner
 
-from collectors.jira import JiraCredentials, adf_comment_text, post_jira_worklog
+from collectors.jira import JiraCredentials, adf_comment_text, list_jira_worklogs, post_jira_worklog
 from core.cli import app
 from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
@@ -94,6 +94,18 @@ class JiraSyncTests(unittest.TestCase):
                 time_spent_seconds=3600,
                 comment="sync test",
             )
+
+    def test_list_jira_worklogs_rejects_insecure_http(self):
+        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", TEST_API_PLACEHOLDER)
+        with self.assertRaises(ValueError) as ctx:
+            list_jira_worklogs(creds, "ABC-1")
+        self.assertIn("HTTPS", str(ctx.exception))
+
+    def test_post_jira_worklog_rejects_insecure_http(self):
+        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", TEST_API_PLACEHOLDER)
+        with self.assertRaises(ValueError) as ctx:
+            post_jira_worklog(creds, "ABC-1", datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc), 3600, "sync test")
+        self.assertIn("HTTPS", str(ctx.exception))
 
     def test_branch_key_used_when_no_commit_key_in_window(self):
         start = datetime(2026, 4, 10, 10, 0)

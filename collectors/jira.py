@@ -169,9 +169,12 @@ def list_jira_worklogs(creds: JiraCredentials, issue_key: str) -> List[dict]:
     marker on a later page is never missed during dedup.
 
     Raises:
+        ValueError: If base URL is not HTTPS.
         JiraApiError: If an HTTP request fails (``.status`` carries the HTTP code,
             or ``None`` for a network error) or Jira returns a non-JSON response.
     """
+    if not creds.base_url.lower().startswith("https://"):
+        raise ValueError("Jira base URL must use HTTPS to prevent credential leakage over unencrypted HTTP")
     base = f"{creds.base_url}/rest/api/3/issue/{quote(issue_key, safe='')}/worklog"
     collected: List[dict] = []
     start_at = 0
@@ -225,10 +228,13 @@ def post_jira_worklog(
         worklog_id (str): The id of the created worklog.
     
     Raises:
+        ValueError: If base URL is not HTTPS.
         RuntimeError: If `started` lacks timezone offset.
         RuntimeError: If the HTTP request fails (network error or non-2xx response).
         RuntimeError: If Jira returns a non-JSON response or the response is missing the worklog id.
     """
+    if not creds.base_url.lower().startswith("https://"):
+        raise ValueError("Jira base URL must use HTTPS to prevent credential leakage over unencrypted HTTP")
     if started.tzinfo is None or started.utcoffset() is None:
         raise RuntimeError("Jira worklog 'started' must include timezone offset")
     payload = {

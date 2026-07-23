@@ -70,7 +70,12 @@ def load_triage_map_candidates(
         min_events=min_events,
         include_low_signal=include_low_signal,
     )
-    return merge_url_candidate_lists(gap_rows, report_rows, max_rows=max_rows)
+    merged = merge_url_candidate_lists(gap_rows, report_rows, max_rows=max_rows)
+    # Onboarding/review queue: decidability before impact/confidence (#419).
+    from core.cli_review_create_project import decidability_sort_key
+
+    merged.sort(key=decidability_sort_key)
+    return merged
 
 
 def build_triage_map_json_payload(

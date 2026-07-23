@@ -16,6 +16,15 @@ from rich.table import Table
 
 from core.anchor_nudge import should_prompt
 from core.cli_date_range import resolve_date_window
+from core.cli_review_create_project import (
+    create_choice_label,
+    create_project_interactive,
+    is_decidable_candidate,
+    park_choice_label,
+    partition_candidates,
+    propose_create_from_candidate,
+    skip_choice_label,
+)
 from core.cli_triage import load_triage_profiles
 from core.cli_triage_apply import apply_triage_decisions_payload
 from core.cli_triage_map_candidates import UNCATEGORIZED, UrlCandidate, _auto_assign_high
@@ -86,10 +95,74 @@ def _row_edit_label(row: UrlCandidate, selected_project: str | None, *, project_
             else None
         )
         assigned = f"Skip (suggested: {sug})" if sug else "Skip"
+    create_hint = ""
+    if is_decidable_candidate(row) and propose_create_from_candidate(row) is not None:
+        create_hint = " · creatable"
     return (
         f"{row.title} | {row.url_key} | conf={row.confidence_label} {row.confidence_score:.0%} "
-        f"| impact={row.impact_hours:.1f}h | events={row.events} | assign={assigned}"
+        f"| events={row.events} | assign={assigned}{create_hint}"
     )
+
+
+def _project_choices_for_row(
+    row: UrlCandidate,
+    *,
+    project_names: list[str],
+) -> list[str]:
+    """Decidable rows may create; bare UUID / undecidable → Park or Skip only."""
+    skip = skip_choice_label()
+    if is_decidable_candidate(row) and propose_create_from_candidate(row) is not None:
+        return [*project_names, create_choice_label(), skip]
+    return [*project_names, park_choice_label(), skip]
+
+
+def _prompt_project_for_row(
+    console: Console,
+    row: UrlCandidate,
+    *,
+    project_names: list[str],
+    allowed_project_names: set[str],
+    projects_config: str,
+    current: str | None,
+) -> tuple[str | None, list[str], set[str]]:
+    """Return (assignment, updated project_names, updated allowed set).
+
+    Create writes config immediately. Park/Skip → None assignment.
+    """
+    suggested_default = (
+        row.suggested_project
+        if row.suggested_project in allowed_project_names and row.suggested_project != UNCATEGORIZED
+        else None
+    )
+    choices = _project_choices_for_row(row, project_names=project_names)
+    default = current if current in project_names else suggested_default
+    if default not in choices:
+        default = None
+    selected = questionary.select(
+        f"Project for URL key '{row.url_key}'",
+        choices=choices,
+        default=default,
+    ).ask()
+    if selected is None:
+        return "__cancel__", project_names, allowed_project_names
+    if selected in {skip_choice_label(), park_choice_label()}:
+        return None, project_names, allowed_project_names
+    if selected == create_choice_label():
+        created = create_project_interactive(
+            console,
+            row,
+            projects_config=projects_config,
+            existing_names=allowed_project_names,
+        )
+        if created is None:
+            return current, project_names, allowed_project_names
+        name = created.project_name
+        if name not in project_names:
+            project_names = sorted({*project_names, name})
+        allowed_project_names = set(allowed_project_names) | {name}
+        # tracked_urls already written; no deferred decision needed.
+        return "__created__", project_names, allowed_project_names
+    return str(selected), project_names, allowed_project_names
 
 
 def run_url_mapping_review(
@@ -161,11 +234,33 @@ def run_url_mapping_review(
         console.print(f"[{CLR_GREEN}]No URL candidates found in this range (gap-day Chrome evidence).[/{CLR_GREEN}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=False)
 
-    _render_candidates_table(console, rows)
+    decidable_rows, parked_rows = partition_candidates(rows)
+    if decidable_rows:
+        _render_candidates_table(
+            console,
+            decidable_rows,
+            title=f"URL candidates — decidable ({len(decidable_rows)})",
+        )
+    if parked_rows:
+        _render_candidates_table(
+            console,
+            parked_rows,
+            title=f"Not enough evidence to attribute — Park/Skip only ({len(parked_rows)})",
+        )
+        console.print(
+            f"[{STYLE_DIM}]Bare UUID / untitled hosts stay out of the create queue "
+            f"(decidability ≠ impact).[/{STYLE_DIM}]"
+        )
+
+    # Manual review + bulk apply operate on decidable rows; parked stay Skip.
+    review_pool = decidable_rows
     assignment_by_key: dict[str, str | None] = {row.url_key: None for row in rows}
+    created_keys: set[str] = set()
     allowed_project_names = set(project_names)
     auto_assigned: dict[str, str] = {}
-    if auto_high:
+    # Fresh config: no projects to bulk-map onto — go straight to create/manual.
+    fresh_config = not project_names
+    if auto_high and review_pool and not fresh_config:
         choice = questionary.select(
             "Bulk apply suggestion",
             choices=[
@@ -181,9 +276,9 @@ def run_url_mapping_review(
             _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
         if choice == "high":
-            auto_assigned = dict(_auto_assign_high(rows, project_names))
+            auto_assigned = dict(_auto_assign_high(review_pool, project_names))
         elif choice == "high_medium":
-            for row in rows:
+            for row in review_pool:
                 if row.confidence_label not in {"high", "medium"}:
                     continue
                 suggested = str(row.suggested_project or "").strip()
@@ -191,7 +286,7 @@ def run_url_mapping_review(
                     continue
                 auto_assigned[row.url_key] = suggested
         elif choice == "all":
-            for row in rows:
+            for row in review_pool:
                 suggested = str(row.suggested_project or "").strip()
                 if not suggested or suggested == UNCATEGORIZED or suggested not in allowed_project_names:
                     continue
@@ -200,23 +295,34 @@ def run_url_mapping_review(
         if auto_assigned:
             console.print(
                 f"[bold]Proposal:[/bold] assign {len(auto_assigned)} rows from bulk selection; "
-                f"{len(rows) - len(auto_assigned)} rows remain for optional manual review."
+                f"{len(review_pool) - len(auto_assigned)} decidable rows remain for optional manual review."
             )
             for key, project_name in auto_assigned.items():
                 assignment_by_key[key] = project_name
-            chosen_rows = [row for row in rows if row.url_key in auto_assigned]
+            chosen_rows = [row for row in review_pool if row.url_key in auto_assigned]
             _render_candidates_table(
                 console,
                 chosen_rows,
                 title=f"Bulk-selected rows ({len(chosen_rows)})",
             )
 
-    review_more = questionary.confirm("Review/edit remaining rows manually before apply?", default=False).ask()
+    if fresh_config and review_pool:
+        console.print(
+            f"[{STYLE_MUTED}]No projects in config yet — create from decidable URL keys "
+            f"or Park/Skip undecidable rows.[/{STYLE_MUTED}]"
+        )
+        review_more = True
+    else:
+        review_more = questionary.confirm(
+            "Review/edit remaining rows manually before apply?",
+            default=False,
+        ).ask()
     if review_more is None:
         console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
     if review_more:
-        review_rows = [row for row in rows if row.url_key not in auto_assigned]
+        # Include parked so operator can Park/Skip (never force create).
+        review_rows = [row for row in rows if row.url_key not in auto_assigned and row.url_key not in created_keys]
         if not review_rows:
             console.print(f"[{CLR_GREEN}]No remaining rows to review manually.[/{CLR_GREEN}]")
         else:
@@ -247,24 +353,27 @@ def run_url_mapping_review(
             row = next((r for r in rows if r.url_key == edit_choice), None)
             if row is None:
                 continue
-            current = assignment_by_key.get(row.url_key)
-            suggested_default = (
-                row.suggested_project
-                if row.suggested_project in allowed_project_names and row.suggested_project != UNCATEGORIZED
-                else None
+            selected_project, project_names, allowed_project_names = _prompt_project_for_row(
+                console,
+                row,
+                project_names=project_names,
+                allowed_project_names=allowed_project_names,
+                projects_config=resolved_projects_config,
+                current=assignment_by_key.get(row.url_key),
             )
-            selected_project = questionary.select(
-                f"Project for URL key '{row.url_key}'",
-                choices=[*project_names, "Skip this URL key"],
-                default=current if current in project_names else suggested_default,
-            ).ask()
-            if selected_project is None:
+            if selected_project == "__cancel__":
                 console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
                 _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
-            assignment_by_key[row.url_key] = None if selected_project == "Skip this URL key" else str(selected_project)
+            if selected_project == "__created__":
+                created_keys.add(row.url_key)
+                assignment_by_key[row.url_key] = None
+                continue
+            assignment_by_key[row.url_key] = selected_project
 
     decisions: list[dict[str, str]] = []
     for row in rows:
+        if row.url_key in created_keys:
+            continue
         selected_project = assignment_by_key.get(row.url_key)
         if not selected_project:
             continue
@@ -276,8 +385,12 @@ def run_url_mapping_review(
             }
         )
 
-    if not decisions:
+    if not decisions and not created_keys:
         console.print(f"[{CLR_VALUE_ORANGE}]No decisions selected. Nothing to apply.[/{CLR_VALUE_ORANGE}]")
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+
+    if not decisions:
+        console.print(f"[{CLR_GREEN}]Create-project writes already saved; no further mappings.[/{CLR_GREEN}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     preview = apply_triage_decisions_payload(

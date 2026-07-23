@@ -28,7 +28,7 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(result, ["Alpha-service", "beta-core", "zeta-app"])
 
     def test_customer_select_choices_are_sorted_before_special_actions(self):
-        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock:
+        with mock.patch("core.setup_project_identity_batch.questionary.select") as select_mock:
             select_mock.return_value.ask.return_value = "__finish_mapping__"
             _collect_batch_mappings(
                 Console(record=True),
@@ -63,10 +63,9 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         )
 
     def test_checkbox_choices_are_sorted_case_insensitive(self):
-        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
-            "core.setup_project_identity_wizard.questionary.checkbox"
+        with mock.patch("core.setup_project_identity_batch.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_batch.questionary.checkbox"
         ) as checkbox_mock:
-            # choose customer, checkbox selection applies immediately, then finish loop
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
                 "__finish_mapping__",
@@ -106,8 +105,8 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertEqual(customers, ["customer-a.test", "customer-b.test"])
 
     def test_batch_mapping_assigns_selected_projects(self):
-        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
-            "core.setup_project_identity_wizard.questionary.checkbox"
+        with mock.patch("core.setup_project_identity_batch.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_batch.questionary.checkbox"
         ) as checkbox_mock:
             select_mock.return_value.ask.side_effect = [
                 "customer-a.test",
@@ -127,9 +126,9 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
         self.assertNotIn("project-alpha", assignments)
 
     def test_create_new_customer_reuses_normalized_existing_customer(self):
-        with mock.patch("core.setup_project_identity_wizard.questionary.select") as select_mock, mock.patch(
-            "core.setup_project_identity_wizard.questionary.text"
-        ) as text_mock, mock.patch("core.setup_project_identity_wizard.questionary.checkbox") as checkbox_mock:
+        with mock.patch("core.setup_project_identity_batch.questionary.select") as select_mock, mock.patch(
+            "core.setup_project_identity_batch.questionary.text"
+        ) as text_mock, mock.patch("core.setup_project_identity_batch.questionary.checkbox") as checkbox_mock:
             select_mock.return_value.ask.side_effect = [
                 "__create_customer__",
                 "__finish_mapping__",
@@ -144,6 +143,110 @@ class SetupProjectIdentityWizardTests(unittest.TestCase):
             )
 
         self.assertEqual(assignments["project-a"], "customer-b.test")
+
+    def test_batch_map_offers_stem_match_not_unrelated(self):
+        from core.setup_project_identity_candidates import batch_choices_for_customer
+
+        projects = [
+            {
+                "name": "customer-a",
+                "customer": "customer-a.test",
+                "default_client": "customer-a.test",
+            },
+            {"name": "project-beta", "customer": "", "default_client": ""},
+            {"name": "project-gamma", "customer": "", "default_client": ""},
+        ]
+        choices, suggested, already = batch_choices_for_customer(
+            projects,
+            customer="customer-a.test",
+            unresolved=["project-beta", "project-gamma"],
+        )
+        self.assertEqual(already, ["customer-a"])
+        self.assertEqual(suggested, [])
+        self.assertEqual(choices, ["customer-a"])
+        self.assertNotIn("project-beta", choices)
+
+    def test_batch_map_suggests_unlinked_stem_match(self):
+        from core.setup_project_identity_candidates import batch_choices_for_customer
+
+        projects = [
+            {"name": "customer-a", "customer": "", "default_client": ""},
+            {"name": "project-beta", "customer": "", "default_client": ""},
+        ]
+        choices, suggested, already = batch_choices_for_customer(
+            projects,
+            customer="customer-a.test",
+            unresolved=["customer-a", "project-beta"],
+        )
+        self.assertEqual(already, [])
+        self.assertEqual(suggested, ["customer-a"])
+        self.assertEqual(choices, ["customer-a"])
+
+    def test_batch_map_includes_wrongly_linked_stem_match(self):
+        from core.setup_project_identity_candidates import batch_choices_for_customer
+
+        projects = [
+            {
+                "name": "customer-a",
+                "customer": "other.test",
+                "default_client": "other.test",
+            },
+            {"name": "project-beta", "customer": "", "default_client": ""},
+        ]
+        # Not in unresolved pool (looks "resolved"), but stem-matches customer-a.test.
+        choices, suggested, already = batch_choices_for_customer(
+            projects,
+            customer="customer-a.test",
+            unresolved=["project-beta"],
+        )
+        self.assertEqual(already, [])
+        self.assertEqual(suggested, ["customer-a"])
+        self.assertEqual(choices, ["customer-a"])
+
+    def test_shared_github_owner_does_not_inflate_all_customer_rows(self):
+        from core.setup_project_identity_candidates import _customer_candidate_rows
+
+        projects = [
+            {
+                "name": "project-alpha",
+                "customer": "customer-a.test",
+                "match_terms": ["owner-a/project-alpha", "owner-shared/tool-repo"],
+            },
+            {
+                "name": "project-beta",
+                "customer": "customer-b.test",
+                "match_terms": ["owner-shared/tool-repo", "owner-shared/other-repo"],
+            },
+            {
+                "name": "project-gamma",
+                "customer": "operator-name",
+                "match_terms": ["owner-shared/tool-repo"],
+            },
+        ]
+        with mock.patch(
+            "core.setup_project_identity_candidates._local_owner_activity_summary",
+            return_value=(
+                {"owner-shared": 29, "owner-a": 1},
+                {"owner-shared": "owner-shared/tool-repo", "owner-a": "owner-a/project-alpha"},
+                {
+                    "owner-shared": [(100, "owner-shared/tool-repo"), (90, "owner-shared/other-repo")],
+                    "owner-a": [(80, "owner-a/project-alpha")],
+                },
+            ),
+        ), mock.patch(
+            "core.setup_project_identity_candidates.discover_git_project_hints",
+            return_value=None,
+        ):
+            rows = _customer_candidate_rows(
+                projects,
+                ["customer-a.test", "customer-b.test", "operator-name"],
+            )
+        by_customer = {row[0]: row for row in rows}
+        # Shared personal owner must not copy a 29-repo wall onto every customer.
+        self.assertEqual(by_customer["customer-b.test"][1], "2")
+        self.assertEqual(by_customer["operator-name"][1], "1")
+        self.assertNotEqual(by_customer["customer-b.test"][1], "29")
+        self.assertIn("owner-a/project-alpha", by_customer["customer-a.test"][3])
 
     def test_dry_run_does_not_write_config(self):
         with tempfile.TemporaryDirectory() as tmp:

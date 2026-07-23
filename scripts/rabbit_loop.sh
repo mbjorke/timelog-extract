@@ -30,11 +30,15 @@
 #   MERGE_CLASS: NEEDS_HUMAN → touches a judgment surface (report/invoice engine,
 #                              collectors, outputs, deps, CI, governance) → pause
 #
-# --merge-gate checks the OPEN PR for unresolved review threads (bot or human)
-# via `gh` GraphQL. Even a SAFE + CONVERGED branch must NOT be merged while
-# review threads are open — reply + resolve first (AGENTS.md review close-out).
-#   MERGE_GATE: CLEAR (0 unresolved threads)  → merge allowed  (exit 0)
-#   MERGE_GATE: BLOCKED (N unresolved …)      → do not merge   (exit 1)
+# --merge-gate checks the OPEN PR via `gh` before merge. CLEAR requires BOTH:
+# (1) zero unresolved review threads (bot or human), and (2) positive proof an
+# independent critic actually reviewed — a review by a non-author, a
+# CodeRabbit/Qodo summary comment, or a local converged.ack for this HEAD. Reason
+# for (2): "0 unresolved threads" is also true when NO reviewer has run yet, so
+# the old thread-only gate failed OPEN (incident: PR #430 merged 17s after Qodo's
+# first comment). Even a SAFE + CONVERGED branch is not mergeable until reviewed.
+#   MERGE_GATE: CLEAR (0 threads + N review signals)  → merge allowed (exit 0)
+#   MERGE_GATE: BLOCKED (unresolved threads | no independent review) → stop (exit 1)
 # Defaults to the PR for the current branch; pass --pr <number> to override
 # (required on gitbutler/* workspaces where the lane branch is not checked out).
 #
@@ -145,8 +149,36 @@ _gate_err_summary() {
   tr '\n' ' ' <"$1" | cut -c1-200 | sed 's/[[:space:]]*$//'
 }
 
+# Positive proof that an independent reviewer actually reviewed this PR. "0
+# unresolved review threads" is ambiguous: it is ALSO true when no reviewer has
+# run yet (incident: PR #430 human-merged 17s after Qodo first posted — the guard
+# read a not-yet-reviewed PR as clean). Echoes an integer count of
+# independent-review signals, or "error" if a query failed and no signal was
+# found (caller fails closed). A signal is any of: a submitted GitHub review by
+# someone other than the PR author, a CodeRabbit/Qodo review-summary comment, or a
+# local converged.ack for the current HEAD (the CLI loop genuinely reviewed it).
+_pr_review_signals() {
+  local pr="$1" owner="$2" repo="$3" n=0 err=0 author revs comments ack head
+  author="$(gh pr view "$pr" --json author --jq '.author.login' 2>/dev/null)" || err=1
+  revs="$(gh api "repos/$owner/$repo/pulls/$pr/reviews?per_page=100" \
+    --jq "[.[] | select(.user.login != \"${author:-}\")] | length" 2>/dev/null)" || err=1
+  if [[ "${revs:-}" =~ ^[0-9]+$ ]]; then n=$((n + revs)); fi
+  comments="$(gh api "repos/$owner/$repo/issues/$pr/comments?per_page=100" \
+    --jq '[.[] | select((.body // "") | test("summarize by coderabbit.ai|Code Review by Qodo"))] | length' 2>/dev/null)" || err=1
+  if [[ "${comments:-}" =~ ^[0-9]+$ ]]; then n=$((n + comments)); fi
+  # Tie the local converged.ack to the PR's OWN head commit, not the local
+  # checkout — otherwise gating an unrelated --pr would borrow this branch's ack.
+  ack="$REPO_ROOT/.rabbit-loop/converged.ack"
+  if [[ -f "$ack" ]]; then
+    head="$(gh pr view "$pr" --json headRefOid --jq '.headRefOid' 2>/dev/null || echo '')"
+    if [[ -n "$head" ]] && grep -q "$head" "$ack" 2>/dev/null; then n=$((n + 1)); fi
+  fi
+  if [[ $err -eq 1 && $n -eq 0 ]]; then echo "error"; return 0; fi
+  echo "$n"
+}
+
 merge_gate() {
-  local pr="$1" unresolved count more rc err errf
+  local pr="$1" unresolved count more rc err errf owner repo rsig
   command -v gh >/dev/null 2>&1 || {
     echo "MERGE_GATE: BLOCKED (gh CLI not found — cannot verify review threads)"; return 1
   }
@@ -164,6 +196,8 @@ merge_gate() {
       return 1
     fi
   fi
+  owner="$(gh repo view --json owner --jq .owner.login 2>/dev/null || true)"
+  repo="$(gh repo view --json name --jq .name 2>/dev/null || true)"
   # Single-page read capped at 100 threads; hasNextPage=true blocks below so a
   # busier PR fails closed instead of under-counting.
   set +e
@@ -178,8 +212,8 @@ merge_gate() {
         }
       }
     }' \
-    -f owner="$(gh repo view --json owner --jq .owner.login 2>/dev/null)" \
-    -f repo="$(gh repo view --json name --jq .name 2>/dev/null)" \
+    -f owner="$owner" \
+    -f repo="$repo" \
     -F pr="$pr" \
     --jq '([.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length),
           .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' 2>"$errf")"
@@ -200,7 +234,18 @@ merge_gate() {
     echo "MERGE_GATE: BLOCKED (PR #$pr has $count unresolved review thread(s) — reply + resolve before merge)"
     return 1
   fi
-  echo "MERGE_GATE: CLEAR (PR #$pr has 0 unresolved review threads)"
+  # 0 unresolved threads is necessary but NOT sufficient: it also holds when no
+  # reviewer has run yet. Require positive proof an independent critic reviewed.
+  rsig="$(_pr_review_signals "$pr" "$owner" "$repo")"
+  if [[ "$rsig" == "error" ]]; then
+    echo "MERGE_GATE: BLOCKED (could not verify independent review for PR #$pr — fail closed)"
+    return 1
+  fi
+  if [[ "$rsig" == "0" ]]; then
+    echo "MERGE_GATE: BLOCKED (PR #$pr has 0 unresolved threads but NO independent review yet — wait for CodeRabbit/Qodo or a converged loop pass; do not merge on 0-threads alone)"
+    return 1
+  fi
+  echo "MERGE_GATE: CLEAR (PR #$pr: 0 unresolved threads, $rsig independent-review signal(s))"
   return 0
 }
 

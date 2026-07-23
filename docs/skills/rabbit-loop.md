@@ -153,7 +153,7 @@ scripts/rabbit_loop.sh --light            # cheaper CodeRabbit pass
 scripts/rabbit_loop.sh --no-tests         # findings only (skip autotests)
 scripts/rabbit_loop.sh --skip-workflow    # emergency: skip multi-agent preflight
 scripts/rabbit_loop.sh --classify-merge   # ship gate: MERGE_CLASS SAFE | NEEDS_HUMAN
-scripts/rabbit_loop.sh --merge-gate       # last gate: MERGE_GATE CLEAR | BLOCKED (unresolved threads)
+scripts/rabbit_loop.sh --merge-gate       # last gate: CLEAR needs 0 threads AND an independent review; else BLOCKED
 ```
 
 ### Invoking it per agent
@@ -229,9 +229,15 @@ merged with an open thread). Run the gate **immediately before every `gh pr merg
 scripts/rabbit_loop.sh --merge-gate [--pr N]   # MERGE_GATE: CLEAR | BLOCKED
 ```
 
-`BLOCKED` means unresolved threads exist (or they could not be verified — the gate fails
-closed). Do **not** merge; close each thread out first: **fix it, or reply with a reason
-(English) and resolve** — a merge must not leave dangling review conversations.
+`CLEAR` now requires **two** things: zero unresolved threads **and** positive proof an
+independent critic actually reviewed (a review by a non-author, a CodeRabbit/Qodo summary
+comment, or a local `converged.ack` for the PR's head). This closes a fail-**open** gap:
+"0 unresolved threads" is also true when *no reviewer has run yet* (incident: PR #430 was
+human-merged 17s after Qodo's first comment). `BLOCKED` therefore means either unresolved
+threads exist, **or no independent review has landed yet**, or a query failed (fails
+closed). Do **not** merge; either wait for the reviewer to run, or close each thread out:
+**fix it, or reply with a reason (English) and resolve** — a merge must not leave dangling
+review conversations or ship unreviewed.
 
 ```bash
 # list unresolved threads (paginated)

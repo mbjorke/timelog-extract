@@ -39,9 +39,24 @@ _IDE_METADATA_PATH_MARKERS = (
     "/.cursor/",
     "/.claude/",
     "/.vscode/",
+    "/.agents/",
+    "/.github/agents",
+    "/.github/skills",
+    "/.copilot/",
     "/.cursor",
     "/.claude",
     "/.vscode",
+    "/.agents",
+)
+
+# Log basenames that are pure IDE plumbing (never editing evidence). Matched
+# case-insensitively against ``Path.name``.
+_SKIP_LOG_BASENAMES = frozenset(
+    {
+        "customizationsdebug.log",  # agent/skill discovery floods (stock Code)
+        "python language server.log",  # Pylance FG/IDX heartbeats
+        "filewatcher.log",
+    }
 )
 
 # Operational noise common to every fork, filtered at every noise profile.
@@ -66,6 +81,11 @@ SHARED_BASE_NOISE = (
     # Config-path polling ("User config path:", "Claude user config path:").
     "user config path:",
     "canvas sdk mirror",
+    # FSEvents / parcel watcher drops — not editing evidence.
+    "file watcher",
+    # Agent/skill customization discovery (customizationsDebug / hooks).
+    "[local]",
+    "  root:",
 )
 
 
@@ -254,6 +274,8 @@ def collect_fork_logs(
             continue
         workspace_map = load_fork_workspaces(base_dir)
         for log_file in logs_dir.glob("**/*.log"):
+            if log_file.name.lower() in _SKIP_LOG_BASENAMES:
+                continue
             try:
                 with open(log_file, encoding="utf-8", errors="replace") as fh:
                     for line in fh:

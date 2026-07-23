@@ -74,6 +74,10 @@ _BASE_NOISE_MARKERS = (
         # MCP browser-tool action failures (cursor-ide-browser write errors on idle days).
         "browser_click.json",
         "error writing serv",
+        # Hooks / customization discovery (same shape as stock Code customizationsDebug).
+        "[local]",
+        "  root:",
+        "file watcher",
     )
 _STRICT_NOISE_MARKERS = (
     # Reserved: ambiguous signals to drop under strict but keep under lenient.
@@ -149,14 +153,25 @@ def _is_cursor_internal_path(path: str, line: str, home: Path) -> bool:
 
 
 def _is_ide_metadata_workspace(path: str) -> bool:
-    """True when the path is a .cursor/.claude/.vscode tree, not the project root."""
+    """True when the path is an IDE agent/skill tree, not the project root."""
     if not path:
         return True
     norm = path.rstrip("/")
-    for marker in ("/.cursor/", "/.claude/", "/.vscode/"):
+    for marker in (
+        "/.cursor/",
+        "/.claude/",
+        "/.vscode/",
+        "/.agents/",
+        "/.github/agents",
+        "/.github/skills",
+        "/.copilot/",
+    ):
         if marker in path:
             return True
-    return any(norm.endswith(m) for m in ("/.cursor", "/.claude", "/.vscode"))
+    return any(
+        norm.endswith(m)
+        for m in ("/.cursor", "/.claude", "/.vscode", "/.agents")
+    )
 
 
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):

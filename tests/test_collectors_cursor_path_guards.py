@@ -79,6 +79,21 @@ class CursorPathGuardTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_skips_github_agents_metadata_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            # Line noise alone would not drop a path-only event; path guard must.
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:10:00 [info] discovered "
+                    "/Users/me/Workspace/Project/project-alpha/.github/agents/helper.md"
+                ],
+            )
+            # Bypass [local]/noise by using a non-matching prefix — path guard only.
+            self.assertEqual(self._collect(home), [])
+
 
 if __name__ == "__main__":
     unittest.main()

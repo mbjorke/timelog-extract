@@ -227,6 +227,41 @@ class VSCodeCollectorTests(unittest.TestCase):
             )
             self.assertEqual(self._collect(home), [])
 
+    def test_skips_pylance_fg_and_customization_discovery(self):
+        # Stock Code keeps the repo open → Pylance FG + agent/skill discovery
+        # floods look like "VS Code instead of Cursor" in the timeline.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "window1/exthost/ms-python.python/Python Language Server.log",
+                [
+                    "2026-05-28 09:37:00.000 [info] (1): FG(project-alpha): "
+                    "Loading pyproject.toml file at "
+                    "/Users/me/Workspace/Project/project-alpha/pyproject.toml"
+                ],
+            )
+            self._write_log(
+                home,
+                "window1/customizationsDebug.log",
+                [
+                    "2026-05-28 09:37:01.000 [info]   Root: "
+                    "/Users/me/Workspace/Project/project-alpha",
+                    "2026-05-28 09:37:01.100 [info]        [local] "
+                    "/Users/me/Workspace/Project/project-alpha/.github/agents",
+                ],
+            )
+            self._write_log(
+                home,
+                "window1/renderer.log",
+                [
+                    "2026-05-28 09:37:02.000 [error] [File Watcher ('parcel')] "
+                    "Events were dropped (path: "
+                    "/Users/me/Workspace/Project/project-alpha)"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
 
 if __name__ == "__main__":
     unittest.main()

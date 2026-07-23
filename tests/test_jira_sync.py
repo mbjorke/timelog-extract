@@ -15,7 +15,7 @@ _EMPTY_HOME = Path("/nonexistent-gittan-home-for-tests")
 
 from typer.testing import CliRunner
 
-from collectors.jira import JiraCredentials, adf_comment_text, list_jira_worklogs, post_jira_worklog
+from collectors.jira import JiraCredentials, adf_comment_text, post_jira_worklog
 from core.cli import app
 from core.cli_jira_sync import _next_step_hint
 from core.jira_sync import (
@@ -214,6 +214,8 @@ class JiraSyncTests(unittest.TestCase):
 
     def test_list_jira_worklogs_follows_pagination(self):
         import json as _json
+
+        from collectors.jira import list_jira_worklogs
 
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",

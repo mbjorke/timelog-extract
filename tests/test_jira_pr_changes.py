@@ -192,5 +192,25 @@ class GitCommitFieldRenameTests(unittest.TestCase):
         self.assertEqual(source, "commit")
 
 
+class JiraCollectorHttpsSecurityTests(unittest.TestCase):
+    """Security tests checking that list_jira_worklogs and post_jira_worklog reject HTTP."""
+
+    def test_list_jira_worklogs_rejects_insecure_http(self):
+        from collectors.jira import JiraCredentials, list_jira_worklogs
+
+        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", "fake-token")
+        with self.assertRaises(ValueError) as ctx:
+            list_jira_worklogs(creds, "ABC-1")
+        self.assertIn("HTTPS", str(ctx.exception))
+
+    def test_post_jira_worklog_rejects_insecure_http(self):
+        from collectors.jira import JiraCredentials, post_jira_worklog
+
+        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", "fake-token")
+        with self.assertRaises(ValueError) as ctx:
+            post_jira_worklog(creds, "ABC-1", datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc), 3600, "sync test")
+        self.assertIn("HTTPS", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

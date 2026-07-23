@@ -64,6 +64,19 @@ def resolve_path_repo_slug(path_str: str) -> str:
     return slug_from_remote_url(completed.stdout)
 
 
+# Dir leaves that are OS/IDE path artifacts, never real project folders.
+# "application" is the classic truncation of macOS "Application Support"
+# when a /Users/... extractor stops at whitespace.
+_JUNK_DIR_LEAVES = frozenset(
+    {
+        "application",
+        "library",
+        "users",
+        "home",
+    }
+)
+
+
 def path_attribution_anchor(path) -> dict[str, str] | None:
     """Attribution anchor for a working path.
 
@@ -77,8 +90,13 @@ def path_attribution_anchor(path) -> dict[str, str] | None:
     raw = str(path or "").strip()
     if not raw:
         return None
+    # Truncated macOS Application Support path (regex stops at the space).
+    if raw.rstrip("/").endswith("/Library/Application"):
+        return None
     slug = resolve_path_repo_slug(raw)
     if slug:
         return {"repo": slug}
     leaf = Path(raw).name.strip().lower()
-    return {"dir": leaf} if leaf else None
+    if not leaf or leaf in _JUNK_DIR_LEAVES:
+        return None
+    return {"dir": leaf}

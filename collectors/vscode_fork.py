@@ -32,6 +32,18 @@ _WORKSPACE_ID_PATTERN = re.compile(r"workspaceStorage/([^/\s\"']+)")
 # so workspace paths in the logs are always absolute /Users/... paths.
 _WORKSPACE_PATH_PATTERN = re.compile(r"(/Users/[^\"'\s]+)")
 
+# Tool/agent metadata trees under a real workspace — indexing them is IDE
+# plumbing (skills/agents/hooks), not user editing. Paths are matched with
+# slash-bounded markers so a project named "my-claude-app" is not dropped.
+_IDE_METADATA_PATH_MARKERS = (
+    "/.cursor/",
+    "/.claude/",
+    "/.vscode/",
+    "/.cursor",
+    "/.claude",
+    "/.vscode",
+)
+
 # Operational noise common to every fork, filtered at every noise profile.
 SHARED_BASE_NOISE = (
     "error getting submodules",
@@ -216,6 +228,16 @@ def collect_fork_logs(
         if not path:
             return False
         if path.startswith(home_dot_prefix):
+            return True
+        # Truncated "…/Library/Application Support/…" (space stops the extractor).
+        if path.rstrip("/").endswith("/Library/Application"):
+            return True
+        norm = path.rstrip("/")
+        if any(
+            marker in path
+            or norm.endswith(marker.rstrip("/"))
+            for marker in _IDE_METADATA_PATH_MARKERS
+        ):
             return True
         return any(path.startswith(marker) for marker in internals)
 

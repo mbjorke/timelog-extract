@@ -125,6 +125,40 @@ def cursor_base_dir(home: Path) -> Path:
     return home / "Library" / "Application Support" / "Cursor"
 
 
+def _is_cursor_internal_path(path: str, line: str, home: Path) -> bool:
+    """True for Cursor's own data dirs or truncated Application Support paths.
+
+    The ``/Users/...`` extractor stops at whitespace, so
+    ``…/Library/Application Support/Cursor/…`` becomes
+    ``…/Library/Application`` and would otherwise map as ``dir=application``.
+    """
+    if not path:
+        return True
+    cursor_root = str(cursor_base_dir(home))
+    # Full marker (with spaces) on the raw line — same pattern as vscode_fork.
+    if cursor_root in line or "/Library/Application Support/Cursor" in line:
+        return True
+    if path.startswith(cursor_root):
+        return True
+    if path.rstrip("/").endswith("/Library/Application"):
+        return True
+    home_dot_prefix = str(home).rstrip("/") + "/."
+    if path.startswith(home_dot_prefix):
+        return True
+    return False
+
+
+def _is_ide_metadata_workspace(path: str) -> bool:
+    """True when the path is a .cursor/.claude/.vscode tree, not the project root."""
+    if not path:
+        return True
+    norm = path.rstrip("/")
+    for marker in ("/.cursor/", "/.claude/", "/.vscode/"):
+        if marker in path:
+            return True
+    return any(norm.endswith(m) for m in ("/.cursor", "/.claude", "/.vscode"))
+
+
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
     logs_dir = cursor_base_dir(home) / "logs"
@@ -178,6 +212,7 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
                             continue
                         workspace_path = None
+                        from_line_path = False
                         m_id = workspace_id_pattern.search(line)
                         if m_id and workspace_map:
                             workspace_id = m_id.group(1) or m_id.group(2)
@@ -186,7 +221,16 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                             m_path = workspace_path_pattern.search(line)
                             if m_path:
                                 workspace_path = m_path.group(1)
+                                from_line_path = True
                         if not workspace_path:
+                            continue
+                        # Line-extracted paths need the Application Support guard;
+                        # mapped workspace folders are already the project root.
+                        if from_line_path and _is_cursor_internal_path(
+                            workspace_path, line, home
+                        ):
+                            continue
+                        if _is_ide_metadata_workspace(workspace_path):
                             continue
                         project = classify_project(f"{workspace_path} {line}", profiles)
                         leaf = Path(workspace_path).name

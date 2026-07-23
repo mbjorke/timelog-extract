@@ -199,6 +199,34 @@ class VSCodeCollectorTests(unittest.TestCase):
             self.assertNotIn("SECRET", out[0]["detail"])
             self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
 
+    def test_skips_agents_handoff_ipc_noise(self):
+        # Stock Code floods AgentsHandoff when the same repo is also open in Cursor.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:35:00.000 [info] [AgentsHandoff] IPC received: "
+                    "folderUri=file:///Users/me/Workspace/Project/project-alpha"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_skips_truncated_application_path_leaf(self):
+        # Truncated Application Support path must not become dir=application.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:36:00.000 [info] indexing "
+                    "/Users/me/Library/Application Support/Code/logs/skills"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
 
 if __name__ == "__main__":
     unittest.main()

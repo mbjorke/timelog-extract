@@ -46,6 +46,9 @@ _VSCODE_NOISE = make_noise_filter(
         "runinterminaltool",
         "commandlinefilewriteanalyzer",
         "commandlineautoapproveanalyzer",
+        # Agent handoff IPC — not editing evidence (often floods when Code has
+        # the same repo open as Cursor).
+        "agentshandoff",
     ),
     ultra_strict=(
         # Prefer tagged/phrased signatures over lone tokens like "telemetry"

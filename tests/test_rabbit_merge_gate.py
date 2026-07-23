@@ -42,7 +42,7 @@ case "$1" in
   pr)
     case "$args" in
       *"--json author,isCrossRepository"*)
-        if [[ -z "${GH_STUB_AUTHOR+x}" ]]; then author="mbjorke"; else author="$GH_STUB_AUTHOR"; fi
+        if [[ -z "${GH_STUB_AUTHOR+x}" ]]; then author="internal-user"; else author="$GH_STUB_AUTHOR"; fi
         if [[ -z "${GH_STUB_FORK+x}" ]]; then fork="false"; else fork="$GH_STUB_FORK"; fi
         printf '%s\\t%s\\n' "$author" "$fork"
         exit 0 ;;
@@ -93,6 +93,9 @@ class RabbitMergeGateTests(unittest.TestCase):
         gh.chmod(gh.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         self.env = dict(os.environ)
         self.env["PATH"] = f"{stub_dir}:{self.env.get('PATH', '')}"
+        # Neutral internal author so the gate's author check passes without coupling
+        # tests to the real maintainer login (the production default is set in the script).
+        self.env["GITTAN_INTERNAL_AUTHORS"] = "internal-user"
 
     def tearDown(self):
         self._tmp.cleanup()

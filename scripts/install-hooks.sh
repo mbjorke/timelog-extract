@@ -7,14 +7,16 @@
 
 set -e
 
-if [ ! -d ".git" ]; then
-  echo "Error: must be run from the repo root (no .git directory found)." >&2
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: must be run inside the git repository." >&2
   exit 1
 fi
 
-# Honour a custom core.hooksPath (this machine sets one for global-timelog).
+# Honour a custom core.hooksPath (this machine sets one for global-timelog);
+# otherwise resolve the real hooks dir via git so linked worktrees work
+# (where .git is a file pointing at the gitdir, not a directory).
 HOOK_DIR="$(git config core.hooksPath 2>/dev/null || true)"
-[ -n "$HOOK_DIR" ] || HOOK_DIR=".git/hooks"
+[ -n "$HOOK_DIR" ] || HOOK_DIR="$(git rev-parse --git-path hooks 2>/dev/null || echo .git/hooks)"
 mkdir -p "$HOOK_DIR"
 
 install_hook() {

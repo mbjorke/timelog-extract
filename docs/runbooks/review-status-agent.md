@@ -8,6 +8,14 @@ actually run, and — the part that was missing — **routes findings back to th
 agent that owns the work**. It does not fix code itself; it collects, triages,
 dispatches, and gates.
 
+**Hard rule — router, not executor.** This agent NEVER edits code, commits, opens
+a PR, or spawns a coding/background agent to perform a fix. Its only side effect is
+posting routing comments (and, at most, assigning or labelling). If an instruction
+says "spawn a task" or "dispatch", that means *post a hand-off comment* — not run
+the work itself. An agentic runner (e.g. a Cursor composer agent) will otherwise
+read "spawn" as "go fix it" and emit a commit — which is a bug here, and produces
+duplicate work against the executor you routed to.
+
 Source of truth (do not duplicate — reference):
 - `AGENTS.md` → *Review Cadence* (trigger intent, close-out routine)
 - `docs/decisions/agent-review-contract.md` (severity → who may fix what)
@@ -31,9 +39,11 @@ Read submitted reviews, inline review comments, and unresolved review threads
 (bot and human). Record author, `file:line`, severity, and body.
 
 ### 2. Completeness gate — never treat "0 comments" as "reviewed"
-For each **expected** reviewer — CodeRabbit, the Cursor bot, and Qodo while it
-still exists — confirm it actually ran **since the last commit**. A PR with zero
-threads because a reviewer never ran is **not** reviewed.
+For each **expected** reviewer — CodeRabbit (free) and the Cursor bot — confirm it
+actually ran **since the last commit**. A PR with zero threads because a reviewer
+never ran is **not** reviewed. (Qodo's trial ended 2026-07-23 and won't be paid
+for, so the rule is now "CodeRabbit + one independent cross-check" — the Cursor
+bot, or `/gittan-review` run as a separate process — not "two external bots".)
 
 If CodeRabbit posted "Review limit reached", or has no review after the latest
 push, re-trigger **intentionally** (one trigger per stable batch — see the
@@ -59,13 +69,21 @@ to the executor that owns the work (do not merely log it):
 - **Packet** (per `agent-task-handover-prompt.md`): PR #, branch, base; and per
   finding: `file:line`, severity, one-line problem, the reviewer's suggested fix;
   plus the in-contract bounds ("fix only these files; escalate X").
-- **Dispatch**: hand the packet to that executor through whatever mechanism the
-  setup uses — spawn a scoped task, message the owning session, or post a scoped
-  PR comment. One reliable dispatch is to **@-mention an agent bot on the PR**:
-  `@jules` works well for handing a bounded fix to Google Jules (its account logs
-  in as `google-labs-jules[bot]`, so match that login when collecting its replies).
-  `@coderabbitai` can apply small autofixes the same way. Then reply in each routed
-  thread: `Routed to <executor> for fix.`
+- **One executor per finding — never broadcast.** If the `task/*` branch already
+  has an active agent committing to it, route there and to no one else. Do **not**
+  also @-mention a second agent for the same finding: two agents on one fix produce
+  duplicate, conflicting commits (observed on #435 — a Cursor agent and Jules both
+  fixed the same finding).
+- **Dispatch = one PR comment, nothing else.** Post ONE comment with the packet,
+  addressed to the chosen executor. Do **not** spawn a task or agent to perform the
+  fix — comment / @-mention (or assignment) only. Then reply in each thread:
+  `Routed to <executor>.`
+- **Mention identity matters.** Agent bots (Jules included) ignore @-mentions
+  authored by *other bots* — loop-prevention. If this agent posts as a bot account,
+  an `@jules` mention will **not** trigger Jules (same text from a human does). So
+  post the routing comment under a **human / PAT identity**, or trigger Jules via
+  **assignment / label** instead of a bot mention. (`@jules` → account
+  `google-labs-jules[bot]`; match that login when collecting its replies.)
 
 Routing key = **branch owner** (who) + **file area** (what the contract allows).
 
@@ -81,6 +99,14 @@ then be resolved. Never silently resolve a thread.
 Never report a PR mergeable while unresolved threads remain **or** no independent
 review has landed. Run `scripts/rabbit_loop.sh --merge-gate --pr N`; `CLEAR` only,
 otherwise `BLOCKED`.
+
+**Green CI is not proof the fix survived.** When two agents touched the same PR,
+one can revert the other's fix while tests stay green (the tests that would catch
+it were moved or only cover the weaker condition). Before calling a
+security/correctness PR done, diff the actual fix artifact across commits to
+confirm the guard is still there — do not trust an agent's "all passing cleanly".
+(Regression: on #435 a Jules "relocate tests" commit dropped a restored redirect
+guard behind green tests.) Enforce one executor per finding (step 4).
 
 ### 7. Output
 One line per PR: `reviewers-run? | unresolved | findings by severity | routed-to | blocker`.

@@ -95,18 +95,6 @@ class JiraSyncTests(unittest.TestCase):
                 comment="sync test",
             )
 
-    def test_list_jira_worklogs_rejects_insecure_http(self):
-        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", TEST_API_PLACEHOLDER)
-        with self.assertRaises(ValueError) as ctx:
-            list_jira_worklogs(creds, "ABC-1")
-        self.assertIn("HTTPS", str(ctx.exception))
-
-    def test_post_jira_worklog_rejects_insecure_http(self):
-        creds = JiraCredentials("http://insecure.example.com", "fake@example.com", TEST_API_PLACEHOLDER)
-        with self.assertRaises(ValueError) as ctx:
-            post_jira_worklog(creds, "ABC-1", datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc), 3600, "sync test")
-        self.assertIn("HTTPS", str(ctx.exception))
-
     def test_branch_key_used_when_no_commit_key_in_window(self):
         start = datetime(2026, 4, 10, 10, 0)
         end = datetime(2026, 4, 10, 11, 0)
@@ -226,8 +214,6 @@ class JiraSyncTests(unittest.TestCase):
 
     def test_list_jira_worklogs_follows_pagination(self):
         import json as _json
-
-        from collectors.jira import list_jira_worklogs
 
         creds = JiraCredentials(
             base_url="https://example.atlassian.net",

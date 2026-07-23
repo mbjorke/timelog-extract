@@ -9,8 +9,26 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urlparse
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+
+
+class _RejectHttpRedirectHandler(HTTPRedirectHandler):
+    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if (urlparse(newurl).scheme or "").lower() == "http":
+            raise URLError(
+                "Jira redirect to insecure http:// rejected to protect credentials"
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+
+
+def urlopen(req: Request, timeout: int = 20):
+    return _jira_opener.open(req, timeout=timeout)
 
 
 class JiraApiError(RuntimeError):

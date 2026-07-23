@@ -1,0 +1,65 @@
+name: External PR triage
+
+# SECURITY (read before editing):
+# `pull_request_target` runs with a privileged token in the BASE repo context.
+# This workflow reads PR METADATA ONLY (author, changed files, diff patches via
+# the API) and NEVER checks out or runs the fork's code. The single checkout is
+# the BASE commit, to load the trusted classifier script. All PR-authored text
+# (title/body) is passed through `env:` and read by the classifier — never
+# interpolated into the shell with `${{ }}` — so a malicious PR body cannot inject
+# commands. Getting any of this wrong is a worse hole than the probe it defends
+# against (issue #442, follow-up to the #441 author-gate).
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Only fork PRs. Same-repo PRs are internal work (covered by the #441 author-gate).
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    steps:
+      - name: Check out BASE repo only (trusted) — never the fork head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Triage the external PR (metadata only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          PR: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          # Passed via env (not interpolated into the shell) — injection-safe.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: |
+          set -euo pipefail
+
+          # Metadata only: changed files + diff patches (the diff text, not the code).
+          gh api "repos/$REPO/pulls/$PR/files?per_page=100" > files.json
+
+          ACTION="$(python3 scripts/external_pr_triage_classify.py --files files.json)"
+          echo "triage: $ACTION for PR #$PR by @$PR_AUTHOR ($PR_AUTHOR_ASSOCIATION)"
+
+          # Ensure the label exists, then apply it (idempotent).
+          gh label create "external:needs-review" --repo "$REPO" --color "D93F0B" \
+            --description "External PR — maintainer review required; not auto-merged" \
+            2>/dev/null || true
+          gh pr edit "$PR" --repo "$REPO" --add-label "external:needs-review"
+
+          if [ "$ACTION" = "auto-close" ]; then
+            gh pr comment "$PR" --repo "$REPO" --body "Closing automatically: this matches a known link-rot spam signature — a docs-only PR that swaps a live link for a \`web.archive.org\` snapshot while claiming a broken-link fix. If this is a genuine fix, reopen with the specific broken URL and the real replacement and a maintainer will review. External PRs are never auto-merged here."
+            gh pr close "$PR" --repo "$REPO"
+          else
+            gh pr comment "$PR" --repo "$REPO" --body "Thanks for the pull request. It comes from a fork, so it is labelled \`external:needs-review\` and a maintainer will review it before any merge — external PRs are never auto-merged here. cc @$OWNER"
+          fi

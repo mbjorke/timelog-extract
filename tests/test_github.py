@@ -162,5 +162,45 @@ class GithubCollectorTests(unittest.TestCase):
             self.assertEqual(gh.resolve_github_api_base(), "https://corp.github/api/v3")
 
 
+class GithubCollectorSecurityTests(unittest.TestCase):
+    """Security tests checking that public events collection rejects insecure HTTP and HTTP redirects."""
+
+    def test_collect_public_events_rejects_insecure_http_with_token(self):
+        t0 = datetime(2026, 4, 8, 12, 0, tzinfo=timezone.utc)
+        t1 = datetime(2026, 4, 8, 14, 0, tzinfo=timezone.utc)
+        with self.assertRaises(ValueError) as ctx:
+            gh.collect_public_events(
+                profiles=[],
+                dt_from=t0,
+                dt_to=t1,
+                username="u",
+                token="secret-token",
+                classify_project=lambda t, p: "P",
+                make_event=lambda src, ts, d, proj: {},
+                api_base="http://insecure.github.com/api/v3",
+            )
+        self.assertIn("HTTPS", str(ctx.exception))
+
+    def test_https_to_http_redirect_is_rejected_before_forwarding_auth(self):
+        from urllib.error import URLError
+        from urllib.request import Request
+
+        from collectors.github import _RejectHttpRedirectHandler
+
+        handler = _RejectHttpRedirectHandler()
+        req = Request("https://api.github.com/users/u/events/public")
+        req.add_header("Authorization", "Bearer secret-token")
+        with self.assertRaises(URLError) as ctx:
+            handler.redirect_request(
+                req,
+                None,
+                302,
+                "Found",
+                {},
+                "http://insecure.github.com/users/u/events/public",
+            )
+        self.assertIn("http", str(ctx.exception.reason).lower())
+
+
 if __name__ == "__main__":
     unittest.main()

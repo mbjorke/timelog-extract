@@ -7,7 +7,25 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+
+
+class _RejectHttpRedirectHandler(HTTPRedirectHandler):
+    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        from urllib.parse import urlparse
+        if (urlparse(newurl).scheme or "").lower() == "http":
+            raise URLError("GitHub redirect to insecure http:// rejected to protect credentials")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_github_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+
+
+def urlopen(req: Request, timeout: int = 30):
+    return _github_opener.open(req, timeout=timeout)
+
 
 from core.cli_options import package_version
 from core.sources import GITHUB_SOURCE
@@ -143,6 +161,10 @@ def collect_public_events(
         return []
 
     base = (api_base or resolve_github_api_base()).rstrip("/")
+    if token and not base.lower().startswith("https://"):
+        raise ValueError(
+            "GitHub API base URL must use HTTPS to prevent token leakage over unencrypted HTTP"
+        )
 
     results: List[Dict[str, Any]] = []
     # Normalize bounds to aware UTC for comparison

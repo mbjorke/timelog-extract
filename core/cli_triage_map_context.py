@@ -16,7 +16,7 @@ from core.cli_triage_map_candidates import (
 TRIAGE_MAP_JSON_SCHEMA_VERSION = "1"
 
 
-def load_triage_map_candidates(
+def load_triage_map_session(
     *,
     date_from: str,
     date_to: str,
@@ -25,7 +25,8 @@ def load_triage_map_candidates(
     min_events: int,
     include_low_signal: bool,
     max_days: int,
-) -> list[UrlCandidate]:
+) -> tuple[list[UrlCandidate], Any]:
+    """Load URL candidates and the report used for the same window."""
     profiles = load_triage_profiles(projects_config)
     plan = build_triage_plan_dict(
         date_from=date_from,
@@ -70,12 +71,34 @@ def load_triage_map_candidates(
         min_events=min_events,
         include_low_signal=include_low_signal,
     )
-    merged = merge_url_candidate_lists(gap_rows, report_rows, max_rows=max_rows)
+    rows = merge_url_candidate_lists(gap_rows, report_rows, max_rows=max_rows)
     # Onboarding/review queue: decidability before impact/confidence (#419).
     from core.cli_review_create_project import decidability_sort_key
 
-    merged.sort(key=decidability_sort_key)
-    return merged
+    rows.sort(key=decidability_sort_key)
+    return rows, report
+
+
+def load_triage_map_candidates(
+    *,
+    date_from: str,
+    date_to: str,
+    projects_config: str,
+    max_rows: int,
+    min_events: int,
+    include_low_signal: bool,
+    max_days: int,
+) -> list[UrlCandidate]:
+    rows, _report = load_triage_map_session(
+        date_from=date_from,
+        date_to=date_to,
+        projects_config=projects_config,
+        max_rows=max_rows,
+        min_events=min_events,
+        include_low_signal=include_low_signal,
+        max_days=max_days,
+    )
+    return rows
 
 
 def build_triage_map_json_payload(
@@ -84,8 +107,9 @@ def build_triage_map_json_payload(
     date_to: str,
     projects_config: str,
     rows: list[UrlCandidate],
+    new_remote_repositories: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "schema_version": TRIAGE_MAP_JSON_SCHEMA_VERSION,
         "command": "gittan review",
         "date_from": date_from,
@@ -94,3 +118,7 @@ def build_triage_map_json_payload(
         "candidate_count": len(rows),
         "candidates": [asdict(row) for row in rows],
     }
+    if new_remote_repositories is not None:
+        payload["new_remote_repositories"] = list(new_remote_repositories)
+        payload["new_remote_count"] = len(new_remote_repositories)
+    return payload

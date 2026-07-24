@@ -189,7 +189,8 @@ class MappingAssistantTests(unittest.TestCase):
             self.assertEqual(project["customer"], "Ålandsbanken Contact Center")
             self.assertEqual(project["invoice_title"], "Ålandsbanken Chatbot")
             console.print.assert_any_call(
-                "[green]Mapped 2 signal(s): mbjorke/landsbanken-faq-helper→landsbanken-faq-helper, "
+                "[green]Wrote 2 mapping change(s) to projects config: "
+                "mbjorke/landsbanken-faq-helper→landsbanken-faq-helper, "
                 "landsbanken-faq-helper→landsbanken-faq-helper[/green]"
             )
 

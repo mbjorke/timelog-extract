@@ -111,6 +111,7 @@ def _is_lovable_project_url_key(key: str) -> bool:
         return False
     return is_plausible_lovable_project_uuid(host.split(".", 1)[0])
 
+
 def _finalize_url_candidates_from_grouped(
     grouped: dict[str, dict[str, Any]],
     *,

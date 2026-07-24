@@ -93,7 +93,7 @@ class LovableCacheTests(unittest.TestCase):
             "timestamp": ts,
             "project": "project-alpha",
             "detail": (
-                "project-alpha — Horse Haven — "
+                "project-alpha — Project Alpha App — "
                 "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/"
             ),
             "source": "Lovable (desktop)",

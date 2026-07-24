@@ -142,7 +142,7 @@ class LovableDesktopTests(unittest.TestCase):
             {
                 "timestamp": ts,
                 "detail": (
-                    "Project Alpha — Horse Haven — "
+                    "Project Alpha — Project Alpha App — "
                     "https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/"
                 ),
                 "project": "project-alpha",
@@ -160,7 +160,7 @@ class LovableDesktopTests(unittest.TestCase):
                 "timestamp": ts,
                 "project": "project-alpha",
                 "detail": (
-                    "project-alpha — Horse Haven — "
+                    "project-alpha — Project Alpha App — "
                     "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/"
                 ),
             },

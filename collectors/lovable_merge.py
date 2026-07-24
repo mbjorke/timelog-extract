@@ -38,6 +38,8 @@ def is_plausible_lovable_project_uuid(uuid: str) -> bool:
 
 
 def _lovable_project_uuid_key(url: str) -> str:
+    # Mirrors collectors/lovable_desktop.py — duplicated to avoid circular import
+    # (lovable_desktop → lovable_merge → lovable_desktop). Keep both in sync.
     try:
         host = (urlparse(url).netloc or "").lower()
     except ValueError:

@@ -351,30 +351,30 @@ class TestSessionProjectLabels(unittest.TestCase):
                 "Cursor",
                 datetime(2026, 7, 23, 16, 5, tzinfo=timezone.utc),
                 "edit collectors",
-                "timelog-extract",
+                "project-beta",
             ),
             _make_event(
                 "Chrome",
                 datetime(2026, 7, 23, 16, 10, tzinfo=timezone.utc),
                 "docs",
-                "blueberry",
+                "project-gamma",
             ),
             _make_event(
                 "Worklog",
                 datetime(2026, 7, 23, 16, 20, tzinfo=timezone.utc),
                 "notes",
-                "timelog-extract",
+                "project-beta",
             ),
             _make_event(
                 "Lovable (desktop)",
                 datetime(2026, 7, 23, 16, 43, tzinfo=timezone.utc),
-                "Horse Haven — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
+                "Project Alpha App — https://62146e85-26f9-4cf9-b3f2-601c44411dda.lovableproject.com/",
                 "project-alpha",
             ),
         ]
         labels = session_project_labels(events)
-        self.assertEqual(labels[0], "timelog-extract")
-        self.assertIn("blueberry", labels)
+        self.assertEqual(labels[0], "project-beta")
+        self.assertIn("project-gamma", labels)
         self.assertEqual(labels[-1], "project-alpha")
         # Alphabetical alone would put project-alpha first (capital P vs lowercase).
         self.assertNotEqual(labels[0], "project-alpha")

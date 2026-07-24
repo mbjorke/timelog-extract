@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple
 from core.cli import package_version
 from core.sources import session_project_labels
 
-TRUTH_PAYLOAD_VERSION = "1"
+TRUTH_PAYLOAD_VERSION = "2"
 
 _URL_SCHEME_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 

@@ -39,6 +39,16 @@ def _fake_row():
     )
 
 
+class LovableUrlKeyFilterTests(unittest.TestCase):
+    def test_rejects_nil_and_non_v4_lovable_hosts(self):
+        from core.cli_triage_map_candidates import _is_valid_url_key
+
+        self.assertFalse(_is_valid_url_key("00000000-0000-0000-0000-000000000000.lovableproject.com"))
+        self.assertFalse(_is_valid_url_key("ffffffff-ffff-ffff-ffff-ffffffffffff.lovableproject.com"))
+        self.assertFalse(_is_valid_url_key("019f8f41-fa60-7a26-85d1-348d7e94480d.lovableproject.com"))
+        self.assertTrue(_is_valid_url_key("85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"))
+
+
 class NonTtyGuardTests(unittest.TestCase):
     def test_interactive_review_on_non_tty_exits_before_heavy_work(self):
         from core import cli_url_mapping

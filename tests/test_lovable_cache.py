@@ -63,13 +63,39 @@ class LovableCacheTests(unittest.TestCase):
         self.assertIn("Project Alpha", detail)
         self.assertIn("map UUID via gittan review", detail)
 
-    def test_merge_storage_events_prefers_mapped_project(self):
+    def test_merge_storage_events_prefers_mapped_same_uuid(self):
+        ts = datetime(2026, 6, 11, 10, 11, tzinfo=timezone.utc)
+        ts2 = datetime(2026, 6, 11, 10, 14, tzinfo=timezone.utc)
+        uuid = "d7afafcd-1b04-4306-93be-b91f00000000"
+        mapped = {
+            "timestamp": ts,
+            "project": "project-alpha",
+            "detail": f"project-alpha — Project Alpha — https://{uuid}.lovableproject.com/",
+            "source": "Lovable (desktop)",
+        }
+        unmapped = {
+            "timestamp": ts2,
+            "project": "Uncategorized",
+            "detail": (
+                f"unmapped Lovable (d7afafcd…) — map UUID via gittan review — "
+                f"https://{uuid}.lovableproject.com/"
+            ),
+            "source": "Lovable (desktop)",
+        }
+        merged = _merge_storage_events([unmapped, mapped], merge_seconds=900)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["project"], "project-alpha")
+
+    def test_merge_storage_events_keeps_mapped_and_unmapped_distinct_uuids(self):
         ts = datetime(2026, 6, 11, 10, 11, tzinfo=timezone.utc)
         ts2 = datetime(2026, 6, 11, 10, 14, tzinfo=timezone.utc)
         mapped = {
             "timestamp": ts,
             "project": "project-alpha",
-            "detail": "project-alpha — Project Alpha",
+            "detail": (
+                "project-alpha — Project Alpha App — "
+                "https://80f778b5-230c-461d-9ff3-169a22ad2c01.lovableproject.com/"
+            ),
             "source": "Lovable (desktop)",
         }
         unmapped = {
@@ -82,8 +108,12 @@ class LovableCacheTests(unittest.TestCase):
             "source": "Lovable (desktop)",
         }
         merged = _merge_storage_events([unmapped, mapped], merge_seconds=900)
-        self.assertEqual(len(merged), 1)
-        self.assertEqual(merged[0]["project"], "project-alpha")
+        self.assertEqual(len(merged), 2)
+        projects = {event["project"] for event in merged}
+        self.assertEqual(projects, {"project-alpha", "Uncategorized"})
+        details = " ".join(event["detail"] for event in merged)
+        self.assertIn("80f778b5", details)
+        self.assertIn("d7afafcd", details)
 
     def test_load_lovable_project_titles_from_projects_search_cache(self):
         payload = json.dumps(
@@ -161,7 +191,8 @@ class LovableCacheTests(unittest.TestCase):
 
             storage_dir = lovable_desktop_root(home) / "Local Storage" / "leveldb"
             storage_dir.mkdir(parents=True)
-            storage_path = storage_dir / "000003.ldb"
+            # WAL ``.log`` only — compacted ``.ldb`` is ignored (key-sorted ≠ write order).
+            storage_path = storage_dir / "000003.log"
             storage_path.write_bytes(b"x" * 8000 + f"https://{_PROJECT_ALPHA}.lovableproject.com/".encode())
             os.utime(storage_path, (evening.timestamp(), evening.timestamp()))
 
@@ -243,6 +274,34 @@ class LovableCacheTests(unittest.TestCase):
                 b"rudder_30uiF44drV1UnRmUEUVhfQ2L500."
                 + _RUDDER_UUID.encode("ascii")
                 + b".ack"
+            )
+            os.utime(cache_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        self.assertEqual(events, [])
+
+    def test_cache_scan_skips_bare_uuid_noise_without_project_url(self):
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        junk = "00000000-0000-0000-0000-000000000000"
+        noise = "019f8f41-fa60-7a26-85d1-348d7e94480d"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            cache_path = cache_dir / "noise_0"
+            cache_path.write_bytes(
+                f"pad {junk} pad {noise} pad {_PROJECT_ALPHA} pad".encode("utf-8")
             )
             os.utime(cache_path, (ts.timestamp(), ts.timestamp()))
             events = collect_lovable_cache_events(

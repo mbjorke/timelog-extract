@@ -12,12 +12,17 @@ from urllib.parse import unquote_plus
 from collectors.lovable_desktop import (
     _LOVABLE_PROJECT_UUID_RE,
     SOURCE_NAME,
+    _canonicalize_lovable_storage_url,
+    _extract_lovable_urls,
+    _filter_lovable_storage_urls,
     _format_lovable_event_detail,
     _is_analytics_uuid_context,
-    _merge_storage_events,
+    _lovable_project_uuid_key,
     _synthetic_lovable_project_url,
+    _trim_lovable_url_blob_suffix,
     lovable_desktop_root,
 )
+from collectors.lovable_merge import _merge_storage_events, is_plausible_lovable_project_uuid
 from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cache_entries
 
 _PROJECTS_SEARCH_MARKER = "projects/search"
@@ -107,6 +112,7 @@ def _tiba_titles_from_bytes(raw: bytes) -> dict[str, str]:
 
 
 def _extract_cache_uuids(raw: bytes) -> list[str]:
+    """Legacy bare-UUID scan (tests / debug). Prefer ``_project_uuids_from_cache_activity``."""
     text = raw.decode("utf-8", "ignore")
     seen: set[str] = set()
     ordered: list[str] = []
@@ -114,10 +120,47 @@ def _extract_cache_uuids(raw: bytes) -> list[str]:
         uuid = match.group(1).lower()
         if uuid in seen:
             continue
+        if not is_plausible_lovable_project_uuid(uuid):
+            continue
         if _is_analytics_uuid_context(text, match.start(), match.end()):
             continue
         seen.add(uuid)
         ordered.append(uuid)
+    return ordered
+
+
+def _project_uuids_from_cache_activity(
+    raw: bytes,
+    *,
+    tiba_titles: dict[str, str] | None = None,
+) -> list[str]:
+    """UUIDs from project hosts / ``/projects/<uuid>`` / tiba= — not bare binary tokens."""
+    if _PROJECTS_SEARCH_MARKER.encode("ascii") in raw[: min(len(raw), 65_536)]:
+        # projects/search bodies feed the title map only; do not emit one row per catalog id.
+        return []
+    seen: set[str] = set()
+    ordered: list[str] = []
+
+    def _admit(uuid: str) -> None:
+        if not uuid or uuid in seen or not is_plausible_lovable_project_uuid(uuid):
+            return
+        seen.add(uuid)
+        ordered.append(uuid)
+
+    urls = _filter_lovable_storage_urls(
+        _extract_lovable_urls(raw),
+        lovable_noise_profile="balanced",
+    )
+    for url in urls:
+        trimmed = _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+        _admit(_lovable_project_uuid_key(trimmed))
+        for match in _LOVABLE_PROJECT_UUID_RE.finditer(trimmed):
+            # lovable.dev/projects/<uuid> activity URLs (no project-host subdomain).
+            if "/projects/" in trimmed.lower():
+                _admit(match.group(1).lower())
+    titles = tiba_titles if tiba_titles is not None else _tiba_titles_from_bytes(raw)
+    for uuid in titles:
+        _admit(uuid)
     return ordered
 
 
@@ -175,7 +218,7 @@ def collect_lovable_cache_events(
                 if raw_cache is not None:
                     raw_cache[path] = raw
             tiba_titles = _tiba_titles_from_bytes(raw)
-            for uuid in _extract_cache_uuids(raw):
+            for uuid in _project_uuids_from_cache_activity(raw, tiba_titles=tiba_titles):
                 canonical = _synthetic_lovable_project_url(uuid)
                 display_title = titles.get(uuid) or tiba_titles.get(uuid, "")
                 project = classify_project(f"{canonical} {display_title}", profiles)

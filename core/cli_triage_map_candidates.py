@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from collectors.chrome import chrome_ts
+from collectors.lovable_merge import is_plausible_lovable_project_uuid
 from core.chrome_epoch import CHROME_EPOCH_DELTA_US
 from core.cli_triage import _filter_triage_noise_rows
 from core.domain import classify_project
@@ -81,7 +82,9 @@ def _is_valid_url_key(key: str) -> bool:
     host = text.split("/", 1)[0]
     if host.endswith(".lovableproject.com"):
         # Per-project UUID hosts are the mapping unit for Lovable desktop storage signals.
-        return bool(_LOVABLE_UUID_PROJECT_HOST_RE.match(host))
+        if not _LOVABLE_UUID_PROJECT_HOST_RE.match(host):
+            return False
+        return is_plausible_lovable_project_uuid(host.split(".", 1)[0])
     if host.startswith("api.individual.githubcopilot.com"):
         return False
     return True
@@ -104,7 +107,9 @@ def _confidence_label(score: float, events: int) -> str:
 
 def _is_lovable_project_url_key(key: str) -> bool:
     host = str(key or "").split("/", 1)[0].lower()
-    return bool(_LOVABLE_UUID_PROJECT_HOST_RE.match(host))
+    if not _LOVABLE_UUID_PROJECT_HOST_RE.match(host):
+        return False
+    return is_plausible_lovable_project_uuid(host.split(".", 1)[0])
 
 
 def _finalize_url_candidates_from_grouped(

@@ -9,6 +9,7 @@ from typing import Callable, List
 from urllib.parse import urlparse
 
 from collectors.chrome import chrome_time_range, chrome_ts, query_chrome, thin_chrome_visit_rows
+from collectors.lovable_merge import _merge_storage_events, is_plausible_lovable_project_uuid
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE
 
 SOURCE_NAME = "Lovable (desktop)"
@@ -111,6 +112,7 @@ def collect_lovable_desktop(
 
 
 def _storage_signal_files(home: Path) -> List[Path]:
+    """WAL ``.log`` only — skip compacted ``.ldb`` / MANIFEST (key order ≠ write order)."""
     root = lovable_desktop_root(home)
     candidates = [
         root / "Local Storage" / "leveldb",
@@ -122,11 +124,8 @@ def _storage_signal_files(home: Path) -> List[Path]:
         if not base.exists():
             continue
         for path in base.rglob("*"):
-            if not path.is_file():
-                continue
-            if path.suffix.lower() not in {".log", ".ldb"} and "MANIFEST" not in path.name:
-                continue
-            out.append(path)
+            if path.is_file() and path.suffix.lower() == ".log":
+                out.append(path)
     return out
 
 
@@ -181,10 +180,15 @@ def _synthetic_lovable_project_url(uuid: str) -> str:
     return f"https://{uuid}.lovableproject.com/"
 
 
-# RudderStack (Lovable's telemetry SDK) stores queue keys like
-# "rudder_<writeKey>.<uuid>.ack/.reclaimStart/.reclaimEnd" in localStorage.
-# Those UUIDs are message/queue ids, not Lovable projects.
-_ANALYTICS_UUID_CONTEXT_MARKERS = ("rudder", ".ack", ".reclaim", "inprogress", "queue")
+# RudderStack queue ids and sticky ``editor-store-<uuid>`` keys are not open tabs.
+_ANALYTICS_UUID_CONTEXT_MARKERS = (
+    "rudder",
+    ".ack",
+    ".reclaim",
+    "inprogress",
+    "queue",
+    "editor-store",
+)
 
 
 def _is_analytics_uuid_context(text: str, start: int, end: int) -> bool:
@@ -263,7 +267,7 @@ def _pick_storage_urls_from_blob(
         if not trimmed or not _is_plausible_lovable_storage_url(trimmed):
             continue
         uuid = _lovable_project_uuid_key(trimmed)
-        if not uuid:
+        if not uuid or not is_plausible_lovable_project_uuid(uuid):
             continue
         offset = _storage_url_last_offset(raw, trimmed)
         if offset < min_offset:
@@ -273,6 +277,8 @@ def _pick_storage_urls_from_blob(
     decoded = raw.decode("utf-8", "ignore")
     for match in _LOVABLE_PROJECT_UUID_RE.finditer(decoded):
         uuid = match.group(1).lower()
+        if not is_plausible_lovable_project_uuid(uuid):
+            continue
         if _is_analytics_uuid_context(decoded, match.start(), match.end()):
             continue
         offset = raw.rfind(uuid.encode("ascii", "ignore"))
@@ -390,39 +396,6 @@ def _filter_lovable_storage_urls(urls: List[str], lovable_noise_profile: str = "
                 deduped.append(url)
         return [url for url in deduped if not _is_generic_lovable_root_url(url)]
     return urls
-
-
-def _storage_event_score(event: dict) -> tuple[int, int, int, int, datetime]:
-    project = str(event.get("project") or "").strip()
-    mapped = 1 if project and project != "Uncategorized" else 0
-    detail = str(event.get("detail") or "")
-    titled = 1 if detail and "unmapped Lovable" not in detail and "storage signal" not in detail else 0
-    url = detail.split("—", 1)[-1].strip() if "—" in detail else detail
-    host_score = 2 if ".lovableproject.com" in url.lower() else 1 if ".lovable.app" in url.lower() else 0
-    uuid_len = len(_lovable_project_uuid_key(url))
-    return (mapped, titled, host_score, uuid_len, event["timestamp"])
-
-
-def _pick_best_storage_event(group: list) -> dict:
-    return max(enumerate(group), key=lambda item: (_storage_event_score(item[1]), item[0]))[1]
-
-
-def _merge_storage_events(events: list, *, merge_seconds: int) -> list:
-    """Collapse bursts from many LevelDB files touched in the same Lovable session."""
-    if not events or merge_seconds <= 0:
-        return events
-    sorted_events = sorted(events, key=lambda event: event["timestamp"])
-    merged: list[dict] = []
-    group = [sorted_events[0]]
-    for event in sorted_events[1:]:
-        gap = (event["timestamp"] - group[-1]["timestamp"]).total_seconds()
-        if gap <= merge_seconds:
-            group.append(event)
-            continue
-        merged.append(_pick_best_storage_event(group))
-        group = [event]
-    merged.append(_pick_best_storage_event(group))
-    return merged
 
 
 def _collect_lovable_desktop_from_storage(

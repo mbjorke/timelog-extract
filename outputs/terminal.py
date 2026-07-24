@@ -11,6 +11,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
+from core.sources import session_project_labels
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_preview import (
     assemble_timeline_event_line,
@@ -233,7 +234,7 @@ def print_report(
             raw_dur = session_duration_hours_fn(
                 session_events, start_ts, end_ts, args.min_session, args.min_session_passive
             )
-            session_projects = sorted({event["project"] for event in session_events})
+            session_projects = session_project_labels(session_events)
 
             session_text = Text.assemble(
                 (f"[{idx}] ", STYLE_META),

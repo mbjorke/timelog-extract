@@ -66,18 +66,17 @@ def run_review_new_remotes_step(
     console.print(f"[{STYLE_LABEL}]New remote repositories[/]")
     console.print(
         f"[{STYLE_MUTED}]Same options as setup/map: Add as new project, "
-        f"Map to existing, or Skip.[/]"
+        "Map to existing, or Skip.[/]"
     )
     console.print(
         f"[{STYLE_DIM}]Accepting Add or Map writes your projects config "
-        f"(timestamped backup first).[/]"
+        "(timestamped backup first).[/]"
     )
 
-    resolved_profiles = list(profiles if profiles is not None else (getattr(report, "profiles", []) or []))
     return run_interactive_mapping_flow(
         console,
         [],
-        resolved_profiles,
+        list(profiles if profiles is not None else (getattr(report, "profiles", []) or [])),
         projects_config,
         review=review,
     )

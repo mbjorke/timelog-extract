@@ -33,3 +33,7 @@
 ## 2026-07-22 - Standardizing `reported` CLI Output and Empty States
 **Learning:** Legacy commands often output plain unstyled text, which breaks terminal cohesive aesthetic and scannability. Applying standardized Rich table semantics (`box.ROUNDED`, `STYLE_BORDER`, and specific column styling) along with standardized orange headline (`CLR_VALUE_ORANGE`) and muted (`STYLE_MUTED`) instruction next-steps for empty states preserves user flow, actionability, and visual consistency across the entire CLI app.
 **Action:** Redesigned the output of `gittan reported list` and empty states for both `reported list` and `reported review` in `core/cli_reported.py` with the official styling guidelines. Added a test suite `ReportedUXFormattingTests` in `tests/test_cli_reported.py` to prevent regressions.
+
+## 2026-07-24 - Aligning `evidence` command with Gittan CLI UX guidelines
+**Learning:** Legacy commands containing hardcoded formatting tags (like `[red]`) degrade UI polish and fail color palette standards. Using theme tokens (`FAIL_ICON`, `CLR_VALUE_ORANGE`, `STYLE_MUTED`) and adding actionable `Next:` cues keeps error and status displays scannable and trustworthy.
+**Action:** Replaced hardcoded `[red]` tags in `core/cli_evidence.py` with standard `FAIL_ICON`, `CLR_VALUE_ORANGE`, and `STYLE_MUTED` tokens. Standardized errors to follow Gittan's CLI Error Pattern including actionable `Next:` guidance, and ensured interactive cancellations are orange-accented.

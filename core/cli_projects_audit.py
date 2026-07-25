@@ -35,6 +35,17 @@ from core.projects_audit import (
     build_projects_audit_payload,
     build_zero_hit_trim_plan_from_audit,
 )
+from outputs.terminal_theme import (
+    CLR_GREEN,
+    CLR_VALUE_ORANGE,
+    FAIL_ICON,
+    OK_ICON,
+    STYLE_BORDER,
+    STYLE_LABEL,
+    STYLE_MUTED,
+    STYLE_DIM,
+    WARN_ICON,
+)
 
 
 def _default_date_window() -> tuple[str, str]:
@@ -169,18 +180,20 @@ def projects_audit(
         out_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if not json_out:
             console.print(
-                f"[dim]Wrote trim plan ({plan['meta']['zero_hit_candidates']} zero-hit candidates) "
-                f"to {out_path} (schema v{TRIM_PLAN_SCHEMA_VERSION}). "
-                f"Review; then `gittan projects-trim -i {out_path}` --dry-run.[/dim]"
+                f"{OK_ICON} [{CLR_GREEN}]Wrote trim plan ({plan['meta']['zero_hit_candidates']} zero-hit candidates) "
+                f"to {out_path} (schema v{TRIM_PLAN_SCHEMA_VERSION}).[/{CLR_GREEN}]"
+            )
+            console.print(
+                f"[{STYLE_MUTED}]Next: Review; then `gittan projects-trim -i {out_path} --dry-run`[/{STYLE_MUTED}]"
             )
 
     if write_anchor_plan:
         floor = 1 if unsafe_low_floor else max(1, int(min_hits))
         if floor < ANCHOR_PLAN_APPLY_MIN_HITS and not json_out:
             console.print(
-                f"[yellow]Warning:[/yellow] min_hits={floor} is below the safe floor "
+                f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Warning: min_hits={floor} is below the safe floor "
                 f"({ANCHOR_PLAN_APPLY_MIN_HITS}); one-off noise can become permanent "
-                "match_terms."
+                f"match_terms.[/{CLR_VALUE_ORANGE}]"
             )
         plan = build_anchor_plan_from_audit(
             payload,
@@ -193,11 +206,13 @@ def projects_audit(
             inv_n = int(plan["meta"].get("inventory_candidates", 0) or 0)
             inv_note = f", {inv_n} inventory (branch/label)" if inv_n else ""
             console.print(
-                f"[dim]Wrote anchor plan ({plan['meta']['anchor_candidates']} apply candidates"
+                f"{OK_ICON} [{CLR_GREEN}]Wrote anchor plan ({plan['meta']['anchor_candidates']} apply candidates"
                 f"{inv_note}) to {out_path} (schema v{ANCHOR_PLAN_SCHEMA_VERSION}, "
-                f"min_hits={plan['meta']['min_hits']}). "
-                f"Edit project_name to map to existing projects; then "
-                f"`gittan projects-anchor -i {out_path}` --dry-run.[/dim]"
+                f"min_hits={plan['meta']['min_hits']}).[/{CLR_GREEN}]"
+            )
+            console.print(
+                f"[{STYLE_MUTED}]Next: Edit project_name to map to existing projects; then "
+                f"`gittan projects-anchor -i {out_path} --dry-run`[/{STYLE_MUTED}]"
             )
 
     if json_out:
@@ -208,11 +223,17 @@ def projects_audit(
         f"[bold]projects-audit[/bold] schema v{payload['schema_version']} — "
         f"{payload['event_count']} deduped events, {df} → {dt}"
     )
-    console.print(f"[dim]{payload['hit_definition']}[/dim]")
-    table = Table(show_header=True, header_style="bold")
-    table.add_column("Project")
-    table.add_column("Rule")
-    table.add_column("Hits", justify="right")
+    console.print(f"[{STYLE_DIM}]{payload['hit_definition']}[/{STYLE_DIM}]")
+    from rich import box
+    table = Table(
+        show_header=True,
+        box=box.ROUNDED,
+        border_style=STYLE_BORDER,
+        header_style=f"bold {STYLE_LABEL}",
+    )
+    table.add_column("Project", style=STYLE_LABEL)
+    table.add_column("Rule", style=STYLE_MUTED)
+    table.add_column("Hits", justify="right", style=CLR_VALUE_ORANGE)
     for block in payload.get("projects", []):
         pname = str(block.get("name", ""))
         first = True
@@ -229,13 +250,18 @@ def projects_audit(
     console.print(table)
     if int(max_top_hosts) > 0 and payload.get("top_signals"):
         console.print()
-        console.print(f"[dim]{payload.get('top_signals_note', '')}[/dim]")
-        st = Table(show_header=True, header_style="bold")
-        st.add_column("Kind")
-        st.add_column("Signal")
-        st.add_column("Rule", justify="center")
-        st.add_column("Hits", justify="right")
-        st.add_column("Anchored", justify="center")
+        console.print(f"[{STYLE_DIM}]{payload.get('top_signals_note', '')}[/{STYLE_DIM}]")
+        st = Table(
+            show_header=True,
+            box=box.ROUNDED,
+            border_style=STYLE_BORDER,
+            header_style=f"bold {STYLE_LABEL}",
+        )
+        st.add_column("Kind", style=STYLE_LABEL)
+        st.add_column("Signal", style=STYLE_MUTED)
+        st.add_column("Rule", justify="center", style=STYLE_MUTED)
+        st.add_column("Hits", justify="right", style=CLR_VALUE_ORANGE)
+        st.add_column("Anchored", justify="center", style=STYLE_LABEL)
         for row in payload["top_signals"]:
             st.add_row(
                 SIGNAL_KIND_LABELS.get(str(row.get("kind", "")), str(row.get("kind", ""))),
@@ -245,19 +271,21 @@ def projects_audit(
                 "yes" if row.get("anchored") else "no",
             )
         console.print(st)
-    console.print("[dim]Re-run with --json for machine-readable output.[/dim]")
+    console.print(f"[{STYLE_DIM}]Re-run with --json for machine-readable output.[/{STYLE_DIM}]")
+
+
+def _load_json_input(path: Optional[str], schema_version: int, kind: str) -> dict[str, Any]:
+    raw = Path(path).expanduser().read_text(encoding="utf-8") if (path and path != "-") else sys.stdin.read()
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError(f"{kind} input must be a JSON object")
+    if int(data.get("schema_version", 0)) != schema_version:
+        raise ValueError(f"schema_version must be {schema_version}")
+    return data
 
 
 def _load_trim_decisions(path: Optional[str]) -> list[dict[str, Any]]:
-    if path and path != "-":
-        raw = Path(path).expanduser().read_text(encoding="utf-8")
-    else:
-        raw = sys.stdin.read()
-    data = json.loads(raw)
-    if not isinstance(data, dict):
-        raise ValueError("trim input must be a JSON object")
-    if int(data.get("schema_version", 0)) != TRIM_PLAN_SCHEMA_VERSION:
-        raise ValueError(f"schema_version must be {TRIM_PLAN_SCHEMA_VERSION}")
+    data = _load_json_input(path, TRIM_PLAN_SCHEMA_VERSION, "trim")
     removals = data.get("removals")
     if not isinstance(removals, list):
         raise ValueError("'removals' must be an array")
@@ -265,9 +293,7 @@ def _load_trim_decisions(path: Optional[str]) -> list[dict[str, Any]]:
     for idx, item in enumerate(removals):
         if not isinstance(item, dict):
             raise ValueError(f"removals[{idx}] must be an object")
-        pn = str(item.get("project_name", "")).strip()
-        rt = str(item.get("rule_type", "")).strip()
-        rv = str(item.get("rule_value", "")).strip()
+        pn, rt, rv = str(item.get("project_name", "")).strip(), str(item.get("rule_type", "")).strip(), str(item.get("rule_value", "")).strip()
         if not pn or not rt or not rv:
             raise ValueError(f"removals[{idx}]: project_name, rule_type, rule_value required")
         if rt not in {"match_terms", "tracked_urls"}:
@@ -292,11 +318,12 @@ def projects_trim(
     try:
         removals = _load_trim_decisions(input_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        console.print(f"[red]Invalid trim input:[/red] {exc}")
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid trim input:[/{CLR_VALUE_ORANGE}] {exc}")
+        console.print(f"[{STYLE_MUTED}]Next: Check the JSON format of your trim plan file.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from exc
 
     if not removals:
-        console.print("[yellow]No removals in input; nothing to do.[/yellow]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No removals in input; nothing to do.[/{CLR_VALUE_ORANGE}]")
         raise typer.Exit(code=0)
 
     cfg_path = Path(projects_config).expanduser()
@@ -317,26 +344,18 @@ def projects_trim(
 
     console.print("\n".join(preview))
     if dry_run:
-        console.print("[yellow]Dry run — config not written.[/yellow]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Dry run — config not written.[/{CLR_VALUE_ORANGE}]")
         raise typer.Exit(code=0)
 
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
-        console.print(f"[dim]Backup:[/dim] {backup}")
+        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {backup}")
     save_projects_config_payload(cfg_path, work)
-    console.print("[green]projects-trim: config updated.[/green]")
+    console.print(f"{OK_ICON} [{CLR_GREEN}]projects-trim: config updated.[/{CLR_GREEN}]")
 
 
 def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
-    if path and path != "-":
-        raw = Path(path).expanduser().read_text(encoding="utf-8")
-    else:
-        raw = sys.stdin.read()
-    data = json.loads(raw)
-    if not isinstance(data, dict):
-        raise ValueError("anchor input must be a JSON object")
-    if int(data.get("schema_version", 0)) != ANCHOR_PLAN_SCHEMA_VERSION:
-        raise ValueError(f"schema_version must be {ANCHOR_PLAN_SCHEMA_VERSION}")
+    data = _load_json_input(path, ANCHOR_PLAN_SCHEMA_VERSION, "anchor")
     additions = data.get("additions")
     if not isinstance(additions, list):
         raise ValueError("'additions' must be an array")
@@ -344,35 +363,21 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
     for idx, item in enumerate(additions):
         if not isinstance(item, dict):
             raise ValueError(f"additions[{idx}] must be an object")
-        pn = str(item.get("project_name", "")).strip()
-        rt = str(item.get("rule_type", "match_terms")).strip() or "match_terms"
-        rv = str(item.get("rule_value", "")).strip()
+        pn, rt, rv = str(item.get("project_name", "")).strip(), str(item.get("rule_type", "match_terms")).strip() or "match_terms", str(item.get("rule_value", "")).strip()
         try:
             kind = normalize_anchor_kind(str(item.get("anchor_kind", "")))
         except ValueError as exc:
             raise ValueError(f"additions[{idx}]: {exc}") from exc
         hits_raw = item.get("hits")
-        hits: int | None
-        if hits_raw is None or hits_raw == "":
-            hits = None
-        else:
-            try:
-                hits = int(hits_raw)
-            except (TypeError, ValueError) as exc:
-                raise ValueError(f"additions[{idx}]: hits must be an integer") from exc
+        try:
+            hits = None if hits_raw in (None, "") else int(hits_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"additions[{idx}]: hits must be an integer") from exc
         if not pn or not rv:
             raise ValueError(f"additions[{idx}]: project_name and rule_value required")
         if rt not in {"match_terms", "tracked_urls"}:
             raise ValueError(f"additions[{idx}]: rule_type must be match_terms or tracked_urls")
-        out.append(
-            {
-                "project_name": pn,
-                "rule_type": rt,
-                "rule_value": rv,
-                "anchor_kind": kind,
-                "hits": hits,
-            }
-        )
+        out.append({"project_name": pn, "rule_type": rt, "rule_value": rv, "anchor_kind": kind, "hits": hits})
     return out
 
 
@@ -413,11 +418,12 @@ def projects_anchor(
     try:
         additions = _load_anchor_decisions(input_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        console.print(f"[red]Invalid anchor input:[/red] {exc}")
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid anchor input:[/{CLR_VALUE_ORANGE}] {exc}")
+        console.print(f"[{STYLE_MUTED}]Next: Check the JSON format of your anchor plan file.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from exc
 
     if not additions:
-        console.print("[yellow]No additions in input; nothing to do.[/yellow]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No additions in input; nothing to do.[/{CLR_VALUE_ORANGE}]")
         raise typer.Exit(code=0)
 
     floor = max(1, int(min_hits))
@@ -447,10 +453,12 @@ def projects_anchor(
 
     if not apply_rows:
         console.print(
-            "[yellow]No apply candidates left "
-            "(plan was only ephemeral/low-hit rows, or empty after filter). "
-            "Re-run with --include-ephemeral-kinds and/or a lower --min-hits only if "
-            "you intentionally want those rows as permanent rules.[/yellow]"
+            f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No apply candidates left "
+            "(plan was only ephemeral/low-hit rows, or empty after filter).[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: Re-run with --include-ephemeral-kinds and/or a lower --min-hits only if "
+            "you intentionally want those rows as permanent rules.[/{STYLE_MUTED}]"
         )
         raise typer.Exit(code=1)
 
@@ -472,11 +480,11 @@ def projects_anchor(
 
     console.print("\n".join(preview))
     if dry_run:
-        console.print("[yellow]Dry run — config not written.[/yellow]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Dry run — config not written.[/{CLR_VALUE_ORANGE}]")
         raise typer.Exit(code=0)
 
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
-        console.print(f"[dim]Backup:[/dim] {backup}")
+        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {backup}")
     save_projects_config_payload(cfg_path, work)
-    console.print("[green]projects-anchor: config updated.[/green]")
+    console.print(f"{OK_ICON} [{CLR_GREEN}]projects-anchor: config updated.[/{CLR_GREEN}]")

@@ -13,6 +13,7 @@ from core.cli_app import app
 def evidence(
     export: Annotated[Optional[str], typer.Option("--export", help="Write all stored evidence to a JSONL file at PATH, then exit.")] = None,
     import_from: Annotated[Optional[str], typer.Option("--import", help="Merge another device's exported records from PATH into this ledger, then exit.")] = None,
+    repair: Annotated[bool, typer.Option("--repair", help="Drop duplicate records and re-link each file's hash chain (fixes a store merged by git).")] = False,
     erase: Annotated[bool, typer.Option("--erase", help="Delete the entire local evidence store (asks to confirm unless --yes).")] = False,
     prune_older_than: Annotated[Optional[int], typer.Option("--prune-older-than", help="Drop records older than N days and re-link the hash chain, then exit.")] = None,
     yes: Annotated[bool, typer.Option("--yes", help="Skip the confirmation prompt for --erase.")] = False,
@@ -38,11 +39,11 @@ def evidence(
     console = Console()
 
     data_controls = sum(
-        [export is not None, import_from is not None, prune_older_than is not None, erase]
+        [export is not None, import_from is not None, repair, prune_older_than is not None, erase]
     )
     if data_controls > 1:
         console.print(
-            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --import, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --import, --repair, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: Run `gittan evidence` with only one of these options.[/{STYLE_MUTED}]"
@@ -72,6 +73,19 @@ def evidence(
         console.print(
             f"Imported {result['appended']} new record(s) from {result['read']} read "
             f"[{STYLE_MUTED}](already present: {result['skipped']}; from: {devices})[/{STYLE_MUTED}]"
+        )
+        return
+    if repair:
+        result = evidence_store.repair_store()
+        if not result.get("enabled"):
+            console.print(f"[{STYLE_MUTED}]No store to repair.[/{STYLE_MUTED}]")
+            return
+        if not result["files_repaired"]:
+            console.print(f"Chains already consistent — nothing to repair.")
+            return
+        console.print(
+            f"Repaired {result['files_repaired']} file(s); "
+            f"removed {result['duplicates_removed']} duplicate record(s)."
         )
         return
     if prune_older_than is not None:

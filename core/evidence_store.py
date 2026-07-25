@@ -22,6 +22,7 @@ engine-agnostic record contract, would be migration-free if ever needed.
 from __future__ import annotations
 
 import json
+import re
 import logging
 import shutil
 from datetime import datetime, timedelta, timezone
@@ -50,6 +51,32 @@ def events_dir(base_dir: Path) -> Path:
 def _month_key(observed_at_iso: str) -> str:
     # observed_at is a normalized UTC ISO string; first 7 chars are YYYY-MM.
     return (observed_at_iso or "")[:7] or "unknown"
+
+
+def _device_slug(device: Any) -> str:
+    """Filename-safe device label, or "" when the record carries no device.
+
+    Kept conservative on purpose: the slug becomes part of a file name that is
+    committed to the user's data repo.
+    """
+    raw = str(device or "").strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
+    return slug[:40]
+
+
+def _record_file_key(record: Dict[str, Any]) -> str:
+    """Return the stem of the file a record belongs in.
+
+    Evidence is filed by month **and by the device that observed it**, so two
+    devices sharing one data repo never write the same file — a git sync then
+    has nothing to merge, and each file keeps its own valid hash chain. Records
+    without a device keep the original ``YYYY-MM`` name (pre-device stores and
+    single-device users are untouched).
+    """
+    month = _month_key(record.get("observed_at", ""))
+    provenance = record.get("source_provenance") or {}
+    device = _device_slug(provenance.get("device") if isinstance(provenance, dict) else "")
+    return f"{month}.{device}" if device else month
 
 
 def _month_path(events_directory: Path, month: str) -> Path:
@@ -145,7 +172,7 @@ def capture_events(
         ):
             skipped += 1
             continue
-        month = _month_key(rec.get("observed_at", ""))
+        month = _record_file_key(rec)
         # content_hash excludes prev_hash, so chaining it in after the fact keeps
         # both the fingerprint and content_hash stable and valid.
         rec["prev_hash"] = last_hash.get(month)
@@ -430,6 +457,68 @@ def erase_store(*, home: Optional[Path] = None, base_dir: Optional[Path] = None)
         shutil.rmtree(base)
     removed = existed and not base.exists()
     return {"removed": removed, "path": str(base)}
+
+
+def repair_store(
+    *, home: Optional[Path] = None, base_dir: Optional[Path] = None
+) -> Dict[str, Any]:
+    """Re-link hash chains and drop duplicate records, file by file.
+
+    A git merge of two devices' evidence concatenates records, which breaks the
+    order-dependent ``prev_hash`` chain even though every record is genuine.
+    Repair is the cure for a store that already got merged that way: within each
+    file it keeps the first record per fingerprint, orders by observed time, and
+    re-links the chain. It never drops a unique observation and never merges
+    files together.
+
+    Prefer prevention: device-filed evidence (``YYYY-MM.<device>.jsonl``) gives
+    git nothing to merge in the first place.
+    """
+    base = base_dir if base_dir is not None else evidence_base_dir(home)
+    ev_dir = events_dir(base)
+    if not ev_dir.is_dir():
+        return {"enabled": False, "files_repaired": 0, "duplicates_removed": 0}
+
+    files_repaired = 0
+    duplicates_removed = 0
+    for path in sorted(ev_dir.glob("*.jsonl")):
+        records = _read_month_records(path)
+        if not records:
+            continue
+        seen: set = set()
+        unique: List[Dict[str, Any]] = []
+        for rec in records:
+            fp = rec.get("fingerprint")
+            if fp and fp in seen:
+                duplicates_removed += 1
+                continue
+            if fp:
+                seen.add(fp)
+            unique.append(rec)
+        unique.sort(key=lambda r: (str(r.get("observed_at", "")), str(r.get("fingerprint", ""))))
+
+        before = [rec.get("prev_hash") for rec in records]
+        prev: Optional[str] = None
+        for rec in unique:
+            rec["prev_hash"] = prev
+            prev = rec.get("content_hash")
+        after = [rec.get("prev_hash") for rec in unique]
+        if len(unique) != len(records) or before != after:
+            path.write_text(
+                "\n".join(
+                    json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in unique
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            files_repaired += 1
+
+    return {
+        "enabled": True,
+        "files_repaired": files_repaired,
+        "duplicates_removed": duplicates_removed,
+        "base_dir": str(base),
+    }
 
 
 def prune_older_than(

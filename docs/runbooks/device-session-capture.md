@@ -48,6 +48,26 @@ backup, a mounted volume, or a copied `~/.claude` tree:
 gittan capture --home /Volumes/backup/home-old --device old-laptop
 ```
 
+## Sharing one `~/.gittan` repo across devices
+
+If your devices share the `~/.gittan` data repo (see
+`docs/runbooks/gittan-data-autocommit.md`), you may not need export/import at
+all — commit and pull instead. Evidence is filed per device
+(`2026-07.laptop.jsonl`, `2026-07.phone.jsonl`), so two devices never write the
+same file and git has nothing to merge.
+
+If you have an **older store** where both devices appended to one `2026-07.jsonl`
+and git merged them, the hash chain is broken even though every record is real.
+Fix it once:
+
+```bash
+gittan evidence              # Chain integrity: BROKEN
+gittan evidence --repair     # re-links chains, drops duplicates
+gittan evidence              # Chain integrity: OK
+```
+
+Repair never drops a unique observation, and running it twice changes nothing.
+
 ## What this does and does not cover
 
 - **Covers:** Claude Code CLI session transcripts on any device you can run

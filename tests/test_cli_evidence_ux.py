@@ -21,7 +21,7 @@ class CliEvidenceUXTests(unittest.TestCase):
         result = runner.invoke(app, ["evidence", "--export", "some_path.jsonl", "--erase"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
-            "Error: --export, --import, --prune-older-than, and --erase are mutually exclusive.",
+            "Error: --export, --import, --repair, --prune-older-than, and --erase are mutually exclusive.",
             unwrapped(result.output),
         )
         self.assertIn("Next: Run `gittan evidence` with only one of these options.", unwrapped(result.output))

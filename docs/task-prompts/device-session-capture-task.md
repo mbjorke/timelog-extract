@@ -72,6 +72,13 @@ already takes a `home`; capture points it at the device's home and tags the
 result. A new capture source is a new entry in `CAPTURE_SOURCES`, not new
 parsing.
 
+**Evidence is filed per device.** Records land in `YYYY-MM.<device>.jsonl`, so
+two devices sharing one `~/.gittan` git repo never write the same file. Measured
+before choosing this: two healthy chains merged the way git resolves a conflict
+produce `chain_ok: False` while every record stays genuine. Removing the
+collision beats resolving it; `gittan evidence --repair` exists for stores that
+already hit it. See `docs/decisions/private-not-local.md`.
+
 **Export/import over sync.** A device that cannot own the canonical ledger writes
 portable records; the canonical device merges them. Both directions carry the
 same records and `capture_events` is idempotent, so a merge is safe at any
@@ -122,3 +129,6 @@ not touch it.
   - 2026-07-25: Initial spec and implementation. `gittan capture` +
     `gittan evidence --import`, device provenance in the existing
     `source_provenance` slot.
+  - 2026-07-25: Per-device ledger filing (`YYYY-MM.<device>.jsonl`) so a shared
+    `~/.gittan` repo has nothing to merge, plus `gittan evidence --repair` for
+    stores already merged by git.

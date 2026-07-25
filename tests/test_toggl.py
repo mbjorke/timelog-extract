@@ -170,7 +170,10 @@ class TogglSourceTests(unittest.TestCase):
     def test_toggl_redirect_handler_rejects_http_redirect(self):
         from urllib.error import URLError
         from urllib.request import Request
-        handler = tg._RejectHttpRedirectHandler()
+
+        from core.http_security import RejectHttpRedirectHandler
+
+        handler = RejectHttpRedirectHandler("Toggl")
         req = Request("https://secure.example.test/api/v9/me")
         with self.assertRaises(URLError) as ctx:
             handler.redirect_request(

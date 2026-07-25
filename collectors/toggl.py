@@ -10,22 +10,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+from urllib.request import Request
+
+from core.http_security import build_https_opener
 
 TOGGL_API_BASE = "https://api.track.toggl.com"
 
-
-class _RejectHttpRedirectHandler(HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if (urlparse(newurl).scheme or "").lower() == "http":
-            raise URLError("Toggl redirect to insecure http:// rejected to protect credentials")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
-_toggl_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+_toggl_opener = build_https_opener("Toggl")
 
 
 def urlopen(req: Request, timeout: int = 20):

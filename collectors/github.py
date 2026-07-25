@@ -7,29 +7,18 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+from urllib.request import Request
 
 from core.cli_options import package_version
+from core.http_security import build_https_opener
+from core.sources import GITHUB_SOURCE
 
-
-class _RejectHttpRedirectHandler(HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if (urlparse(newurl).scheme or "").lower() == "http":
-            raise URLError("GitHub redirect to insecure http:// rejected to protect credentials")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
-_github_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+_github_opener = build_https_opener("GitHub")
 
 
 def urlopen(req: Request, timeout: int = 30):
     return _github_opener.open(req, timeout=timeout)
 
-
-from core.sources import GITHUB_SOURCE
 
 USER_AGENT = (
     f"timelog-extract/{package_version()} "

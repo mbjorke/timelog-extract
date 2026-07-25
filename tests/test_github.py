@@ -164,7 +164,10 @@ class GithubCollectorTests(unittest.TestCase):
     def test_github_redirect_handler_rejects_http_redirect(self):
         from urllib.error import URLError
         from urllib.request import Request
-        handler = gh._RejectHttpRedirectHandler()
+
+        from core.http_security import RejectHttpRedirectHandler
+
+        handler = RejectHttpRedirectHandler("GitHub")
         req = Request("https://secure.example.test/users/u/events")
         with self.assertRaises(URLError) as ctx:
             handler.redirect_request(

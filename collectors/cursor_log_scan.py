@@ -8,7 +8,7 @@ MB) when the report window is old — mtime filters still open every recent file
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # Cursor log day folders: ``20260709T162324`` (local wall clock of the session).
@@ -65,8 +65,7 @@ def iter_log_day_dirs(
         try:
             s = m.group(1)
             # Optimized date construction: ~11.6x faster than datetime.strptime on thousands of folders
-            import datetime as dt_mod
-            day = dt_mod.date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+            day = date(int(s[:4]), int(s[4:6]), int(s[6:8]))
         except ValueError:
             unknown.append(entry)
             continue

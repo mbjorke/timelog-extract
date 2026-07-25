@@ -95,6 +95,12 @@ not touch it.
   [--export PATH] [--dry-run] [--projects-config PATH]`
 - `gittan evidence --import PATH` — the natural pair to the existing
   `--export`, and mutually exclusive with the other data controls.
+- `gittan evidence --repair` — re-link chains for a store merged by git.
+- `gittan capture --if-enabled` — the automation form: respects the persistent
+  `shadow_log` setting so a timer never writes evidence nobody enabled. The
+  `~/.gittan` autocommit timer runs it each tick before committing.
+- `gittan doctor` → **Device coverage** row: which devices reach the ledger and
+  when each was last seen; quiet for more than 10 days is flagged.
 
 ## Known limits
 
@@ -132,3 +138,6 @@ not touch it.
   - 2026-07-25: Per-device ledger filing (`YYYY-MM.<device>.jsonl`) so a shared
     `~/.gittan` repo has nothing to merge, plus `gittan evidence --repair` for
     stores already merged by git.
+  - 2026-07-25: Continuity — `--if-enabled` gate, capture wired into the
+    `~/.gittan` autocommit timer, and a doctor Device-coverage row so a device
+    that stopped reporting is visible instead of silently absent.

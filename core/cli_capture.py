@@ -17,6 +17,7 @@ def capture(
     home: Annotated[Optional[str], typer.Option("--home", help="Read session transcripts from this HOME instead of yours.")] = None,
     export: Annotated[Optional[str], typer.Option("--export", help="Write records to PATH instead of this device's ledger — for a device whose store is not the canonical one.")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Report what would be captured; write nothing.")] = False,
+    if_enabled: Annotated[bool, typer.Option("--if-enabled", help="Do nothing unless \"shadow_log\" is on in config — for timers and hooks.")] = False,
     projects_config: Annotated[Optional[str], typer.Option("--projects-config", help="Path to timelog_projects.json.")] = None,
 ) -> None:
     """Capture this device's AI session evidence into the shadow log.
@@ -69,11 +70,20 @@ def capture(
             device=device,
             export_to=export,
             dry_run=dry_run,
+            if_enabled=if_enabled,
+            config_path=config_path,
         )
     except (OSError, ValueError) as exc:
         console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
         console.print(f"[{STYLE_MUTED}]Next: Check --home and --export point at readable paths.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from exc
+
+    if summary.get("skipped_reason"):
+        console.print(
+            f"[{STYLE_MUTED}]Capture skipped: {summary['skipped_reason']}. "
+            f'Enable with "shadow_log": "on" in timelog_projects.json.[/{STYLE_MUTED}]'
+        )
+        return
 
     console.print(
         f"[bold {STYLE_LABEL}]Session capture[/bold {STYLE_LABEL}] — device "

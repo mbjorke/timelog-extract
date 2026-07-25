@@ -210,13 +210,31 @@ def capture_device_evidence(
     dry_run: bool = False,
     base_dir: Optional[Path] = None,
     store_home: Optional[Path] = None,
+    if_enabled: bool = False,
+    config_path: Any = None,
 ) -> Dict[str, Any]:
     """Capture this device's session evidence.
 
     Writes to the local ledger, or to ``export_to`` when this device's store is
     not the canonical one. ``dry_run`` reports what would happen and writes
     nothing, anywhere.
+
+    ``if_enabled`` makes the run respect the persistent ``shadow_log`` config
+    setting and do nothing when it is off. Automation (a timer) should pass it;
+    an operator typing ``gittan capture`` should not — running the command *is*
+    the consent, and a silent no-op would be baffling.
     """
+    if if_enabled and evidence_store.shadow_log_config_setting(config_path) != "on":
+        return {
+            "device": device_name(device),
+            "collected": 0,
+            "dry_run": bool(dry_run),
+            "projects": [],
+            "appended": 0,
+            "skipped": 0,
+            "destination": None,
+            "skipped_reason": "shadow_log is not on",
+        }
     resolved_device = device_name(device)
     events = collect_device_events(
         profiles, dt_from, dt_to, home=home, device=resolved_device, sources=sources

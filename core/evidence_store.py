@@ -310,12 +310,21 @@ def store_health(
     today_str = today or datetime.now(timezone.utc).date().isoformat()
     by_month: Dict[str, List[Dict[str, Any]]] = {}
     per_source: Dict[str, int] = {}
+    per_device: Dict[str, Dict[str, Any]] = {}
     total = 0
     captured_today = 0
     last_captured: Optional[str] = None
     for month, rec in read_records(ev_dir):
         by_month.setdefault(month, []).append(rec)
         per_source[rec.get("source", "")] = per_source.get(rec.get("source", ""), 0) + 1
+        provenance = rec.get("source_provenance") or {}
+        device = str(provenance.get("device") or "").strip() if isinstance(provenance, dict) else ""
+        if device:
+            seen = per_device.setdefault(device, {"records": 0, "last_observed_at": None})
+            seen["records"] += 1
+            observed = str(rec.get("observed_at", "") or "")
+            if observed and (seen["last_observed_at"] is None or observed > seen["last_observed_at"]):
+                seen["last_observed_at"] = observed
         total += 1
         cap = str(rec.get("captured_at", "") or "")
         if cap and (last_captured is None or cap > last_captured):
@@ -334,6 +343,7 @@ def store_health(
         "months": months,
         "retention_span": f"{months[0]}..{months[-1]}" if months else None,
         "per_source": dict(sorted(per_source.items())),
+        "per_device": dict(sorted(per_device.items())),
         "chain_ok": not breaks,
         "chain_breaks": breaks,
     }

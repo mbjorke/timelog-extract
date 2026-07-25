@@ -31,7 +31,7 @@ bash scripts/run_autotests.sh
 
 This runs two things:
 
-1. `python scripts/check_file_lengths.py --max-lines 500` — enforces a **500-line limit per Python file**
+1. `python scripts/check_file_lengths.py --max-lines 500` — **reports** Python files over the 500-line recommendation (advisory; never fails)
 2. `python3 -m unittest discover -s tests -p "test_*.py"`
 
 ### Running a single test
@@ -126,11 +126,13 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ## Key conventions
 
-### File size policy
+### File size — a recommendation, not a gate
 
-**No Python file may exceed 500 lines.** This is enforced in CI via `scripts/check_file_lengths.py`. When a file nears the limit, split by responsibility rather than raising the limit.
+**500 lines per Python file is a recommendation.** `scripts/check_file_lengths.py` reports files above it and files approaching it (`--warn-lines`, default 460), and **exits 0 either way**. Nothing fails on length.
 
-The checker also **warns (without failing)** for files at or above `--warn-lines` (default 460) — the approaching-the-cap band. This surfaces the "trimmed to just under 500" pressure early, so decomposition happens by design instead of as a scramble when a file finally tips over the hard cap. Warnings never turn CI red; only files over `--max-lines` do.
+Treat a long file as a prompt to look, not a verdict: split when a module has grown two responsibilities, not when it crosses a number. Shaving lines to satisfy a counter is the failure mode this rule used to cause — a file trimmed to 499 lines is not better designed than one at 520.
+
+`--strict` restores hard enforcement for anyone who wants it locally; CI does not use it.
 
 ### Branch and PR policy
 
@@ -156,7 +158,7 @@ The checker also **warns (without failing)** for files at or above `--warn-lines
 
 | Job         | What it does                                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------------------ |
-| `python`    | Installs (editable), smoke-runs `timelog_extract.py --today`, enforces 500-line limit, runs unit tests |
+| `python`    | Installs (editable), smoke-runs `timelog_extract.py --today`, reports file lengths (advisory), runs unit tests |
 | `package`   | Builds sdist + wheel (`python -m build`), smoke-installs wheel, checks `gittan -V`                     |
 | `extension` | `npm install && npm run build` in `cursor-extension/`                                                  |
 

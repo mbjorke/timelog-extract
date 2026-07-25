@@ -22,8 +22,8 @@ engine-agnostic record contract, would be migration-free if ever needed.
 from __future__ import annotations
 
 import json
-import re
 import logging
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path

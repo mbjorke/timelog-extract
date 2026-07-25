@@ -81,7 +81,7 @@ def evidence(
             console.print(f"[{STYLE_MUTED}]No store to repair.[/{STYLE_MUTED}]")
             return
         if not result["files_repaired"]:
-            console.print(f"Chains already consistent — nothing to repair.")
+            console.print("Chains already consistent — nothing to repair.")
             return
         console.print(
             f"Repaired {result['files_repaired']} file(s); "

@@ -9,7 +9,7 @@ capturing normally.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 

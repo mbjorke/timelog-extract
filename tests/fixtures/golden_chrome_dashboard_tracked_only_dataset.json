@@ -1,0 +1,32 @@
+{
+  "description": "GH-414 measurement B \u2014 identical to golden_chrome_dashboard_dataset.json except the host is declared ONLY in tracked_urls, not in match_terms. collect_chrome builds its query from match_terms + profile name (collectors/chrome.py), and the tracked-URL collectors hard-filter for claude.ai / gemini.google.com, so a generic tracked_urls host has no collector at all. Expectations below record CURRENT behavior (the whole day is lost), not desired behavior \u2014 see #414.",
+  "timezone_note": "Eval sets TZ=UTC before importing the report stack so day keys and parsing match CI and local runs.",
+  "config_path": "tests/fixtures/golden_chrome_dashboard_tracked_only_projects.json",
+  "date_from": "2026-07-13",
+  "date_to": "2026-07-13",
+  "home_fixtures": [
+    {
+      "kind": "chrome_history",
+      "profile": "Default",
+      "synth": {
+        "url_template": "https://dns.he.net/index.cgi?zoneid={i}&action=edit",
+        "title_template": "Hurricane Electric DNS",
+        "count": 180,
+        "start": "2026-07-13T09:00:00Z",
+        "span_minutes": 480
+      }
+    }
+  ],
+  "run_options": {
+    "quiet": true,
+    "screen_time": "off",
+    "chrome_source": "on",
+    "mail_source": "off",
+    "github_source": "off"
+  },
+  "expectations": [],
+  "invariants": {
+    "max_period_total_hours": 0
+  },
+  "tripwire_note": "No hours are expected because the visits are never collected. The zero-hour invariant is a deliberate tripwire: if #414 is fixed and this host starts producing hours, this dataset FAILS on purpose so the golden record is updated as a conscious decision rather than drifting silently."
+}

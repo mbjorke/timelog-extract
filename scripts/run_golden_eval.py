@@ -2,8 +2,9 @@
 """Golden dataset eval (docs/product/accuracy-plan.md iteration 1).
 
 Runs all ``tests/fixtures/golden*dataset.json`` files. Each dataset drives
-``run_timelog_report`` with fixture config and optional isolated HOME (for
-Cursor ``state.vscdb`` regression guards).
+``run_timelog_report`` with fixture config and an optional isolated HOME,
+materialized from the dataset's ``home_fixtures`` by
+``tests/golden_home_fixtures.py`` (Chrome History, Cursor ``state.vscdb``, …).
 
 Usage:
   python3 scripts/run_golden_eval.py --check
@@ -16,10 +17,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sqlite3
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -43,30 +42,6 @@ def discover_dataset_paths(root: Path) -> list[Path]:
 
 def load_dataset(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-def materialize_cursor_home(root: Path, dataset: dict[str, Any]) -> Path:
-    rel = str(dataset.get("composer_headers_path") or "").strip()
-    if not rel:
-        raise ValueError("composer_headers_path required for cursor HOME materialization")
-    headers_path = root / rel
-    payload = json.loads(headers_path.read_text(encoding="utf-8"))
-    tmp = Path(tempfile.mkdtemp(prefix="golden_cursor_home_"))
-    db_dir = tmp / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage"
-    db_dir.mkdir(parents=True)
-    conn = sqlite3.connect(db_dir / "state.vscdb")
-    conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
-    conn.execute(
-        "INSERT INTO ItemTable VALUES (?, ?)",
-        ("composer.composerHeaders", json.dumps(payload)),
-    )
-    conn.commit()
-    conn.close()
-    # collect_cursor() skips composer reads when the logs dir is missing.
-    (tmp / "Library" / "Application Support" / "Cursor" / "logs").mkdir(
-        parents=True, exist_ok=True
-    )
-    return tmp
 
 
 def actual_hours_table(report: Any) -> dict[tuple[str, str], float]:
@@ -195,7 +170,34 @@ def _ensure_repo_on_path() -> Path:
     root = repo_root()
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
+    # tests/ carries the HOME materializers and their fixture helpers.
+    tests_dir = root / "tests"
+    if str(tests_dir) not in sys.path:
+        sys.path.insert(0, str(tests_dir))
     return root
+
+
+def home_fixture_specs(dataset: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the dataset's HOME fixture specs.
+
+    Accepts the generic ``home_fixtures`` list, and keeps the original
+    ``composer_headers_path`` shorthand working for the Cursor datasets.
+    """
+    specs = [dict(spec) for spec in (dataset.get("home_fixtures") or [])]
+    legacy = str(dataset.get("composer_headers_path") or "").strip()
+    if legacy:
+        specs.append({"kind": "cursor_composer_headers", "path": legacy})
+    return specs
+
+
+def materialize_dataset_home(root: Path, dataset: dict[str, Any]) -> Path | None:
+    """Materialize the dataset's HOME fixtures, or return None when it needs none."""
+    specs = home_fixture_specs(dataset)
+    if not specs:
+        return None
+    from golden_home_fixtures import materialize_home
+
+    return materialize_home(specs, root)
 
 
 def run_single_dataset(
@@ -211,9 +213,8 @@ def run_single_dataset(
     if not cfg.is_file():
         return 2, {}, [f"missing config: {cfg}"]
 
-    home_tmp: Path | None = None
-    if dataset.get("composer_headers_path"):
-        home_tmp = materialize_cursor_home(root, dataset)
+    home_tmp = materialize_dataset_home(root, dataset)
+    if home_tmp is not None:
         os.environ["HOME"] = str(home_tmp)
 
     from core.report_service import run_timelog_report
@@ -298,9 +299,8 @@ def print_expectations(dataset_path: Path | None) -> int:
         print(f"missing config: {cfg}", file=sys.stderr)
         return 2
 
-    home_tmp: Path | None = None
-    if dataset.get("composer_headers_path"):
-        home_tmp = materialize_cursor_home(root, dataset)
+    home_tmp = materialize_dataset_home(root, dataset)
+    if home_tmp is not None:
         os.environ["HOME"] = str(home_tmp)
 
     from core.report_service import run_timelog_report

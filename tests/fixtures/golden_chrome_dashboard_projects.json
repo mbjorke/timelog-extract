@@ -1,0 +1,9 @@
+{
+  "worklog": "golden_chrome_empty_TIMELOG.md",
+  "projects": [
+    {
+      "name": "DashboardKeyword",
+      "match_terms": ["dns.he.net"]
+    }
+  ]
+}

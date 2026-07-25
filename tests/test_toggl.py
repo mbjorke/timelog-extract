@@ -171,13 +171,15 @@ class TogglSourceTests(unittest.TestCase):
         from urllib.error import URLError
         from urllib.request import Request
         handler = tg._RejectHttpRedirectHandler()
-        req = Request("https://api.track.toggl.com/api/v9/me")
+        req = Request("https://secure.example.test/api/v9/me")
         with self.assertRaises(URLError) as ctx:
-            handler.redirect_request(req, None, 301, "Moved Permanently", {}, "http://insecure.example.com")
+            handler.redirect_request(
+                req, None, 301, "Moved Permanently", {}, "http://insecure.example.test"
+            )
         self.assertIn("Toggl redirect to insecure http:// rejected", str(ctx.exception))
 
     def test_toggl_request_rejects_http(self):
-        with patch("collectors.toggl.TOGGL_API_BASE", "http://insecure.track.toggl.com"):
+        with patch("collectors.toggl.TOGGL_API_BASE", "http://insecure.example.test"):
             creds = tg.TogglCredentials(api_token="t", workspace_id=1)
             with self.assertRaises(ValueError) as ctx:
                 tg._toggl_request(creds, "GET", "/api/v9/me")

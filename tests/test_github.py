@@ -165,9 +165,11 @@ class GithubCollectorTests(unittest.TestCase):
         from urllib.error import URLError
         from urllib.request import Request
         handler = gh._RejectHttpRedirectHandler()
-        req = Request("https://api.github.com/users/u/events")
+        req = Request("https://secure.example.test/users/u/events")
         with self.assertRaises(URLError) as ctx:
-            handler.redirect_request(req, None, 301, "Moved Permanently", {}, "http://insecure.example.com")
+            handler.redirect_request(
+                req, None, 301, "Moved Permanently", {}, "http://insecure.example.test"
+            )
         self.assertIn("GitHub redirect to insecure http:// rejected", str(ctx.exception))
 
     def test_collect_public_events_rejects_plain_http_when_token_is_present(self):
@@ -182,7 +184,7 @@ class GithubCollectorTests(unittest.TestCase):
                 token="secret-token",
                 classify_project=lambda t, p: "P",
                 make_event=lambda *a: {},
-                api_base="http://insecure.api.github.com",
+                api_base="http://insecure.example.test",
             )
         self.assertIn("must use HTTPS", str(ctx.exception))
 

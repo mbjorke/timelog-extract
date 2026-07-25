@@ -124,3 +124,40 @@ One line per PR: `reviewers-run? | unresolved | findings by severity | routed-to
 
 Output line:
 `#435 | CodeRabbit✓ Cursor✓ | 1 unresolved | 1 Major/security | routed:task-owner+maintainer | BLOCKED(thread)`
+
+## Robust Agent Handoff Loop Architecture (Future Enhancements)
+
+To optimize the orchestrator / bot-to-bot triggering flow and guarantee that executors (like Jules or Sentinel) can reliably fix findings without falling victim to markdown-comment bot-prevention filters, the following blueprint should be adopted:
+
+### 1. Programmatic Triggering via GitHub Metadata (Assignments & Labels)
+* **Goal**: Solve the issue where bot-authored `@google-labs-jules` mentions are filtered and ignored by the platform's loop prevention.
+* **Mechanism**: The orchestrator bot should programmatically assign the PR to the target agent (e.g. `google-labs-jules[bot]`) and apply a specific label (`needs-sentinel` or `fix-requested`).
+* **Advantage**: These are native, non-comment GitHub API events. The agent's platform listener monitors metadata events to trigger execution loops reliably without generating comment loops.
+
+### 2. Lock-Based Exclusive Concurrency
+* **Goal**: Avoid duplicate conflicting commits where multiple agents or tasks are concurrently dispatched to edit the same files on a PR.
+* **Mechanism**: Establish an exclusive lock on the branch. When an agent is actively working on a PR, the orchestrator must assign the PR to that agent and apply `status: jules-working`.
+* **Advantage**: No other automated task, reviewer, or agent is permitted to edit files on the PR while this lock is active.
+
+### 3. Commit Diff Verification Gate
+* **Goal**: Prevent false-positive success claims where an agent run reports completion but produces an empty commit (0 files changed).
+* **Mechanism**: Integrate a verification step at the end of the agent runner loop. Before committing or completing the run, execute `git diff --name-only origin/main...HEAD`. If the diff is empty, the run is flagged as a failure/null run and alerts the maintainer.
+
+### 4. Structured JSON Handoff Payloads
+* **Goal**: Eliminate parsing ambiguity from natural language comments.
+* **Mechanism**: The orchestrator should embed a structured JSON payload within the handoff comment (or upload it as a workflow run artifact) containing structured file, line, and description arrays:
+  ```json
+  {
+    "handoff_metadata": {
+      "executor": "google-labs-jules[bot]",
+      "tasks": [
+        {
+          "file": "collectors/github.py",
+          "line": 15,
+          "type": "SECURITY_REJECTION",
+          "description": "Block HTTP redirects on authentication headers."
+        }
+      ]
+    }
+  }
+  ```

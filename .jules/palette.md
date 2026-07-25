@@ -33,3 +33,7 @@
 ## 2026-07-22 - Standardizing `reported` CLI Output and Empty States
 **Learning:** Legacy commands often output plain unstyled text, which breaks terminal cohesive aesthetic and scannability. Applying standardized Rich table semantics (`box.ROUNDED`, `STYLE_BORDER`, and specific column styling) along with standardized orange headline (`CLR_VALUE_ORANGE`) and muted (`STYLE_MUTED`) instruction next-steps for empty states preserves user flow, actionability, and visual consistency across the entire CLI app.
 **Action:** Redesigned the output of `gittan reported list` and empty states for both `reported list` and `reported review` in `core/cli_reported.py` with the official styling guidelines. Added a test suite `ReportedUXFormattingTests` in `tests/test_cli_reported.py` to prevent regressions.
+
+## 2026-07-25 - Excluding Placeholder Lovable UUIDs from Decidable Review candidates
+**Learning:** Dynamic, unmapped placeholder title keys (e.g., those containing "unmapped Lovable") generated during raw collections do not represent real human titles. Treating them as human titles incorrectly positions them in the main "decidable" interactive review queue rather than safely parking/skipping them.
+**Action:** Updated `has_human_title` in `core/cli_review_create_project.py` to return `False` when "unmapped lovable" is present in the title string, cleanly classifying untitled bare UUID rows as undecidable and keeping them within the Park/Skip buckets.

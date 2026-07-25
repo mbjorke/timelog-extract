@@ -60,7 +60,13 @@ def skip_choice_label() -> str:
 
 def has_human_title(title: str) -> bool:
     text = str(title or "").strip()
-    return bool(text) and text.lower() not in _UNTITLED
+    if not text:
+        return False
+    if text.lower() in _UNTITLED:
+        return False
+    if "unmapped lovable" in text.lower():
+        return False
+    return True
 
 
 def _slugify(text: str) -> str:

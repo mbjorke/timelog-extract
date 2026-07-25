@@ -87,6 +87,20 @@ class ProposeCreateTests(unittest.TestCase):
         self.assertIn(park_choice_label(), choices)
         self.assertEqual(durable_match_terms_from_url_key(uuid_host), [])
 
+    def test_unmapped_lovable_title_does_not_propose_create(self):
+        uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
+        row = _row(
+            title="unmapped Lovable (85f3c1b3…) — map UUID via gittan review — ",
+            url_key=uuid_host,
+            events=50,
+            impact_hours=9.9,
+        )
+        self.assertIsNone(propose_create_from_candidate(row))
+        self.assertFalse(is_decidable_candidate(row))
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertNotIn(create_choice_label(), choices)
+        self.assertIn(park_choice_label(), choices)
+
 
 class RankingAndPartitionTests(unittest.TestCase):
     def test_decidable_impact_zero_kept_and_ranked_above_undecidable(self):

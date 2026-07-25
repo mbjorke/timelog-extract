@@ -10,7 +10,7 @@ waiting on a product decision.
 
 ## Traceability
 
-- story_id: GH-462 (https://github.com/mbjorke/timelog-extract/issues/462)
+- story_id: `GH-462`
 - spec_status: approved
 - implementation_status: not built
 - created_at: 2026-07-25
@@ -144,8 +144,8 @@ Scenario: Rendering is idempotent and never destroys hand-written content
   `later`: acceptance criteria are already concrete and testable)*
 - **GH-367** — Label provenance: mark enrichment-derived session labels as derived
 
-Also staying at `next`, unchanged: #222, #254, #262, #264, #267, #272, #326, #327,
-#332, #354, #368, #369, #406, #431.
+Also staying at `next`, unchanged: GH-222, GH-254, GH-262, GH-264, GH-267,
+GH-272, GH-326, GH-327, GH-332, GH-354, GH-368, GH-369, GH-406, GH-431.
 
 ---
 

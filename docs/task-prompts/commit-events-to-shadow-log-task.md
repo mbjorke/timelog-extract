@@ -122,13 +122,13 @@ Scenario: Ledger write failure is not silent
 
 ## Traceability
 
-- story_id: GH-408 (https://github.com/mbjorke/timelog-extract/issues/408)
+- story_id: `GH-408`
 - spec_status: approved
 - implementation_status: in progress
 - created_at: 2026-07-20
 - last_updated_at: 2026-07-25
-- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/440 (partial —
-  scenarios 1 and 3 only; "markdown worklog becomes a view" is not built)
+- implementation.pr: `GH-440` (partial — scenarios 1 and 3 only; "markdown worklog
+  becomes a view" is not built)
 - implementation.branch: task/commit-events-to-shadow-log-408
 - implementation.commits: []
 - validation.evidence: tests/test_global_timelog_hook_script.py, tests/test_doctor_staleness_and_errors.py

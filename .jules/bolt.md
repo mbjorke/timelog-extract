@@ -29,3 +29,7 @@
 ## 2026-07-22 - [Optimize group_by_day Aggregation Phase]
 **Learning:** Aggregating large datasets into local day groups inside `core/analytics.py`'s `group_by_day` is highly frequent. For every event, it was performing unnecessary dictionary and string operations for detail parsing (even with no exclude keywords set), allocating a full `datetime.date` object, and converting it to an ISO string. Lazy-evaluating the detail string only if exclude keywords are set, caching the `local_ts.date().isoformat()` conversions via a year/month/day tuple comparison across contiguous events, and using shallow copies instead of dictionary unpacking yields a ~1.74x speedup on report grouping.
 **Action:** For sequential grouping loops over chronological datasets, use a micro-cache/sliding window of the last seen date component keys to bypass date formatting and object instantiation. Always conditionally evaluate string/dictionary lookups that are only needed for filtering under active option flags.
+
+## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
+**Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
+**Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.

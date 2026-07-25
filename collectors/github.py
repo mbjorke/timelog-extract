@@ -7,10 +7,18 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from core.cli_options import package_version
+from core.http_security import build_https_opener
 from core.sources import GITHUB_SOURCE
+
+_github_opener = build_https_opener("GitHub")
+
+
+def urlopen(req: Request, timeout: int = 30):
+    return _github_opener.open(req, timeout=timeout)
+
 
 USER_AGENT = (
     f"timelog-extract/{package_version()} "
@@ -143,6 +151,10 @@ def collect_public_events(
         return []
 
     base = (api_base or resolve_github_api_base()).rstrip("/")
+    if not base.lower().startswith("https://"):
+        raise ValueError(
+            "GitHub API base URL must use HTTPS to prevent token leakage over unencrypted HTTP"
+        )
 
     results: List[Dict[str, Any]] = []
     # Normalize bounds to aware UTC for comparison

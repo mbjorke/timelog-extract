@@ -23,6 +23,7 @@ _CREATE_LABEL = "+ Create project"
 _PARK_LABEL = "Park (not enough evidence)"
 _SKIP_LABEL = "Skip this URL key"
 _UNTITLED = frozenset({"", "untitled", "-", "—", "–"})
+_UNMAPPED_LOVABLE_PREFIX = "unmapped lovable"
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
@@ -60,7 +61,13 @@ def skip_choice_label() -> str:
 
 def has_human_title(title: str) -> bool:
     text = str(title or "").strip()
-    return bool(text) and text.lower() not in _UNTITLED
+    if not text:
+        return False
+    if text.lower() in _UNTITLED:
+        return False
+    if _UNMAPPED_LOVABLE_PREFIX in text.lower():
+        return False
+    return True
 
 
 def _slugify(text: str) -> str:
@@ -108,6 +115,8 @@ def suggested_profile_name(row: UrlCandidate) -> str:
 
 def is_decidable_candidate(row: UrlCandidate) -> bool:
     """True when evidence supports map/create — not mere event volume."""
+    if _UNMAPPED_LOVABLE_PREFIX in str(row.title or "").strip().lower():
+        return False
     if has_human_title(row.title):
         return True
     return bool(durable_match_terms_from_url_key(row.url_key))

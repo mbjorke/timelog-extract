@@ -46,7 +46,9 @@ jobs:
           set -euo pipefail
 
           # Metadata only: changed files + diff patches (the diff text, not the code).
-          gh api "repos/$REPO/pulls/$PR/files?per_page=100" > files.json
+          # --paginate: GitHub caps one page at 100 files; without it, a docs-looking
+          # first page can misclassify a larger mixed PR as docs-only for auto-close.
+          gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" > files.json
 
           ACTION="$(python3 scripts/external_pr_triage_classify.py --files files.json)"
           echo "triage: $ACTION for PR #$PR by @$PR_AUTHOR ($PR_AUTHOR_ASSOCIATION)"

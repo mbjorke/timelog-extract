@@ -79,6 +79,11 @@ def classify_external_pr(
     patches: list[str],
 ) -> tuple[str, str]:
     """Return ``(action, reason)`` where action is 'auto-close' or 'needs-review'."""
+    if not is_external_author(author_association):
+        return (
+            "needs-review",
+            "trusted author association — never auto-close (label/notify only)",
+        )
     text = f"{title or ''}\n{body or ''}"
     is_spam = (
         is_docs_only(changed_files)

@@ -83,6 +83,13 @@ class ExternalPrClassifyTests(unittest.TestCase):
         for assoc in ("OWNER", "MEMBER", "COLLABORATOR", "owner"):
             self.assertFalse(is_external_author(assoc), assoc)
 
+    def test_trusted_author_never_auto_closes_even_with_spam_signature(self):
+        # MEMBER/COLLABORATOR fork PRs (e.g. workflow tests) must not auto-close.
+        for assoc in ("OWNER", "MEMBER", "COLLABORATOR"):
+            action, reason = _classify(author_association=assoc)
+            self.assertEqual(action, "needs-review", assoc)
+            self.assertIn("trusted author", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

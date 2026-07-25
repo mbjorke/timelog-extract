@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 _DOC_SUFFIXES = (".md", ".markdown", ".mdx", ".rst", ".txt")
 _DOC_BASENAME_PREFIXES = ("readme", "contributing", "changelog", "license", "authors")
@@ -103,9 +104,33 @@ def classify_external_pr(
 
 
 def _load_files(path: str) -> list[dict]:
-    with open(path, encoding="utf-8") as fh:
-        data = json.load(fh)
-    return data if isinstance(data, list) else []
+    """Load PR files JSON.
+
+    Prefer a single array (workflow merges pages with ``jq -s 'add'``). Also
+    accept concatenated page arrays from raw ``gh api --paginate`` output so a
+    missed merge step does not silently drop page 2+.
+    """
+    text = Path(path).read_text(encoding="utf-8").strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+        return data if isinstance(data, list) else []
+    except json.JSONDecodeError:
+        pass
+    decoder = json.JSONDecoder()
+    out: list[dict] = []
+    idx = 0
+    while idx < len(text):
+        while idx < len(text) and text[idx].isspace():
+            idx += 1
+        if idx >= len(text):
+            break
+        data, end = decoder.raw_decode(text, idx)
+        if isinstance(data, list):
+            out.extend(item for item in data if isinstance(item, dict))
+        idx = end
+    return out
 
 
 def main() -> int:

@@ -10,8 +10,9 @@ the gate on the *merge* path.
 
 ## Layer 2 — triage at open (code, this PR / #442)
 `.github/workflows/external-pr-triage.yml` runs on `pull_request_target`
-(opened/reopened) for **fork PRs only**. It reads **metadata only** — it never
-checks out or runs the fork's code — and:
+(`opened` only — not `reopened`, so a maintainer reopening a false-positive
+auto-close is not immediately re-closed) for **fork PRs only**. It reads
+**metadata only** — it never checks out or runs the fork's code — and:
 
 - labels the PR `external:needs-review` and comments that external PRs are
   reviewed by a maintainer and never auto-merged (cc's the repo owner);

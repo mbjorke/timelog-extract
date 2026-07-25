@@ -7,9 +7,13 @@ genuine first-time contributor is never slammed.
 
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from scripts.external_pr_triage_classify import (
+    _load_files,
     classify_external_pr,
     has_archive_downgrade,
     is_docs_only,
@@ -89,6 +93,22 @@ class ExternalPrClassifyTests(unittest.TestCase):
             action, reason = _classify(author_association=assoc)
             self.assertEqual(action, "needs-review", assoc)
             self.assertIn("trusted author", reason)
+
+    def test_load_files_accepts_single_array(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "files.json"
+            path.write_text(json.dumps([{"filename": "README.md"}]), encoding="utf-8")
+            self.assertEqual(_load_files(str(path))[0]["filename"], "README.md")
+
+    def test_load_files_merges_concatenated_paginate_pages(self):
+        # Raw `gh api --paginate` writes one JSON array per page back-to-back.
+        page1 = json.dumps([{"filename": f"docs/a{i}.md"} for i in range(2)])
+        page2 = json.dumps([{"filename": "core/domain.py"}])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "files.json"
+            path.write_text(page1 + page2, encoding="utf-8")
+            names = [f["filename"] for f in _load_files(str(path))]
+        self.assertEqual(names, ["docs/a0.md", "docs/a1.md", "core/domain.py"])
 
 
 if __name__ == "__main__":

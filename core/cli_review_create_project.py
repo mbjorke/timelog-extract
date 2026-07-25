@@ -23,6 +23,7 @@ _CREATE_LABEL = "+ Create project"
 _PARK_LABEL = "Park (not enough evidence)"
 _SKIP_LABEL = "Skip this URL key"
 _UNTITLED = frozenset({"", "untitled", "-", "—", "–"})
+_UNMAPPED_LOVABLE_PREFIX = "unmapped lovable"
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
@@ -64,7 +65,7 @@ def has_human_title(title: str) -> bool:
         return False
     if text.lower() in _UNTITLED:
         return False
-    if "unmapped lovable" in text.lower():
+    if _UNMAPPED_LOVABLE_PREFIX in text.lower():
         return False
     return True
 

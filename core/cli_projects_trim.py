@@ -140,10 +140,12 @@ def _load_anchor_decisions(path: Optional[str]) -> list[dict[str, Any]]:
         except ValueError as exc:
             raise ValueError(f"additions[{idx}]: {exc}") from exc
         hits_raw = item.get("hits")
-        try:
-            hits = None if hits_raw in (None, "") else int(hits_raw)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"additions[{idx}]: hits must be an integer") from exc
+        if hits_raw in (None, ""):
+            hits = None
+        elif type(hits_raw) is not int:
+            raise ValueError(f"additions[{idx}]: hits must be an integer")
+        else:
+            hits = hits_raw
         if not pn or not rv:
             raise ValueError(f"additions[{idx}]: project_name and rule_value required")
         if rt not in {"match_terms", "tracked_urls"}:

@@ -291,6 +291,7 @@ def _load_json_input(path: Optional[str], schema_version: int, kind: str) -> dic
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError(f"{kind} input must be a JSON object")
-    if int(data.get("schema_version", 0)) != schema_version:
+    version = data.get("schema_version")
+    if type(version) is not int or version != schema_version:
         raise ValueError(f"schema_version must be {schema_version}")
     return data

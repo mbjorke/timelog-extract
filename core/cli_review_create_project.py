@@ -115,6 +115,8 @@ def suggested_profile_name(row: UrlCandidate) -> str:
 
 def is_decidable_candidate(row: UrlCandidate) -> bool:
     """True when evidence supports map/create — not mere event volume."""
+    if _UNMAPPED_LOVABLE_PREFIX in str(row.title or "").strip().lower():
+        return False
     if has_human_title(row.title):
         return True
     return bool(durable_match_terms_from_url_key(row.url_key))

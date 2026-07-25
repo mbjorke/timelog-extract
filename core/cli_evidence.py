@@ -12,6 +12,7 @@ from core.cli_app import app
 @app.command("evidence")
 def evidence(
     export: Annotated[Optional[str], typer.Option("--export", help="Write all stored evidence to a JSONL file at PATH, then exit.")] = None,
+    import_from: Annotated[Optional[str], typer.Option("--import", help="Merge another device's exported records from PATH into this ledger, then exit.")] = None,
     erase: Annotated[bool, typer.Option("--erase", help="Delete the entire local evidence store (asks to confirm unless --yes).")] = False,
     prune_older_than: Annotated[Optional[int], typer.Option("--prune-older-than", help="Drop records older than N days and re-link the hash chain, then exit.")] = None,
     yes: Annotated[bool, typer.Option("--yes", help="Skip the confirmation prompt for --erase.")] = False,
@@ -19,7 +20,8 @@ def evidence(
     """Show shadow-log health, or manage your local evidence (export / erase / prune).
 
     With no options this is read-only health. Capture is enabled via
-    `gittan report --shadow-log on` or `gittan status --shadow-log on`.
+    `gittan report --shadow-log on` or `gittan status --shadow-log on`, and
+    `gittan capture` records session evidence from a device on demand.
     """
     from rich.console import Console
 
@@ -35,10 +37,12 @@ def evidence(
 
     console = Console()
 
-    data_controls = sum([export is not None, prune_older_than is not None, erase])
+    data_controls = sum(
+        [export is not None, import_from is not None, prune_older_than is not None, erase]
+    )
     if data_controls > 1:
         console.print(
-            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --import, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: Run `gittan evidence` with only one of these options.[/{STYLE_MUTED}]"
@@ -51,6 +55,24 @@ def evidence(
         if result["records"] == 0:
             msg += f" [{STYLE_MUTED}](store is empty)[/{STYLE_MUTED}]"
         console.print(msg)
+        return
+    if import_from is not None:
+        from core.session_capture import import_records
+
+        try:
+            result = import_records(import_from)
+        except (OSError, ValueError) as exc:
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
+            console.print(
+                f"[{STYLE_MUTED}]Next: Point --import at a JSONL file written by "
+                f"`gittan capture --export` or `gittan evidence --export`.[/{STYLE_MUTED}]"
+            )
+            raise typer.Exit(code=1) from exc
+        devices = ", ".join(result["devices"]) or "unnamed device"
+        console.print(
+            f"Imported {result['appended']} new record(s) from {result['read']} read "
+            f"[{STYLE_MUTED}](already present: {result['skipped']}; from: {devices})[/{STYLE_MUTED}]"
+        )
         return
     if prune_older_than is not None:
         try:

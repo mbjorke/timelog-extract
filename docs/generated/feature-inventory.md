@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 26 |
+| Commands | 27 |
 | Command groups | 2 |
 | Collectors | 22 |
 | Per-project config fields | 18 |
@@ -18,6 +18,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Group | Command | Help | Spec |
 | --- | --- | --- | --- |
 | — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). | (no spec) |
+| — | `capture` | Capture this device's AI session evidence into the shadow log. | [device-session-capture-task](../task-prompts/device-session-capture-task.md) · built |
 | — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. | (no spec) |
 | — | `doctor` | Check source access and local integration health, then print a diagnostic table. | (no spec) |
 | — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | (no spec) |

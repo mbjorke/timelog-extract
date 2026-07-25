@@ -10,13 +10,28 @@ from typer.testing import CliRunner
 from core.cli import app
 
 
+def unwrapped(text: str) -> str:
+    """Collapse Rich's terminal wrapping so assertions test copy, not width."""
+    return " ".join(text.split())
+
+
 class CliEvidenceUXTests(unittest.TestCase):
     def test_conflicting_options_outputs_standard_error_pattern(self):
         runner = CliRunner()
         result = runner.invoke(app, ["evidence", "--export", "some_path.jsonl", "--erase"])
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Error: --export, --prune-older-than, and --erase are mutually exclusive.", result.output)
-        self.assertIn("Next: Run `gittan evidence` with only one of these options.", result.output)
+        self.assertIn(
+            "Error: --export, --import, --prune-older-than, and --erase are mutually exclusive.",
+            unwrapped(result.output),
+        )
+        self.assertIn("Next: Run `gittan evidence` with only one of these options.", unwrapped(result.output))
+
+    def test_import_missing_file_outputs_standard_error_pattern(self):
+        runner = CliRunner()
+        result = runner.invoke(app, ["evidence", "--import", "no_such_export.jsonl"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error: no such export file", unwrapped(result.output))
+        self.assertIn("Next: Point --import at a JSONL file written by", unwrapped(result.output))
 
     def test_prune_value_error_outputs_standard_error_pattern(self):
         runner = CliRunner()

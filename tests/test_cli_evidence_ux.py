@@ -28,10 +28,12 @@ class CliEvidenceUXTests(unittest.TestCase):
 
     def test_erase_aborted_by_user_outputs_orange_aborted(self):
         runner = CliRunner()
-        with patch("core.cli_evidence.typer.confirm", return_value=False):
+        with patch("core.cli_evidence.typer.confirm", return_value=False), \
+             patch("core.evidence_store.erase_store") as erase_mock:
             result = runner.invoke(app, ["evidence", "--erase"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Aborted.", result.output)
+        erase_mock.assert_not_called()
 
 
 if __name__ == "__main__":

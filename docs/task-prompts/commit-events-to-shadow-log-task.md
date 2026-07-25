@@ -124,10 +124,11 @@ Scenario: Ledger write failure is not silent
 
 - story_id: GH-408 (https://github.com/mbjorke/timelog-extract/issues/408)
 - spec_status: approved
-- implementation_status: built
+- implementation_status: in progress
 - created_at: 2026-07-20
-- last_updated_at: 2026-07-23
-- implementation.pr: pending
+- last_updated_at: 2026-07-25
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/440 (partial —
+  scenarios 1 and 3 only; "markdown worklog becomes a view" is not built)
 - implementation.branch: task/commit-events-to-shadow-log-408
 - implementation.commits: []
 - validation.evidence: tests/test_global_timelog_hook_script.py, tests/test_doctor_staleness_and_errors.py
@@ -136,3 +137,8 @@ Scenario: Ledger write failure is not silent
   - 2026-07-20: Initial draft from product-owner pass after the silent
     worklog-capture incident (hook hash-naming + missing-file fallback).
   - 2026-07-23: Implemented git-commit event write, error logging, and staleness doctor checks.
+  - 2026-07-25: Corrected status after a product-owner audit: #440 delivered
+    scenarios 1 and 3 only. "Markdown worklog becomes a view" (rendering the
+    worklog from the ledger) is **not built** — no such function or CLI surface
+    exists. Status moved back from `built` to `in progress`; GH-408 re-scoped to
+    that remaining slice. See `backlog-priority-2026-07-25-task.md`.

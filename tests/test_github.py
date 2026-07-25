@@ -175,21 +175,23 @@ class GithubCollectorTests(unittest.TestCase):
             )
         self.assertIn("GitHub redirect to insecure http:// rejected", str(ctx.exception))
 
-    def test_collect_public_events_rejects_plain_http_when_token_is_present(self):
+    def test_collect_public_events_rejects_plain_http_api_base(self):
         t0 = datetime(2026, 4, 8, 12, 0, tzinfo=timezone.utc)
         t1 = datetime(2026, 4, 8, 14, 0, tzinfo=timezone.utc)
-        with self.assertRaises(ValueError) as ctx:
-            gh.collect_public_events(
-                profiles=[],
-                dt_from=t0,
-                dt_to=t1,
-                username="u",
-                token="secret-token",
-                classify_project=lambda t, p: "P",
-                make_event=lambda *a: {},
-                api_base="http://insecure.example.test",
-            )
-        self.assertIn("must use HTTPS", str(ctx.exception))
+        for token in (None, "secret-token"):
+            with self.subTest(token=token):
+                with self.assertRaises(ValueError) as ctx:
+                    gh.collect_public_events(
+                        profiles=[],
+                        dt_from=t0,
+                        dt_to=t1,
+                        username="u",
+                        token=token,
+                        classify_project=lambda t, p: "P",
+                        make_event=lambda *a: {},
+                        api_base="http://insecure.example.test",
+                    )
+                self.assertIn("must use HTTPS", str(ctx.exception))
 
 
 if __name__ == "__main__":

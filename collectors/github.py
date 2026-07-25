@@ -151,7 +151,7 @@ def collect_public_events(
         return []
 
     base = (api_base or resolve_github_api_base()).rstrip("/")
-    if token and not base.lower().startswith("https://"):
+    if not base.lower().startswith("https://"):
         raise ValueError(
             "GitHub API base URL must use HTTPS to prevent token leakage over unencrypted HTTP"
         )

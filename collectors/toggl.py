@@ -10,9 +10,26 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.parse import urlparse
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
 TOGGL_API_BASE = "https://api.track.toggl.com"
+
+
+class _RejectHttpRedirectHandler(HTTPRedirectHandler):
+    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if (urlparse(newurl).scheme or "").lower() == "http":
+            raise URLError("Toggl redirect to insecure http:// rejected to protect credentials")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_toggl_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+
+
+def urlopen(req: Request, timeout: int = 20):
+    return _toggl_opener.open(req, timeout=timeout)
 
 
 def resolve_toggl_api_token(args: Any) -> str:
@@ -120,6 +137,10 @@ def _toggl_auth_header(api_token: str) -> str:
 
 def _toggl_request(creds: TogglCredentials, method: str, path: str, payload: Optional[dict] = None) -> Any:
     url = f"{TOGGL_API_BASE}{path}"
+    if not url.lower().startswith("https://"):
+        raise ValueError(
+            "Toggl API base URL must use HTTPS to prevent token leakage over unencrypted HTTP"
+        )
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     req = Request(url, data=data, method=method)
     req.add_header("Authorization", _toggl_auth_header(creds.api_token))

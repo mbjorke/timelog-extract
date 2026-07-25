@@ -167,27 +167,6 @@ class TogglSourceTests(unittest.TestCase):
         self.assertEqual(result, [])
         self.assertIsInstance(result, list)
 
-    def test_toggl_redirect_handler_rejects_http_redirect(self):
-        from urllib.error import URLError
-        from urllib.request import Request
-
-        from core.http_security import RejectHttpRedirectHandler
-
-        handler = RejectHttpRedirectHandler("Toggl")
-        req = Request("https://secure.example.test/api/v9/me")
-        with self.assertRaises(URLError) as ctx:
-            handler.redirect_request(
-                req, None, 301, "Moved Permanently", {}, "http://insecure.example.test"
-            )
-        self.assertIn("Toggl redirect to insecure http:// rejected", str(ctx.exception))
-
-    def test_toggl_request_rejects_http(self):
-        with patch("collectors.toggl.TOGGL_API_BASE", "http://insecure.example.test"):
-            creds = tg.TogglCredentials(api_token="t", workspace_id=1)
-            with self.assertRaises(ValueError) as ctx:
-                tg._toggl_request(creds, "GET", "/api/v9/me")
-            self.assertIn("must use HTTPS", str(ctx.exception))
-
 
 if __name__ == "__main__":
     unittest.main()

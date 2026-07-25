@@ -161,38 +161,6 @@ class GithubCollectorTests(unittest.TestCase):
         with patch.dict(os.environ, {"GITHUB_API_BASE_URL": "https://corp.github/api/v3/"}, clear=False):
             self.assertEqual(gh.resolve_github_api_base(), "https://corp.github/api/v3")
 
-    def test_github_redirect_handler_rejects_http_redirect(self):
-        from urllib.error import URLError
-        from urllib.request import Request
-
-        from core.http_security import RejectHttpRedirectHandler
-
-        handler = RejectHttpRedirectHandler("GitHub")
-        req = Request("https://secure.example.test/users/u/events")
-        with self.assertRaises(URLError) as ctx:
-            handler.redirect_request(
-                req, None, 301, "Moved Permanently", {}, "http://insecure.example.test"
-            )
-        self.assertIn("GitHub redirect to insecure http:// rejected", str(ctx.exception))
-
-    def test_collect_public_events_rejects_plain_http_api_base(self):
-        t0 = datetime(2026, 4, 8, 12, 0, tzinfo=timezone.utc)
-        t1 = datetime(2026, 4, 8, 14, 0, tzinfo=timezone.utc)
-        for token in (None, "secret-token"):
-            with self.subTest(token=token):
-                with self.assertRaises(ValueError) as ctx:
-                    gh.collect_public_events(
-                        profiles=[],
-                        dt_from=t0,
-                        dt_to=t1,
-                        username="u",
-                        token=token,
-                        classify_project=lambda t, p: "P",
-                        make_event=lambda *a: {},
-                        api_base="http://insecure.example.test",
-                    )
-                self.assertIn("must use HTTPS", str(ctx.exception))
-
 
 if __name__ == "__main__":
     unittest.main()

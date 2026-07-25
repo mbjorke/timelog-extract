@@ -28,6 +28,7 @@ def evidence(
     from outputs.terminal_theme import (
         CLR_GREEN,
         CLR_VALUE_ORANGE,
+        FAIL_ICON,
         STYLE_LABEL,
         STYLE_MUTED,
     )
@@ -37,7 +38,10 @@ def evidence(
     data_controls = sum([export is not None, prune_older_than is not None, erase])
     if data_controls > 1:
         console.print(
-            "[red]Error:[/red] --export, --prune-older-than, and --erase are mutually exclusive."
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: Run `gittan evidence` with only one of these options.[/{STYLE_MUTED}]"
         )
         raise typer.Exit(code=1)
 
@@ -52,13 +56,14 @@ def evidence(
         try:
             result = evidence_store.prune_older_than(prune_older_than)
         except ValueError as exc:
-            console.print(f"[red]Error:[/red] {exc}")
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
+            console.print(f"[{STYLE_MUTED}]Next: Provide a positive integer to prune the shadow log.[/{STYLE_MUTED}]")
             raise typer.Exit(code=1) from exc
         console.print(f"Pruned {result.get('removed', 0)} record(s); {result.get('kept', 0)} kept.")
         return
     if erase:
         if not yes and not typer.confirm("Permanently delete the local evidence store?"):
-            console.print(f"[{STYLE_MUTED}]Aborted.[/{STYLE_MUTED}]")
+            console.print(f"[{CLR_VALUE_ORANGE}]Aborted.[/{CLR_VALUE_ORANGE}]")
             return
         result = evidence_store.erase_store()
         console.print("Evidence store erased." if result["removed"] else f"[{STYLE_MUTED}]No store to erase.[/{STYLE_MUTED}]")
@@ -82,8 +87,8 @@ def evidence(
     if health["chain_ok"]:
         console.print(f"Chain integrity: [{CLR_GREEN}]OK[/{CLR_GREEN}]")
     else:
-        console.print(f"Chain integrity: [red]BROKEN[/red] ({len(health['chain_breaks'])} issue(s))")
+        console.print(f"Chain integrity: {FAIL_ICON} [{CLR_VALUE_ORANGE}]BROKEN[/{CLR_VALUE_ORANGE}] ({len(health['chain_breaks'])} issue(s))")
         for issue in health["chain_breaks"][:5]:
-            console.print(f"[red]  - {issue}[/red]")
+            console.print(f"  [{STYLE_MUTED}]- {issue}[/{STYLE_MUTED}]")
     for source, count in health["per_source"].items():
         console.print(f"[{STYLE_MUTED}]  {source}: {count}[/{STYLE_MUTED}]")

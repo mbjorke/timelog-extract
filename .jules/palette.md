@@ -34,6 +34,10 @@
 **Learning:** Legacy commands often output plain unstyled text, which breaks terminal cohesive aesthetic and scannability. Applying standardized Rich table semantics (`box.ROUNDED`, `STYLE_BORDER`, and specific column styling) along with standardized orange headline (`CLR_VALUE_ORANGE`) and muted (`STYLE_MUTED`) instruction next-steps for empty states preserves user flow, actionability, and visual consistency across the entire CLI app.
 **Action:** Redesigned the output of `gittan reported list` and empty states for both `reported list` and `reported review` in `core/cli_reported.py` with the official styling guidelines. Added a test suite `ReportedUXFormattingTests` in `tests/test_cli_reported.py` to prevent regressions.
 
+## 2026-07-24 - Aligning `evidence` command with Gittan CLI UX guidelines
+**Learning:** Legacy commands containing hardcoded formatting tags (like `[red]`) degrade UI polish and fail color palette standards. Using theme tokens (`FAIL_ICON`, `CLR_VALUE_ORANGE`, `STYLE_MUTED`) and adding actionable `Next:` cues keeps error and status displays scannable and trustworthy.
+**Action:** Replaced hardcoded `[red]` tags in `core/cli_evidence.py` with standard `FAIL_ICON`, `CLR_VALUE_ORANGE`, and `STYLE_MUTED` tokens. Standardized errors to follow Gittan's CLI Error Pattern including actionable `Next:` guidance, and ensured interactive cancellations are orange-accented.
+
 ## 2026-07-25 - Excluding Placeholder Lovable UUIDs from Decidable Review candidates
 **Learning:** Dynamic, unmapped placeholder title keys (e.g., those containing "unmapped Lovable") generated during raw collections do not represent real human titles. Treating them as human titles incorrectly positions them in the main "decidable" interactive review queue rather than safely parking/skipping them.
 **Action:** Updated `has_human_title` in `core/cli_review_create_project.py` to return `False` when "unmapped lovable" is present in the title string, cleanly classifying untitled bare UUID rows as undecidable and keeping them within the Park/Skip buckets.

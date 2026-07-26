@@ -75,9 +75,15 @@ This is a hard constraint, not a missing permission. Verified empirically on
    item titles (cf. `#431`), so the default should stay private.
 
 Practical rule: **never ask for board access, a token, or a visibility change to
-unblock an agent.** None of them work. If a session genuinely needs board
-`Status`, a human pastes it, or a local `gh`-backed dump is committed as a
-snapshot.
+unblock a hosted agent session.** None of them work there. If such a session
+genuinely needs board `Status`, a human pastes it, or a local `gh`-backed dump is
+committed as a snapshot.
+
+This is about hosted sessions only, and does **not** apply to a human on their own
+machine. Board *writes* from a local `gh` do need the project scope —
+`gh auth refresh -s project`, as `scripts/rabbit_board_sync.sh` and
+`scripts/rabbit_handoff.sh` both report when it is missing. Skipping that refresh
+is how board Status quietly stops being written at all.
 
 ## Rules that follow
 

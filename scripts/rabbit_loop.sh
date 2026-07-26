@@ -4,7 +4,7 @@
 # Loop-engineering harness: runs the two independent critics on the current
 # local diff and reports whether the work has CONVERGED.
 #   1. CodeRabbit  — `coderabbit review --agent` (structured findings)
-#   2. Autotests   — `scripts/run_autotests.sh` (500-line gate + unit tests)
+#   2. Autotests   — `scripts/run_autotests.sh` (file-length report + unit tests)
 #
 # It does NOT edit code, commit, push, or merge. The agent/human reads the
 # findings, applies fixes within docs/decisions/agent-review-contract.md, then

@@ -54,10 +54,23 @@ Save this as `~/Library/LaunchAgents/sh.gittan.autocommit.plist` and load it
 launchctl load -w ~/Library/LaunchAgents/sh.gittan.autocommit.plist
 ```
 
-Enable off-machine backup to a **private** remote by adding before `</dict>`:
+**Point it at your `gittan` binary.** launchd runs with a minimal `PATH`, so
+`command -v gittan` usually finds nothing there and the capture step would skip
+silently. Add before `</dict>` (adjust the path — `command -v gittan` in your
+shell prints it):
 
 ```xml
-  <key>EnvironmentVariables</key><dict><key>GITTAN_AUTOCOMMIT_PUSH</key><string>1</string></dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GITTAN_BIN</key><string>/Users/&lt;you&gt;/.local/bin/gittan</string>
+  </dict>
+```
+
+Enable off-machine backup to a **private** remote by adding `GITTAN_AUTOCOMMIT_PUSH`
+to that same dict:
+
+```xml
+    <key>GITTAN_AUTOCOMMIT_PUSH</key><string>1</string>
 ```
 
 Uninstall: `launchctl unload ~/Library/LaunchAgents/sh.gittan.autocommit.plist`.
@@ -68,8 +81,27 @@ Uninstall: `launchctl unload ~/Library/LaunchAgents/sh.gittan.autocommit.plist`.
 */10 * * * * /path/to/timelog-extract/scripts/gittan_data_autocommit.sh
 ```
 
+## What the timer does
+
+Each tick, in order:
+
+1. **Captures** this device's session evidence (`gittan capture --if-enabled`).
+   Gated on `"shadow_log": "on"` in your projects config, so a timer never starts
+   writing evidence you did not enable. Best-effort: a missing binary or a failed
+   capture never blocks the commit. Set `GITTAN_AUTOCOMMIT_CAPTURE=0` for the old
+   commit-only behavior.
+2. **Commits** everything under `~/.gittan` (config, caches, ledger, worklogs).
+3. **Pushes**, if `GITTAN_AUTOCOMMIT_PUSH=1`.
+
+Preserving an empty directory is not durability — that is why capture runs first.
+
 ## Verify
 
+- `gittan capture --if-enabled` → either a capture summary, or "Capture skipped:
+  shadow_log is not on" (which tells you the gate, not a failure).
+- `gittan doctor` → the **Device coverage** row lists every device reaching the
+  ledger and when each was last seen. A device quiet for more than 10 days is
+  flagged.
 - `bash scripts/gittan_data_autocommit.sh` once → `git -C ~/.gittan log -1` shows an
   `auto:` commit (or nothing, if the tree was clean).
 - Make a change under `~/.gittan`, wait one interval, confirm a new `auto:` commit.

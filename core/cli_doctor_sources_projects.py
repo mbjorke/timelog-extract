@@ -22,6 +22,7 @@ from core.config import (
 )
 from core.doctor_cli_path import add_cli_path_rows
 from core.doctor_collector_rows import add_collector_doctor_rows
+from core.doctor_device_row import add_device_coverage_row
 from core.doctor_projects_config_rows import add_projects_config_lint_rows
 from core.doctor_shadow_log_row import add_shadow_log_row
 from core.doctor_source_rows import add_remote_api_doctor_rows, normalize_doctor_tri_state_mode
@@ -163,6 +164,14 @@ def doctor(
             style_muted=STYLE_MUTED,
             home=home,
         )
+        add_device_coverage_row(
+            table,
+            projects_cfg,
+            ok_icon=OK_ICON,
+            warn_icon=WARN_ICON,
+            style_muted=STYLE_MUTED,
+            home=home,
+        )
         # Check for shadow log capture errors (GH-408)
         capture_errors_file = home / ".gittan" / "capture-errors.jsonl"
         if capture_errors_file.exists():
@@ -171,11 +180,19 @@ def doctor(
                 with capture_errors_file.open(encoding="utf-8") as f:
                     errors = [json.loads(line) for line in f if line.strip()]
                 if errors:
+                    from core.local_time import local_stamp as _local_stamp
+
                     latest_err = errors[-1]
+                    # Naming the source makes the message actionable: the same
+                    # "No module named 'core'" is a broken git hook or a broken
+                    # capture install depending on where it came from.
+                    origin = str(latest_err.get("source") or "").strip()
+                    origin_note = f" [source: {origin}]" if origin else ""
                     table.add_row(
                         "Capture errors",
                         FAIL_ICON,
-                        f"[{STYLE_MUTED}]Recent capture failure: {latest_err.get('error')} (last: {latest_err.get('timestamp')})[/{STYLE_MUTED}]",
+                        f"[{STYLE_MUTED}]Recent capture failure: {latest_err.get('error')}{origin_note} "
+                        f"(last: {_local_stamp(latest_err.get('timestamp'))})[/{STYLE_MUTED}]",
                     )
             except Exception:
                 pass

@@ -21,12 +21,18 @@ from urllib.parse import urlencode, urlparse
 
 
 class RejectHttpRedirectHandler(urlrequest.HTTPRedirectHandler):
-    """Block redirects to non-HTTPS targets so Authorization headers are never forwarded."""
+    """Allow only same-origin HTTPS redirects so Authorization is never forwarded off-host."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if (urlparse(newurl).scheme or "").lower() != "https":
+        new = urlparse(newurl)
+        if (new.scheme or "").lower() != "https":
             raise urlerror.URLError(
                 "Briox redirect to non-HTTPS target rejected to protect credentials"
+            )
+        old = urlparse(req.full_url)
+        if (new.netloc or "").lower() != (old.netloc or "").lower():
+            raise urlerror.URLError(
+                "Briox cross-origin redirect rejected to protect credentials"
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 

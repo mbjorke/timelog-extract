@@ -50,16 +50,33 @@ class BrioxSecurityTests(unittest.TestCase):
             )
         self.assertIn("non-HTTPS target rejected", str(ctx.exception))
 
-    def test_redirect_handler_allows_https_redirect(self):
-        """RejectHttpRedirectHandler should allow redirects to secure HTTPS."""
+    def test_redirect_handler_rejects_cross_origin_https(self):
+        """Same-scheme HTTPS redirects to another host must not carry Authorization."""
+        handler = briox.RejectHttpRedirectHandler()
+        req = Request("https://api.example.test/token")
+        with self.assertRaises(URLError) as ctx:
+            handler.redirect_request(
+                req,
+                None,
+                301,
+                "Moved Permanently",
+                {},
+                "https://evil.example.test/steal",
+            )
+        self.assertIn("cross-origin redirect rejected", str(ctx.exception))
+
+    def test_redirect_handler_allows_same_origin_https_redirect(self):
+        """Same-host HTTPS redirects are allowed (path-only moves)."""
         handler = briox.RejectHttpRedirectHandler()
         req = Request("https://secure.example.test/token")
-        # Since Request redirect handling returns a new request object or delegates,
-        # calling super().redirect_request with a dummy response might fail or succeed depending on input.
-        # But we can verify it doesn't raise URLError.
         with patch("urllib.request.HTTPRedirectHandler.redirect_request", return_value="ok"):
             res = handler.redirect_request(
-                req, None, 301, "Moved Permanently", {}, "https://secure-redirect.example.test"
+                req,
+                None,
+                301,
+                "Moved Permanently",
+                {},
+                "https://secure.example.test/v2/token",
             )
             self.assertEqual(res, "ok")
 

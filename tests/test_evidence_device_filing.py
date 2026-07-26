@@ -37,15 +37,23 @@ def event(hour: int, detail: str, device: str | None = None) -> dict:
 
 class DeviceSlugTests(unittest.TestCase):
     def test_slug_is_filename_safe(self):
-        self.assertEqual(_device_slug("Ada's MacBook Pro"), "ada-s-macbook-pro")
-        self.assertEqual(_device_slug("claude/web:container"), "claude-web-container")
+        self.assertRegex(_device_slug("Ada's MacBook Pro"), r"^ada-s-macbook-pro-[0-9a-f]{16}$")
+        self.assertRegex(_device_slug("claude/web:container"), r"^claude-web-container-[0-9a-f]{16}$")
 
     def test_missing_device_is_empty(self):
         self.assertEqual(_device_slug(None), "")
         self.assertEqual(_device_slug("   "), "")
 
     def test_slug_is_bounded(self):
-        self.assertLessEqual(len(_device_slug("x" * 200)), 40)
+        # stem(24) + "-" + digest(16)
+        self.assertLessEqual(len(_device_slug("x" * 200)), 41)
+
+    def test_distinct_labels_do_not_collide(self):
+        """Case, punctuation, and long-prefix twins must not share a file key."""
+        self.assertNotEqual(_device_slug("Mac"), _device_slug("mac"))
+        self.assertNotEqual(_device_slug("Ada's"), _device_slug("Adas"))
+        self.assertNotEqual(_device_slug("x" * 50 + "a"), _device_slug("x" * 50 + "b"))
+        self.assertEqual(_device_slug("phone"), _device_slug("phone"))
 
     def test_file_key_falls_back_to_plain_month(self):
         self.assertEqual(_record_file_key({"observed_at": "2026-07-25T09:00:00+00:00"}), "2026-07")
@@ -54,7 +62,8 @@ class DeviceSlugTests(unittest.TestCase):
         key = _record_file_key(
             {"observed_at": "2026-07-25T09:00:00+00:00", "source_provenance": {"device": "phone"}}
         )
-        self.assertEqual(key, "2026-07.phone")
+        self.assertEqual(key, f"2026-07.{_device_slug('phone')}")
+        self.assertRegex(key, r"^2026-07\.phone-[0-9a-f]{16}$")
 
     def test_malformed_provenance_does_not_crash_filing(self):
         key = _record_file_key(
@@ -75,7 +84,10 @@ class DeviceFilingTests(unittest.TestCase):
         capture_events([event(9, "laptop A", "laptop")], base_dir=self.base)
         capture_events([event(11, "phone C", "phone")], base_dir=self.base)
         names = sorted(p.name for p in events_dir(self.base).glob("*.jsonl"))
-        self.assertEqual(names, ["2026-07.laptop.jsonl", "2026-07.phone.jsonl"])
+        self.assertEqual(
+            names,
+            [f"2026-07.{_device_slug('laptop')}.jsonl", f"2026-07.{_device_slug('phone')}.jsonl"],
+        )
 
     def test_two_devices_keep_independent_valid_chains(self):
         capture_events([event(9, "laptop A", "laptop"), event(10, "laptop B", "laptop")], base_dir=self.base)
@@ -87,7 +99,7 @@ class DeviceFilingTests(unittest.TestCase):
     def test_devices_never_touch_each_others_files(self):
         """The property that makes a shared git repo conflict-free."""
         capture_events([event(9, "laptop A", "laptop")], base_dir=self.base)
-        laptop_file = events_dir(self.base) / "2026-07.laptop.jsonl"
+        laptop_file = events_dir(self.base) / f"2026-07.{_device_slug('laptop')}.jsonl"
         before = laptop_file.read_text(encoding="utf-8")
         capture_events([event(11, "phone C", "phone")], base_dir=self.base)
         self.assertEqual(laptop_file.read_text(encoding="utf-8"), before)

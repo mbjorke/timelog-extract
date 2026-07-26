@@ -21,6 +21,7 @@ engine-agnostic record contract, would be migration-free if ever needed.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -69,12 +70,16 @@ def _month_key(observed_at_iso: str) -> str:
 def _device_slug(device: Any) -> str:
     """Filename-safe device label, or "" when the record carries no device.
 
-    Kept conservative on purpose: the slug becomes part of a file name that is
-    committed to the user's data repo.
+    Stem is human-readable; a 16-hex digest of the stripped label keeps file
+    keys distinct when labels differ only by case, punctuation, or past the
+    stem truncation — so two devices never share one monthly evidence file.
     """
-    raw = str(device or "").strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
-    return slug[:40]
+    raw = str(device or "").strip()
+    if not raw:
+        return ""
+    stem = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")[:24] or "device"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"{stem}-{digest}"
 
 
 def _record_file_key(record: Dict[str, Any]) -> str:

@@ -159,6 +159,28 @@ class CaptureDeviceEvidenceTests(unittest.TestCase):
         self.assertEqual(summary["appended"], 0)
         self.assertFalse(self.store.exists(), "dry run must not create the store")
 
+    def test_store_home_is_where_the_ledger_goes_not_the_read_home(self):
+        """`--home` redirects reading only (Greptile P1 on #469).
+
+        Capturing from a mounted backup of another machine is the documented use
+        case. If the alternate HOME also received the ledger, the events would
+        land somewhere no report reads — and vanish with the mount. The CLI passes
+        `store_home` for exactly this reason.
+        """
+        canonical = self.tmp / "canonical"
+        summary = capture_device_evidence(
+            PROFILES, DT_FROM, DT_TO, home=self.home, store_home=canonical, device="laptop"
+        )
+        self.assertGreater(summary["appended"], 0)
+        self.assertTrue(
+            (canonical / ".gittan" / "evidence").exists(),
+            f"ledger should be under the canonical home, got {summary['destination']}",
+        )
+        self.assertFalse(
+            (self.home / ".gittan" / "evidence").exists(),
+            "the read-only HOME must not receive a ledger",
+        )
+
     def test_capture_appends_and_is_idempotent(self):
         first = self._capture(device="laptop")
         self.assertGreater(first["appended"], 0)

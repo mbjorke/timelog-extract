@@ -68,6 +68,14 @@ def capture(
             dt_from,
             dt_to,
             home=read_home,
+            # `--home` redirects *reading* only, as its help says. The ledger
+            # stays canonical: capturing from a mounted backup of another machine
+            # is the documented use case, and its events belong in your own store
+            # (per-device filing keeps them apart). Writing under the alternate
+            # HOME instead would put evidence somewhere no report reads, and lose
+            # it outright when an ephemeral mount goes away. `--export` is the
+            # supported way to write elsewhere.
+            store_home=Path.home(),
             device=device,
             export_to=export,
             dry_run=dry_run,

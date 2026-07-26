@@ -265,6 +265,61 @@ class ReportAttributionTests(unittest.TestCase):
         self.assertNotIn(UNCAT, after, f"nothing should be left unattributed: {after}")
 
 
+class UnknownProjectIsRejectedTests(unittest.TestCase):
+    """A typo must not become an authoritative binding (Greptile P1 on #469).
+
+    `docs/specs/intent-capture.md` already required this — *"the record is
+    rejected with a clear error / nothing is appended to the log"* — and the
+    implementation only printed a note. The consequence is not cosmetic: because
+    a binding outranks a `match_term`, a mistyped name moves the hours to a
+    project that does not exist *and* off `Uncategorized`, so they stop showing
+    up in triage and surface later as a phantom bucket on an invoice.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        (self.home / ".gittan").mkdir()
+        self.config = self.home / "projects.json"
+        self.config.write_text(
+            json.dumps(
+                {
+                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "worklog": "none.md",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args):
+        from typer.testing import CliRunner
+
+        from core.cli import app
+
+        with patch("pathlib.Path.home", return_value=self.home):
+            return CliRunner().invoke(
+                app, ["intent", "--projects-config", str(self.config), *args]
+            )
+
+    def test_typo_in_set_is_refused_and_nothing_is_written(self):
+        result = self._run("--set", "s1=Custmer X")
+        self.assertEqual(result.exit_code, 1, result.output)
+        self.assertEqual(read_intents(home=self.home), [], "a refused binding must not append")
+
+    def test_the_error_names_the_projects_that_do_exist(self):
+        result = self._run("--set", "s1=Ghost Project")
+        self.assertIn("Customer X", result.output)
+
+    def test_a_configured_project_still_binds(self):
+        result = self._run("--set", "s1=Customer X")
+        self.assertEqual(result.exit_code, 0, result.output)
+        bindings = resolve_intents(home=self.home)
+        self.assertEqual(bindings[("session", "s1")]["project"], "Customer X")
+
+
 class LocalTimeDisplayTests(unittest.TestCase):
     """Stored stamps are UTC; a human reading them must see their own clock.
 

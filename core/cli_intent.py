@@ -76,11 +76,23 @@ def intent(
                 console.print(f"[{STYLE_MUTED}]Next: Run `gittan intent` with no options to pick from a list.[/{STYLE_MUTED}]")
                 raise typer.Exit(code=1)
             session, project = pair.split("=", 1)
+            # A binding is authoritative — it outranks a match_term — so a typo
+            # would move the hours to a project that does not exist and, worse,
+            # off `Uncategorized`, hiding them from triage until someone noticed
+            # a phantom bucket on an invoice. `docs/specs/intent-capture.md`
+            # already required rejecting this; the note-and-continue was a bug
+            # against our own contract.
             if known and project.strip() not in known:
                 console.print(
-                    f"[{STYLE_MUTED}]Note: {project.strip()!r} is not a configured project "
-                    f"(known: {', '.join(known)}).[/{STYLE_MUTED}]"
+                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {project.strip()!r} is not a "
+                    f"configured project.[/{CLR_VALUE_ORANGE}]"
                 )
+                console.print(f"[{STYLE_MUTED}]Known: {', '.join(known)}[/{STYLE_MUTED}]")
+                console.print(
+                    f"[{STYLE_MUTED}]Next: Use one of those names, or add the project to "
+                    f"your config first. Nothing was recorded.[/{STYLE_MUTED}]"
+                )
+                raise typer.Exit(code=1)
             record = record_intent(session, project, via="cli", note=note, home=home)
             console.print(f"Bound {record['key']} → [{CLR_VALUE_ORANGE}]{record['project']}[/{CLR_VALUE_ORANGE}]")
             written += 1
@@ -123,15 +135,23 @@ def intent(
             f"[{CLR_VALUE_ORANGE}]{label}[/{CLR_VALUE_ORANGE}] "
             f"[{STYLE_MUTED}]{row['source']} · {span} · {row['events']} event(s) · {row['session']}[/{STYLE_MUTED}]"
         )
-        answer = typer.prompt("  Which project?", default="", show_default=False).strip()
-        if not answer:
-            console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
-            continue
-        if known and answer not in known:
-            console.print(f"[{STYLE_MUTED}]  note: {answer!r} is not a configured project[/{STYLE_MUTED}]")
-        record_intent(row["session"], answer, via="intent-prompt", home=home)
-        console.print(f"  bound → [{CLR_VALUE_ORANGE}]{answer}[/{CLR_VALUE_ORANGE}]\n")
-        bound += 1
+        # Re-ask on a name we do not know rather than recording it: blank always
+        # skips, so this cannot trap the operator in a loop.
+        while True:
+            answer = typer.prompt("  Which project?", default="", show_default=False).strip()
+            if not answer:
+                console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
+                break
+            if known and answer not in known:
+                console.print(
+                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{answer!r} is not a configured "
+                    f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
+                )
+                continue
+            record_intent(row["session"], answer, via="intent-prompt", home=home)
+            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{answer}[/{CLR_VALUE_ORANGE}]\n")
+            bound += 1
+            break
 
     console.print(
         f"{bound} session(s) bound. "

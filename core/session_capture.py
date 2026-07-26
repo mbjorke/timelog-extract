@@ -232,6 +232,13 @@ def capture_device_evidence(
     not the canonical one. ``dry_run`` reports what would happen and writes
     nothing, anywhere.
 
+    ``home`` is where transcripts are **read** from. ``store_home`` is where the
+    ledger is **written**, and defaults to ``home`` only because that is what an
+    isolated test wants; every caller reading from somewhere other than the
+    operator's own HOME should pass ``store_home`` explicitly, as `gittan capture`
+    does. Letting an alternate ``home`` silently redirect the write puts evidence
+    where no report looks — and loses it when the mount goes away.
+
     ``if_enabled`` makes the run respect the persistent ``shadow_log`` config
     setting and do nothing when it is off. Automation (a timer) should pass it;
     an operator typing ``gittan capture`` should not — running the command *is*

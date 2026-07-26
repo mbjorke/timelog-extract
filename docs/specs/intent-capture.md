@@ -127,6 +127,10 @@ re-tag events, aggregated at report time. No config rewriting.
 - `docs/specs/ab-rule-suggestions.md` — an accepted intent record for a
   recurring host is a natural rule-suggestion trigger ("always map this
   host/thread to project X?").
+- `docs/specs/intent-capture-agent-surface.md` — draft MCP surface so the question
+  is asked inside the agent during the work, rather than in a terminal afterwards.
+  Answers the "write path for non-CLI surfaces" question below for the agent case
+  (local stdio, no endpoint to authenticate).
 
 ## Open questions
 

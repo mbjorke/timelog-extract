@@ -25,7 +25,7 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 |------|-----|------|
 | Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
 | Critic 1 | **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
-| Critic 2 | **autotests** | `scripts/run_autotests.sh` (500-line gate + unit tests) |
+| Critic 2 | **autotests** | `scripts/run_autotests.sh` (file-length report + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 
 **Independent-critic fallback (rate limits / outages).** The lens critic does not

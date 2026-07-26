@@ -119,7 +119,10 @@ same rule, not two — the generator only ever sees already-promoted specs.
   https://github.com/users/mbjorke/projects/3): add the issue and set its `Priority`
   / `Status` fields. Board writes need the `project` gh scope
   (`gh auth refresh -s project`); without it, keep priority in labels and add to the
-  board once the scope is granted.
+  board once the scope is granted. The board is a **human view** — nothing reads its
+  fields back, and **hosted** agent sessions cannot read it at all (local `gh` with
+  `project` scope can write). A pass is complete once the labels are right. See
+  [`../decisions/backlog-priority-surfaces.md`](../decisions/backlog-priority-surfaces.md).
 - **The product-owner pass owns priority.** Promotion to a committed task-prompt is
   what makes an idea eligible for an issue; the pass then sets `now`/`next` vs a
   parking label. Re-run the prioritization when scope shifts — labels and board

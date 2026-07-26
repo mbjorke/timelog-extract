@@ -217,6 +217,11 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
                             dir=dir_leaf,
                             branch=branch,
                             label=label,
+                            # Session identity: the one key that names *this*
+                            # conversation and nothing else, so a human decision
+                            # about it can be bound without inventing a
+                            # match_term that would leak into everything.
+                            session=cli_id or None,
                         ),
                     )
                 )

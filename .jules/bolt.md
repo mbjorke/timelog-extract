@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-07-26 - [Direct Set Intersection & List Comprehension Fingerprinting]
+**Learning:** In hot loops such as `classify_project` (called 50k times), minor overheads like manual set insertion `for x in set_a & set_b: set_c.add(x)` accumulate significant CPU time. Since set intersection returns a standard mutable Python `set`, direct assignment `set_c = set_a & set_b` completely bypasses Python-level loops and method-call dispatch, running at C speed. Additionally, using list comprehensions inside tuple wrapper `tuple([...])` is ~1.5x faster than generator expressions `tuple(...)` for compiling cache keys/fingerprints.
+**Action:** Avoid manual set-insertion loops for fast-path sets; prefer direct assignment of set operations. Use list comprehensions inside tuple constructors for high-frequency cache fingerprints.

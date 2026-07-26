@@ -34,6 +34,7 @@ def _is_path_like_term(term: str) -> bool:
 
 
 _URL_TOKEN_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+_WORD_RE = re.compile(r"\w+")
 
 
 @functools.lru_cache(maxsize=2048)
@@ -75,9 +76,12 @@ def _normalized_url_variants(text: str) -> str:
 @functools.lru_cache(maxsize=1024)
 def _prepare_haystack_and_word_set(text_lower: str) -> tuple[str, frozenset[str]]:
     """Pre-calculate combined text and word set for fast O(1) word boundary checks."""
-    normalized_variants = _normalized_url_variants(text_lower)
-    haystack_with_variants = f"{text_lower} {normalized_variants}".strip()
-    word_set = frozenset(re.findall(r"\w+", haystack_with_variants))
+    if "http" in text_lower:
+        normalized_variants = _normalized_url_variants(text_lower)
+        haystack_with_variants = f"{text_lower} {normalized_variants}".strip()
+    else:
+        haystack_with_variants = text_lower.strip()
+    word_set = frozenset(_WORD_RE.findall(haystack_with_variants))
     return haystack_with_variants, word_set
 
 
@@ -144,7 +148,7 @@ def _get_compiled_index(profiles: List[Dict[str, Any]]) -> Any:
     global _LAST_PROFILES_DATA
     # Fingerprint to detect mutation of the same list object (common in tests).
     # We include all profile names to catch renames or project swaps in the same list.
-    fingerprint = (len(profiles), tuple(p.get("name") for p in profiles))
+    fingerprint = (len(profiles), tuple([p.get("name") for p in profiles]))
     if (
         _LAST_PROFILES_DATA is None
         or _LAST_PROFILES_DATA[0] is not profiles
@@ -179,10 +183,8 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     fast_terms, slow_terms, all_impacts = _get_compiled_index(profiles)
     haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
 
-    matched_terms = set()
     # 1. Fast path: alphanumeric terms that are definitely in the text's word set.
-    for term in fast_terms.keys() & word_set:
-        matched_terms.add(term)
+    matched_terms = fast_terms.keys() & word_set
 
     # 2. Slow path: path-like or special-char terms.
     # Only check them if the term appears as a substring in the haystack.

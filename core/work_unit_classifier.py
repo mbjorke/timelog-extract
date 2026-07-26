@@ -247,7 +247,7 @@ def _get_compiled_units_index(units: Sequence[WorkUnit]) -> tuple[
     """
     global _LAST_UNITS_DATA
 
-    fingerprint = (len(units), tuple((u.line_key, u.signals) for u in units))
+    fingerprint = (len(units), tuple([(u.line_key, u.signals) for u in units]))
     if (
         _LAST_UNITS_DATA is None
         or _LAST_UNITS_DATA[0] is not units
@@ -274,10 +274,8 @@ def classify_work_unit(
     fast_signals, slow_signals, all_signals = _get_compiled_units_index(units)
     haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
 
-    matched_signals = set()
     # 1. Fast path: alphanumeric signals that are definitely in the text's word set.
-    for signal in fast_signals.keys() & word_set:
-        matched_signals.add(signal)
+    matched_signals = fast_signals.keys() & word_set
 
     # 2. Slow path: path-like or special-char signals.
     # Only check them if the signal appears as a substring in the haystack.

@@ -41,7 +41,9 @@ Collectors must:
 
 - read only the requested report window when the backing API supports it,
 - filter to the requested window before returning events,
-- normalize timestamps consistently with the runtime timezone policy,
+- normalize timestamps per `docs/specs/timestamp-standard.md` (store UTC and
+  timezone-aware; strip a `Z` suffix before `fromisoformat`, which rejects it on
+  the declared 3.10 floor),
 - avoid hidden "today" or "now" dependencies in closed-window tests,
 - expand recurring or derived events only inside the requested window.
 

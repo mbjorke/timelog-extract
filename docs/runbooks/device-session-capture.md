@@ -69,6 +69,12 @@ all — commit and pull instead. Evidence is filed per device
 (`2026-07.laptop.jsonl`, `2026-07.phone.jsonl`) when those labels stay distinct,
 so two devices do not write the same file and git has nothing to merge.
 
+`gittan capture` defaults include **Cursor** as well as Claude Code / Desktop
+Code (`--source cursor` to limit). Report project/session labels append a short
+device list only when **two or more** devices contributed to that project in the
+window (`timelog-extract (Mac, iPhone)`); a single-device day stays quiet. Billing
+project keys are unchanged.
+
 If you have an **older store** where both devices appended to one `2026-07.jsonl`
 and git merged them, the hash chain is broken even though every record is real.
 Fix it once:

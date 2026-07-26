@@ -293,6 +293,19 @@ def print_project_hour_review_section(
         additive_project_hours = dict(per_project_hours)
         additive_project_days = dict(per_project_days)
 
+    from core.device_labels import devices_for_events, display_project_label
+
+    # Display-only: which devices contributed to each project in this window.
+    events_by_project: Dict[str, list] = defaultdict(list)
+    for day_payload in overall_days.values():
+        for session in day_payload.get("sessions", []):
+            for event in session[2]:
+                project_name = str(event.get("project") or "").strip() or "Uncategorized"
+                events_by_project[project_name].append(event)
+    project_devices = {
+        name: devices_for_events(rows) for name, rows in events_by_project.items()
+    }
+
     heading = f"Project-hour review{period_heading_suffix(args)}"
     if additive_summary:
         heading += " (additive: primary project per session)"
@@ -408,8 +421,11 @@ def print_project_hour_review_section(
                 proj_b = billable_total_hours_fn(hours, args.billable_unit)
                 proj_b_text = f"{proj_b:.2f}h"
 
+            display_name = display_project_label(
+                project_name, devices=project_devices.get(project_name, [])
+            )
             proj_row = [
-                f"[{STYLE_META}]  · {project_name}[/{STYLE_META}]",
+                f"[{STYLE_META}]  · {display_name}[/{STYLE_META}]",
                 f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",
             ]
             if show_totals:

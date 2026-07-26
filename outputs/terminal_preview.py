@@ -109,6 +109,8 @@ def assemble_timeline_event_line(
     label_style: str,
     detail_style: str,
 ) -> Text:
+    # Device suffixes belong on session/project aggregation labels (quiet when
+    # single-device). Per-row cells keep the bare billing project key.
     return Text.assemble(
         (f"{event['local_ts'].strftime('%H:%M')} ", time_style),
         (f"{source_label} ", source_style),

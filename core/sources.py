@@ -210,7 +210,13 @@ def session_project_labels(events: list) -> list[str]:
 
     A single Lovable (desktop) presence row must not lead the label when the
     session is overwhelmingly Cursor/Chrome/Worklog on other projects (GH-448).
+
+    Display-only device suffixes (``project (Mac, iPhone)``) are applied when
+    multiple devices contributed to that project in the session — billing keys
+    stay bare on ``event["project"]``.
     """
+    from core.device_labels import display_project_label
+
     authorship: dict[str, int] = {}
     presence: dict[str, int] = {}
     for event in events or []:
@@ -224,4 +230,5 @@ def session_project_labels(events: list) -> list[str]:
         (name for name in presence if name not in authorship),
         key=lambda name: (-presence[name], name.lower()),
     )
-    return auth_ordered + presence_only
+    ordered = auth_ordered + presence_only
+    return [display_project_label(name, events) for name in ordered]

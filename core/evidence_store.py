@@ -423,6 +423,7 @@ def replay_into_events(
                 "timestamp": obs_dt,
                 "detail": rec.get("detail", ""),
                 "project": rec.get("project_at_capture", ""),
+                "source_provenance": rec.get("source_provenance"),
                 "replayed": True,
             }
         )

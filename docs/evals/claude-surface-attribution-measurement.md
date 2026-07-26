@@ -49,7 +49,7 @@ much text there is:
 - **Claude Code** and **Desktop Code mode** both carry a repo identity —
   `cwd` → remote slug for the former, `session_context.outcomes[].git_info.repo`
   for the latter. Desktop Code's is *worktree-invariant by construction*: in the
-  fixture `cwd` was deliberately a sandbox path (`/Users/op/sandbox`) and it still
+  fixture `cwd` was deliberately a sandbox path (`sandbox/worktree`) and it still
   attributed correctly from session metadata.
 - **Desktop plain chat** has no anchor at all. `collect_claude_desktop`
   classifies on the message detail alone, so the project lands only if you

@@ -70,7 +70,7 @@ def _month_key(observed_at_iso: str) -> str:
 def _device_slug(device: Any) -> str:
     """Filename-safe device label, or "" when the record carries no device.
 
-    Stem is human-readable; an 8-hex digest of the stripped label keeps file
+    Stem is human-readable; a 16-hex digest of the stripped label keeps file
     keys distinct when labels differ only by case, punctuation, or past the
     stem truncation — so two devices never share one monthly evidence file.
     """
@@ -78,7 +78,7 @@ def _device_slug(device: Any) -> str:
     if not raw:
         return ""
     stem = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")[:24] or "device"
-    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{stem}-{digest}"
 
 

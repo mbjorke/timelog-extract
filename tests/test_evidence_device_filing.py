@@ -37,16 +37,16 @@ def event(hour: int, detail: str, device: str | None = None) -> dict:
 
 class DeviceSlugTests(unittest.TestCase):
     def test_slug_is_filename_safe(self):
-        self.assertRegex(_device_slug("Ada's MacBook Pro"), r"^ada-s-macbook-pro-[0-9a-f]{8}$")
-        self.assertRegex(_device_slug("claude/web:container"), r"^claude-web-container-[0-9a-f]{8}$")
+        self.assertRegex(_device_slug("Ada's MacBook Pro"), r"^ada-s-macbook-pro-[0-9a-f]{16}$")
+        self.assertRegex(_device_slug("claude/web:container"), r"^claude-web-container-[0-9a-f]{16}$")
 
     def test_missing_device_is_empty(self):
         self.assertEqual(_device_slug(None), "")
         self.assertEqual(_device_slug("   "), "")
 
     def test_slug_is_bounded(self):
-        # stem(24) + "-" + digest(8)
-        self.assertLessEqual(len(_device_slug("x" * 200)), 33)
+        # stem(24) + "-" + digest(16)
+        self.assertLessEqual(len(_device_slug("x" * 200)), 41)
 
     def test_distinct_labels_do_not_collide(self):
         """Case, punctuation, and long-prefix twins must not share a file key."""
@@ -63,7 +63,7 @@ class DeviceSlugTests(unittest.TestCase):
             {"observed_at": "2026-07-25T09:00:00+00:00", "source_provenance": {"device": "phone"}}
         )
         self.assertEqual(key, f"2026-07.{_device_slug('phone')}")
-        self.assertRegex(key, r"^2026-07\.phone-[0-9a-f]{8}$")
+        self.assertRegex(key, r"^2026-07\.phone-[0-9a-f]{16}$")
 
     def test_malformed_provenance_does_not_crash_filing(self):
         key = _record_file_key(

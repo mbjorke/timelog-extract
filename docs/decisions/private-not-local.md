@@ -61,7 +61,7 @@ only the ordering was.
 
 The fix is to remove the collision rather than resolve it:
 
-- Evidence is filed as **`YYYY-MM.<device-slug>-<8hex>.jsonl`**, from the device recorded in
+- Evidence is filed as **`YYYY-MM.<device-slug>-<16hex>.jsonl`**, from the device recorded in
   each record's `source_provenance`. Device labels must be **unique per machine**
   (host name by default; `--device` overrides). A collision recreates the merge
   problem. Distinct labels → each device only ever writes its own file, so git

@@ -175,9 +175,10 @@ parses:
 - **When no keyword fits** (pure docs/tooling with no issue), that's fine — but if
   an issue exists, link it.
 - **Where priority lives:** `priority:*` labels are the source of truth; Project 3
-  is a human view — written to, never read back, and unreachable from an agent
-  session. Audit the backlog from labels + spec Traceability, never from board
-  `Status`. See `docs/decisions/backlog-priority-surfaces.md`.
+  is a human view — written to, never read back, and unreachable from a **hosted**
+  agent session (local `gh` with the `project` scope can write the board). Audit
+  the backlog from labels + spec Traceability, never from board `Status`. See
+  `docs/decisions/backlog-priority-surfaces.md`.
 
 ## Documentation paths in code (CLI, errors, `console.print`)
 

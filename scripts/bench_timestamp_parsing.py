@@ -98,6 +98,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iterations", type=int, default=200_000)
     args = parser.parse_args()
+    if args.iterations <= 0:
+        parser.error("--iterations must be a positive integer")
 
     print(f"Python {platform.python_version()} on {platform.platform()}")
     print(f"{args.iterations:,} iterations per case\n")

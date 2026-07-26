@@ -62,8 +62,10 @@ only the ordering was.
 The fix is to remove the collision rather than resolve it:
 
 - Evidence is filed as **`YYYY-MM.<device>.jsonl`**, from the device recorded in
-  each record's `source_provenance`. A device only ever writes its own file, so
-  git has nothing to merge and every file keeps a valid chain.
+  each record's `source_provenance`. Device labels must be **unique per machine**
+  (host name by default; `--device` overrides). A collision recreates the merge
+  problem. Distinct labels → each device only ever writes its own file, so git
+  has nothing to merge and every file keeps a valid chain.
 - Reading already unions all `*.jsonl` and dedupes by fingerprint, so the same
   observation captured on two devices still counts once.
 - Records without a device keep the plain `YYYY-MM.jsonl` name; existing stores

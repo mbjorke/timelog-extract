@@ -499,11 +499,16 @@ def repair_store(
         unique: List[Dict[str, Any]] = []
         for rec in records:
             fp = rec.get("fingerprint")
-            if fp and fp in seen:
+            canon_fp = compute_evidence_fingerprint(
+                canonical_source_name(rec.get("source")),
+                rec.get("observed_at"),
+                rec.get("detail"),
+            )
+            keys = {k for k in (fp, canon_fp) if k}
+            if keys and keys & seen:
                 duplicates_removed += 1
                 continue
-            if fp:
-                seen.add(fp)
+            seen.update(keys)
             unique.append(rec)
         unique.sort(key=lambda r: (str(r.get("observed_at", "")), str(r.get("fingerprint", ""))))
 

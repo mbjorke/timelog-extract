@@ -130,10 +130,9 @@ restored evidence is bound too.
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/469
 - implementation.branch: task/session-capture-and-intent
 - implementation.commits: []
-- validation.evidence: `tests/test_intent_store.py` (23 tests incl. an end-to-end
-  report assertion that bound hours move off `Uncategorized`, and that a decision
-  overrides a text match); live demo — a desktop-code session's 0.4h moved from
-  `Uncategorized` to a named customer after one binding, with no config change
+- validation.evidence: `tests/test_intent_store.py` (end-to-end report assertion
+  that bound hours move off `Uncategorized`, and that a decision overrides a text
+  match); fixture path uses `project-alpha` / synthetic durations only
 - validation.decision: conditional GO
 - changelog:
   - 2026-07-26: `session` anchor in both Claude collectors, `core/intent_store.py`

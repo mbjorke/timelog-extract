@@ -33,6 +33,7 @@ def intent(
     from types import SimpleNamespace
 
     from rich.console import Console
+    from rich.markup import escape
 
     from core.analytics import get_date_range
     from core.config import load_profiles, resolve_projects_config_path
@@ -52,13 +53,13 @@ def intent(
     if list_only:
         bindings = resolve_intents(home=home)
         if not bindings:
-            console.print(f"[{STYLE_MUTED}]No session bindings yet ({intent_path(home)}).[/{STYLE_MUTED}]")
+            console.print(f"[{STYLE_MUTED}]No session bindings yet ({escape(str(intent_path(home)))}).[/{STYLE_MUTED}]")
             return
         console.print(f"[bold {STYLE_LABEL}]Session bindings[/bold {STYLE_LABEL}] — {len(bindings)}")
         for (_kind, key), record in sorted(bindings.items(), key=lambda item: item[1]["captured_at"], reverse=True):
             console.print(
-                f"  [{CLR_VALUE_ORANGE}]{record['project']}[/{CLR_VALUE_ORANGE}] ← {key} "
-                f"[{STYLE_MUTED}]({record['captured_at'][:10]}, via {record.get('via', 'cli')})[/{STYLE_MUTED}]"
+                f"  [{CLR_VALUE_ORANGE}]{escape(str(record['project']))}[/{CLR_VALUE_ORANGE}] ← {escape(str(key))} "
+                f"[{STYLE_MUTED}]({escape(str(record['captured_at'][:10]))}, via {escape(str(record.get('via', 'cli')))})[/{STYLE_MUTED}]"
             )
         return
 
@@ -85,10 +86,10 @@ def intent(
             # and nothing is appended.
             if known and project not in known:
                 console.print(
-                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {project!r} is not a "
+                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {escape(project)!r} is not a "
                     f"configured project.[/{CLR_VALUE_ORANGE}]"
                 )
-                console.print(f"[{STYLE_MUTED}]Known: {', '.join(known)}[/{STYLE_MUTED}]")
+                console.print(f"[{STYLE_MUTED}]Known: {escape(', '.join(known))}[/{STYLE_MUTED}]")
                 console.print(
                     f"[{STYLE_MUTED}]Next: Use one of those names, or add the project to "
                     f"your config first. Nothing was recorded.[/{STYLE_MUTED}]"
@@ -98,9 +99,14 @@ def intent(
         written = 0
         for session, project in pending:
             record = record_intent(session, project, via="cli", note=note, home=home)
-            console.print(f"Bound {record['key']} → [{CLR_VALUE_ORANGE}]{record['project']}[/{CLR_VALUE_ORANGE}]")
+            console.print(
+                f"Bound {escape(str(record['key']))} → "
+                f"[{CLR_VALUE_ORANGE}]{escape(str(record['project']))}[/{CLR_VALUE_ORANGE}]"
+            )
             written += 1
-        console.print(f"[{STYLE_MUTED}]{written} binding(s) appended to {intent_path(home)}[/{STYLE_MUTED}]")
+        console.print(
+            f"[{STYLE_MUTED}]{written} binding(s) appended to {escape(str(intent_path(home)))}[/{STYLE_MUTED}]"
+        )
         return
 
     # Interactive: collect the window's events, then ask about each unbound session.
@@ -136,8 +142,9 @@ def intent(
             span = local_stamp(when)
         label = row["label"] or "(no title)"
         console.print(
-            f"[{CLR_VALUE_ORANGE}]{label}[/{CLR_VALUE_ORANGE}] "
-            f"[{STYLE_MUTED}]{row['source']} · {span} · {row['events']} event(s) · {row['session']}[/{STYLE_MUTED}]"
+            f"[{CLR_VALUE_ORANGE}]{escape(str(label))}[/{CLR_VALUE_ORANGE}] "
+            f"[{STYLE_MUTED}]{escape(str(row['source']))} · {escape(str(span))} · "
+            f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
         # Re-ask on a name we do not know rather than recording it: blank always
         # skips, so this cannot trap the operator in a loop.
@@ -148,12 +155,12 @@ def intent(
                 break
             if known and answer not in known:
                 console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{answer!r} is not a configured "
+                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{escape(answer)!r} is not a configured "
                     f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
                 )
                 continue
             record_intent(row["session"], answer, via="intent-prompt", home=home)
-            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{answer}[/{CLR_VALUE_ORANGE}]\n")
+            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
             bound += 1
             break
 

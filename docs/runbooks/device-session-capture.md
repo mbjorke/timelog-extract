@@ -35,9 +35,11 @@ export instead, and move the file off the device before it disappears:
 gittan capture --device claude-web --export ~/session-2026-07-25.jsonl
 ```
 
-`--device` is free text; it labels the evidence. The default is the host name,
-which for a container is a random string — naming it yourself makes the ledger
-readable later.
+`--device` is free text; it labels the evidence. Keep labels **unique** across
+machines that share one data repo — a collision puts two devices in the same
+month file and reintroduces merge breakage. The default is the host name, which
+for a container is a random string — naming it yourself makes the ledger readable
+later.
 
 ## On your main device
 
@@ -64,8 +66,8 @@ gittan capture --home /Volumes/backup/home-old --device old-laptop
 If your devices share the `~/.gittan` data repo (see
 `docs/runbooks/gittan-data-autocommit.md`), you may not need export/import at
 all — commit and pull instead. Evidence is filed per device
-(`2026-07.laptop.jsonl`, `2026-07.phone.jsonl`), so two devices never write the
-same file and git has nothing to merge.
+(`2026-07.laptop.jsonl`, `2026-07.phone.jsonl`) when those labels stay distinct,
+so two devices do not write the same file and git has nothing to merge.
 
 If you have an **older store** where both devices appended to one `2026-07.jsonl`
 and git merged them, the hash chain is broken even though every record is real.

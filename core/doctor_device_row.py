@@ -32,8 +32,11 @@ def _days_since(observed_at: Optional[str], today: date) -> Optional[int]:
     """
     if not observed_at:
         return None
+    raw = str(observed_at).strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
     try:
-        parsed = datetime.fromisoformat(str(observed_at))
+        parsed = datetime.fromisoformat(raw)
     except (TypeError, ValueError):
         return None
     if parsed.tzinfo is None:
@@ -99,7 +102,10 @@ def add_device_coverage_row(
         )
         return
 
-    descriptions, stale = describe_devices(per_device, today or datetime.now(timezone.utc).date())
+    # Reader's local calendar, not UTC date — same contract as `_days_since`.
+    descriptions, stale = describe_devices(
+        per_device, today or datetime.now().astimezone().date()
+    )
     detail = " · ".join(descriptions)
     if stale:
         table.add_row(

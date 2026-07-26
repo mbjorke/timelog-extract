@@ -42,9 +42,15 @@ after replay, and an overridden row records `anchors.project_from = "intent"`.
 
 Spec and rationale: `docs/task-prompts/session-intent-binding-task.md`.
 
-Still draft here: the **`url_hash`** key below, which is what a browser chat
+**Shipped contract (`key_kind: "session"`):** CLI `gittan intent`, append-only
+log, report override after replay. See the task prompt and
+`tests/test_intent_store.py`.
+
+**Still draft here:** the **`url_hash`** key below, which is what a browser chat
 would need — it has no session id Gittan can see. The store accepts
-`key_kind: "url"`, but nothing produces such a key yet.
+`key_kind: "url"`, but nothing produces such a key yet. Treat URL fields and
+scenarios below as forward-looking until a producer lands; do not read them as
+the shipped session surface.
 
 ## The intent record
 

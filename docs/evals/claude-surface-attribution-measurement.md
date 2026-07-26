@@ -14,28 +14,29 @@ project attribution for free and escape the brittle term/URL matching?
 One 8-turn work session, fabricated five ways. The prose is held constant in two
 variants, because that turns out to be the whole story:
 
-- **names the project:** "Let's fix the thinning in timelog-extract's chrome collector"
+- **names the project:** "Let's fix the thinning in project-alpha's chrome collector"
 - **does not:** "Let's fix the thinning in the browser history collector"
 
 Real chat usually looks like the second — you discuss the work, not the slug.
-Profile `match_terms`: `["timelog-extract", "gittan"]`.
+Profile `match_terms`: `["project-alpha", "alpha-cli"]`.
 
 ## Result
 
 | Surface | Structural anchor available | Project, prose *without* the name | Hours |
 |---|---|---|---|
-| Claude Code, `cwd` in a real clone | git remote slug + dir | **gittan** | 0.58h |
+| Claude Code, `cwd` in a real clone | git remote slug + dir | **project-alpha** | 0.58h |
 | Claude Code, `cwd` not a repo | dir only | Uncategorized | 0.58h |
-| Desktop **Code**, git session metadata | repo slug + label + dir | **gittan** | 0.58h |
+| Desktop **Code**, git session metadata | repo slug + label + dir | **project-alpha** | 0.58h |
 | Desktop **Code**, no git metadata | dir + label | Uncategorized | 0.58h |
 | Desktop **chat** (`local-agent-mode-sessions`) | none | Uncategorized | 0.58h |
-| Desktop chat, prose *names* the project | none | gittan | 0.58h |
+| Desktop chat, prose *names* the project | none | project-alpha | 0.58h |
 
 The slug signal was isolated separately: a neutral session-directory name with
-`cwd` pointing at a real clone still classifies (`resolve_path_repo_slug` →
-`mbjorke/timelog-extract`, anchors `dir, repo`), while the same neutral directory
-with a non-repo `cwd` does not. So attribution there comes from the **remote
-slug**, not from a path that happens to contain the project name.
+`cwd` pointing at a synthetic git clone still classifies
+(`resolve_path_repo_slug` → `example/project-alpha`, anchors `dir, repo`), while
+the same neutral directory with a non-repo `cwd` does not. So attribution there
+comes from the **remote slug**, not from a path that happens to contain the
+project name.
 
 ## What it means
 
@@ -96,6 +97,6 @@ decision from reading timestamps — see `#354`'s display-vs-identity rule and
 
 Fabricated fixtures only; no real chat content, no local data. The Claude Desktop
 cache entries reuse the builders in `tests/test_claude_desktop_events.py`
-(`_make_entry`), and the Claude Code transcripts are plain JSONL. The one real
-input is this repository's own git remote, used to show that
-`resolve_path_repo_slug` resolves where a synthetic path cannot.
+(`_make_entry`), and the Claude Code transcripts are plain JSONL. Remote-slug
+resolution is exercised against a **synthetic** git remote in the fixture
+(`example/project-alpha`), not against a live clone.

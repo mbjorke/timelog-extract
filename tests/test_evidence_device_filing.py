@@ -28,7 +28,7 @@ def event(hour: int, detail: str, device: str | None = None) -> dict:
         "source": "Claude Code CLI",
         "timestamp": datetime(2026, 7, 25, hour, 0, tzinfo=timezone.utc),
         "detail": detail,
-        "project": "gittan",
+        "project": "project-alpha",
     }
     if device is not None:
         ev["source_provenance"] = {"device": device, "captured_via": "claude-code"}

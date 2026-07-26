@@ -15,6 +15,14 @@ def capture(
     date_to: Annotated[Optional[str], typer.Option("--to", help="End date (YYYY-MM-DD). Defaults to today.")] = None,
     device: Annotated[Optional[str], typer.Option("--device", help="Name this device in the evidence (default: host name).")] = None,
     home: Annotated[Optional[str], typer.Option("--home", help="Read session transcripts from this HOME instead of yours.")] = None,
+    store_home: Annotated[
+        Optional[str],
+        typer.Option(
+            "--store-home",
+            help="Write the evidence ledger under this HOME's ~/.gittan (default: your HOME). "
+            "Use when GITTAN_HOME points at a non-default data dir that the autocommit timer commits.",
+        ),
+    ] = None,
     export: Annotated[Optional[str], typer.Option("--export", help="Write records to PATH instead of this device's ledger — for a device whose store is not the canonical one.")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Report what would be captured; write nothing.")] = False,
     if_enabled: Annotated[bool, typer.Option("--if-enabled", help="Do nothing unless \"shadow_log\" is on in config — for timers and hooks.")] = False,
@@ -69,13 +77,12 @@ def capture(
             dt_to,
             home=read_home,
             # `--home` redirects *reading* only, as its help says. The ledger
-            # stays canonical: capturing from a mounted backup of another machine
-            # is the documented use case, and its events belong in your own store
-            # (per-device filing keeps them apart). Writing under the alternate
-            # HOME instead would put evidence somewhere no report reads, and lose
-            # it outright when an ephemeral mount goes away. `--export` is the
-            # supported way to write elsewhere.
-            store_home=Path.home(),
+            # defaults to the operator HOME: capturing from a mounted backup of
+            # another machine belongs in your own store (per-device filing keeps
+            # them apart). `--store-home` is for a non-default data dir (e.g.
+            # GITTAN_HOME) that autocommit will commit; `--export` writes a
+            # portable file instead of any ledger.
+            store_home=Path(store_home).expanduser() if store_home else Path.home(),
             device=device,
             export_to=export,
             dry_run=dry_run,

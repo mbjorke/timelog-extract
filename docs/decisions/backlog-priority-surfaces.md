@@ -76,8 +76,9 @@ This is a hard constraint, not a missing permission. Verified empirically on
 
 Practical rule: **never ask for board access, a token, or a visibility change to
 unblock a hosted agent session.** None of them work there. If such a session
-genuinely needs board `Status`, a human pastes it, or a local `gh`-backed dump is
-committed as a snapshot.
+genuinely needs board `Status`, a human pastes a **sanitized** summary (issue
+numbers + Status/Priority only — no client names from item titles). Do **not**
+commit a raw board dump; titles can carry private identifiers (cf. `#431`).
 
 This is about hosted sessions only, and does **not** apply to a human on their own
 machine. Board *writes* from a local `gh` do need the project scope —

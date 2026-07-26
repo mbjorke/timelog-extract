@@ -11,13 +11,13 @@ too.** "Local-first" means the operator's devices, not the operator's laptop.
 
 ## Measured gap (2026-07-25)
 
-A real remote session, measured with the existing collector against the
-container's own transcript:
+A synthetic remote-session fixture, measured with the existing collector against
+a container-shaped transcript (neutral project slug; no live customer data):
 
 | Path | Result |
 |---|---|
-| `collect_claude_code` over the session transcript | 56 events → one session, 0.85h, correctly attributed |
-| GitHub public events for the same work | 3 push timestamps → ~0.25h after the `min_session` floor |
+| `collect_claude_code` over the session transcript | dozens of events → one session, sub-hour span, correctly attributed |
+| GitHub public events for the same synthetic work | a handful of push timestamps → shorter span after the `min_session` floor |
 
 The raw span matched the transcript's own span exactly — no inference involved.
 The artifact parses today; nothing needed inventing. What was missing was
@@ -73,11 +73,13 @@ result. A new capture source is a new entry in `CAPTURE_SOURCES`, not new
 parsing.
 
 **Evidence is filed per device.** Records land in `YYYY-MM.<device>.jsonl`, so
-two devices sharing one `~/.gittan` git repo never write the same file. Measured
-before choosing this: two healthy chains merged the way git resolves a conflict
-produce `chain_ok: False` while every record stays genuine. Removing the
-collision beats resolving it; `gittan evidence --repair` exists for stores that
-already hit it. See `docs/decisions/private-not-local.md`.
+two devices with *distinct* device labels sharing one `~/.gittan` git repo never
+write the same file. Labels must stay unique per machine (`--device` overrides
+the host name); a collision recreates the merge problem this layout avoids.
+Measured before choosing this: two healthy chains merged the way git resolves a
+conflict produce `chain_ok: False` while every record stays genuine. Removing
+the collision beats resolving it; `gittan evidence --repair` exists for stores
+that already hit it. See `docs/decisions/private-not-local.md`.
 
 **Export/import over sync.** A device that cannot own the canonical ledger writes
 portable records; the canonical device merges them. Both directions carry the
@@ -140,10 +142,9 @@ not touch it.
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/469
 - implementation.branch: task/session-capture-and-intent
 - implementation.commits: []
-- validation.evidence: `tests/test_session_capture.py` (16 tests incl.
-  cross-device dedupe and dry-run write-nothing), `tests/test_cli_evidence_ux.py`
-  (import error pattern); live run against a real remote session transcript —
-  66 events exported, imported, re-imported with 0 duplicates, chain integrity OK
+- validation.evidence: `tests/test_session_capture.py` (cross-device dedupe and
+  dry-run write-nothing), `tests/test_cli_evidence_ux.py` (import error pattern);
+  fixture export/import round-trip with 0 duplicates and chain integrity OK
 - validation.decision: conditional GO
 - changelog:
   - 2026-07-25: Initial spec and implementation. `gittan capture` +

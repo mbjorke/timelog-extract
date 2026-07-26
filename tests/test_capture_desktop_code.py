@@ -59,8 +59,11 @@ def write_desktop_code_cache(home: Path, *, repo_slug: str | None) -> None:
             "message": {"content": CHAT_TEXT},
         }
         if index == 0:
-            # Deliberately not the repo path — the slug must come from metadata.
-            row["cwd"] = "/Users/op/sandbox"
+            # Deliberately an absolute path outside the repo — that is the
+            # property under test, so the slug must come from metadata. Kept
+            # under /tmp rather than a /Users/<name> home so the fixture carries
+            # no shape resembling a real operator's path.
+            row["cwd"] = "/tmp/sandbox/worktree"
         rows.append(row)
     (cache / "ev_0").write_bytes(
         _make_entry(

@@ -166,7 +166,11 @@ def run_uncategorized_cluster_review(
                 "Quit",
             ],
         ).ask()
-        if not action or action == "Quit":
+        if action is None:
+            from outputs.terminal_theme import CLR_VALUE_ORANGE
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
+        if action == "Quit":
             break
         if action == "Skip":
             continue
@@ -176,9 +180,19 @@ def run_uncategorized_cluster_review(
             if not project_names:
                 console.print("[yellow]No existing projects found; skipping this cluster.[/yellow]")
                 continue
-            project_name = questionary.select("Target project:", choices=project_names).ask() or ""
+            p_select = questionary.select("Target project:", choices=project_names).ask()
+            if p_select is None:
+                from outputs.terminal_theme import CLR_VALUE_ORANGE
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+                raise typer.Exit(code=130)
+            project_name = p_select
         else:
-            project_name = questionary.text("New project name:").ask() or ""
+            p_text = questionary.text("New project name:").ask()
+            if p_text is None:
+                from outputs.terminal_theme import CLR_VALUE_ORANGE
+                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+                raise typer.Exit(code=130)
+            project_name = p_text
         if not project_name.strip():
             console.print("[yellow]No project selected; cluster skipped.[/yellow]")
             continue
@@ -187,7 +201,11 @@ def run_uncategorized_cluster_review(
             f"{cluster.rule_type} value to save:",
             default=cluster.rule_value,
         ).ask()
-        if rule_value is None or not rule_value.strip():
+        if rule_value is None:
+            from outputs.terminal_theme import CLR_VALUE_ORANGE
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
+        if not rule_value.strip():
             console.print("[yellow]No rule value entered; cluster skipped.[/yellow]")
             continue
 

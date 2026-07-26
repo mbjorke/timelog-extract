@@ -302,7 +302,7 @@ def run_url_mapping_review(
         ).ask()
         if choice is None:
             console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-            _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+            raise typer.Exit(code=130)
 
         if choice == "high":
             auto_assigned = dict(_auto_assign_high(review_pool, project_names))
@@ -348,7 +348,7 @@ def run_url_mapping_review(
         ).ask()
     if review_more is None:
         console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+        raise typer.Exit(code=130)
     if review_more:
         # Include parked so operator can Park/Skip (never force create).
         review_rows = [row for row in rows if row.url_key not in auto_assigned and row.url_key not in created_keys]
@@ -376,7 +376,7 @@ def run_url_mapping_review(
             ).ask()
             if edit_choice is None:
                 console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+                raise typer.Exit(code=130)
             if edit_choice == "__done__":
                 break
             row = next((r for r in rows if r.url_key == edit_choice), None)
@@ -392,7 +392,7 @@ def run_url_mapping_review(
             )
             if selected_project == "__cancel__":
                 console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+                raise typer.Exit(code=130)
             if selected_project == "__created__":
                 created_keys.add(row.url_key)
                 assignment_by_key[row.url_key] = None
@@ -436,7 +436,7 @@ def run_url_mapping_review(
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
     if not confirmed:
         console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+        raise typer.Exit(code=130)
 
     applied = apply_triage_decisions_payload(
         decisions=decisions,

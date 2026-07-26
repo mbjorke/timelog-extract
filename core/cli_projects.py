@@ -101,7 +101,7 @@ def projects(
         ).ask()
 
         if action == "Cancel" or not action:
-            break
+            raise typer.Exit(code=130)
 
         if action == "Save & Exit":
             save()
@@ -127,6 +127,8 @@ def projects(
         if action == "Set Worklog Path":
             current_wl = data.get("worklog", "TIMELOG.md")
             new_wl = questionary.text("Worklog path:", default=current_wl).ask()
+            if new_wl is None:
+                raise typer.Exit(code=130)
             if new_wl:
                 data["worklog"] = new_wl
 
@@ -140,6 +142,8 @@ def projects(
                     console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No projects to edit.[/{CLR_VALUE_ORANGE}]")
                     continue
                 target_name = questionary.select("Select project to edit:", choices=names).ask()
+                if target_name is None:
+                    raise typer.Exit(code=130)
                 if not target_name:
                     continue
                 project = next((p for p in data["projects"] if p["name"] == target_name), {})
@@ -150,12 +154,14 @@ def projects(
             name = project.get("name", "")
             if not is_edit:
                 name = questionary.text("Project Name (unique ID):").ask()
+                if name is None:
+                    raise typer.Exit(code=130)
                 if not name:
                     continue
 
             customer = questionary.text("Customer (display name):", default=project.get("customer", name)).ask()
             if customer is None:
-                continue
+                raise typer.Exit(code=130)
 
             default_match_terms = project.get("match_terms", [])
             if not is_edit and not default_match_terms:
@@ -165,26 +171,26 @@ def projects(
                 default=", ".join(default_match_terms),
             ).ask()
             if match_terms is None:
-                continue
+                raise typer.Exit(code=130)
 
             tracked_urls = questionary.text(
                 "Tracked AI URLs (comma separated):",
                 default=", ".join(project.get("tracked_urls", [])),
             ).ask()
             if tracked_urls is None:
-                continue
+                raise typer.Exit(code=130)
 
             email = questionary.text("Email filter (sender/receiver):", default=project.get("email", "")).ask()
             if email is None:
-                continue
+                raise typer.Exit(code=130)
 
             title = questionary.text("Invoice Title:", default=project.get("invoice_title", "")).ask()
             if title is None:
-                continue
+                raise typer.Exit(code=130)
 
             desc = questionary.text("Invoice Description:", default=project.get("invoice_description", "")).ask()
             if desc is None:
-                continue
+                raise typer.Exit(code=130)
 
             new_project = {
                 "name": name,
@@ -214,9 +220,13 @@ def projects(
                 console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No projects to remove.[/{CLR_VALUE_ORANGE}]")
                 continue
             target_name = questionary.select("Select project to remove:", choices=names).ask()
+            if target_name is None:
+                raise typer.Exit(code=130)
             if not target_name:
                 continue
             should_remove = questionary.confirm(f"Are you sure you want to remove '{target_name}'?").ask()
+            if should_remove is None:
+                raise typer.Exit(code=130)
             if should_remove is True:
                 data["projects"] = [p for p in data["projects"] if p["name"] != target_name]
                 console.print(f"{OK_ICON} [{CLR_GREEN}]Project removed from memory.[/{CLR_GREEN}]")

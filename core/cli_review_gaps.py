@@ -257,7 +257,10 @@ def run_gap_attribution_review(
             "Attribute this gap to existing customer/project line",
             choices=[*project_names, _SKIP, _QUIT],
         ).ask()
-        if target is None or target == _QUIT:
+        if target is None:
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
+        if target == _QUIT:
             break
         if target == _SKIP:
             continue
@@ -283,6 +286,9 @@ def run_gap_attribution_review(
             f"Apply {cluster.rule_type}={cluster.rule_value!r} to '{target}' now?",
             default=False,
         ).ask()
+        if confirmed is None:
+            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
         if not confirmed:
             console.print("[dim]Skipped — no config change.[/dim]")
             continue

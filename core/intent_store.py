@@ -16,8 +16,7 @@ shape follow ``docs/specs/intent-capture.md``). The log is never rewritten: a
 re-decision appends, and the latest record for a key wins, so the history of what
 you decided when stays readable.
 
-Two decisions taken here, both reversible and both stated so they can be
-overruled:
+Two rules, both confirmed by the maintainer on 2026-07-26:
 
 **An intent beats a match_term.** A deliberate human answer outranks a heuristic
 pattern — otherwise the question is pointless, since a stale rule could silently
@@ -25,9 +24,9 @@ override the answer. Overridden events carry
 ``anchors.project_from = "intent"`` so a report can always say *why* a row
 belongs where it does.
 
-**One binding per session.** A session that spans two projects is a real case,
-but splitting a session by time span is a different feature; this binds the whole
-session and says so rather than half-solving it.
+**A session belongs to one project.** Binding part of a session to a different
+project is out of scope, not unfinished — so a single key per session is the whole
+model, and code may rely on that.
 """
 
 from __future__ import annotations

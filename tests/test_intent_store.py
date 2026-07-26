@@ -124,7 +124,11 @@ class ApplyIntentsTests(unittest.TestCase):
         self.assertEqual(anchors["session"], "s1", "existing anchors survive")
 
     def test_intent_overrides_a_text_match(self):
-        """The decision beats the pattern — otherwise asking is pointless."""
+        """Confirmed contract (maintainer, 2026-07-26): the decision beats the pattern.
+
+        Without this, a stale match_term could silently override an explicit
+        answer and asking the question would be pointless.
+        """
         record_intent("s1", "Customer X", path=self.path)
         events, changed = apply_intents([event("s1", "MatchedByTerm")], path=self.path)
         self.assertEqual(changed, 1)

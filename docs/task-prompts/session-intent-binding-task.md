@@ -81,11 +81,13 @@ anywhere binds the same session.
 
 **An intent beats a match_term.** A deliberate answer outranks a heuristic
 pattern; otherwise a stale rule could silently override the answer and asking
-would be pointless. **Overrulable** — invert it if you would rather have config
-win.
+would be pointless. **Confirmed by the maintainer 2026-07-26** — this is the
+contract, not a default, and `tests/test_intent_store.py` pins it.
 
-**One binding per session.** A session spanning two projects is a real case, but
-splitting by time span is a different feature. Bound whole, and said so.
+**One binding per session — and that is enough.** A session spanning two projects
+was raised as a possible gap; the maintainer confirmed 2026-07-26 that it is not
+needed. Splitting a binding by time span is therefore **out of scope**, not
+deferred work waiting to be picked up.
 
 **Re-projection is auditable.** An overridden row carries
 `anchors.project_from = "intent"` and `anchors.project_before_intent`, so "why is
@@ -137,3 +139,6 @@ restored evidence is bound too.
   - 2026-07-26: `session` anchor in both Claude collectors, `core/intent_store.py`
     (append-only log, latest-wins, auditable re-projection), the override wired
     into the report path, and `gittan intent` as the question surface.
+  - 2026-07-26: Both open forks closed by the maintainer — intent outranks
+    `match_terms` (confirmed), and per-time-span bindings are out of scope (a
+    session belongs to one project).

@@ -25,6 +25,42 @@ STYLE_META = CLR_DIM
 from outputs.terminal_warnings import print_report_warnings
 
 
+def events_by_project_for_device_labels(
+    overall_days: Dict[str, Any],
+    *,
+    additive_summary: bool = False,
+) -> Dict[str, list]:
+    """Group session events for display-only device suffixes.
+
+    When ``additive_summary`` is on, every event in a session is attributed to
+    that session's primary project (same rule as additive hour totals).
+    Otherwise each event keeps its raw ``project`` key.
+    """
+    events_by_project: Dict[str, list] = defaultdict(list)
+    for day_payload in overall_days.values():
+        for session in day_payload.get("sessions", []):
+            session_events = session[2]
+            if additive_summary:
+                counts: Dict[str, int] = defaultdict(int)
+                for event in session_events:
+                    project_name = str(event.get("project", "")).strip()
+                    if project_name:
+                        counts[project_name] += 1
+                if not counts:
+                    continue
+                primary_project = sorted(
+                    counts.items(), key=lambda item: (-item[1], item[0].lower())
+                )[0][0]
+                for event in session_events:
+                    events_by_project[primary_project].append(event)
+            else:
+                for event in session_events:
+                    project_name = str(event.get("project") or "").strip() or "Uncategorized"
+                    events_by_project[project_name].append(event)
+    return events_by_project
+
+
+
 def _format_period_bound(value: Any) -> str:
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -296,12 +332,10 @@ def print_project_hour_review_section(
     from core.device_labels import devices_for_events, display_project_label
 
     # Display-only: which devices contributed to each project in this window.
-    events_by_project: Dict[str, list] = defaultdict(list)
-    for day_payload in overall_days.values():
-        for session in day_payload.get("sessions", []):
-            for event in session[2]:
-                project_name = str(event.get("project") or "").strip() or "Uncategorized"
-                events_by_project[project_name].append(event)
+    # Additive mode groups under the session primary project (hours attribution).
+    events_by_project = events_by_project_for_device_labels(
+        overall_days, additive_summary=additive_summary
+    )
     project_devices = {
         name: devices_for_events(rows) for name, rows in events_by_project.items()
     }

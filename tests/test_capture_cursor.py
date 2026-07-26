@@ -14,13 +14,13 @@ from core.session_capture import CAPTURE_SOURCES, capture_device_evidence
 
 PROFILES = [
     {
-        "name": "timelog-extract",
-        "project_id": "timelog-extract",
-        "match_terms": ["timelog-extract"],
+        "name": "project-alpha",
+        "project_id": "project-alpha",
+        "match_terms": ["project-alpha"],
         "tracked_urls": [],
         "aliases": [],
-        "canonical_project": "timelog-extract",
-        "customer": "internal",
+        "canonical_project": "project-alpha",
+        "customer": "customer-a.test",
         "email": "",
         "tags": [],
     }
@@ -30,9 +30,10 @@ DT_FROM = datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc)
 DT_TO = datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc)
 
 
-def write_cursor_composer(home: Path) -> None:
+def write_cursor_composer(home: Path, workspace: Path | None = None) -> None:
     created_ms = int(datetime(2026, 6, 11, 9, 22, tzinfo=timezone.utc).timestamp() * 1000)
     updated_ms = int(datetime(2026, 6, 11, 9, 58, tzinfo=timezone.utc).timestamp() * 1000)
+    workspace_path = workspace if workspace is not None else home / "workspaces" / "project-alpha"
     payload = {
         "allComposers": [
             {
@@ -42,7 +43,7 @@ def write_cursor_composer(home: Path) -> None:
                 "lastUpdatedAt": updated_ms,
                 "workspaceIdentifier": {
                     "uri": {
-                        "fsPath": "/tmp/workspaces/timelog-extract",
+                        "fsPath": str(workspace_path),
                     }
                 },
             }

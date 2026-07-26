@@ -72,13 +72,15 @@ def projects_trim(
 ) -> None:
     """Remove match_terms / tracked_urls entries using an explicit JSON payload."""
     from rich.console import Console
+    from rich.markup import escape
 
     console = Console()
     try:
         removals = _load_trim_decisions(input_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         console.print(
-            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid trim input:[/{CLR_VALUE_ORANGE}] {exc}"
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid trim input:[/{CLR_VALUE_ORANGE}] "
+            f"{escape(str(exc))}"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: Check the JSON format of your trim plan file.[/{STYLE_MUTED}]"
@@ -107,7 +109,7 @@ def projects_trim(
             f"{item['rule_type']}={item['rule_value']!r}"
         )
 
-    console.print("\n".join(preview))
+    console.print("\n".join(preview), markup=False)
     if dry_run:
         console.print(
             f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Dry run — config not written.[/{CLR_VALUE_ORANGE}]"
@@ -116,7 +118,7 @@ def projects_trim(
 
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
-        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {backup}")
+        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {escape(str(backup))}")
     save_projects_config_payload(cfg_path, work)
     console.print(f"{OK_ICON} [{CLR_GREEN}]projects-trim: config updated.[/{CLR_GREEN}]")
 
@@ -196,13 +198,15 @@ def projects_anchor(
 ) -> None:
     """Add rules from an anchor plan (stable signals: hosts, repos, dirs by default)."""
     from rich.console import Console
+    from rich.markup import escape
 
     console = Console()
     try:
         additions = _load_anchor_decisions(input_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         console.print(
-            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid anchor input:[/{CLR_VALUE_ORANGE}] {exc}"
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Invalid anchor input:[/{CLR_VALUE_ORANGE}] "
+            f"{escape(str(exc))}"
         )
         console.print(
             f"[{STYLE_MUTED}]Next: Check the JSON format of your anchor plan file.[/{STYLE_MUTED}]"
@@ -240,16 +244,18 @@ def projects_anchor(
             f"[{STYLE_DIM}]skipped {len(skipped)} ephemeral/low-hit candidate(s)[/{STYLE_DIM}]"
         )
     for line in skipped:
-        console.print(f"[{STYLE_DIM}]{line}[/{STYLE_DIM}]")
+        console.print(f"[{STYLE_DIM}]{escape(line)}[/{STYLE_DIM}]")
 
     if not apply_rows:
         console.print(
             f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No apply candidates left "
-            "(plan was only ephemeral/low-hit rows, or empty after filter).[/{CLR_VALUE_ORANGE}]"
+            f"(plan was only ephemeral/low-hit rows, or empty after filter)."
+            f"[/{CLR_VALUE_ORANGE}]"
         )
         console.print(
-            f"[{STYLE_MUTED}]Next: Re-run with --include-ephemeral-kinds and/or a lower --min-hits only if "
-            "you intentionally want those rows as permanent rules.[/{STYLE_MUTED}]"
+            f"[{STYLE_MUTED}]Next: Re-run with --include-ephemeral-kinds and/or a lower "
+            f"--min-hits only if you intentionally want those rows as permanent rules."
+            f"[/{STYLE_MUTED}]"
         )
         raise typer.Exit(code=1)
 
@@ -267,7 +273,7 @@ def projects_anchor(
         verb = "add (new project)" if created else "add"
         preview.append(f"{verb}: {item['project_name']} {item['rule_type']}={item['rule_value']!r}")
 
-    console.print("\n".join(preview))
+    console.print("\n".join(preview), markup=False)
     if dry_run:
         console.print(
             f"{WARN_ICON} [{CLR_VALUE_ORANGE}]Dry run — config not written.[/{CLR_VALUE_ORANGE}]"
@@ -276,6 +282,6 @@ def projects_anchor(
 
     backup = backup_projects_config_if_exists(cfg_path)
     if backup:
-        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {backup}")
+        console.print(f"[{STYLE_DIM}]Backup:[/{STYLE_DIM}] {escape(str(backup))}")
     save_projects_config_payload(cfg_path, work)
     console.print(f"{OK_ICON} [{CLR_GREEN}]projects-anchor: config updated.[/{CLR_GREEN}]")

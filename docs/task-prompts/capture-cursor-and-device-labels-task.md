@@ -1,6 +1,6 @@
 # Capture Cursor + show device on the report — close the phone/desktop loop
 
-PR #469 ships the joints: per-device evidence filing and `source_provenance.device`.
+The prior work ships the joints: per-device evidence filing and `source_provenance.device`.
 What the operator still cannot *see* or *capture* after the walkthrough:
 
 1. **Cursor is not a capture source.** Live Cursor rows already appear in a
@@ -27,9 +27,9 @@ This task is the visible half of "a phone is a machine too."
 - validation.evidence: pending
 - validation.decision: NO-GO
 - changelog:
-  - 2026-07-26: Drafted from the #469 maintainer walkthrough — capture today is
+  - 2026-07-26: Drafted from the earlier maintainer walkthrough — capture today is
     Claude-shaped; device is stored but not shown; Cursor asked for next.
-    Issued as #474 (`priority:next`).
+    Issued with `priority:next`.
   - 2026-07-26: Implementation started — `cursor` in `CAPTURE_SOURCES`; display
     suffixes via `core/device_labels.py` (quiet when single-device); replay keeps
     `source_provenance`.
@@ -59,11 +59,11 @@ Feature: Device-aware capture reaches Cursor and the report
     Then the readable project or session labels distinguish Mac from iPhone
     And the underlying project identity used for billing stays "timelog-extract"
 
-  Scenario: A single-device day does not invent noise
+  Scenario: A single-device day omits the device suffix
     Given all events for a project came from one device
     When the report is rendered
-    Then a device suffix may still appear (honesty) or be omitted by a
-      documented quiet rule — but never invents a second device
+    Then the project label shows no device suffix (quiet rule)
+    And never invents a second device
 ```
 
 ## Design notes (decided in implementation)
@@ -92,5 +92,5 @@ Feature: Device-aware capture reaches Cursor and the report
 
 ## Dependencies
 
-- #470 / PR #469 merged or at least the capture + provenance machinery on `main`.
+- Prior capture + provenance machinery merged to `main`.
 - Friendly device-name map is optional v1; raw device string is enough for GO.

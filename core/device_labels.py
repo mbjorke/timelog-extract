@@ -98,14 +98,19 @@ def ensure_live_device(
 ) -> List[Dict[str, Any]]:
     """Stamp ``source_provenance.device`` on live events that lack one.
 
-    Ledger / capture rows already carry a device; leave them alone. Does not
-    change fingerprints (detail/source/time unchanged).
+    Ledger / capture rows already carry a device; leave them alone. Replayed
+    events are also left unchanged. Does not change fingerprints
+    (detail/source/time unchanged).
     """
     resolved = str(device or "").strip()
     if not resolved:
         return list(events)
     out: List[Dict[str, Any]] = []
     for event in events:
+        # Skip replayed events — they already carry device from the ledger
+        if event.get("replayed"):
+            out.append(event)
+            continue
         provenance = event.get("source_provenance")
         if isinstance(provenance, dict) and str(provenance.get("device") or "").strip():
             out.append(event)

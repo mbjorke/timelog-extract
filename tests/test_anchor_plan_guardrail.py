@@ -257,6 +257,19 @@ class AnchorPlanGuardrailTests(unittest.TestCase):
             ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
         )
         self.assertEqual(result.exit_code, 1, msg=result.output)
+        # Assert empty-apply copy before config checks so markup regressions surface.
+        # Rich may soft-wrap; compare on whitespace-normalized text.
+        flat = " ".join(result.output.split())
+        self.assertIn(
+            "No apply candidates left (plan was only ephemeral/low-hit rows, "
+            "or empty after filter).",
+            flat,
+        )
+        self.assertIn(
+            "Next: Re-run with --include-ephemeral-kinds and/or a lower --min-hits "
+            "only if you intentionally want those rows as permanent rules.",
+            flat,
+        )
         data = load_projects_config_payload(cfg_path)
         proj = next(p for p in data["projects"] if p["name"] == "existing")
         self.assertEqual(proj["match_terms"], ["keep"])
@@ -340,6 +353,71 @@ class AnchorPlanGuardrailTests(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1, msg=result.output)
         self.assertIn("anchor_kind required", result.output)
+
+    def test_projects_anchor_rejects_non_integer_hits(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        for bad_hits in (True, 1.9, 0.9):
+            with self.subTest(hits=bad_hits):
+                plan = {
+                    "schema_version": 1,
+                    "additions": [
+                        {
+                            "project_name": "existing",
+                            "rule_type": "match_terms",
+                            "rule_value": "project-gamma",
+                            "anchor_kind": "dir",
+                            "hits": bad_hits,
+                        },
+                    ],
+                }
+                plan_path.write_text(json.dumps(plan), encoding="utf-8")
+                result = self.runner.invoke(
+                    app,
+                    ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+                )
+                self.assertEqual(result.exit_code, 1, msg=result.output)
+                self.assertIn("hits must be an integer", result.output)
+                data = load_projects_config_payload(cfg_path)
+                proj = next(p for p in data["projects"] if p["name"] == "existing")
+                self.assertEqual(proj["match_terms"], ["keep"])
+
+    def test_projects_anchor_rejects_malformed_schema_version(self) -> None:
+        cfg_path = Path(self._temp_json())
+        plan_path = Path(self._temp_json())
+        self.addCleanup(cfg_path.unlink, missing_ok=True)
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+        save_projects_config_payload(
+            cfg_path,
+            {"projects": [{"name": "existing", "match_terms": ["keep"], "tracked_urls": []}]},
+        )
+        for bad_version in (True, 1.9, []):
+            with self.subTest(schema_version=bad_version):
+                plan = {
+                    "schema_version": bad_version,
+                    "additions": [
+                        {
+                            "project_name": "existing",
+                            "rule_type": "match_terms",
+                            "rule_value": "project-gamma",
+                            "anchor_kind": "dir",
+                            "hits": 22,
+                        },
+                    ],
+                }
+                plan_path.write_text(json.dumps(plan), encoding="utf-8")
+                result = self.runner.invoke(
+                    app,
+                    ["projects-anchor", "--projects-config", str(cfg_path), "-i", str(plan_path)],
+                )
+                self.assertEqual(result.exit_code, 1, msg=result.output)
+                self.assertIn("schema_version must be 1", result.output)
 
 
 if __name__ == "__main__":

@@ -42,9 +42,20 @@ from core.events import make_event
 
 UNCATEGORIZED = "Uncategorized"
 
-#: Sources this device can capture, mapped to their collector.
-#: Each entry takes ``(profiles, dt_from, dt_to, home, classify, make_event)``.
-CAPTURE_SOURCES: Dict[str, str] = {"claude-code": "Claude Code CLI"}
+#: Sources this device can capture, mapped to the source name they emit.
+#: Each collector takes ``(profiles, dt_from, dt_to, home, classify, make_event)``.
+#:
+#: Only surfaces that carry a **structural** project anchor are captured. Both of
+#: these resolve a repo identity — ``claude-code`` from ``cwd``, ``desktop-code``
+#: from the session's git metadata (worktree-invariant, so a sandbox ``cwd`` does
+#: not break it). Plain desktop chat is deliberately absent: measured
+#: 2026-07-26, it yields honest hours with no anchor at all, so it lands on
+#: ``Uncategorized`` unless the operator happened to type the project name
+#: (``docs/evals/claude-surface-attribution-measurement.md``).
+CAPTURE_SOURCES: Dict[str, str] = {
+    "claude-code": "Claude Code CLI",
+    "desktop-code": "Claude Desktop (Code)",
+}
 
 
 def device_name(explicit: Optional[str] = None) -> str:
@@ -86,9 +97,11 @@ def collect_device_events(
     ``sources`` selects keys of :data:`CAPTURE_SOURCES`; the default is all.
     """
     from collectors.ai_logs import collect_claude_code
+    from collectors.claude_desktop_events import collect_claude_desktop_code
 
     collectors: Dict[str, Callable[..., List[Dict[str, Any]]]] = {
         "claude-code": collect_claude_code,
+        "desktop-code": collect_claude_desktop_code,
     }
     wanted = list(sources) if sources is not None else list(CAPTURE_SOURCES)
     unknown = [name for name in wanted if name not in collectors]
@@ -244,6 +257,13 @@ def capture_device_evidence(
         "collected": len(events),
         "dry_run": bool(dry_run),
         "projects": sorted({str(event.get("project") or "") for event in events} - {""}),
+        "sources": sorted(
+            {
+                str((event.get("source_provenance") or {}).get("captured_via") or "")
+                for event in events
+            }
+            - {""}
+        ),
     }
     if dry_run:
         summary.update({"appended": 0, "skipped": 0, "destination": None})

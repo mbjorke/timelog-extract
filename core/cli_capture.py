@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
 import typer
 
@@ -18,6 +18,7 @@ def capture(
     export: Annotated[Optional[str], typer.Option("--export", help="Write records to PATH instead of this device's ledger — for a device whose store is not the canonical one.")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Report what would be captured; write nothing.")] = False,
     if_enabled: Annotated[bool, typer.Option("--if-enabled", help="Do nothing unless \"shadow_log\" is on in config — for timers and hooks.")] = False,
+    source: Annotated[Optional[List[str]], typer.Option("--source", help="Capture only this source (repeatable). Default: all. Try an unknown name to list them.")] = None,
     projects_config: Annotated[Optional[str], typer.Option("--projects-config", help="Path to timelog_projects.json.")] = None,
 ) -> None:
     """Capture this device's AI session evidence into the shadow log.
@@ -72,8 +73,14 @@ def capture(
             dry_run=dry_run,
             if_enabled=if_enabled,
             config_path=config_path,
+            sources=list(source) if source else None,
         )
-    except (OSError, ValueError) as exc:
+    except ValueError as exc:
+        # Raised for an unknown --source; the message already names the valid ones.
+        console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
+        console.print(f"[{STYLE_MUTED}]Next: Pass --source with one of the names listed above.[/{STYLE_MUTED}]")
+        raise typer.Exit(code=1) from exc
+    except OSError as exc:
         console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
         console.print(f"[{STYLE_MUTED}]Next: Check --home and --export point at readable paths.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from exc
@@ -101,6 +108,9 @@ def capture(
             f"(already present: {summary['skipped']})"
         )
         console.print(f"[{STYLE_MUTED}]Written to: {summary['destination']}[/{STYLE_MUTED}]")
+
+    if summary.get("sources"):
+        console.print(f"[{STYLE_MUTED}]Sources: {', '.join(summary['sources'])}[/{STYLE_MUTED}]")
 
     if summary["projects"]:
         console.print(f"[{STYLE_MUTED}]Projects: {', '.join(summary['projects'])}[/{STYLE_MUTED}]")

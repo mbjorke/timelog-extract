@@ -15,6 +15,17 @@ gittan capture --dry-run          # what would be captured, writes nothing
 gittan capture                    # append to this device's ledger
 ```
 
+Two surfaces are captured: `claude-code` (Claude Code transcripts) and
+`desktop-code` (Claude Desktop in Code mode). Both carry a repo anchor, so the
+work attributes itself. Narrow the run with `--source`, repeatable:
+
+```bash
+gittan capture --source desktop-code
+```
+
+An unknown name lists the valid ones, and every run prints which sources actually
+contributed — so "0 events" never leaves you guessing which surface was empty.
+
 If that device keeps its own ledger (your second laptop), you are done.
 
 If it does **not** — a cloud container is reclaimed when the session ends —

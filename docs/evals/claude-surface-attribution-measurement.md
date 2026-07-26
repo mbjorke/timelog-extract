@@ -76,14 +76,16 @@ And neither covers the **mobile app**, which writes nothing to any device the
 operator controls. That gap is not an attribution problem but an artifact
 problem, and it stays with `docs/specs/intent-capture.md`.
 
-## Suggested next step (not done here)
+## Next step — taken 2026-07-26
 
-`collect_claude_desktop_code` is the strongest uncaptured surface: it already
-resolves a repo slug and a session label. Adding `desktop-code` to
-`CAPTURE_SOURCES` in `core/session_capture.py` would be one registry entry plus
-fixture tests — no new parsing. Plain `desktop` chat is worth adding too, but
-with eyes open that it will mostly produce `Uncategorized` hours until an intent
-signal exists.
+`desktop-code` is now in `CAPTURE_SOURCES` (`core/session_capture.py`) — one
+registry entry, no new parsing, with `tests/test_capture_desktop_code.py` pinning
+that the metadata repo slug still attributes correctly after capture even when
+`cwd` is a sandbox path. `gittan capture --source` selects a subset.
+
+Plain `desktop` chat is still out. It is one more registry entry whenever the
+`Uncategorized` hours are judged better in the review queue than absent — that is
+a product call, not a technical one.
 
 Not proposed: mining chat text for project identity. That is a different
 decision from reading timestamps — see `#354`'s display-vs-identity rule and

@@ -92,7 +92,10 @@ not touch it.
 ## Surfaces
 
 - `gittan capture [--from D] [--to D] [--device NAME] [--home PATH]
-  [--export PATH] [--dry-run] [--projects-config PATH]`
+  [--export PATH] [--dry-run] [--source NAME]… [--projects-config PATH]`
+- Captured surfaces (`CAPTURE_SOURCES`): `claude-code`, `desktop-code`.
+  `--source` is repeatable and selects a subset; an unknown name lists the valid
+  ones. The run reports which sources actually contributed.
 - `gittan evidence --import PATH` — the natural pair to the existing
   `--export`, and mutually exclusive with the other data controls.
 - `gittan evidence --repair` — re-link chains for a store merged by git.
@@ -104,12 +107,14 @@ not touch it.
 
 ## Known limits
 
-- Captures **Claude Code CLI transcripts** only. Other AI sources are one
-  registry entry each, deliberately not batched in here. Measured 2026-07-26
-  (`docs/evals/claude-surface-attribution-measurement.md`):
-  `collect_claude_desktop_code` is the strongest uncaptured surface — it already
-  resolves a worktree-invariant repo slug and a session label — while plain
-  desktop chat carries no anchor and mostly yields `Uncategorized` hours.
+- Captures the two surfaces that carry a **structural** project anchor:
+  `claude-code` (repo slug from `cwd`) and `desktop-code` (repo slug from the
+  session's git metadata, worktree-invariant). Plain desktop chat is left out on
+  purpose — measured 2026-07-26
+  (`docs/evals/claude-surface-attribution-measurement.md`), it produces honest
+  hours with no anchor at all, so it lands on `Uncategorized` unless the operator
+  happened to type the project name. Adding it later is one registry entry, with
+  eyes open about that.
 - The Claude **mobile app** writes no local artifact on any device the operator
   controls, so it stays uncaptured. Closing that needs intent capture
   (`docs/specs/intent-capture.md`), which is a different mechanism.
@@ -148,3 +153,6 @@ not touch it.
   - 2026-07-26: Measured attribution signal per Claude surface; recorded which
     surface is worth capturing next and why chat-shaped work cannot be fixed by
     capture alone.
+  - 2026-07-26: Added `desktop-code` to `CAPTURE_SOURCES` (the measurement's
+    recommendation) plus a repeatable `--source` selector and a per-run report of
+    which sources contributed.

@@ -105,7 +105,11 @@ not touch it.
 ## Known limits
 
 - Captures **Claude Code CLI transcripts** only. Other AI sources are one
-  registry entry each, deliberately not batched in here.
+  registry entry each, deliberately not batched in here. Measured 2026-07-26
+  (`docs/evals/claude-surface-attribution-measurement.md`):
+  `collect_claude_desktop_code` is the strongest uncaptured surface — it already
+  resolves a worktree-invariant repo slug and a session label — while plain
+  desktop chat carries no anchor and mostly yields `Uncategorized` hours.
 - The Claude **mobile app** writes no local artifact on any device the operator
   controls, so it stays uncaptured. Closing that needs intent capture
   (`docs/specs/intent-capture.md`), which is a different mechanism.
@@ -141,3 +145,6 @@ not touch it.
   - 2026-07-25: Continuity — `--if-enabled` gate, capture wired into the
     `~/.gittan` autocommit timer, and a doctor Device-coverage row so a device
     that stopped reporting is visible instead of silently absent.
+  - 2026-07-26: Measured attribution signal per Claude surface; recorded which
+    surface is worth capturing next and why chat-shaped work cannot be fixed by
+    capture alone.

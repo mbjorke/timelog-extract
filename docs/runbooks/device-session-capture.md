@@ -72,6 +72,11 @@ Repair never drops a unique observation, and running it twice changes nothing.
 
 - **Covers:** Claude Code CLI session transcripts on any device you can run
   `gittan` on, including cloud containers.
+- **Which surface to work in, if the hours are billable:** Claude Code and Claude
+  Desktop **Code mode** both carry a repo anchor, so the work attributes itself.
+  Desktop **plain chat** gives correct hours but lands on `Uncategorized` unless
+  you happen to type the project name. Measured in
+  `docs/evals/claude-surface-attribution-measurement.md`.
 - **Does not cover:** the Claude mobile app. It leaves no local artifact on any
   device you control, so there is nothing to read. That gap needs intent capture
   (`docs/specs/intent-capture.md`), not this command.

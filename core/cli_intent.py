@@ -64,9 +64,14 @@ def intent(
         return
 
     config_path = str(projects_config) if projects_config else str(resolve_projects_config_path())
-    profiles, _cfg, _workspace = load_profiles(
-        config_path, SimpleNamespace(project="", keywords="", email="")
-    )
+    try:
+        profiles, _cfg, _workspace = load_profiles(
+            config_path, SimpleNamespace(project="", keywords="", email="")
+        )
+    except ValueError:
+        # Empty / broken config falls through to a nameless CLI fallback and
+        # raises — treat that as "no projects", not as an open gate.
+        profiles = []
     known = [str(profile.get("name") or "") for profile in profiles if profile.get("name")]
 
     if set_binding:
@@ -83,8 +88,20 @@ def intent(
             session, project = pair.split("=", 1)
             project = project.strip()
             # `docs/specs/intent-capture.md`: invalid project name is rejected
-            # and nothing is appended.
-            if known and project not in known:
+            # and nothing is appended. An empty profile list must not open the
+            # gate — that would make every name look valid and move hours into
+            # a phantom bucket off Uncategorized.
+            if not known:
+                console.print(
+                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: no configured projects to bind "
+                    f"to.[/{CLR_VALUE_ORANGE}]"
+                )
+                console.print(
+                    f"[{STYLE_MUTED}]Next: Add a named project to your config first. "
+                    f"Nothing was recorded.[/{STYLE_MUTED}]"
+                )
+                raise typer.Exit(code=1)
+            if project not in known:
                 console.print(
                     f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {escape(project)!r} is not a "
                     f"configured project.[/{CLR_VALUE_ORANGE}]"
@@ -153,7 +170,13 @@ def intent(
             if not answer:
                 console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
                 break
-            if known and answer not in known:
+            if not known:
+                console.print(
+                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]No configured projects to bind "
+                    f"to.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
+                )
+                continue
+            if answer not in known:
                 console.print(
                     f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{escape(answer)!r} is not a configured "
                     f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"

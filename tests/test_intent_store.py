@@ -326,6 +326,14 @@ class UnknownProjectIsRejectedTests(unittest.TestCase):
         self.assertIn("Ghost Project", result.output)
         self.assertEqual(read_intents(home=self.home), [])
 
+    def test_empty_project_list_refuses_any_set(self):
+        """No named profiles must not make every project name look valid."""
+        self.config.write_text(json.dumps({"projects": [], "worklog": "none.md"}), encoding="utf-8")
+        result = self._run("--set", "s1=Anything")
+        self.assertEqual(result.exit_code, 1, result.output)
+        self.assertIn("no configured projects", result.output.lower())
+        self.assertEqual(read_intents(home=self.home), [])
+
 
 class LocalTimeDisplayTests(unittest.TestCase):
     """Stored stamps are UTC; a human reading them must see their own clock.

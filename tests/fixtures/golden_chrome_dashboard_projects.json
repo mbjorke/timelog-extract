@@ -3,7 +3,7 @@
   "projects": [
     {
       "name": "DashboardKeyword",
-      "match_terms": ["dns.he.net"]
+      "match_terms": ["dashboard.example"]
     }
   ]
 }

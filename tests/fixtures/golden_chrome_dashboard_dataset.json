@@ -1,5 +1,5 @@
 {
-  "description": "GH-414 measurement A \u2014 sustained single-host dashboard work whose host IS a match_term. 180 synthetic Chrome visits to one DNS dashboard over 8h on 2026-07-13, varying only the query string (the shape reported in #414). Measures what survives collect_chrome's window thinner (chrome_collapse_minutes, default 12). Pair with golden_chrome_dashboard_tracked_only_dataset.json, which changes only where the host is declared.",
+  "description": "GH-414 measurement A \u2014 sustained single-host dashboard work whose host IS a match_term. 180 synthetic Chrome visits to one dashboard host over 8h on 2026-07-13, varying only the query string (the shape reported in #414). Measures what survives collect_chrome's window thinner (chrome_collapse_minutes, default 12). Pair with golden_chrome_dashboard_tracked_only_dataset.json, which changes only where the host is declared.",
   "timezone_note": "Eval sets TZ=UTC before importing the report stack so day keys and parsing match CI and local runs.",
   "config_path": "tests/fixtures/golden_chrome_dashboard_projects.json",
   "date_from": "2026-07-13",
@@ -9,8 +9,8 @@
       "kind": "chrome_history",
       "profile": "Default",
       "synth": {
-        "url_template": "https://dns.he.net/index.cgi?zoneid={i}&action=edit",
-        "title_template": "Hurricane Electric DNS",
+        "url_template": "https://dashboard.example/index.cgi?zoneid={i}&action=edit",
+        "title_template": "Zone Editor",
         "count": 180,
         "start": "2026-07-13T09:00:00Z",
         "span_minutes": 480

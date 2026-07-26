@@ -37,7 +37,7 @@ def event(hour: int, detail: str, device: str | None = None) -> dict:
 
 class DeviceSlugTests(unittest.TestCase):
     def test_slug_is_filename_safe(self):
-        self.assertEqual(_device_slug("Marcus' MacBook Pro"), "marcus-macbook-pro")
+        self.assertEqual(_device_slug("Ada's MacBook Pro"), "ada-s-macbook-pro")
         self.assertEqual(_device_slug("claude/web:container"), "claude-web-container")
 
     def test_missing_device_is_empty(self):

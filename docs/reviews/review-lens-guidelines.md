@@ -67,8 +67,9 @@ lens when the diff clearly does not touch it (see risk-tiering below).
 
 Suppress these. They are the noise that burns review budget and reader trust.
 
-- **File length.** 500 lines/file is a **recommendation**, reported (never
-  enforced) by `scripts/check_file_lengths.py` — do not duplicate
+- **File length.** 500 lines/file is a **recommendation**, reported by
+  `scripts/check_file_lengths.py` and **not enforced by default** (only under
+  `--strict`, which CI does not pass) — do not duplicate
   that gate by flagging a file merely for crossing it. But the repo's **460-line
   warn band is a design signal, not noise**: a Python file at or above 460 lines
   is worth one note to split by responsibility before it tips over (see

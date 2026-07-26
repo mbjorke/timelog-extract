@@ -25,6 +25,7 @@ run with ``tests/`` on ``sys.path``.
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -150,13 +151,18 @@ def materialize_home(specs: Sequence[dict[str, Any]], root: Path) -> Path:
     The caller owns the directory and must remove it.
     """
     home = Path(tempfile.mkdtemp(prefix="golden_home_"))
-    for spec in specs:
-        kind = str(spec.get("kind") or "").strip()
-        materializer = MATERIALIZERS.get(kind)
-        if materializer is None:
-            raise ValueError(
-                f"unknown home fixture kind {kind!r} "
-                f"(known: {', '.join(sorted(MATERIALIZERS))})"
-            )
-        materializer(home, spec, root)
+    try:
+        for spec in specs:
+            kind = str(spec.get("kind") or "").strip()
+            materializer = MATERIALIZERS.get(kind)
+            if materializer is None:
+                raise ValueError(
+                    f"unknown home fixture kind {kind!r} "
+                    f"(known: {', '.join(sorted(MATERIALIZERS))})"
+                )
+            materializer(home, spec, root)
+    except BaseException:
+        # A half-built home has no owner — the caller never saw the path.
+        shutil.rmtree(home, ignore_errors=True)
+        raise
     return home

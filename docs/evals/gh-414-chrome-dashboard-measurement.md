@@ -8,9 +8,12 @@ thinning behavior was changed.
 
 ## Setup
 
-180 synthetic Chrome visits to one DNS dashboard, evenly spaced over 8h on
-2026-07-13, varying only the query string — the shape `#414` reports. Two
-datasets differ in **one** thing: where the host is declared in the projects
+180 synthetic Chrome visits to a single dashboard host, evenly spaced over 8h
+on 2026-07-13, varying only the query string — the shape `#414` reports. The
+fixture uses a neutral host (`dashboard.example`); the real case in `#414` was a
+registrar/DNS control panel.
+
+Two datasets differ in **one** thing: where the host is declared in the projects
 config.
 
 ```bash
@@ -48,7 +51,7 @@ Stage-by-stage on the same 180 rows, measured directly against the thinners:
 **Falsified for this shape.** Those functions do collapse 180 rows to 1 (span
 0.0h), but they are only reachable from the two collectors that hard-filter for
 `claude.ai` and `gemini.google.com` (`collectors/chrome.py:255,302`). A
-registrar/DNS host goes through `collect_chrome` → the 12-minute window thinner,
+keyword-matched host goes through `collect_chrome` → the 12-minute window thinner,
 which keeps 36 rows and **preserves the span**. Concentrated work is thinned, not
 erased.
 

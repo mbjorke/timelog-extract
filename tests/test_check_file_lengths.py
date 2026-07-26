@@ -1,9 +1,9 @@
-"""File length is reported, never enforced.
+"""File length is reported, and enforced only when explicitly asked.
 
 ``classify_lengths`` still separates "over the recommendation" from
-"approaching it" — that distinction is useful signal — but neither outcome fails
-a build. The exit-code tests below are the ones that pin the policy: advisory by
-default, hard only under ``--strict``.
+"approaching it" — that distinction is useful signal — but by default neither
+outcome fails a build. The exit-code tests below pin the policy from both sides:
+advisory by default (how CI runs it), hard under ``--strict``.
 """
 
 from __future__ import annotations

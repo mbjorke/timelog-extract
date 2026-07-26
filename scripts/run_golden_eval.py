@@ -15,8 +15,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -200,6 +202,31 @@ def materialize_dataset_home(root: Path, dataset: dict[str, Any]) -> Path | None
     return materialize_home(specs, root)
 
 
+@contextlib.contextmanager
+def dataset_home(root: Path, dataset: dict[str, Any]):
+    """Point ``HOME`` at the dataset's fixtures, then put the environment back.
+
+    Both the temp directory and the previous ``HOME`` are restored even when the
+    report raises. Leaving either behind is worse than it sounds: a stale ``HOME``
+    points the rest of the process — the next dataset included — at a directory
+    that has been deleted.
+    """
+    home_tmp = materialize_dataset_home(root, dataset)
+    if home_tmp is None:
+        yield None
+        return
+    previous = os.environ.get("HOME")
+    os.environ["HOME"] = str(home_tmp)
+    try:
+        yield home_tmp
+    finally:
+        if previous is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = previous
+        shutil.rmtree(home_tmp, ignore_errors=True)
+
+
 def run_single_dataset(
     dataset_path: Path,
     *,
@@ -213,29 +240,21 @@ def run_single_dataset(
     if not cfg.is_file():
         return 2, {}, [f"missing config: {cfg}"]
 
-    home_tmp = materialize_dataset_home(root, dataset)
-    if home_tmp is not None:
-        os.environ["HOME"] = str(home_tmp)
+    with dataset_home(root, dataset):
+        from core.report_service import run_timelog_report
 
-    from core.report_service import run_timelog_report
+        opts = dict(dataset.get("run_options") or {})
+        report = run_timelog_report(
+            str(cfg),
+            dataset["date_from"],
+            dataset["date_to"],
+            opts,
+        )
+        tol = 1e-4
+        errors, kpis = compare_expectations(dataset, report, tol)
 
-    opts = dict(dataset.get("run_options") or {})
-    report = run_timelog_report(
-        str(cfg),
-        dataset["date_from"],
-        dataset["date_to"],
-        opts,
-    )
-    tol = 1e-4
-    errors, kpis = compare_expectations(dataset, report, tol)
-
-    if write_md and md_path is not None:
-        write_latest_md(md_path, dataset_path, dataset, kpis, errors)
-
-    if home_tmp is not None:
-        import shutil
-
-        shutil.rmtree(home_tmp, ignore_errors=True)
+        if write_md and md_path is not None:
+            write_latest_md(md_path, dataset_path, dataset, kpis, errors)
 
     if errors:
         return 1, kpis, errors
@@ -299,30 +318,23 @@ def print_expectations(dataset_path: Path | None) -> int:
         print(f"missing config: {cfg}", file=sys.stderr)
         return 2
 
-    home_tmp = materialize_dataset_home(root, dataset)
-    if home_tmp is not None:
-        os.environ["HOME"] = str(home_tmp)
+    with dataset_home(root, dataset):
+        from core.report_service import run_timelog_report
 
-    from core.report_service import run_timelog_report
-
-    opts = dict(dataset.get("run_options") or {})
-    report = run_timelog_report(
-        str(cfg),
-        dataset["date_from"],
-        dataset["date_to"],
-        opts,
-    )
-    actual = actual_hours_table(report)
-    print(
-        json.dumps(
-            [{"date": k[0], "project": k[1], "hours": v} for k, v in sorted(actual.items())],
-            indent=2,
+        opts = dict(dataset.get("run_options") or {})
+        report = run_timelog_report(
+            str(cfg),
+            dataset["date_from"],
+            dataset["date_to"],
+            opts,
         )
-    )
-    if home_tmp is not None:
-        import shutil
-
-        shutil.rmtree(home_tmp, ignore_errors=True)
+        actual = actual_hours_table(report)
+        print(
+            json.dumps(
+                [{"date": k[0], "project": k[1], "hours": v} for k, v in sorted(actual.items())],
+                indent=2,
+            )
+        )
     return 0
 
 

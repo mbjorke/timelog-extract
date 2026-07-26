@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import sqlite3
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from golden_home_fixtures import chrome_synth_visits, materialize_home
+
+from scripts.run_golden_eval import dataset_home
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -152,6 +157,85 @@ class MaterializeHomeTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertIsNotNone(row)
+
+
+class MaterializeFailureTests(unittest.TestCase):
+    def test_a_failed_spec_leaves_no_home_behind(self):
+        """The caller never saw the path, so a half-built home has no owner."""
+        created: list[Path] = []
+        real_mkdtemp = tempfile.mkdtemp
+
+        def tracking_mkdtemp(*args, **kwargs):
+            path = real_mkdtemp(*args, **kwargs)
+            created.append(Path(path))
+            return path
+
+        with patch("golden_home_fixtures.tempfile.mkdtemp", side_effect=tracking_mkdtemp):
+            with self.assertRaises(ValueError):
+                materialize_home(
+                    [
+                        {
+                            "kind": "chrome_history",
+                            "visits": [{"url": "https://a.example/", "at": "2026-07-13T09:00:00Z"}],
+                        },
+                        {"kind": "nope"},  # fails after the first spec already wrote
+                    ],
+                    REPO_ROOT,
+                )
+        self.assertEqual(len(created), 1)
+        self.assertFalse(created[0].exists(), f"leaked {created[0]}")
+
+
+class DatasetHomeTests(unittest.TestCase):
+    """HOME is process-global: leaving it pointed at a deleted dir poisons the rest."""
+
+    DATASET = {
+        "home_fixtures": [
+            {
+                "kind": "chrome_history",
+                "visits": [{"url": "https://a.example/", "at": "2026-07-13T09:00:00Z"}],
+            }
+        ]
+    }
+
+    def test_home_is_set_inside_and_restored_after(self):
+        before = os.environ.get("HOME")
+        with dataset_home(REPO_ROOT, self.DATASET) as home:
+            self.assertIsNotNone(home)
+            self.assertEqual(os.environ["HOME"], str(home))
+        self.assertEqual(os.environ.get("HOME"), before)
+
+    def test_temp_home_is_removed_after_the_block(self):
+        with dataset_home(REPO_ROOT, self.DATASET) as home:
+            captured = home
+        self.assertFalse(captured.exists())
+
+    def test_home_is_restored_even_when_the_body_raises(self):
+        before = os.environ.get("HOME")
+        captured: list[Path] = []
+        with self.assertRaises(RuntimeError):
+            with dataset_home(REPO_ROOT, self.DATASET) as home:
+                captured.append(home)
+                raise RuntimeError("report blew up")
+        self.assertEqual(os.environ.get("HOME"), before)
+        self.assertFalse(captured[0].exists(), "a raising body must not leak the fixture")
+
+    def test_a_dataset_without_fixtures_leaves_home_alone(self):
+        before = os.environ.get("HOME")
+        with dataset_home(REPO_ROOT, {}) as home:
+            self.assertIsNone(home)
+            self.assertEqual(os.environ.get("HOME"), before)
+        self.assertEqual(os.environ.get("HOME"), before)
+
+    def test_absent_home_is_unset_again_not_set_to_empty(self):
+        before = os.environ.pop("HOME", None)
+        try:
+            with dataset_home(REPO_ROOT, self.DATASET):
+                self.assertIn("HOME", os.environ)
+            self.assertNotIn("HOME", os.environ)
+        finally:
+            if before is not None:
+                os.environ["HOME"] = before
 
 
 if __name__ == "__main__":

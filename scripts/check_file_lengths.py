@@ -4,11 +4,11 @@
 File length is a **recommendation, not a gate**. Long files are worth a look —
 they are often a sign that a module grew two responsibilities — but length alone
 never says the code is wrong, and a size limit that fails the build makes
-splitting a deadline problem instead of a design one. This script reports and
-exits 0.
+splitting a deadline problem instead of a design one.
 
-Use ``--strict`` to opt into a hard failure (for a branch or a repo that wants
-the cap enforced); the default is advisory.
+By default this script reports and exits 0, which is how CI runs it. ``--strict``
+opts into a hard failure (exit 1 when a file exceeds ``--max-lines``) for anyone
+who wants the cap enforced locally.
 """
 
 from __future__ import annotations

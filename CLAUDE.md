@@ -128,11 +128,11 @@ Events close in time (default 15 min gap) are merged into sessions by `compute_s
 
 ### File size — a recommendation, not a gate
 
-**500 lines per Python file is a recommendation.** `scripts/check_file_lengths.py` reports files above it and files approaching it (`--warn-lines`, default 460), and **exits 0 either way**. Nothing fails on length.
+**500 lines per Python file is a recommendation.** `scripts/check_file_lengths.py` reports files above it and files approaching it (`--warn-lines`, default 460), and **exits 0 either way by default** — which is how CI invokes it. Nothing in CI fails on length.
 
 Treat a long file as a prompt to look, not a verdict: split when a module has grown two responsibilities, not when it crosses a number. Shaving lines to satisfy a counter is the failure mode this rule used to cause — a file trimmed to 499 lines is not better designed than one at 520.
 
-`--strict` restores hard enforcement for anyone who wants it locally; CI does not use it.
+`--strict` restores hard enforcement (exit 1 over the cap) for anyone who wants it locally; CI does not pass it.
 
 ### Branch and PR policy
 

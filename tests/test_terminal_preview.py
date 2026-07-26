@@ -185,33 +185,20 @@ class TerminalPreviewTests(unittest.TestCase):
         label2, detail2 = event_detail_parts(event2)
         self.assertEqual(label2, "Toggle integration progress")
 
-    def test_derived_label_shown_when_label_matches_project(self):
-        from outputs.terminal_preview import event_detail_parts
-
-        event = {
-            "source": "Cursor",
-            "project": "timelog-extract",
-            "detail": "some work detail",
-            "anchors": {"label": "timelog-extract"},
-            "derived_session_label": True,
-        }
-        label, detail = event_detail_parts(event)
-        self.assertEqual(label, "timelog-extract (derived)")
-        self.assertEqual(detail, "some work detail")
-
     def test_derived_suffix_does_not_block_label_strip(self):
         from outputs.terminal_preview import event_detail_parts
-
+        # Label matches project name, but because it is derived, we do NOT hide it.
+        # At the same time, we still strip the bare label from detail.
         event = {
-            "source": "Cursor",
-            "project": "Project A",
-            "detail": "Toggle integration progress: Commit: fix bug",
+            "source": "TIMELOG.md",
+            "project": "Toggle integration progress",
+            "detail": "Toggle integration progress: fix bug",
             "anchors": {"label": "Toggle integration progress"},
             "derived_session_label": True,
         }
         label, detail = event_detail_parts(event)
         self.assertEqual(label, "Toggle integration progress (derived)")
-        self.assertEqual(detail, "Commit: fix bug")
+        self.assertEqual(detail, "fix bug")
 
 
 if __name__ == "__main__":

@@ -23,14 +23,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from core.config import ENV_GITTAN_HOME, canonical_gittan_home
 from core.evidence_record import (
     compute_content_hash,
     compute_evidence_fingerprint,
@@ -42,19 +39,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def evidence_base_dir(home: Optional[Path] = None) -> Path:
-    """Durable store root: ``~/.gittan/evidence`` (local, never uploaded).
-
-    When ``home`` is omitted, honour ``$GITTAN_HOME`` the same way config and
-    autocommit do — that directory *is* the data dir, so evidence lives at
-    ``$GITTAN_HOME/evidence``. An explicit ``home`` keeps the test/CLI contract
-    ``<home>/.gittan/evidence``.
-    """
-    if home is not None:
-        return Path(home) / ".gittan" / "evidence"
-    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
-    if env_home:
-        return Path(env_home).expanduser() / "evidence"
-    return canonical_gittan_home() / "evidence"
+    """Durable store root: ``~/.gittan/evidence`` (local, never uploaded)."""
+    return (home or Path.home()) / ".gittan" / "evidence"
 
 
 def events_dir(base_dir: Path) -> Path:
@@ -64,32 +50,6 @@ def events_dir(base_dir: Path) -> Path:
 def _month_key(observed_at_iso: str) -> str:
     # observed_at is a normalized UTC ISO string; first 7 chars are YYYY-MM.
     return (observed_at_iso or "")[:7] or "unknown"
-
-
-def _device_slug(device: Any) -> str:
-    """Filename-safe device label, or "" when the record carries no device.
-
-    Kept conservative on purpose: the slug becomes part of a file name that is
-    committed to the user's data repo.
-    """
-    raw = str(device or "").strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
-    return slug[:40]
-
-
-def _record_file_key(record: Dict[str, Any]) -> str:
-    """Return the stem of the file a record belongs in.
-
-    Evidence is filed by month **and by the device that observed it**, so two
-    devices sharing one data repo never write the same file — a git sync then
-    has nothing to merge, and each file keeps its own valid hash chain. Records
-    without a device keep the original ``YYYY-MM`` name (pre-device stores and
-    single-device users are untouched).
-    """
-    month = _month_key(record.get("observed_at", ""))
-    provenance = record.get("source_provenance") or {}
-    device = _device_slug(provenance.get("device") if isinstance(provenance, dict) else "")
-    return f"{month}.{device}" if device else month
 
 
 def _month_path(events_directory: Path, month: str) -> Path:
@@ -185,7 +145,7 @@ def capture_events(
         ):
             skipped += 1
             continue
-        month = _record_file_key(rec)
+        month = _month_key(rec.get("observed_at", ""))
         # content_hash excludes prev_hash, so chaining it in after the fact keeps
         # both the fingerprint and content_hash stable and valid.
         rec["prev_hash"] = last_hash.get(month)
@@ -323,21 +283,12 @@ def store_health(
     today_str = today or datetime.now(timezone.utc).date().isoformat()
     by_month: Dict[str, List[Dict[str, Any]]] = {}
     per_source: Dict[str, int] = {}
-    per_device: Dict[str, Dict[str, Any]] = {}
     total = 0
     captured_today = 0
     last_captured: Optional[str] = None
     for month, rec in read_records(ev_dir):
         by_month.setdefault(month, []).append(rec)
         per_source[rec.get("source", "")] = per_source.get(rec.get("source", ""), 0) + 1
-        provenance = rec.get("source_provenance") or {}
-        device = str(provenance.get("device") or "").strip() if isinstance(provenance, dict) else ""
-        if device:
-            seen = per_device.setdefault(device, {"records": 0, "last_observed_at": None})
-            seen["records"] += 1
-            observed = str(rec.get("observed_at", "") or "")
-            if observed and (seen["last_observed_at"] is None or observed > seen["last_observed_at"]):
-                seen["last_observed_at"] = observed
         total += 1
         cap = str(rec.get("captured_at", "") or "")
         if cap and (last_captured is None or cap > last_captured):
@@ -356,7 +307,6 @@ def store_health(
         "months": months,
         "retention_span": f"{months[0]}..{months[-1]}" if months else None,
         "per_source": dict(sorted(per_source.items())),
-        "per_device": dict(sorted(per_device.items())),
         "chain_ok": not breaks,
         "chain_breaks": breaks,
     }
@@ -480,73 +430,6 @@ def erase_store(*, home: Optional[Path] = None, base_dir: Optional[Path] = None)
         shutil.rmtree(base)
     removed = existed and not base.exists()
     return {"removed": removed, "path": str(base)}
-
-
-def repair_store(
-    *, home: Optional[Path] = None, base_dir: Optional[Path] = None
-) -> Dict[str, Any]:
-    """Re-link hash chains and drop duplicate records, file by file.
-
-    A git merge of two devices' evidence concatenates records, which breaks the
-    order-dependent ``prev_hash`` chain even though every record is genuine.
-    Repair is the cure for a store that already got merged that way: within each
-    file it keeps the first record per fingerprint, orders by observed time, and
-    re-links the chain. It never drops a unique observation and never merges
-    files together.
-
-    Prefer prevention: device-filed evidence (``YYYY-MM.<device>.jsonl``) gives
-    git nothing to merge in the first place.
-    """
-    base = base_dir if base_dir is not None else evidence_base_dir(home)
-    ev_dir = events_dir(base)
-    if not ev_dir.is_dir():
-        return {"enabled": False, "files_repaired": 0, "duplicates_removed": 0}
-
-    files_repaired = 0
-    duplicates_removed = 0
-    for path in sorted(ev_dir.glob("*.jsonl")):
-        records = _read_month_records(path)
-        if not records:
-            continue
-        seen: set = set()
-        unique: List[Dict[str, Any]] = []
-        for rec in records:
-            fp = rec.get("fingerprint")
-            canon_fp = compute_evidence_fingerprint(
-                canonical_source_name(rec.get("source")),
-                rec.get("observed_at"),
-                rec.get("detail"),
-            )
-            keys = {k for k in (fp, canon_fp) if k}
-            if keys and keys & seen:
-                duplicates_removed += 1
-                continue
-            seen.update(keys)
-            unique.append(rec)
-        unique.sort(key=lambda r: (str(r.get("observed_at", "")), str(r.get("fingerprint", ""))))
-
-        before = [rec.get("prev_hash") for rec in records]
-        prev: Optional[str] = None
-        for rec in unique:
-            rec["prev_hash"] = prev
-            prev = rec.get("content_hash")
-        after = [rec.get("prev_hash") for rec in unique]
-        if len(unique) != len(records) or before != after:
-            path.write_text(
-                "\n".join(
-                    json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in unique
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            files_repaired += 1
-
-    return {
-        "enabled": True,
-        "files_repaired": files_repaired,
-        "duplicates_removed": duplicates_removed,
-        "base_dir": str(base),
-    }
 
 
 def prune_older_than(

@@ -123,13 +123,6 @@ class TestEvidenceStore(unittest.TestCase):
     def test_default_base_dir_is_gittan_home(self):
         self.assertEqual(evidence_base_dir(Path("/home/x")), Path("/home/x/.gittan/evidence"))
 
-    def test_default_base_dir_honours_gittan_home_env(self):
-        import os
-        from unittest.mock import patch
-
-        with patch.dict(os.environ, {"GITTAN_HOME": "/var/gittan-data"}, clear=False):
-            self.assertEqual(evidence_base_dir(), Path("/var/gittan-data/evidence"))
-
     def test_store_health_disabled_when_no_store(self):
         health = store_health(base_dir=self.base)
         self.assertFalse(health["enabled"])

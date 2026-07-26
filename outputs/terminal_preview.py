@@ -67,15 +67,11 @@ def event_detail_parts(event: dict) -> tuple[str, str]:
     # Glass chats missing composerHeaders) — avoid ``timelog-extract
     # timelog-extract: …``.
     project = str(event.get("project") or "").strip()
-    # Strip the unsuffixed label from detail first — appending " (derived)"
-    # before strip leaves the duplicate prefix in the detail (Greptile P1).
+    if not event.get("derived_session_label") and project and label.casefold() == project.casefold():
+        return "", detail
     remainder = _strip_label_from_detail(label, detail)
     if event.get("derived_session_label"):
         label = f"{label} (derived)"
-    elif project and label.casefold() == project.casefold():
-        # Dir-leaf fallback equals project — hide the redundant label prefix
-        # unless provenance is derived (then keep "name (derived)" visible).
-        return "", detail
     return label, remainder
 
 

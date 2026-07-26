@@ -13,9 +13,10 @@ Owner: Maintainer + active agents
 ## Why
 
 The backlog has two surfaces — `priority:*` labels on GitHub issues, and
-[Project 3](https://github.com/users/mbjorke/projects/3) — and they are not
-peers. Labels drive everything; the board is a human view that is written to but
-never read back.
+the user-scoped GitHub Project board (called "Project 3" in local scripts;
+exact URL lives in `scripts/rabbit_handoff.sh` defaults, not in committed docs)
+— and they are not peers. Labels drive everything; the board is a human view
+that is written to but never read back.
 
 That asymmetry was implicit, so "how does the board add up?" kept being answered
 against whichever surface the answerer could reach. Board drift is a recurring
@@ -72,7 +73,8 @@ This is a hard constraint, not a missing permission. Verified empirically on
    fetch returns a JS shell with no items.
 5. **Making the project public does not help.** It was tried. The wall is scope
    and transport, not visibility — and a public board can expose client names in
-   item titles (cf. `#431`), so the default should stay private.
+   item titles (cf. the docs-privacy backlog item on committed doc leaks), so the
+   default should stay private.
 
 Practical rule: **never ask for board access, a token, or a visibility change to
 unblock a hosted agent session.** None of them work there. If such a session
@@ -96,14 +98,14 @@ is how board Status quietly stops being written at all.
 - **Answer scope honestly.** If asked how the board looks and you can only see
   labels, say which surface you measured before reporting numbers.
 
-## Open tension: #272
+## Open tension: agent↔task ownership
 
-`#272` proposes board `Status` as the ownership claim ("the board Status *is* the
-claim") so the kanin-loop preflight can refuse a task another agent owns. That
-slice is **not built**, and as specified it would place the claim on the one
-surface no agent can read.
+The agent-ownership backlog item proposes board `Status` as the ownership claim
+("the board Status *is* the claim") so the kanin-loop preflight can refuse a task
+another agent owns. That slice is **not built**, and as specified it would place
+the claim on the one surface no agent can read.
 
-If `#272` is picked up, the claim needs a machine-readable home — a `status:*`
+If that item is picked up, the claim needs a machine-readable home — a `status:*`
 label alongside `priority:*` is the cheap version, since labels already work for
 every agent with the scope they already have. The board can keep mirroring it for
 the maintainer's eye.
@@ -113,7 +115,8 @@ the maintainer's eye.
 - `docs/skills/gittan-product-owner.md` — the prioritization pass (labels).
 - `docs/skills/rabbit-loop.md`, `AGENTS.md` § *Kanin-loop* — board handoff writes.
 - `docs/task-prompts/backlog-priority-2026-07-25-task.md` — the pass that
-  re-confirmed board drift and re-scoped `#408`.
-- `#272` — agent↔task ownership; the open tension above.
-- `#431` — pre-existing client-name leaks in committed docs; why a public board
-  is not a safe workaround.
+  re-confirmed board drift and re-scoped the board-sync follow-up.
+- `docs/ideas/kanin-handoff-board-closeout.md` — agent↔task ownership; the open
+  tension above.
+- Docs-privacy backlog item — pre-existing client-name leaks in committed docs;
+  why a public board is not a safe workaround.

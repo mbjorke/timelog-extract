@@ -109,8 +109,15 @@ def intent(
 
     bound = 0
     for row in rows:
+        # Shown in the operator's own wall time: the whole point of the question
+        # is recognising the session, and a UTC timestamp is the wrong clock to
+        # recognise it by (10:10 UTC is 13:10 in EEST).
         when = row["first_seen"]
-        span = f"{when:%Y-%m-%d %H:%M}" if hasattr(when, "strftime") else str(when)
+        if hasattr(when, "astimezone"):
+            local = when.astimezone(local_tz)
+            span = f"{local:%Y-%m-%d %H:%M %Z}".strip()
+        else:
+            span = str(when)
         label = row["label"] or "(no title)"
         console.print(
             f"[{CLR_VALUE_ORANGE}]{label}[/{CLR_VALUE_ORANGE}] "

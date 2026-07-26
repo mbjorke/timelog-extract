@@ -9,6 +9,24 @@ import typer
 from core.cli_app import app
 
 
+def _local_stamp(value) -> str:
+    """Render a stored UTC stamp in the reader's own time zone.
+
+    The ledger stores UTC — correct for records, wrong for a human reading a
+    health line. Falls back to the raw value rather than hiding a parse failure.
+    """
+    from datetime import datetime
+
+    text = str(value or "").strip()
+    if not text:
+        return "—"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return text
+    return f"{parsed.astimezone():%Y-%m-%d %H:%M %Z}".strip()
+
+
 @app.command("evidence")
 def evidence(
     export: Annotated[Optional[str], typer.Option("--export", help="Write all stored evidence to a JSONL file at PATH, then exit.")] = None,
@@ -118,7 +136,7 @@ def evidence(
         f"Records: [{CLR_VALUE_ORANGE}]{health['total_records']}[/{CLR_VALUE_ORANGE}] "
         f"(captured today: {health['records_captured_today']})"
     )
-    console.print(f"Last capture: {health['last_captured_at'] or '—'}")
+    console.print(f"Last capture: {_local_stamp(health.get('last_captured_at'))}")
     console.print(f"Retention span: {health['retention_span'] or '—'}")
     if health["chain_ok"]:
         console.print(f"Chain integrity: [{CLR_GREEN}]OK[/{CLR_GREEN}]")

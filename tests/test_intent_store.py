@@ -10,7 +10,9 @@ that matters end to end: a bound session shows up attributed in a real report.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -261,6 +263,38 @@ class ReportAttributionTests(unittest.TestCase):
         after = self._hours_by_project()
         self.assertAlmostEqual(after.get("Customer X", 0), unattributed, places=4)
         self.assertNotIn(UNCAT, after, f"nothing should be left unattributed: {after}")
+
+
+class LocalTimeDisplayTests(unittest.TestCase):
+    """Stored stamps are UTC; a human reading them must see their own clock.
+
+    Caught by the maintainer: 10:10 UTC is 13:10 on an EEST wall clock. For a
+    question whose purpose is recognising a session, the wrong clock makes it
+    unanswerable.
+    """
+
+    def test_utc_stamp_renders_in_the_readers_zone(self):
+        from core.cli_evidence import _local_stamp
+
+        with patch.dict(os.environ, {"TZ": "Europe/Mariehamn"}):
+            time.tzset()
+            try:
+                rendered = _local_stamp("2026-07-26T10:10:00+00:00")
+            finally:
+                time.tzset()
+        self.assertIn("13:10", rendered, f"expected an EEST wall clock, got {rendered}")
+        self.assertNotIn("10:10", rendered)
+
+    def test_blank_stamp_reads_as_a_dash(self):
+        from core.cli_evidence import _local_stamp
+
+        self.assertEqual(_local_stamp(None), "—")
+        self.assertEqual(_local_stamp("   "), "—")
+
+    def test_unparseable_stamp_is_shown_not_swallowed(self):
+        from core.cli_evidence import _local_stamp
+
+        self.assertEqual(_local_stamp("not a timestamp"), "not a timestamp")
 
 
 if __name__ == "__main__":

@@ -258,6 +258,50 @@ class TruthPayloadTests(unittest.TestCase):
         self.assertEqual(payload["paths"]["worklogs"], [])
         self.assertEqual(payload["paths"]["worklog"], "")
 
+    def test_derived_session_label_serialization_in_truth_payload(self):
+        base = datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc)
+        events = [
+            {
+                "source": "TIMELOG.md",
+                "timestamp": base,
+                "detail": "Commit: fix bug",
+                "project": "Project A",
+                "derived_session_label": True,
+            },
+            {
+                "source": "Cursor",
+                "timestamp": base,
+                "detail": "Coding",
+                "project": "Project A",
+            }
+        ]
+        grouped = group_by_day(events)
+        overall_days = estimate_hours_by_day(
+            grouped,
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        day = base.astimezone().date().isoformat()
+        payload = build_truth_payload(
+            overall_days=overall_days,
+            project_reports={"Project A": overall_days},
+            included_events=events,
+            collector_status={},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=base + timedelta(hours=1),
+            worklog_path="/tmp/TIMELOG.md",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            session_duration_hours_fn=_fake_session_duration,
+        )
+        evs = payload["days"][day]["sessions"][0]["events"]
+        self.assertTrue(evs[0]["derived_session_label"])
+        self.assertFalse(evs[1]["derived_session_label"])
+
 
 if __name__ == "__main__":
     unittest.main()

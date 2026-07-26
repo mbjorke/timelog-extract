@@ -195,6 +195,28 @@ class WorklogEnrichTests(unittest.TestCase):
         enrich_delivery_session_labels(events, uncategorized="Uncategorized")
         self.assertNotIn("label", events[1].get("anchors", {}))
 
+    def test_enrichment_marks_derived_provenance_flag(self):
+        base = datetime(2026, 6, 24, 15, 40, tzinfo=timezone.utc)
+        events = [
+            make_test_event(
+                "Claude Code CLI",
+                base,
+                "merge onboarding verify PR",
+                "timelog-extract",
+                anchors={"label": "Toggle integration progress"},
+            ),
+            make_test_event(
+                "TIMELOG.md",
+                base + timedelta(minutes=10),
+                "Commit: Unify session title display",
+                "timelog-extract",
+            ),
+        ]
+        self.assertFalse(events[0].get("derived_session_label", False))
+        enrich_worklog_session_labels(events)
+        self.assertTrue(events[1].get("derived_session_label", False))
+        self.assertFalse(events[0].get("derived_session_label", False))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,6 @@ from core import (
     cli_map,  # noqa: F401
     cli_projects,  # noqa: F401
     cli_projects_audit,  # noqa: F401
-    cli_projects_trim,  # noqa: F401
     cli_report_status,  # noqa: F401
     cli_reported,  # noqa: F401
     cli_review,  # noqa: F401

@@ -38,7 +38,17 @@ class BrioxSecurityTests(unittest.TestCase):
             handler.redirect_request(
                 req, None, 301, "Moved Permanently", {}, "http://insecure.example.test"
             )
-        self.assertIn("redirect to insecure http:// rejected", str(ctx.exception))
+        self.assertIn("non-HTTPS target rejected", str(ctx.exception))
+
+    def test_redirect_handler_rejects_ftp_redirect(self):
+        """RejectHttpRedirectHandler must block redirects to FTP (non-HTTPS)."""
+        handler = briox.RejectHttpRedirectHandler()
+        req = Request("https://secure.example.test/token")
+        with self.assertRaises(URLError) as ctx:
+            handler.redirect_request(
+                req, None, 301, "Moved Permanently", {}, "ftp://insecure.example.test"
+            )
+        self.assertIn("non-HTTPS target rejected", str(ctx.exception))
 
     def test_redirect_handler_allows_https_redirect(self):
         """RejectHttpRedirectHandler should allow redirects to secure HTTPS."""

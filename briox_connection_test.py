@@ -21,12 +21,12 @@ from urllib.parse import urlencode, urlparse
 
 
 class RejectHttpRedirectHandler(urlrequest.HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+    """Block redirects to non-HTTPS targets so Authorization headers are never forwarded."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if (urlparse(newurl).scheme or "").lower() == "http":
+        if (urlparse(newurl).scheme or "").lower() != "https":
             raise urlerror.URLError(
-                "Briox redirect to insecure http:// rejected to protect credentials"
+                "Briox redirect to non-HTTPS target rejected to protect credentials"
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 

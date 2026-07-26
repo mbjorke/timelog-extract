@@ -17,7 +17,32 @@ import os
 from datetime import datetime
 from pathlib import Path
 from urllib import error as urlerror, request as urlrequest
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
+
+
+class RejectHttpRedirectHandler(urlrequest.HTTPRedirectHandler):
+    """Block redirects to non-HTTPS or cross-origin targets so Authorization headers are never forwarded."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new_parsed = urlparse(newurl)
+        if (new_parsed.scheme or "").lower() != "https":
+            raise urlerror.URLError(
+                "Briox redirect to non-HTTPS target rejected to protect credentials"
+            )
+        orig_parsed = urlparse(req.full_url)
+        if orig_parsed.netloc != new_parsed.netloc:
+            raise urlerror.URLError(
+                "Briox redirect to cross-origin HTTPS target rejected to protect credentials"
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_briox_opener = urlrequest.build_opener(RejectHttpRedirectHandler(), urlrequest.HTTPSHandler())
+
+
+def urlopen(req: urlrequest.Request, timeout: int = 20):
+    return _briox_opener.open(req, timeout=timeout)
+
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_BRIOX_API_BASE = "https://api-se.briox.services/v2"
@@ -49,6 +74,10 @@ def parse_args():
 
 
 def http_json(method, url, body=None, headers=None, timeout=20):
+    if not url.lower().startswith("https://"):
+        raise ValueError(
+            "Briox API base URL must use HTTPS to prevent credential leakage over unencrypted HTTP"
+        )
     encoded = None if body is None else json.dumps(body).encode("utf-8")
     req_headers = {"Accept": "application/json"}
     if encoded is not None:
@@ -57,7 +86,7 @@ def http_json(method, url, body=None, headers=None, timeout=20):
         req_headers.update(headers)
     req = urlrequest.Request(url, data=encoded, method=method, headers=req_headers)
     try:
-        with urlrequest.urlopen(req, timeout=timeout) as resp:
+        with urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             return resp.status, json.loads(raw) if raw else {}
     except urlerror.HTTPError as exc:

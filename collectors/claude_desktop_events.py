@@ -261,9 +261,7 @@ def collect_claude_desktop_code(profiles, dt_from, dt_to, home, classify_project
                         ts,
                         detail,
                         project,
-                        anchors=_anchors(
-                            repo=slug, dir=cwd, label=meaningful, session=sid or None
-                        ),
+                        anchors=_anchors(repo=slug, dir=cwd, label=meaningful),
                     )
                 )
     return results

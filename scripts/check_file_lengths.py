@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Report tracked Python files above the recommended line count.
-
-File length is a **recommendation, not a gate**. Long files are worth a look —
-they are often a sign that a module grew two responsibilities — but length alone
-never says the code is wrong, and a size limit that fails the build makes
-splitting a deadline problem instead of a design one.
-
-By default this script reports and exits 0, which is how CI runs it. ``--strict``
-opts into a hard failure (exit 1 when a file exceeds ``--max-lines``) for anyone
-who wants the cap enforced locally.
-"""
+"""Fail if tracked Python source files exceed configured line count."""
 
 from __future__ import annotations
 
@@ -46,11 +36,12 @@ def count_lines(path: Path) -> int:
 
 
 def classify_lengths(counts, max_lines: int, warn_lines: int):
-    """Split (rel_path, lines) pairs into over-limit files and approaching ones.
+    """Split (rel_path, lines) pairs into hard violations and soft warnings.
 
-    Both lists are advisory. The split is kept so the report can distinguish
-    "past the recommendation" from "getting close", which is useful signal even
-    when nothing fails.
+    A file over ``max_lines`` is a violation (fails CI). A file at or above
+    ``warn_lines`` but within the cap is a warning: it surfaces the "trimmed to
+    just under the limit" pressure *before* the cliff, so the fix is to split by
+    responsibility early rather than shave lines to stay green.
     """
     violations, warnings = [], []
     for rel_path, lines in counts:
@@ -63,22 +54,12 @@ def classify_lengths(counts, max_lines: int, warn_lines: int):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--max-lines",
-        type=int,
-        default=500,
-        help="Recommended maximum lines per file (advisory unless --strict).",
-    )
+    parser.add_argument("--max-lines", type=int, default=500, help="Maximum lines allowed per file (hard cap).")
     parser.add_argument(
         "--warn-lines",
         type=int,
         default=460,
-        help="Also list files at or above this many lines — the approaching-the-recommendation band.",
-    )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Exit non-zero when a file exceeds --max-lines (opt-in enforcement).",
+        help="Warn (without failing) for files at or above this many lines — the approaching-the-cap band.",
     )
     args = parser.parse_args()
     warn_lines = min(args.warn_lines, args.max_lines)
@@ -91,19 +72,15 @@ def main() -> int:
     violations, warnings = classify_lengths(counts, args.max_lines, warn_lines)
 
     if warnings:
-        print(f"Approaching the {args.max_lines}-line recommendation:")
+        print(f"Approaching the {args.max_lines}-line limit (split by responsibility — don't shave to fit):")
         for rel_path, lines in sorted(warnings, key=lambda item: item[1], reverse=True):
             print(f"- {rel_path}: {lines} ({args.max_lines - lines} to go)")
 
     if violations:
-        label = "Files over" if args.strict else "Above the recommendation (advisory)"
-        print(f"{label} {args.max_lines} lines:")
+        print(f"Files over {args.max_lines} lines:")
         for rel_path, lines in sorted(violations, key=lambda item: item[1], reverse=True):
             print(f"- {rel_path}: {lines}")
-        if args.strict:
-            return 1
-        print("Not a failure — split when a file has two jobs, not when it hits a number.")
-        return 0
+        return 1
 
     print(f"OK: all tracked Python files are <= {args.max_lines} lines.")
     return 0

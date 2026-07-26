@@ -1,7 +1,8 @@
 # Intent capture — recording user intention at the moment of work
 
-Status: draft spec
-Last updated: 2026-06-10
+Status: **partly built** — session-keyed binding shipped 2026-07-26; the
+URL-keyed (browser chat) half is still draft  
+Last updated: 2026-07-26
 
 ## Purpose
 
@@ -30,6 +31,26 @@ then becomes **confirmation** of mostly-classified events instead of
   not a bypass.
 - No raw URL retention by default (see Privacy).
 - No multi-user/team model.
+
+## Built: the session-keyed half (2026-07-26)
+
+`core/intent_store.py` implements this record contract keyed on **session id**
+rather than `url_hash`, because that key already exists: `session` is now an
+anchor on events from Claude Code and Claude Desktop (Code). `gittan intent` asks
+about unattributed sessions and appends the answer; the report applies bindings
+after replay, and an overridden row records `anchors.project_from = "intent"`.
+
+Spec and rationale: `docs/task-prompts/session-intent-binding-task.md`.
+
+**Shipped contract (`key_kind: "session"`):** CLI `gittan intent`, append-only
+log, report override after replay. See the task prompt and
+`tests/test_intent_store.py`.
+
+**Still draft here:** the **`url_hash`** key below, which is what a browser chat
+would need — it has no session id Gittan can see. The store accepts
+`key_kind: "url"`, but nothing produces such a key yet. Treat URL fields and
+scenarios below as forward-looking until a producer lands; do not read them as
+the shipped session surface.
 
 ## The intent record
 
@@ -112,6 +133,10 @@ re-tag events, aggregated at report time. No config rewriting.
 - `docs/specs/ab-rule-suggestions.md` — an accepted intent record for a
   recurring host is a natural rule-suggestion trigger ("always map this
   host/thread to project X?").
+- `docs/specs/intent-capture-agent-surface.md` — draft MCP surface so the question
+  is asked inside the agent during the work, rather than in a terminal afterwards.
+  Answers the "write path for non-CLI surfaces" question below for the agent case
+  (local stdio, no endpoint to authenticate).
 
 ## Open questions
 

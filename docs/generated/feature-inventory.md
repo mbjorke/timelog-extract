@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 26 |
+| Commands | 28 |
 | Command groups | 2 |
 | Collectors | 22 |
 | Per-project config fields | 18 |
@@ -18,10 +18,12 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | Group | Command | Help | Spec |
 | --- | --- | --- | --- |
 | — | `calendar-suggest` | Suggest project profiles from calendar title codes (read-only; no config written). | (no spec) |
+| — | `capture` | Capture this device's AI session evidence into the shadow log. | [device-session-capture-task](../task-prompts/device-session-capture-task.md) · built |
 | — | `cast` | Record a gittan status + doctor session as a structured semantic .cast file. | (no spec) |
 | — | `doctor` | Check source access and local integration health, then print a diagnostic table. | (no spec) |
 | — | `evidence` | Show shadow-log health, or manage your local evidence (export / erase / prune). | (no spec) |
 | — | `evidence-check` | Quick evidence-health check for source coverage vs Screen Time. | (no spec) |
+| — | `intent` | Ask which project each unattributed chat session belongs to. | [session-intent-binding-task](../task-prompts/session-intent-binding-task.md) · built |
 | — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | (no spec) |
 | — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [map-customer-first-flow](../task-prompts/map-customer-first-flow.md) · `not built` |
 | — | `projects` | Manage project profiles interactively. | (no spec) |

@@ -185,6 +185,20 @@ class TerminalPreviewTests(unittest.TestCase):
         label2, detail2 = event_detail_parts(event2)
         self.assertEqual(label2, "Toggle integration progress")
 
+    def test_derived_label_shown_when_label_matches_project(self):
+        from outputs.terminal_preview import event_detail_parts
+
+        event = {
+            "source": "Cursor",
+            "project": "timelog-extract",
+            "detail": "some work detail",
+            "anchors": {"label": "timelog-extract"},
+            "derived_session_label": True,
+        }
+        label, detail = event_detail_parts(event)
+        self.assertEqual(label, "timelog-extract (derived)")
+        self.assertEqual(detail, "some work detail")
+
 
 if __name__ == "__main__":
     unittest.main()

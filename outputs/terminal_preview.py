@@ -67,11 +67,11 @@ def event_detail_parts(event: dict) -> tuple[str, str]:
     # Glass chats missing composerHeaders) — avoid ``timelog-extract
     # timelog-extract: …``.
     project = str(event.get("project") or "").strip()
+    if event.get("derived_session_label"):
+        label = f"{label} (derived)"
     if project and label.casefold() == project.casefold():
         return "", detail
     remainder = _strip_label_from_detail(label, detail)
-    if event.get("derived_session_label"):
-        label = f"{label} (derived)"
     return label, remainder
 
 

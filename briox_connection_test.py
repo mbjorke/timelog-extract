@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib import error as urlerror, request as urlrequest
 from urllib.parse import urlencode, urlparse
 
+
 class RejectHttpRedirectHandler(urlrequest.HTTPRedirectHandler):
     """Block redirects to plain HTTP so Authorization headers are never forwarded."""
 

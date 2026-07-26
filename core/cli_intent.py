@@ -69,22 +69,23 @@ def intent(
     known = [str(profile.get("name") or "") for profile in profiles if profile.get("name")]
 
     if set_binding:
-        written = 0
+        # Validate the whole batch before appending anything. A binding is
+        # authoritative (outranks a match_term), so a partial write on a later
+        # typo would leave hours reassigned while the error still claims
+        # "Nothing was recorded."
+        pending: list[tuple[str, str]] = []
         for pair in set_binding:
             if "=" not in pair:
                 console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --set needs SESSION=PROJECT, got {pair!r}[/{CLR_VALUE_ORANGE}]")
                 console.print(f"[{STYLE_MUTED}]Next: Run `gittan intent` with no options to pick from a list.[/{STYLE_MUTED}]")
                 raise typer.Exit(code=1)
             session, project = pair.split("=", 1)
-            # A binding is authoritative — it outranks a match_term — so a typo
-            # would move the hours to a project that does not exist and, worse,
-            # off `Uncategorized`, hiding them from triage until someone noticed
-            # a phantom bucket on an invoice. `docs/specs/intent-capture.md`
-            # already required rejecting this; the note-and-continue was a bug
-            # against our own contract.
-            if known and project.strip() not in known:
+            project = project.strip()
+            # `docs/specs/intent-capture.md`: invalid project name is rejected
+            # and nothing is appended.
+            if known and project not in known:
                 console.print(
-                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {project.strip()!r} is not a "
+                    f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {project!r} is not a "
                     f"configured project.[/{CLR_VALUE_ORANGE}]"
                 )
                 console.print(f"[{STYLE_MUTED}]Known: {', '.join(known)}[/{STYLE_MUTED}]")
@@ -93,6 +94,9 @@ def intent(
                     f"your config first. Nothing was recorded.[/{STYLE_MUTED}]"
                 )
                 raise typer.Exit(code=1)
+            pending.append((session, project))
+        written = 0
+        for session, project in pending:
             record = record_intent(session, project, via="cli", note=note, home=home)
             console.print(f"Bound {record['key']} → [{CLR_VALUE_ORANGE}]{record['project']}[/{CLR_VALUE_ORANGE}]")
             written += 1

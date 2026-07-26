@@ -319,6 +319,13 @@ class UnknownProjectIsRejectedTests(unittest.TestCase):
         bindings = resolve_intents(home=self.home)
         self.assertEqual(bindings[("session", "s1")]["project"], "Customer X")
 
+    def test_failed_batch_writes_nothing(self):
+        """A later typo must not leave earlier --set bindings recorded."""
+        result = self._run("--set", "s1=Customer X", "--set", "s2=Ghost Project")
+        self.assertEqual(result.exit_code, 1, result.output)
+        self.assertIn("Ghost Project", result.output)
+        self.assertEqual(read_intents(home=self.home), [])
+
 
 class LocalTimeDisplayTests(unittest.TestCase):
     """Stored stamps are UTC; a human reading them must see their own clock.

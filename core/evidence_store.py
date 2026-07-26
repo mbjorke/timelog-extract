@@ -23,12 +23,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from core.config import ENV_GITTAN_HOME, canonical_gittan_home
 from core.evidence_record import (
     compute_content_hash,
     compute_evidence_fingerprint,
@@ -40,8 +42,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def evidence_base_dir(home: Optional[Path] = None) -> Path:
-    """Durable store root: ``~/.gittan/evidence`` (local, never uploaded)."""
-    return (home or Path.home()) / ".gittan" / "evidence"
+    """Durable store root: ``~/.gittan/evidence`` (local, never uploaded).
+
+    When ``home`` is omitted, honour ``$GITTAN_HOME`` the same way config and
+    autocommit do — that directory *is* the data dir, so evidence lives at
+    ``$GITTAN_HOME/evidence``. An explicit ``home`` keeps the test/CLI contract
+    ``<home>/.gittan/evidence``.
+    """
+    if home is not None:
+        return Path(home) / ".gittan" / "evidence"
+    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
+    if env_home:
+        return Path(env_home).expanduser() / "evidence"
+    return canonical_gittan_home() / "evidence"
 
 
 def events_dir(base_dir: Path) -> Path:

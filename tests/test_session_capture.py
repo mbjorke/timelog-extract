@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from core import session_capture
 from core.evidence_store import events_dir, read_records
@@ -164,8 +166,7 @@ class CaptureDeviceEvidenceTests(unittest.TestCase):
 
         Capturing from a mounted backup of another machine is the documented use
         case. If the alternate HOME also received the ledger, the events would
-        land somewhere no report reads — and vanish with the mount. The CLI passes
-        `store_home` for exactly this reason.
+        land somewhere no report reads — and vanish with the mount.
         """
         canonical = self.tmp / "canonical"
         summary = capture_device_evidence(
@@ -180,6 +181,17 @@ class CaptureDeviceEvidenceTests(unittest.TestCase):
             (self.home / ".gittan" / "evidence").exists(),
             "the read-only HOME must not receive a ledger",
         )
+
+    def test_default_ledger_follows_gittan_home_env(self):
+        """Autocommit / custom data dirs share one store with report + evidence."""
+        data = self.tmp / "data-gittan"
+        with patch.dict(os.environ, {"GITTAN_HOME": str(data)}, clear=False):
+            summary = capture_device_evidence(
+                PROFILES, DT_FROM, DT_TO, home=self.home, device="laptop"
+            )
+        self.assertGreater(summary["appended"], 0)
+        self.assertTrue((data / "evidence").exists())
+        self.assertFalse((self.home / ".gittan" / "evidence").exists())
 
     def test_capture_appends_and_is_idempotent(self):
         first = self._capture(device="laptop")

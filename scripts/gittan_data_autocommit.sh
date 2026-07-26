@@ -27,14 +27,8 @@ DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"
 if [ "${GITTAN_AUTOCOMMIT_CAPTURE:-1}" = "1" ]; then
   GITTAN_CMD="${GITTAN_BIN:-$(command -v gittan 2>/dev/null || true)}"
   if [ -n "$GITTAN_CMD" ] && [ -x "$GITTAN_CMD" ]; then
-    # DATA_DIR is the .gittan tree; store-home is its parent so capture lands in
-    # the same evidence store this script commits (not always $HOME/.gittan).
-    STORE_HOME="$(cd "$(dirname "$DATA_DIR")" 2>/dev/null && pwd || true)"
-    if [ -n "$STORE_HOME" ]; then
-      "$GITTAN_CMD" capture --if-enabled --store-home "$STORE_HOME" >/dev/null 2>&1 || true
-    else
-      "$GITTAN_CMD" capture --if-enabled >/dev/null 2>&1 || true
-    fi
+    # Same data dir capture + commit: evidence_base_dir honours GITTAN_HOME.
+    GITTAN_HOME="$DATA_DIR" "$GITTAN_CMD" capture --if-enabled >/dev/null 2>&1 || true
   fi
 fi
 

@@ -7,24 +7,11 @@ from typing import Annotated, Optional
 import typer
 
 from core.cli_app import app
+from core.local_time import local_stamp
 
-
-def _local_stamp(value) -> str:
-    """Render a stored UTC stamp in the reader's own time zone.
-
-    The ledger stores UTC — correct for records, wrong for a human reading a
-    health line. Falls back to the raw value rather than hiding a parse failure.
-    """
-    from datetime import datetime
-
-    text = str(value or "").strip()
-    if not text:
-        return "—"
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError:
-        return text
-    return f"{parsed.astimezone():%Y-%m-%d %H:%M %Z}".strip()
+#: Kept so existing callers and tests keep working after the helper moved out to
+#: `core/local_time.py` for the doctor and intent surfaces to share.
+_local_stamp = local_stamp
 
 
 @app.command("evidence")

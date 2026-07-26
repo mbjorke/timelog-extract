@@ -118,14 +118,28 @@ class DescribeDevicesTests(unittest.TestCase):
             },
             self.TODAY,
         )
-        self.assertEqual(rows, ["laptop: today", "phone: yesterday"])
+        self.assertEqual(rows, ["laptop: last event today", "phone: last event yesterday"])
         self.assertEqual(stale, [])
+
+    def test_row_says_last_event_not_last_capture(self):
+        """Caught on the maintainer's machine: the two are different facts.
+
+        `evidence` said "Last capture: today" while this row said "yesterday",
+        and both were right — capture ran today, but the newest *event* on that
+        device was from the day before, because the day's work happened in a
+        cloud session that writes no local transcript. Unlabelled, that reads as
+        a contradiction, so the label carries which fact it is.
+        """
+        rows, _stale = describe_devices(
+            {"laptop": {"last_observed_at": "2026-07-24T09:00:00+00:00"}}, self.TODAY
+        )
+        self.assertEqual(rows, ["laptop: last event yesterday"])
 
     def test_device_past_the_threshold_is_flagged(self):
         rows, stale = describe_devices(
             {"phone": {"last_observed_at": "2026-06-25T09:00:00+00:00"}}, self.TODAY
         )
-        self.assertEqual(rows, ["phone: 30d ago"])
+        self.assertEqual(rows, ["phone: last event 30d ago"])
         self.assertEqual(stale, ["phone"])
 
     def test_boundary_day_is_not_yet_stale(self):
@@ -137,6 +151,32 @@ class DescribeDevicesTests(unittest.TestCase):
         rows, stale = describe_devices({"phone": {"last_observed_at": "nonsense"}}, self.TODAY)
         self.assertEqual(rows, ["phone: unknown"])
         self.assertEqual(stale, ["phone"])
+
+    def test_day_bucket_follows_the_readers_calendar_not_utc(self):
+        """A UTC date compared against a local one is off by one for some hours.
+
+        23:30 EEST on the 25th is 20:30 UTC the same day — but 01:00 EEST on the
+        26th is 22:00 UTC on the *25th*, so a device that produced an event an
+        hour ago would be reported as "yesterday" to a reader whose calendar
+        already says the 26th. `docs/specs/timestamp-standard.md` §2: the day
+        bucket a human reads is a local concept.
+        """
+        import os
+        import time
+        from unittest.mock import patch
+
+        # 22:00 UTC on the 25th is 01:00 EEST on the 26th — the reader's today.
+        with patch.dict(os.environ, {"TZ": "Europe/Mariehamn"}):
+            time.tzset()
+            try:
+                rows, stale = describe_devices(
+                    {"laptop": {"last_observed_at": "2026-07-25T22:00:00+00:00"}},
+                    date(2026, 7, 26),
+                )
+            finally:
+                time.tzset()
+        self.assertEqual(rows, ["laptop: last event today"], "UTC date leaked into the label")
+        self.assertEqual(stale, [])
 
 
 class DeviceCoverageRowTests(unittest.TestCase):
@@ -169,7 +209,7 @@ class DeviceCoverageRowTests(unittest.TestCase):
     def test_healthy_devices_render_ok(self):
         table = self._row({"laptop": {"last_observed_at": "2026-07-25T09:00:00+00:00"}})
         self.assertEqual(table.columns[1]._cells[0], "OK")
-        self.assertIn("laptop: today", table.columns[2]._cells[0])
+        self.assertIn("laptop: last event today", table.columns[2]._cells[0])
 
     def test_quiet_device_warns_and_names_itself(self):
         table = self._row(

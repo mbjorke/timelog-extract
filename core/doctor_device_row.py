@@ -21,6 +21,15 @@ STALE_AFTER_DAYS = 10
 
 
 def _days_since(observed_at: Optional[str], today: date) -> Optional[int]:
+    """Whole days between a stored UTC stamp and the reader's local calendar.
+
+    The stamp is stored UTC; ``today`` is the reader's own date. So the stamp is
+    converted to local time before its date is taken — comparing a UTC date
+    against a local one puts an event from this evening on "yesterday" for the
+    hours where the two calendars disagree (03:00 EEST covers 00:00 UTC), which
+    is `docs/specs/timestamp-standard.md` §2 in its most confusing form: a row
+    saying "yesterday" directly under one saying capture ran today.
+    """
     if not observed_at:
         return None
     try:
@@ -29,7 +38,7 @@ def _days_since(observed_at: Optional[str], today: date) -> Optional[int]:
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return (today - parsed.date()).days
+    return (today - parsed.astimezone().date()).days
 
 
 def describe_devices(
@@ -51,7 +60,12 @@ def describe_devices(
             when = "yesterday"
         else:
             when = f"{gap}d ago"
-        rows.append((gap, device, f"{device}: {when}"))
+        # "last event", not a bare date: this tracks when the device last
+        # *produced* evidence, which is not when capture last ran there. A
+        # machine can capture faithfully every hour and still have gone quiet,
+        # and that difference is the whole point of the row — but unlabelled it
+        # reads as a contradiction next to the shadow-log row's "Last capture".
+        rows.append((gap, device, f"{device}: last event {when}"))
         if gap > STALE_AFTER_DAYS:
             stale.append(device)
     rows.sort(key=lambda row: (row[0], row[1]))

@@ -37,6 +37,7 @@ def intent(
     from core.analytics import get_date_range
     from core.config import load_profiles, resolve_projects_config_path
     from core.intent_store import intent_path, record_intent, resolve_intents, unbound_sessions
+    from core.local_time import local_stamp
     from outputs.terminal_theme import (
         CLR_VALUE_ORANGE,
         FAIL_ICON,
@@ -114,10 +115,9 @@ def intent(
         # recognise it by (10:10 UTC is 13:10 in EEST).
         when = row["first_seen"]
         if hasattr(when, "astimezone"):
-            local = when.astimezone(local_tz)
-            span = f"{local:%Y-%m-%d %H:%M %Z}".strip()
+            span = f"{when.astimezone(local_tz):%Y-%m-%d %H:%M %Z}".strip()
         else:
-            span = str(when)
+            span = local_stamp(when)
         label = row["label"] or "(no title)"
         console.print(
             f"[{CLR_VALUE_ORANGE}]{label}[/{CLR_VALUE_ORANGE}] "

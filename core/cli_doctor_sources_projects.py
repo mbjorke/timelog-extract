@@ -180,11 +180,19 @@ def doctor(
                 with capture_errors_file.open(encoding="utf-8") as f:
                     errors = [json.loads(line) for line in f if line.strip()]
                 if errors:
+                    from core.local_time import local_stamp as _local_stamp
+
                     latest_err = errors[-1]
+                    # Naming the source makes the message actionable: the same
+                    # "No module named 'core'" is a broken git hook or a broken
+                    # capture install depending on where it came from.
+                    origin = str(latest_err.get("source") or "").strip()
+                    origin_note = f" [source: {origin}]" if origin else ""
                     table.add_row(
                         "Capture errors",
                         FAIL_ICON,
-                        f"[{STYLE_MUTED}]Recent capture failure: {latest_err.get('error')} (last: {latest_err.get('timestamp')})[/{STYLE_MUTED}]",
+                        f"[{STYLE_MUTED}]Recent capture failure: {latest_err.get('error')}{origin_note} "
+                        f"(last: {_local_stamp(latest_err.get('timestamp'))})[/{STYLE_MUTED}]",
                     )
             except Exception:
                 pass

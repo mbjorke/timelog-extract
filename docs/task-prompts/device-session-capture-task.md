@@ -115,6 +115,11 @@ not touch it.
   hours with no anchor at all, so it lands on `Uncategorized` unless the operator
   happened to type the project name. Adding it later is one registry entry, with
   eyes open about that.
+- **Cursor is not in `CAPTURE_SOURCES` yet** — live same-machine Cursor rows
+  still appear via collectors, but durable cross-device capture does not. Device
+  is stored in provenance and shown in doctor, **not** appended to report
+  project/session labels. Both gaps: #474 /
+  `docs/task-prompts/capture-cursor-and-device-labels-task.md`.
 - The Claude **mobile app** writes no local artifact on any device the operator
   controls, so it stays uncaptured. Closing that needs intent capture
   (`docs/specs/intent-capture.md`), which is a different mechanism.
@@ -126,20 +131,20 @@ not touch it.
 
 ## Traceability
 
-- story_id: `GH-464`
+- story_id: `GH-470` (https://github.com/mbjorke/timelog-extract/issues/470)
 - covers: capture
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-07-25
-- last_updated_at: 2026-07-25
-- implementation.pr: pending
-- implementation.branch: claude/tavlan-stammer-over-u55fn6
+- last_updated_at: 2026-07-26
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/469
+- implementation.branch: task/session-capture-and-intent
 - implementation.commits: []
 - validation.evidence: `tests/test_session_capture.py` (16 tests incl.
   cross-device dedupe and dry-run write-nothing), `tests/test_cli_evidence_ux.py`
   (import error pattern); live run against a real remote session transcript —
   66 events exported, imported, re-imported with 0 duplicates, chain integrity OK
-- validation.decision: GO
+- validation.decision: conditional GO
 - changelog:
   - 2026-07-25: Initial spec and implementation. `gittan capture` +
     `gittan evidence --import`, device provenance in the existing
@@ -156,3 +161,6 @@ not touch it.
   - 2026-07-26: Added `desktop-code` to `CAPTURE_SOURCES` (the measurement's
     recommendation) plus a repeatable `--source` selector and a per-run report of
     which sources contributed.
+  - 2026-07-26: PO pass — story_id was wrongly `GH-464` (collided with an
+    unrelated closed issue). Correct tracker is #470; PR #469. Board Status
+    → Needs manual testing until the maintainer walkthrough lands.

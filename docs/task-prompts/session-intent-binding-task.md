@@ -121,20 +121,20 @@ restored evidence is bound too.
 
 ## Traceability
 
-- story_id: `GH-465`
+- story_id: `GH-471` (https://github.com/mbjorke/timelog-extract/issues/471)
 - covers: intent
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-07-26
 - last_updated_at: 2026-07-26
-- implementation.pr: pending
-- implementation.branch: claude/tavlan-stammer-over-u55fn6
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/469
+- implementation.branch: task/session-capture-and-intent
 - implementation.commits: []
 - validation.evidence: `tests/test_intent_store.py` (23 tests incl. an end-to-end
   report assertion that bound hours move off `Uncategorized`, and that a decision
   overrides a text match); live demo — a desktop-code session's 0.4h moved from
   `Uncategorized` to a named customer after one binding, with no config change
-- validation.decision: GO
+- validation.decision: conditional GO
 - changelog:
   - 2026-07-26: `session` anchor in both Claude collectors, `core/intent_store.py`
     (append-only log, latest-wins, auditable re-projection), the override wired
@@ -142,3 +142,6 @@ restored evidence is bound too.
   - 2026-07-26: Both open forks closed by the maintainer — intent outranks
     `match_terms` (confirmed), and per-time-span bindings are out of scope (a
     session belongs to one project).
+  - 2026-07-26: PO pass — story_id was wrongly `GH-465` (collided with an
+    unrelated Bolt issue). Correct tracker is #471; PR #469. Board Status →
+    Needs manual testing until the maintainer walkthrough lands.

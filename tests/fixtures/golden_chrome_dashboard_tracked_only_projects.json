@@ -1,0 +1,10 @@
+{
+  "worklog": "golden_chrome_empty_TIMELOG.md",
+  "projects": [
+    {
+      "name": "DashboardTracked",
+      "match_terms": [],
+      "tracked_urls": ["https://dashboard.example/index.cgi"]
+    }
+  ]
+}

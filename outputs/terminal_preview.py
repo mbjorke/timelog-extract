@@ -70,6 +70,8 @@ def event_detail_parts(event: dict) -> tuple[str, str]:
     if project and label.casefold() == project.casefold():
         return "", detail
     remainder = _strip_label_from_detail(label, detail)
+    if event.get("derived_session_label"):
+        label = f"{label} (derived)"
     return label, remainder
 
 

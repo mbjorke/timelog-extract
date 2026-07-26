@@ -115,6 +115,7 @@ def enrich_worklog_session_labels(
         anchors = dict(event_anchors(event))
         anchors["label"] = label
         event["anchors"] = anchors
+        event["derived_session_label"] = True
         if detail != event.get("detail"):
             event["detail"] = detail
 
@@ -142,6 +143,7 @@ def enrich_github_session_labels(
         anchors = dict(event_anchors(event))
         anchors["label"] = label
         event["anchors"] = anchors
+        event["derived_session_label"] = True
 
 
 def enrich_delivery_session_labels(

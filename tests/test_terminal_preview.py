@@ -162,6 +162,29 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertEqual(len(picked), 1)
         self.assertEqual(picked[0]["source"], "Lovable (desktop)")
 
+    def test_derived_label_suffix_rendering(self):
+        from outputs.terminal_preview import event_detail_parts
+        event = {
+            "source": "TIMELOG.md",
+            "project": "Project A",
+            "detail": "Commit: fix bug",
+            "anchors": {"label": "Toggle integration progress"},
+            "derived_session_label": True,
+        }
+        label, detail = event_detail_parts(event)
+        self.assertEqual(label, "Toggle integration progress (derived)")
+        self.assertEqual(detail, "Commit: fix bug")
+
+        # When not derived:
+        event2 = {
+            "source": "TIMELOG.md",
+            "project": "Project A",
+            "detail": "Commit: fix bug",
+            "anchors": {"label": "Toggle integration progress"},
+        }
+        label2, detail2 = event_detail_parts(event2)
+        self.assertEqual(label2, "Toggle integration progress")
+
 
 if __name__ == "__main__":
     unittest.main()

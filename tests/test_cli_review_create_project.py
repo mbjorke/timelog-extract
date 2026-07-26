@@ -68,7 +68,7 @@ class ProposeCreateTests(unittest.TestCase):
 
     def test_human_title_on_lovable_uuid_proposes_create_without_uuid_match_term(self):
         uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
-        row = _row(title="Lunch Connect", url_key=uuid_host, events=21, impact_hours=0.0)
+        row = _row(title="Lunch Connect", url_key=uuid_host, events=21, impact_hours=1.0)
         proposal = propose_create_from_candidate(row)
         self.assertIsNotNone(proposal)
         assert proposal is not None
@@ -169,6 +169,32 @@ class WriteCreatedProjectTests(unittest.TestCase):
             self.assertEqual(project["match_terms"], ["acme/project-alpha"])
             self.assertEqual(project["customer"], "Customer A")
             self.assertEqual(project["invoice_title"], "Project Alpha")
+
+
+class LovableImpactDecidabilityTests(unittest.TestCase):
+    def test_zero_impact_with_human_title_is_undecidable(self):
+        uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
+        # Zero impact
+        row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_nonzero_impact_with_human_title_is_decidable(self):
+        uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
+        # Non-zero impact
+        row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=1.0)
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_below_is_undecidable(self):
+        uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
+        # 0.04 rounds to 0.0
+        row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=0.04)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_above_is_decidable(self):
+        uuid_host = "85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com"
+        # 0.05 rounds to 0.1
+        row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=0.05)
+        self.assertTrue(is_decidable_candidate(row))
 
 
 if __name__ == "__main__":

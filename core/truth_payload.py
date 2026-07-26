@@ -56,6 +56,7 @@ def _serialize_event(
         "detail": detail_out,
         "project": event.get("project", ""),
     }
+    out["derived_session_label"] = bool(event.get("derived_session_label", False))
     if local_ts is not None:
         out["local_time"] = local_ts.isoformat()
     return out

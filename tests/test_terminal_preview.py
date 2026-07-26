@@ -199,6 +199,20 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertEqual(label, "timelog-extract (derived)")
         self.assertEqual(detail, "some work detail")
 
+    def test_derived_suffix_does_not_block_label_strip(self):
+        from outputs.terminal_preview import event_detail_parts
+
+        event = {
+            "source": "Cursor",
+            "project": "Project A",
+            "detail": "Toggle integration progress: Commit: fix bug",
+            "anchors": {"label": "Toggle integration progress"},
+            "derived_session_label": True,
+        }
+        label, detail = event_detail_parts(event)
+        self.assertEqual(label, "Toggle integration progress (derived)")
+        self.assertEqual(detail, "Commit: fix bug")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -323,3 +323,32 @@ update `last_updated_at` and append a short note to `changelog`.
 - If a spec has no implementation yet, `implementation_status` must explicitly
 be `not built` (never implicit).
 
+## Cursor Cloud specific instructions
+
+Gittan is a single local-first Python CLI (`gittan` / `timelog-extract`); the
+`cursor-extension`, static landing site, and demo API are optional companions.
+Standard commands live in `CLAUDE.md` (Commands) and `scripts/` — reference those
+rather than re-deriving them. Notes below are the non-obvious caveats for this
+Linux cloud VM.
+
+- **Use the repo venv.** The startup/update script maintains `.venv` at the repo
+  root via an editable install (`.venv/bin/python -m pip install -e '.[dev]'`).
+  Run tools as `.venv/bin/gittan`, `.venv/bin/ruff`, or `source .venv/bin/activate`
+  first. `scripts/run_lint.sh` auto-prefers `.venv/bin/ruff`, so lint/autotests
+  work without activation. Creating the venv needs the `python3.12-venv` apt
+  package (part of the VM image/snapshot, not the update script).
+- **Most collectors are macOS-only, so on this Linux VM they return no events —
+  this is expected, not a failure.** A bare `gittan report --today` prints
+  "No events found." Always pass `--screen-time off` (Screen Time is macOS-only).
+- **To exercise the pipeline end-to-end here, feed it worklog data.** Point the
+  CLI at an *isolated* temp config and worklog so you never touch real local data:
+  `gittan report --today --screen-time off --projects-config /tmp/demo/timelog_projects.json --worklog /tmp/demo/TIMELOG.md`.
+  Worklog `## YYYY-MM-DD HH:MM` entries whose text matches a profile's
+  `match_terms` flow through classify → sessions → project-hour report and JSON
+  (`--format json --json-file …`) / HTML (`--report-html …`) exports.
+- **Never touch or auto-create the real `timelog_projects.json` / `TIMELOG.md`**
+  (see Git Safety above). For any demo/experiment always use `--projects-config`
+  and `--worklog` with throwaway paths under `/tmp`.
+- **Cursor extension (optional):** `cd cursor-extension && npm install && npm run build`
+  (Node 22, `tsc` only — no bundler/dev server). It is not needed to test the CLI.
+

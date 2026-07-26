@@ -1,7 +1,8 @@
 # Intent capture — recording user intention at the moment of work
 
-Status: draft spec  
-Last updated: 2026-06-10
+Status: **partly built** — session-keyed binding shipped 2026-07-26; the
+URL-keyed (browser chat) half is still draft  
+Last updated: 2026-07-26
 
 ## Purpose
 
@@ -30,6 +31,20 @@ then becomes **confirmation** of mostly-classified events instead of
   not a bypass.
 - No raw URL retention by default (see Privacy).
 - No multi-user/team model.
+
+## Built: the session-keyed half (2026-07-26)
+
+`core/intent_store.py` implements this record contract keyed on **session id**
+rather than `url_hash`, because that key already exists: `session` is now an
+anchor on events from Claude Code and Claude Desktop (Code). `gittan intent` asks
+about unattributed sessions and appends the answer; the report applies bindings
+after replay, and an overridden row records `anchors.project_from = "intent"`.
+
+Spec and rationale: `docs/task-prompts/session-intent-binding-task.md`.
+
+Still draft here: the **`url_hash`** key below, which is what a browser chat
+would need — it has no session id Gittan can see. The store accepts
+`key_kind: "url"`, but nothing produces such a key yet.
 
 ## The intent record
 

@@ -79,6 +79,27 @@ gittan evidence              # Chain integrity: OK
 
 Repair never drops a unique observation, and running it twice changes nothing.
 
+## When a session has no project
+
+Some sessions carry hours but nothing that says whose work it was — a chat with no
+repo and no working directory. Rather than adding a `match_term` (a rule that then
+matches every future event containing that text), bind the session itself:
+
+```bash
+gittan intent                       # walks today's unattributed sessions and asks
+gittan intent --list                # current bindings, newest first
+gittan intent --set abc123="Customer X"   # non-interactive
+```
+
+The answer goes to `~/.gittan/intent-capture.jsonl`, append-only, inside the data
+repo you already commit. Re-answering appends a new record and the later one wins,
+so the history of what you decided when stays readable. A bound row shows up in
+the report under that project, and carries `project_from: intent` so you can tell
+a decision from a text match later.
+
+Only sessions Gittan captured can be asked about — the mobile app still leaves
+nothing to bind.
+
 ## What this does and does not cover
 
 - **Covers:** Claude Code CLI session transcripts on any device you can run

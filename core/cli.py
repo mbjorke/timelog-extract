@@ -15,6 +15,7 @@ from core import (
     cli_doctor_sources_projects,  # noqa: F401
     cli_evidence,  # noqa: F401
     cli_global_timelog_setup,  # noqa: F401
+    cli_intent,  # noqa: F401
     cli_jira_sync,  # noqa: F401
     cli_map,  # noqa: F401
     cli_projects,  # noqa: F401

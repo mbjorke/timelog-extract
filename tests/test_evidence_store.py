@@ -256,6 +256,16 @@ class TestEvidenceReplay(unittest.TestCase):
         self.assertTrue(all(e.get("replayed") for e in events))
         self.assertEqual({e["detail"] for e in events}, {"stored-a", "stored-b"})
 
+    def test_replay_preserves_device_provenance(self):
+        tagged = _ev("Cursor", "2026-03-10T11:00:00+00:00", "from-phone")
+        tagged["source_provenance"] = {"device": "iPhone", "captured_via": "cursor"}
+        capture_events([tagged], base_dir=self.base, captured_at="2026-03-10T12:00:00+00:00")
+        events, restored = replay_into_events([], self.win_from, self.win_to, base_dir=self.base)
+        self.assertGreaterEqual(restored, 1)
+        phone = next(e for e in events if e.get("detail") == "from-phone")
+        self.assertTrue(phone.get("replayed"))
+        self.assertEqual(phone.get("source_provenance"), {"device": "iPhone", "captured_via": "cursor"})
+
     def test_does_not_duplicate_live_events(self):
         live = [_ev("Cursor", datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc), "stored-a")]
         events, restored = replay_into_events(live, self.win_from, self.win_to, base_dir=self.base)

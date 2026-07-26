@@ -307,6 +307,14 @@ def run_timelog_report(
     from core.evidence_store import maybe_replay
     all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
 
+    # Live collectors do not set device; stamp this host so multi-device days
+    # (live + replayed phone ledger) can show distinct labels. Capture/import
+    # rows already carry provenance and are left alone.
+    from core.device_labels import ensure_live_device
+    from core.session_capture import device_name
+
+    all_events = ensure_live_device(all_events, device_name())
+
     # A session the operator has explicitly bound to a project wins over whatever
     # the text matched. Applied after replay so restored evidence is bound too.
     from core.intent_store import apply_intents

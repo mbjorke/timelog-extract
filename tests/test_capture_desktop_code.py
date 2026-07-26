@@ -104,10 +104,14 @@ def write_claude_code_transcript(home: Path) -> None:
 
 
 class CaptureSourcesRegistryTests(unittest.TestCase):
-    def test_registry_lists_both_anchored_surfaces(self):
+    def test_registry_lists_anchored_surfaces(self):
         self.assertEqual(
             CAPTURE_SOURCES,
-            {"claude-code": "Claude Code CLI", "desktop-code": "Claude Desktop (Code)"},
+            {
+                "claude-code": "Claude Code CLI",
+                "desktop-code": "Claude Desktop (Code)",
+                "cursor": "Cursor",
+            },
         )
 
     def test_plain_desktop_chat_is_not_captured(self):

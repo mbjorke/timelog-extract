@@ -58,18 +58,51 @@ local concept. Storage stays UTC regardless. Do not "simplify" one into the othe
 
 ## 4. Parsing: `fromisoformat`, and the floor that constrains it
 
-`datetime.fromisoformat` is dramatically faster than `strptime`, which recompiles
-a format and touches locale on every call. Measured in this repo, 200k iterations:
+`datetime.fromisoformat` is faster than `strptime`, which recompiles a format and
+touches locale on every call. **Re-run the measurement rather than quoting a
+number from this page:**
 
-| Input | `strptime` | Alternative | Gain |
-|---|---|---|---|
-| `2026-07-26 10:10` | 0.988s | `fromisoformat` 0.029s | **33.6x** |
-| `20260709T162324` (compact) | 0.853s | manual int slicing 0.128s | **6.6x** |
+```bash
+python3 scripts/bench_timestamp_parsing.py
+```
 
-Consistent with the gains Jules Bolt recorded when converting the hot paths
-(`.jules/bolt.md`): ~4.4–6.0x on IDE log lines (#401), ~32–37x on core date
-parsing (#420), ~11.6x on Cursor log folder names (#456), ~1.74x on `group_by_day`
-aggregation (#432).
+That script exists because the preference originally arrived as an assertion in an
+agent's journal (`.jules/bolt.md`) with no script attached — which is not evidence.
+It takes each format string and input shape from a real call site, asserts the
+alternative returns a value **identical** to `strptime` before timing it, and
+exits non-zero if any pair disagrees. A speedup that changes the parsed value is
+not a speedup.
+
+Measured 2026-07-26, CPython 3.11.15 on x86-64 Linux, 200k iterations:
+
+| Input | `strptime` | Alternative | Ratio | Saved/call |
+|---|---|---|---|---|
+| `2026-07-26` | 4.00 µs | `fromisoformat` 0.16 µs | 25.4x | 3.8 µs |
+| `2026-07-26 10:10` | 4.72 µs | `fromisoformat` 0.18 µs | 27.0x | 4.5 µs |
+| `2026-07-26 10:10:00.123456` | 5.76 µs | `fromisoformat` 0.23 µs | 25.5x | 5.5 µs |
+| `20260709T162324` (compact) | 4.08 µs | int slicing 0.57 µs | 7.1x | 3.5 µs |
+
+**The direction is robust; the specific ratios are not.** Bolt's recorded figures
+do not reproduce: ~4.4–6.0x on IDE log lines measures 25.5x here (understated),
+~32–37x on core date parsing measures 25.4x (overstated), ~11.6x on Cursor log
+folder names measures 7.1x (overstated). An earlier table on this very page said
+33.6x and 6.6x, and does not reproduce either. Ratios move with interpreter
+version, build flags and machine, so a number pinned in prose rots quietly. Cite
+the script.
+
+**Speed is not the reason to prefer `fromisoformat` at most call sites.** At
+~4–5.5 µs saved per call you need roughly 200k calls to save one second.
+`get_date_range` runs twice per report: converting it saved about 8 microseconds,
+and any claim that it "decreases hotpath report compilation times noticeably" is
+unsupported. Only two sites clear the bar on volume alone — per-log-line parsing
+in `collectors/cursor.py` and `vscode_fork.py`, and per-launch-folder parsing in
+`cursor_log_scan.py`.
+
+Everywhere else the reasons are that it is **floor-safe for `isoformat()`-shaped
+input, consistent with the rest of the codebase, and free** — no measurement
+needed to justify a change that costs nothing. Do not reach for `strptime` to
+avoid a rewrite, and do not convert a cold path and then claim a performance win
+for it.
 
 **But `fromisoformat` is not universal on the supported floor.** `pyproject.toml`
 declares `>=3.10` and CI tests 3.10 and 3.12. Verified on both interpreters:
@@ -117,13 +150,19 @@ optimisation pass that "simplifies" this to `fromisoformat` would pass locally o
 precision fail `fromisoformat`; truncating caps at microseconds
 (`collectors/cursor_agent_turns.py`, `collectors/vscode_fork.py`).
 
-## Remaining opportunity
+## Remaining inconsistency (not a performance opportunity)
 
 `collectors/timelog.py` still parses with `strptime` in three places (lines 26,
 36, 78). Its format `%Y-%m-%d %H:%M` **is** `fromisoformat`-safe on 3.10
-(verified above), so the ~33x gain is available with no compatibility risk. Not
-done here: this doc is the standard, not the conversion, and the worklog collector
-reads a file the operator hand-edits — worth its own change with its own tests.
+(verified above), so converting it is safe — but be honest about the payoff: it
+runs once per worklog heading, so a file with 500 headings saves about 2
+milliseconds. The reason to change it is consistency with this standard, not
+speed. Worth its own change with its own tests, since the worklog collector reads
+a file the operator hand-edits.
+
+Two `scripts/` entry points also use `strptime` on a single CLI argument
+(`run_timely_memory_benchmark_export.py:200`, `render_ledger_sidebyside.py:171`).
+One call each — leave them alone unless touching the code anyway.
 
 ## Checklist for a new collector or a display surface
 

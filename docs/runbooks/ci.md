@@ -54,7 +54,7 @@ PRs still get a **green workflow** from **verify-static-site** when site-related
 
 | Job | What it does |
 |-----|--------------|
-| **python** | Editable install, smoke `timelog_extract.py --today` (non-fatal), file-length **report** (`scripts/check_file_lengths.py`, advisory — never fails), **`scripts/run_autotests.sh`**. |
+| **python** | Editable install, smoke `timelog_extract.py --today` (non-fatal), **500-line** cap per Python file (`scripts/check_file_lengths.py`), **`scripts/run_autotests.sh`**. |
 | **package** | `python -m build` (sdist + wheel), then `pip install` the wheel and run `timelog-extract -V` / `gittan -V`. |
 | **extension** | In `cursor-extension/`: `npm install`, `npm run build`. |
 

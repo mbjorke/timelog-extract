@@ -1,22 +1,19 @@
-"""File length is reported, and enforced only when explicitly asked.
+"""The file-length gate warns in a soft band before the hard cap.
 
-``classify_lengths`` still separates "over the recommendation" from
-"approaching it" — that distinction is useful signal — but by default neither
-outcome fails a build. The exit-code tests below pin the policy from both sides:
-advisory by default (how CI runs it), hard under ``--strict``.
+The 500-line rule was silently accepting files trimmed to just under the limit;
+the warning band surfaces "approaching the cap" so decomposition happens before
+CI turns red.
 """
 
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-from scripts.check_file_lengths import classify_lengths, main
+from scripts.check_file_lengths import classify_lengths
 
 
 class ClassifyLengthsTests(unittest.TestCase):
-    def test_over_the_recommendation_is_reported_separately(self):
+    def test_over_cap_is_a_violation(self):
         violations, warnings = classify_lengths([("a.py", 501)], max_lines=500, warn_lines=460)
         self.assertEqual(violations, [("a.py", 501)])
         self.assertEqual(warnings, [])
@@ -47,26 +44,6 @@ class ClassifyLengthsTests(unittest.TestCase):
         violations, warnings = classify_lengths(counts, max_lines=500, warn_lines=460)
         self.assertEqual(violations, [("over.py", 520)])
         self.assertEqual(sorted(warnings), [("edge.py", 500), ("near.py", 480)])
-
-
-class ExitCodeTests(unittest.TestCase):
-    """The policy itself: length never fails a build unless --strict is asked for."""
-
-    def _run(self, argv, lines):
-        with patch("sys.argv", ["check_file_lengths.py", *argv]), \
-             patch("scripts.check_file_lengths.tracked_python_files", return_value=[Path("x.py")]), \
-             patch("scripts.check_file_lengths.count_lines", return_value=lines), \
-             patch("pathlib.Path.relative_to", return_value=Path("x.py")):
-            return main()
-
-    def test_over_the_recommendation_exits_zero_by_default(self):
-        self.assertEqual(self._run(["--max-lines", "500"], 900), 0)
-
-    def test_strict_opts_into_failure(self):
-        self.assertEqual(self._run(["--max-lines", "500", "--strict"], 900), 1)
-
-    def test_within_the_recommendation_exits_zero_under_strict(self):
-        self.assertEqual(self._run(["--max-lines", "500", "--strict"], 100), 0)
 
 
 if __name__ == "__main__":

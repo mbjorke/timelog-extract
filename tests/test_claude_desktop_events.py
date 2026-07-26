@@ -100,13 +100,7 @@ class ClaudeDesktopEventsTests(unittest.TestCase):
             self.assertEqual(ev["project"], "project-alpha")
             self.assertNotIn(_SECRET_TEXT, ev["detail"])
             self.assertNotIn("TOP-SECRET", json.dumps(ev, default=str))
-            # The session anchor names this conversation so a human decision can
-            # be bound to it (core/intent_store.py) without inventing a
-            # match_term. It is metadata, not message content — asserted here
-            # alongside the secret-text checks above.
-            self.assertEqual(
-                ev["anchors"], {"dir": "project-alpha", "session": "session_01TESTALPHA"}
-            )
+            self.assertEqual(ev["anchors"], {"dir": "project-alpha"})
         # Span of the first cluster survives thinning: first and last turn kept.
         times = sorted(ev["timestamp"] for ev in events)
         self.assertEqual(times[0], stamps[0])

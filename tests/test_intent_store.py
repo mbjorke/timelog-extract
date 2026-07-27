@@ -335,6 +335,82 @@ class UnknownProjectIsRejectedTests(unittest.TestCase):
         self.assertEqual(read_intents(home=self.home), [])
 
 
+class InteractiveIntentUXTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name) / "home"
+        (self.home / ".gittan").mkdir(parents=True)
+        self.config = self.home / "projects.json"
+        self.config.write_text(
+            json.dumps(
+                {
+                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "worklog": "none.md",
+                }
+            ),
+            encoding="utf-8",
+        )
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_capture_desktop_code import write_desktop_code_cache
+        write_desktop_code_cache(self.home, repo_slug=None)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args):
+        from typer.testing import CliRunner
+
+        from core.cli import app
+        passed_args = list(args)
+        if not any(arg in ("--from", "--to") for arg in passed_args):
+            passed_args.extend(["--from", "2026-07-25", "--to", "2026-07-25"])
+        with patch("pathlib.Path.home", return_value=self.home):
+            return CliRunner().invoke(
+                app, ["intent", "--projects-config", str(self.config)] + passed_args
+            )
+
+    def _fake_select(self, answer):
+        from unittest.mock import MagicMock
+        obj = MagicMock()
+        obj.ask.return_value = answer
+        return obj
+
+    @patch("questionary.select")
+    def test_interactive_select_binds_project(self, mock_select):
+        from core.intent_store import resolve_intents
+        mock_select.return_value = self._fake_select("Customer X")
+        result = self._run()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("bound → Customer X", result.output)
+        bindings = resolve_intents(home=self.home)
+        self.assertEqual(bindings[("session", "session_01desktop")]["project"], "Customer X")
+
+    @patch("questionary.select")
+    def test_interactive_select_skip_session(self, mock_select):
+        from core.intent_store import resolve_intents
+        mock_select.return_value = self._fake_select("Skip this session")
+        result = self._run()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("skipped", result.output)
+        bindings = resolve_intents(home=self.home)
+        self.assertNotIn(("session", "session_01desktop"), bindings)
+
+    @patch("questionary.select")
+    def test_interactive_select_cancel_choice(self, mock_select):
+        mock_select.return_value = self._fake_select("Cancel")
+        result = self._run()
+        self.assertEqual(result.exit_code, 130, result.output)
+        self.assertIn("Aborted.", result.output)
+
+    @patch("questionary.select")
+    def test_interactive_select_ctrl_c_none(self, mock_select):
+        mock_select.return_value = self._fake_select(None)
+        result = self._run()
+        self.assertEqual(result.exit_code, 130, result.output)
+        self.assertIn("Aborted.", result.output)
+
+
 class LocalTimeDisplayTests(unittest.TestCase):
     """Stored stamps are UTC; a human reading them must see their own clock.
 

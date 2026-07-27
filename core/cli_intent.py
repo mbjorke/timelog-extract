@@ -148,6 +148,8 @@ def intent(
     console.print(f"[{STYLE_MUTED}]Enter a project name, or blank to skip.[/{STYLE_MUTED}]\n")
 
     bound = 0
+    import questionary
+
     for row in rows:
         # Shown in the operator's own wall time: the whole point of the question
         # is recognising the session, and a UTC timestamp is the wrong clock to
@@ -163,29 +165,25 @@ def intent(
             f"[{STYLE_MUTED}]{escape(str(row['source']))} · {escape(str(span))} · "
             f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
-        # Re-ask on a name we do not know rather than recording it: blank always
-        # skips, so this cannot trap the operator in a loop.
-        while True:
-            answer = typer.prompt("  Which project?", default="", show_default=False).strip()
-            if not answer:
-                console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
-                break
-            if not known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]No configured projects to bind "
-                    f"to.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            if answer not in known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{escape(answer)!r} is not a configured "
-                    f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            record_intent(row["session"], answer, via="intent-prompt", home=home)
-            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
-            bound += 1
-            break
+
+        choices = known + ["Skip this session", "Cancel"]
+        answer = questionary.select(
+            "  Which project?",
+            choices=choices,
+            default="Skip this session",
+        ).ask()
+
+        if answer is None or answer == "Cancel":
+            console.print(f"[{CLR_VALUE_ORANGE}]Aborted.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
+
+        if answer == "Skip this session":
+            console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
+            continue
+
+        record_intent(row["session"], answer, via="intent-prompt", home=home)
+        console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
+        bound += 1
 
     console.print(
         f"{bound} session(s) bound. "

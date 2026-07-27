@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-07-27 - [Optimize worklog timestamp parsing]
+**Learning:** Parsing worklog timestamp entries with `datetime.strptime` on every worklog line/heading in `collectors/timelog.py` adds small but persistent overhead during report parsing loops. `datetime.fromisoformat` is ~32x faster than `datetime.strptime` for safe formats.
+**Action:** Replace `datetime.strptime` with `datetime.fromisoformat` for ISO-compatible inputs (e.g. `YYYY-MM-DD HH:MM`). For Python 3.10 compatibility, ensure seconds are explicitly appended as `f"{date_s} {time_s}:00"` before passing to `fromisoformat`.

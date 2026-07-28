@@ -16,7 +16,7 @@ import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.intent_store import (
     apply_intents,
@@ -365,6 +365,71 @@ class LocalTimeDisplayTests(unittest.TestCase):
         from core.cli_evidence import _local_stamp
 
         self.assertEqual(_local_stamp("not a timestamp"), "not a timestamp")
+
+
+class InteractiveIntentPromptTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        (self.home / ".gittan").mkdir()
+        self.config = self.home / "projects.json"
+        self.config.write_text(
+            json.dumps(
+                {
+                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "worklog": "none.md",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        # Write some unattributed events
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_capture_desktop_code import write_desktop_code_cache
+        write_desktop_code_cache(self.home, repo_slug=None)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args):
+        from typer.testing import CliRunner
+
+        from core.cli import app
+
+        with patch("pathlib.Path.home", return_value=self.home):
+            return CliRunner().invoke(
+                app, ["intent", "--projects-config", str(self.config), *args]
+            )
+
+    def _fake_select(self, answer):
+        obj = MagicMock()
+        obj.ask.return_value = answer
+        return obj
+
+    def test_interactive_select_binds_session(self):
+        with patch("questionary.select", return_value=self._fake_select("Customer X")):
+            result = self._run("--from", "2026-07-25", "--to", "2026-07-25")
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("bound → Customer X", result.output)
+
+        bindings = resolve_intents(home=self.home)
+        self.assertEqual(bindings[("session", "session_01desktop")]["project"], "Customer X")
+
+    def test_interactive_select_skips_session(self):
+        with patch("questionary.select", return_value=self._fake_select("Skip this session")):
+            result = self._run("--from", "2026-07-25", "--to", "2026-07-25")
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("skipped", result.output)
+
+        bindings = resolve_intents(home=self.home)
+        self.assertNotIn(("session", "session_01desktop"), bindings)
+
+    def test_interactive_select_cancels_raises_exit_130(self):
+        with patch("questionary.select", return_value=self._fake_select("Cancel")):
+            result = self._run("--from", "2026-07-25", "--to", "2026-07-25")
+        self.assertEqual(result.exit_code, 130)
+        self.assertIn("Cancelled interactive session assignment", result.output)
 
 
 if __name__ == "__main__":

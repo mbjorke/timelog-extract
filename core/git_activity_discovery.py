@@ -65,7 +65,13 @@ def collect_git_command_slug_hits(
         return {}
 
     slug_hits: dict[str, tuple[int, str]] = {}
+    from_ts = dt_from.timestamp()
     for log_file in logs_dir.glob("**/*.log"):
+        try:
+            if log_file.stat().st_mtime < from_ts:
+                continue
+        except OSError:
+            continue
         try:
             with open(log_file, encoding="utf-8", errors="replace") as handle:
                 for line in handle:

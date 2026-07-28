@@ -183,11 +183,17 @@ def collect_claude_code(profiles, dt_from, dt_to, home, classify_project, make_e
     if not projects_dir.exists():
         return results
     session_index = _load_claude_code_session_index(home)
+    from_ts = dt_from.timestamp()
     for proj_dir in projects_dir.iterdir():
         if not proj_dir.is_dir():
             continue
         dir_name = proj_dir.name.lower()
         for jsonl_file in proj_dir.rglob("*.jsonl"):
+            try:
+                if jsonl_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
+                continue
             cli_id = _cli_session_id_from_jsonl(jsonl_file)
             meta = session_index.get(cli_id) or {}
             label = meta.get("label")
@@ -232,7 +238,13 @@ def collect_claude_desktop(profiles, dt_from, dt_to, home, classify_project, mak
     results = []
     sessions_dir = home / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
     if sessions_dir.exists():
+        from_ts = dt_from.timestamp()
         for jsonl_file in sessions_dir.glob("**/*.jsonl"):
+            try:
+                if jsonl_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
+                continue
             for ts, detail, obj in _read_jsonl_timestamps(jsonl_file, dt_from, dt_to):
                 if _claude_jsonl_is_noise(obj, detail):
                     continue
@@ -246,7 +258,13 @@ def collect_gemini_cli(profiles, dt_from, dt_to, home, classify_project, make_ev
     base_dir = home / ".gemini" / "tmp"
     if not base_dir.exists():
         return results
+    from_ts = dt_from.timestamp()
     for chat_file in base_dir.glob("*/chats/session-*.json"):
+        try:
+            if chat_file.stat().st_mtime < from_ts:
+                continue
+        except OSError:
+            continue
         proj_name = chat_file.parent.parent.name.lower()
         try:
             data = json.loads(chat_file.read_text(encoding="utf-8"))

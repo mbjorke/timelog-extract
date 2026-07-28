@@ -140,6 +140,7 @@ def collect_vscode_chat_sessions(
 ) -> List[dict]:
     """Collect VS Code / Copilot chat requests from workspaceStorage chatSessions."""
     results: List[dict] = []
+    from_ts = dt_from.timestamp()
     for base in _base_dirs(Path(home)):
         storage = base / "User" / "workspaceStorage"
         if not storage.is_dir():
@@ -163,6 +164,11 @@ def collect_vscode_chat_sessions(
             except OSError:
                 continue
             for jsonl in jsonl_files:
+                try:
+                    if jsonl.stat().st_mtime < from_ts:
+                        continue
+                except OSError:
+                    continue
                 results.extend(
                     _events_from_chat_jsonl(
                         jsonl,

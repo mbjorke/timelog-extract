@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-07-28 - [Optimize Collector I/O via log file mtime filtering]
+**Learning:** In incremental or daily report runs (e.g., `gittan report --today`), collectors for IDE/agent logs (VS Code, Copilot CLI, VS Code Chat, Claude Desktop, Claude Code, and Gemini CLI) and Cursor git discovery recursively scan and parse all files under massive logs directories. Since log files are append-only, any file with `st_mtime` older than the query window start timestamp (`dt_from`) cannot contain in-window events. Checking `st_mtime` first and skipping old files without opening them avoids reading and parsing millions of stale log lines, delivering an instantaneous report startup.
+**Action:** Always check file modification times (`st_mtime`) against `dt_from.timestamp()` before opening/parsing append-only log files in local collector loops. Wrap stat checks in `try...except OSError` to ensure concurrency robustness.

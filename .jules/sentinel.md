@@ -13,3 +13,8 @@ This journal tracks critical security learnings, vulnerability patterns specific
 **Vulnerability:** Standard library `urllib.request.urlopen` following insecure HTTP redirects and forwarding sensitive Authorization bearer tokens/headers to unencrypted HTTP channels.
 **Learning:** External integrations like GitHub and Toggl require similar protection levels as Jira. Reusing localized, customized `urlopen` functions with `_RejectHttpRedirectHandler` redirect blocking and initial scheme validations ensures credentials are never transmitted over plain text channels, even across custom redirect sequences.
 **Prevention:** Always register a custom redirect handler on openers managing authentication tokens to explicitly reject plain HTTP redirects, protecting headers from cross-protocol leaks.
+
+## 2026-07-28 - Standalone Connection Verification Tooling Security Gaps
+**Vulnerability:** Standalone integration test scripts (e.g., `briox_connection_test.py`) bypassing core system connection security rules by using raw standard library `urlopen` without scheme validation or redirect blocking.
+**Learning:** Security controls can be easily bypassed if helper or utility tools implemented outside the main `core/` pipeline are overlooked. Standardizing these tooling helpers to follow identical defensive HTTPS checks and custom HTTP redirection constraints preserves credential confidentiality during ad-hoc or diagnostic operations.
+**Prevention:** Always apply the exact same scheme restrictions and custom unsecure redirect rejection handlers to standalone connection diagnostics as applied to active production collectors.

@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-07-29 - [Skip Scanning Unmodified Files in VS Code, VS Code Chat, and Copilot CLI Collectors]
+**Learning:** Scanning and opening historical log and chat session files in VS Code fork logs, VS Code Chat sessions, and Copilot CLI logs can be a major source of unnecessary I/O. Since these are append-only logs, a file last modified before the window start timestamp (`dt_from`) cannot contain any in-window entries.
+**Action:** Fast-path filter log and session files by comparing `st_mtime` with `dt_from.timestamp()`, skipping them entirely without opening or reading if they are older than the query window.

@@ -49,10 +49,15 @@ def collect_copilot_cli(
     results: List[Dict[str, Any]] = []
     seen: set[Tuple[datetime, str, str]] = set()
     tail = 256 * 1024
+    from_ts = dt_from.timestamp()
     candidates: List[Tuple[float, Path]] = []
     for path in logs.glob("*.log"):
         try:
-            candidates.append((path.stat().st_mtime, path))
+            mtime = path.stat().st_mtime
+            # Optimized: Skip Copilot CLI log files modified before the window starts.
+            if mtime < from_ts:
+                continue
+            candidates.append((mtime, path))
         except OSError:
             continue
     paths = [path for _mtime, path in sorted(candidates, reverse=True)[:40]]

@@ -45,9 +45,12 @@ def calendar_suggest(
     to_str = date_to.strftime("%Y-%m-%d") if date_to else None
     dt_from, dt_to = get_date_range(from_str, to_str, _LOCAL_TZ)
 
-    profiles, _cfg, _ws = load_profiles(
-        projects_config, SimpleNamespace(project="", keywords="", email="")
-    )
+    try:
+        profiles, _cfg, _ws = load_profiles(
+            projects_config, SimpleNamespace(project="", keywords="", email="")
+        )
+    except ValueError:
+        profiles = []
     names = [n.strip() for n in (calendar_names or "").split(",") if n.strip()]
 
     try:

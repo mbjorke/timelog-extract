@@ -96,5 +96,34 @@ class SuggestProjectsTests(unittest.TestCase):
         self.assertEqual(suggest_projects_from_titles([]), [])
 
 
+class CalendarSuggestCLITests(unittest.TestCase):
+    def test_calendar_suggest_runs_without_crash_when_config_is_missing(self):
+        """Verify calendar-suggest command handles a missing or empty config without raising a ValueError."""
+        import tempfile
+        from pathlib import Path
+
+        from typer.testing import CliRunner
+
+        from core.cli import app
+
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            non_existent_config = Path(tmp_dir) / "timelog_projects_missing.json"
+            # Command should exit gracefully or raise SystemExit / Exit but NOT raise ValueError/traceback.
+            result = runner.invoke(
+                app,
+                [
+                    "calendar-suggest",
+                    "--projects-config",
+                    str(non_existent_config),
+                ],
+            )
+            # The command can fail due to database access (which is expected in test env where calendar isn't granted FDA),
+            # but it should NOT crash with a ValueError or traceback.
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertNotIn("ValueError", result.stdout)
+            self.assertIn("Cannot read Calendar", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

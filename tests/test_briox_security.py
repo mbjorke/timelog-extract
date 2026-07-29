@@ -25,7 +25,7 @@ class BrioxSecurityTests(unittest.TestCase):
         """http_json should accept HTTPS URLs and proceed to call open (mocked or handled)."""
         # We can test that it doesn't fail on ValueError but raises standard connection/mocked errors if no mock
         # Let's mock _briox_opener.open to avoid actual network traffic
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp

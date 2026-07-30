@@ -193,6 +193,17 @@ class GithubCollectorTests(unittest.TestCase):
                     )
                 self.assertIn("must use HTTPS", str(ctx.exception))
 
+    def test_github_opener_rejects_plain_http_request(self):
+        from urllib.error import URLError
+        from urllib.request import Request
+
+        from collectors.github import urlopen
+
+        req = Request("http://insecure.example.test/users/u/events")
+        with self.assertRaises(URLError) as ctx:
+            urlopen(req)
+        self.assertIn("GitHub request to insecure http:// rejected", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

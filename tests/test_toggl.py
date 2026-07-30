@@ -188,6 +188,17 @@ class TogglSourceTests(unittest.TestCase):
                 tg._toggl_request(creds, "GET", "/api/v9/me")
             self.assertIn("must use HTTPS", str(ctx.exception))
 
+    def test_toggl_opener_rejects_plain_http_request(self):
+        from urllib.error import URLError
+        from urllib.request import Request
+
+        from collectors.toggl import urlopen
+
+        req = Request("http://insecure.example.test/api/v9/me")
+        with self.assertRaises(URLError) as ctx:
+            urlopen(req)
+        self.assertIn("Toggl request to insecure http:// rejected", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

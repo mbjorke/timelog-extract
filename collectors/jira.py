@@ -21,6 +21,9 @@ class _RejectHttpRedirectHandler(HTTPRedirectHandler):
             raise URLError("Jira redirect to insecure http:// rejected to protect credentials")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
+    def http_request(self, req):
+        raise URLError("Jira request to insecure http:// rejected to protect credentials")
+
 
 _jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
 

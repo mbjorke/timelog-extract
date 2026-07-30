@@ -21,6 +21,11 @@ class RejectHttpRedirectHandler(HTTPRedirectHandler):
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
+    def http_request(self, req):
+        raise URLError(
+            f"{self._service} request to insecure http:// rejected to protect credentials"
+        )
+
 
 def build_https_opener(service: str) -> OpenerDirector:
     """Return an opener that rejects ``http://`` redirects for *service*."""

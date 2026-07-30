@@ -241,6 +241,17 @@ class JiraCollectorHttpsSecurityTests(unittest.TestCase):
             )
         self.assertIn("http", str(ctx.exception.reason).lower())
 
+    def test_jira_opener_rejects_plain_http_request(self):
+        from urllib.error import URLError
+        from urllib.request import Request
+
+        from collectors.jira import urlopen
+
+        req = Request("http://insecure.example.test/rest/api/3/myself")
+        with self.assertRaises(URLError) as ctx:
+            urlopen(req)
+        self.assertIn("Jira request to insecure http:// rejected", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

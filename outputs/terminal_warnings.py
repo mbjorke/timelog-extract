@@ -33,6 +33,6 @@ def print_report_warnings(
     )
     warnings.extend(screen_time_incomplete_warnings(screen_time_days, overall_days))
     for warning in warnings:
-        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{warning}[/{CLR_VALUE_ORANGE}]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{warning}[/]")
     for warning in codec_warning_lines(codec_blocked_sources(Path.home())):
-        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{warning}[/{CLR_VALUE_ORANGE}]")
+        console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]{warning}[/]")

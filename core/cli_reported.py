@@ -123,8 +123,8 @@ def reported_review(
     if not proposals:
         from rich.console import Console
         console = Console()
-        console.print(f"[{CLR_VALUE_ORANGE}]No observed time to review for this period.[/{CLR_VALUE_ORANGE}]")
-        console.print(f"[{STYLE_MUTED}]Next: run `gittan doctor` or try with a wider date range.[/{STYLE_MUTED}]")
+        console.print(f"[{CLR_VALUE_ORANGE}]No observed time to review for this period.[/]")
+        console.print(f"[{STYLE_MUTED}]Next: run `gittan doctor` or try with a wider date range.[/]")
         return
 
     confirmed = edited = dismissed = skipped = already = 0
@@ -218,8 +218,8 @@ def reported_list():
     console = Console()
     totals = reported_hours_by_project_day()
     if not totals:
-        console.print(f"[{CLR_VALUE_ORANGE}]No confirmed reported time yet.[/{CLR_VALUE_ORANGE}]")
-        console.print(f"[{STYLE_MUTED}]Next: use `gittan reported review` or `gittan reported add` to record reported time.[/{STYLE_MUTED}]")
+        console.print(f"[{CLR_VALUE_ORANGE}]No confirmed reported time yet.[/]")
+        console.print(f"[{STYLE_MUTED}]Next: use `gittan reported review` or `gittan reported add` to record reported time.[/]")
         return
 
     table = Table(title="Confirmed Reported Time", box=box.ROUNDED)

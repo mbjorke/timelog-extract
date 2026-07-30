@@ -45,3 +45,7 @@
 ## 2026-07-26 - Enhancing review candidates and derived session label provenance
 **Learning:** Presenting candidates with a 0.0 impact score as "decidable" interactive project-creation options can mislead the user and erode trust in the Impact column. A row is decidable only if it carries a real report-hour signal (rounding above 0.0). Additionally, enrichment-derived/painted labels must be clearly distinguishable from source-produced ones to maintain forensic transparency without adding decorative color noise.
 **Action:** Filtered out Lovable project candidates whose impact hours round to 0.0 from the active decidable queue, cleanly parking them instead. Flagged painted labels as derived, displaying them with a clean `(derived)` suffix in the terminal timeline and serializing this provenance as a boolean field in the machine-readable truth JSON payload.
+
+## 2026-07-30 - Standardize Rich Console Closing Tags to Avoid Style Rendering Errors
+**Learning:** Rich terminal styling strings that duplicate variables or names in closing tags (e.g., `[/{STYLE_MUTED}]`, `[/{CLR_VALUE_ORANGE}]`) are an anti-pattern that can lead to parser confusion and rendering errors. Using standard, generic `[/]` closing tags to pop the styling stack ensures flawless Rich terminal formatting and cleaner code.
+**Action:** Simplified closing tags in `core/cli_evidence.py`, `core/cli_reported.py`, and `outputs/terminal_warnings.py` to use generic `[/]` tags.

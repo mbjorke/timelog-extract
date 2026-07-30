@@ -48,10 +48,10 @@ def evidence(
     )
     if data_controls > 1:
         console.print(
-            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --import, --repair, --prune-older-than, and --erase are mutually exclusive.[/{CLR_VALUE_ORANGE}]"
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: --export, --import, --repair, --prune-older-than, and --erase are mutually exclusive.[/]"
         )
         console.print(
-            f"[{STYLE_MUTED}]Next: Run `gittan evidence` with only one of these options.[/{STYLE_MUTED}]"
+            f"[{STYLE_MUTED}]Next: Run `gittan evidence` with only one of these options.[/]"
         )
         raise typer.Exit(code=1)
 
@@ -59,7 +59,7 @@ def evidence(
         result = evidence_store.export_store(export)
         msg = f"Exported {result['records']} record(s) → {result['path']}"
         if result["records"] == 0:
-            msg += f" [{STYLE_MUTED}](store is empty)[/{STYLE_MUTED}]"
+            msg += f" [{STYLE_MUTED}](store is empty)[/]"
         console.print(msg)
         return
     if import_from is not None:
@@ -68,22 +68,22 @@ def evidence(
         try:
             result = import_records(import_from)
         except (OSError, ValueError) as exc:
-            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/]")
             console.print(
                 f"[{STYLE_MUTED}]Next: Point --import at a JSONL file written by "
-                f"`gittan capture --export` or `gittan evidence --export`.[/{STYLE_MUTED}]"
+                f"`gittan capture --export` or `gittan evidence --export`.[/]"
             )
             raise typer.Exit(code=1) from exc
         devices = ", ".join(result["devices"]) or "unnamed device"
         console.print(
             f"Imported {result['appended']} new record(s) from {result['read']} read "
-            f"[{STYLE_MUTED}](already present: {result['skipped']}; from: {devices})[/{STYLE_MUTED}]"
+            f"[{STYLE_MUTED}](already present: {result['skipped']}; from: {devices})[/]"
         )
         return
     if repair:
         result = evidence_store.repair_store()
         if not result.get("enabled"):
-            console.print(f"[{STYLE_MUTED}]No store to repair.[/{STYLE_MUTED}]")
+            console.print(f"[{STYLE_MUTED}]No store to repair.[/]")
             return
         if not result["files_repaired"]:
             console.print("Chains already consistent — nothing to repair.")
@@ -97,39 +97,39 @@ def evidence(
         try:
             result = evidence_store.prune_older_than(prune_older_than)
         except ValueError as exc:
-            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/{CLR_VALUE_ORANGE}]")
-            console.print(f"[{STYLE_MUTED}]Next: Provide a positive integer to prune the shadow log.[/{STYLE_MUTED}]")
+            console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error: {exc}[/]")
+            console.print(f"[{STYLE_MUTED}]Next: Provide a positive integer to prune the shadow log.[/]")
             raise typer.Exit(code=1) from exc
         console.print(f"Pruned {result.get('removed', 0)} record(s); {result.get('kept', 0)} kept.")
         return
     if erase:
         if not yes and not typer.confirm("Permanently delete the local evidence store?"):
-            console.print(f"[{CLR_VALUE_ORANGE}]Aborted.[/{CLR_VALUE_ORANGE}]")
+            console.print(f"[{CLR_VALUE_ORANGE}]Aborted.[/]")
             return
         result = evidence_store.erase_store()
-        console.print("Evidence store erased." if result["removed"] else f"[{STYLE_MUTED}]No store to erase.[/{STYLE_MUTED}]")
+        console.print("Evidence store erased." if result["removed"] else f"[{STYLE_MUTED}]No store to erase.[/]")
         return
 
     health = store_health()
     if not health.get("enabled"):
         console.print(
             f"[{STYLE_MUTED}]Shadow log: off — no store at {health['base_dir']}. "
-            f"Enable with `gittan report --shadow-log on` or `gittan status --shadow-log on`.[/{STYLE_MUTED}]"
+            f"Enable with `gittan report --shadow-log on` or `gittan status --shadow-log on`.[/]"
         )
         return
 
-    console.print(f"[bold {STYLE_LABEL}]Evidence shadow log[/bold {STYLE_LABEL}] — {health['base_dir']}")
+    console.print(f"[bold {STYLE_LABEL}]Evidence shadow log[/] — {health['base_dir']}")
     console.print(
-        f"Records: [{CLR_VALUE_ORANGE}]{health['total_records']}[/{CLR_VALUE_ORANGE}] "
+        f"Records: [{CLR_VALUE_ORANGE}]{health['total_records']}[/] "
         f"(captured today: {health['records_captured_today']})"
     )
     console.print(f"Last capture: {_local_stamp(health.get('last_captured_at'))}")
     console.print(f"Retention span: {health['retention_span'] or '—'}")
     if health["chain_ok"]:
-        console.print(f"Chain integrity: [{CLR_GREEN}]OK[/{CLR_GREEN}]")
+        console.print(f"Chain integrity: [{CLR_GREEN}]OK[/]")
     else:
-        console.print(f"Chain integrity: {FAIL_ICON} [{CLR_VALUE_ORANGE}]BROKEN[/{CLR_VALUE_ORANGE}] ({len(health['chain_breaks'])} issue(s))")
+        console.print(f"Chain integrity: {FAIL_ICON} [{CLR_VALUE_ORANGE}]BROKEN[/] ({len(health['chain_breaks'])} issue(s))")
         for issue in health["chain_breaks"][:5]:
-            console.print(f"  [{STYLE_MUTED}]- {issue}[/{STYLE_MUTED}]")
+            console.print(f"  [{STYLE_MUTED}]- {issue}[/]")
     for source, count in health["per_source"].items():
-        console.print(f"[{STYLE_MUTED}]  {source}: {count}[/{STYLE_MUTED}]")
+        console.print(f"[{STYLE_MUTED}]  {source}: {count}[/]")

@@ -264,6 +264,10 @@ def collect_fork_logs(
         return any(marker in line for marker in internals)
 
     results = []
+    # A log file last written before the window starts cannot contain in-window
+    # lines (logs are append-only), so skip it without reading — avoids scanning
+    # months of rotated VS Code-fork logs on every report.
+    from_ts = dt_from.timestamp()
     for base_dir in base_dirs:
         logs_dir = base_dir / "logs"
         if not logs_dir.exists():
@@ -271,6 +275,11 @@ def collect_fork_logs(
         workspace_map = load_fork_workspaces(base_dir)
         for log_file in logs_dir.glob("**/*.log"):
             if log_file.name.lower() in _SKIP_LOG_BASENAMES:
+                continue
+            try:
+                if log_file.stat().st_mtime < from_ts:
+                    continue
+            except OSError:
                 continue
             try:
                 with open(log_file, encoding="utf-8", errors="replace") as fh:

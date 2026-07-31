@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-07-31 - [Optimize VS Code-Fork Log Parsing via st_mtime Pre-filtering]
+**Learning:** Checking the modification time (`st_mtime`) of `.log` files in `collectors/vscode_fork.py` against the query window start timestamp (`from_ts`) before opening them avoids scanning massive amounts of old and rotated log files. On a simulated directory with 500 files (480 old, 20 new), this pre-filtering step reduces runtime by 62.0% (approx 2.63x speedup). This can be reproduced with `private/bench_vscode_fork.py`.
+**Action:** Always pre-filter log files by comparing file modification time (`st_mtime`) against the query window start timestamp to bypass redundant file I/O operations entirely.

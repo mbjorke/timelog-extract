@@ -19,7 +19,10 @@ from pathlib import Path
 from urllib import error as urlerror, request as urlrequest
 from urllib.parse import urlencode
 
+from core.http_security import build_https_opener
+
 SCRIPT_DIR = Path(__file__).parent
+_briox_opener = build_https_opener("Briox")
 DEFAULT_BRIOX_API_BASE = "https://api-se.briox.services/v2"
 BRIOX_API_BASE_CANDIDATES = [
     "https://api-fi.briox.services/v2",
@@ -49,6 +52,10 @@ def parse_args():
 
 
 def http_json(method, url, body=None, headers=None, timeout=20):
+    if not url.lower().startswith("https://"):
+        raise ValueError(
+            "Briox API URL must use HTTPS to prevent credential leakage over unencrypted HTTP"
+        )
     encoded = None if body is None else json.dumps(body).encode("utf-8")
     req_headers = {"Accept": "application/json"}
     if encoded is not None:
@@ -57,7 +64,7 @@ def http_json(method, url, body=None, headers=None, timeout=20):
         req_headers.update(headers)
     req = urlrequest.Request(url, data=encoded, method=method, headers=req_headers)
     try:
-        with urlrequest.urlopen(req, timeout=timeout) as resp:
+        with _briox_opener.open(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             return resp.status, json.loads(raw) if raw else {}
     except urlerror.HTTPError as exc:

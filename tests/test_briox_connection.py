@@ -3,6 +3,7 @@
 import unittest
 from urllib.error import URLError
 from urllib.request import Request
+
 from briox_connection_test import http_json
 
 

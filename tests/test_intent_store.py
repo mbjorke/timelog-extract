@@ -16,6 +16,7 @@ import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
 
 from core.intent_store import (
@@ -365,6 +366,114 @@ class LocalTimeDisplayTests(unittest.TestCase):
         from core.cli_evidence import _local_stamp
 
         self.assertEqual(_local_stamp("not a timestamp"), "not a timestamp")
+
+
+class InteractiveIntentCliTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        (self.home / ".gittan").mkdir()
+        self.config = self.home / "projects.json"
+        self.config.write_text(
+            json.dumps(
+                {
+                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "worklog": "none.md",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args):
+        from typer.testing import CliRunner
+
+        from core.cli import app
+
+        with patch("pathlib.Path.home", return_value=self.home):
+            return CliRunner().invoke(
+                app, ["intent", "--projects-config", str(self.config), *args]
+            )
+
+    def test_interactive_mode_fails_if_no_tty(self):
+        with patch("core.intent_store.unbound_sessions", return_value=[{"session": "s1", "first_seen": "2026-07-26T10:10:00+00:00", "label": "test", "source": "chrome", "events": 1}]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=False):
+            result = self._run()
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn("requires an interactive terminal", result.output)
+
+    def test_interactive_mode_empty_state_if_no_unbound_sessions(self):
+        with patch("core.intent_store.unbound_sessions", return_value=[]), \
+             patch("core.session_capture.collect_device_events", return_value=[]):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("No unattributed sessions in this window", result.output)
+
+    def test_interactive_mode_can_bind_session(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "Customer X"
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("bound → Customer X", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertEqual(bindings[("session", "s1")]["project"], "Customer X")
+
+    def test_interactive_mode_can_skip_session(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "Skip this session"
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("skipped", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertNotIn(("session", "s1"), bindings)
+
+    def test_interactive_mode_can_cancel_mapping(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "Cancel"
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 130)
+            self.assertIn("Session mapping cancelled", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertNotIn(("session", "s1"), bindings)
 
 
 if __name__ == "__main__":

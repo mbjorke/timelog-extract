@@ -53,7 +53,11 @@ def intent(
     if list_only:
         bindings = resolve_intents(home=home)
         if not bindings:
-            console.print(f"[{STYLE_MUTED}]No session bindings yet ({escape(str(intent_path(home)))}).[/{STYLE_MUTED}]")
+            console.print(f"[{CLR_VALUE_ORANGE}]No active session bindings found.[/{CLR_VALUE_ORANGE}]")
+            console.print(
+                f"[{STYLE_MUTED}]Next: Run `gittan intent` with no options to map "
+                f"unattributed sessions interactively.[/{STYLE_MUTED}]"
+            )
             return
         console.print(f"[bold {STYLE_LABEL}]Session bindings[/bold {STYLE_LABEL}] — {len(bindings)}")
         for (_kind, key), record in sorted(bindings.items(), key=lambda item: item[1]["captured_at"], reverse=True):
@@ -136,16 +140,28 @@ def intent(
     rows = unbound_sessions(events, home=home)
     if not rows:
         console.print(
-            f"[{STYLE_MUTED}]No unattributed sessions in this window — nothing to ask.[/{STYLE_MUTED}]"
+            f"[{CLR_VALUE_ORANGE}]No unattributed sessions in this window.[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan report --today --source-summary` to inspect current work.[/{STYLE_MUTED}]"
         )
         return
+
+    from core.anchor_nudge import should_prompt
+    if not should_prompt():
+        console.print(
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Interactive mapping requires an interactive terminal.[/{CLR_VALUE_ORANGE}]"
+        )
+        raise typer.Exit(code=1)
+
+    import questionary
 
     console.print(
         f"[bold {STYLE_LABEL}]Unattributed sessions[/bold {STYLE_LABEL}] — {len(rows)} to decide"
     )
     if known:
         console.print(f"[{STYLE_MUTED}]Projects: {', '.join(known)}[/{STYLE_MUTED}]")
-    console.print(f"[{STYLE_MUTED}]Enter a project name, or blank to skip.[/{STYLE_MUTED}]\n")
+    console.print(f"[{STYLE_MUTED}]Select a project for each session below.[/{STYLE_MUTED}]\n")
 
     bound = 0
     for row in rows:
@@ -163,29 +179,24 @@ def intent(
             f"[{STYLE_MUTED}]{escape(str(row['source']))} · {escape(str(span))} · "
             f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
-        # Re-ask on a name we do not know rather than recording it: blank always
-        # skips, so this cannot trap the operator in a loop.
-        while True:
-            answer = typer.prompt("  Which project?", default="", show_default=False).strip()
-            if not answer:
-                console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
-                break
-            if not known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]No configured projects to bind "
-                    f"to.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            if answer not in known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{escape(answer)!r} is not a configured "
-                    f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            record_intent(row["session"], answer, via="intent-prompt", home=home)
-            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
-            bound += 1
-            break
+
+        choices = list(known) + ["Skip this session", "Cancel"]
+        answer = questionary.select(
+            "  Which project?",
+            choices=choices,
+        ).ask()
+
+        if answer is None or answer == "Cancel":
+            console.print(f"[{CLR_VALUE_ORANGE}]Session mapping cancelled.[/{CLR_VALUE_ORANGE}]")
+            raise typer.Exit(code=130)
+
+        if answer == "Skip this session":
+            console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
+            continue
+
+        record_intent(row["session"], answer, via="intent-prompt", home=home)
+        console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
+        bound += 1
 
     console.print(
         f"{bound} session(s) bound. "

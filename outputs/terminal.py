@@ -188,7 +188,8 @@ def print_report(
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ):
-    print_command_hero(console, "report")
+    hero_name = "search" if getattr(args, "all_events", False) else "report"
+    print_command_hero(console, hero_name)
     console.print()
 
     # Header Info

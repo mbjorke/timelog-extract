@@ -56,6 +56,27 @@ class ReportEmptyStateUxTests(unittest.TestCase):
         self.assertIn("Project filter 'Ax' is ambiguous.", output)
         self.assertNotIn("No events found.", output)
 
+    def test_search_empty_state_shows_custom_guidance(self):
+        report = _FakeReport()
+        report.args.all_events = True
+        with patch("core.report_cli.run_timelog_report", return_value=report):
+            result = self.runner.invoke(app, ["search", "--today"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        output = _plain(result.output)
+        self.assertIn("No events found.", output)
+        flat = " ".join(output.split())
+        self.assertIn("gittan search --today --noise-profile lenient", flat)
+
+    def test_report_project_empty_state_shows_guidance(self):
+        report = _FakeReport(only_project="my-project")
+        with patch("core.report_cli.run_timelog_report", return_value=report):
+            result = self.runner.invoke(app, ["report", "--today", "--project", "my-project"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        output = _plain(result.output)
+        self.assertIn("No events for project 'my-project' in selected range.", output)
+        flat = " ".join(output.split())
+        self.assertIn("Next: run `gittan report --today` with no project filter, or run `gittan doctor`.", flat)
+
 
 if __name__ == "__main__":
     unittest.main()

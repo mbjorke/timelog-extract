@@ -62,6 +62,15 @@ def events_dir(base_dir: Path) -> Path:
     return base_dir / "events"
 
 
+def spool_dir(home: Optional[Path] = None) -> Path:
+    if home is not None:
+        return Path(home) / ".gittan" / "spool"
+    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
+    if env_home:
+        return Path(env_home).expanduser() / "spool"
+    return canonical_gittan_home() / "spool"
+
+
 def _month_key(observed_at_iso: str) -> str:
     # observed_at is a normalized UTC ISO string; first 7 chars are YYYY-MM.
     return (observed_at_iso or "")[:7] or "unknown"
@@ -165,9 +174,31 @@ def capture_events(
 
     fingerprints, last_hash = load_store_state(ev_dir)
 
+    all_events = list(events)
+    # Read spool events
+    sp_dir = spool_dir(home)
+    spooled_events = []
+    drained_files = []
+    if sp_dir.is_dir():
+        for path in sorted(sp_dir.glob("*.json")):
+            try:
+                with path.open(encoding="utf-8") as fh:
+                    ev = json.load(fh)
+                if isinstance(ev, dict):
+                    spooled_events.append(ev)
+                    drained_files.append(path)
+            except Exception as exc:
+                _LOGGER.warning("Failed to read spool file %s: %s", path, exc)
+                try:
+                    path.unlink()
+                except Exception:
+                    pass
+
+    all_events.extend(spooled_events)
+
     # Build records, then order by observed time so the hash chain is
     # deterministic regardless of collector iteration order.
-    records = [evidence_record_from_event(ev, captured_at=captured) for ev in events]
+    records = [evidence_record_from_event(ev, captured_at=captured) for ev in all_events]
     records.sort(key=lambda r: (r.get("observed_at", ""), r.get("fingerprint", "")))
 
     appended = 0
@@ -209,6 +240,14 @@ def capture_events(
         for month, lines in by_month_lines.items():
             with _month_path(ev_dir, month).open("a", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
+
+    # Only delete successfully processed spool files once everything is done and no exceptions were raised
+    if drained_files:
+        for path in drained_files:
+            try:
+                path.unlink()
+            except Exception as exc:
+                _LOGGER.warning("Failed to delete spool file %s: %s", path, exc)
 
     return {
         "enabled": True,

@@ -133,9 +133,32 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
             self.assertIn("worklogs/test-project.md", proc.stdout)
 
-            events_dir = gittan_dir / "evidence" / "events"
-            self.assertTrue(events_dir.is_dir())
+            spool_dir = gittan_dir / "spool"
+            self.assertTrue(spool_dir.is_dir())
+            spool_files = list(spool_dir.glob("*.json"))
+            self.assertEqual(len(spool_files), 1)
 
+            spooled_event = json.loads(spool_files[0].read_text(encoding="utf-8"))
+            self.assertEqual(spooled_event["source"], "git-commit")
+            self.assertEqual(spooled_event["project"], "test-project")
+            self.assertIn("[test-repo:task/feature-1] feat: amazing feature", spooled_event["detail"])
+            self.assertEqual(spooled_event["source_provenance"]["repo"], "test-repo")
+            self.assertEqual(spooled_event["source_provenance"]["branch"], "task/feature-1")
+            self.assertEqual(spooled_event["source_provenance"]["subject"], "feat: amazing feature")
+            self.assertEqual(spooled_event["source_provenance"]["commit"], "12345678abcdef")
+
+            events_dir = gittan_dir / "evidence" / "events"
+            self.assertFalse(events_dir.exists())
+
+            # Now run capture_events to drain the spool
+            from core.evidence_store import capture_events
+            capture_events([], home=home_dir)
+
+            # Spool should be empty
+            self.assertEqual(len(list(spool_dir.glob("*.json"))), 0)
+
+            # Evidence file should be populated
+            self.assertTrue(events_dir.is_dir())
             jsonl_files = list(events_dir.glob("*.jsonl"))
             self.assertEqual(len(jsonl_files), 1)
 
@@ -160,9 +183,9 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             gittan_dir = home_dir / ".gittan"
             gittan_dir.mkdir()
 
-            # Make the evidence directory a file so that write/mkdir fails!
-            evidence_file = gittan_dir / "evidence"
-            evidence_file.touch()
+            # Make the spool directory a file so that write/mkdir fails!
+            spool_file = gittan_dir / "spool"
+            spool_file.touch()
 
             cfg_path = gittan_dir / "timelog_projects.json"
             cfg_path.write_text(
@@ -198,8 +221,55 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             self.assertTrue(err_file.exists())
             errors = [json.loads(line) for line in err_file.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(errors), 1)
-            self.assertIn("Not a directory", errors[0]["error"])
+            self.assertTrue(any(msg in errors[0]["error"] for msg in ("Not a directory", "File exists")))
             self.assertEqual(errors[0]["source"], "git-commit")
+
+    def test_resolver_works_with_no_core_on_sys_path(self):
+        """The post-commit hook must write spool files even when 'core' is not on python path."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            home_dir = tmp_path / "home"
+            home_dir.mkdir()
+            gittan_dir = home_dir / ".gittan"
+            gittan_dir.mkdir()
+
+            cfg_path = gittan_dir / "timelog_projects.json"
+            cfg_path.write_text(
+                json.dumps({
+                    "shadow_log": "on",
+                    "projects": [
+                        {"name": "test-repo", "project_id": "test-project"}
+                    ]
+                }),
+                encoding="utf-8",
+            )
+
+            from core.global_timelog_hook_script import _RESOLVER_PY
+            env = {
+                "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                "GITTAN_HOOK_REPO": "test-repo",
+                "GITTAN_HOOK_SUBJECT": "feat: amazing feature",
+                "GITTAN_HOOK_BRANCH": "task/feature-1",
+                "GITTAN_HOOK_HASH": "12345678abcdef",
+                "HOME": str(home_dir),
+                "PYTHONPATH": "",
+            }
+
+            proc = subprocess.run(
+                [sys.executable, "-c", _RESOLVER_PY],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+
+            spool_dir = gittan_dir / "spool"
+            self.assertTrue(spool_dir.is_dir())
+            spool_files = list(spool_dir.glob("*.json"))
+            self.assertEqual(len(spool_files), 1)
+
+            err_file = home_dir / ".gittan" / "capture-errors.jsonl"
+            self.assertFalse(err_file.exists())
 
 
 if __name__ == "__main__":

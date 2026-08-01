@@ -80,8 +80,12 @@ try:
                 }
             }
             try:
-                from core.evidence_store import capture_events
-                capture_events([event], home=Path(home))
+                spool_dir = Path(home) / ".gittan" / "spool"
+                spool_dir.mkdir(parents=True, exist_ok=True)
+                name_part = commit_hash if commit_hash else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+                spool_file = spool_dir / f"commit-{name_part}.json"
+                with spool_file.open("w", encoding="utf-8") as sf:
+                    json.dump(event, sf, ensure_ascii=False)
             except Exception as exc:
                 err_file = Path(home) / ".gittan" / "capture-errors.jsonl"
                 try:

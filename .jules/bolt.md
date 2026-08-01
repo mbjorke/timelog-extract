@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-08-01 - [Optimize CLI Startup / Import time via lazy-loaded HTTPS Openers]
+**Learning:** Initializing urllib HTTPS openers with `build_https_opener` or `HTTPSHandler` at the module/import level in collectors (like `github.py`, `toggl.py`, `jira.py`) triggers `ssl.create_default_context()` and `set_default_verify_paths()` synchronously during Python's import phase. This scans the entire host OS directory structure for CA certificates, incurring expensive disk I/O on every single CLI invocation (even when no network collectors are used). Lazy-loading these openers inside `urlopen` delays SSL/cert scanning until a network request is actually initiated.
+**Action:** Always lazy-initialize network openers, sockets, or certificate managers within functions rather than at the module level to ensure fast, low-latency CLI command startup.

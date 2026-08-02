@@ -69,17 +69,18 @@ def calendar_suggest(
         print(json.dumps([s.as_json_dict() for s in suggestions], ensure_ascii=False, indent=2))
         return
 
-    from rich.console import Console
-    from rich.table import Table
     from rich import box
+    from rich.console import Console
     from rich.markup import escape
     from rich.syntax import Syntax
+    from rich.table import Table
+
     from outputs.terminal_theme import (
+        CLR_VALUE_ORANGE,
+        STYLE_BORDER,
+        STYLE_DIM,
         STYLE_LABEL,
         STYLE_MUTED,
-        STYLE_BORDER,
-        CLR_VALUE_ORANGE,
-        STYLE_DIM,
     )
 
     console = Console()

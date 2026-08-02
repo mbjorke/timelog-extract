@@ -45,9 +45,12 @@ def calendar_suggest(
     to_str = date_to.strftime("%Y-%m-%d") if date_to else None
     dt_from, dt_to = get_date_range(from_str, to_str, _LOCAL_TZ)
 
-    profiles, _cfg, _ws = load_profiles(
-        projects_config, SimpleNamespace(project="", keywords="", email="")
-    )
+    try:
+        profiles, _cfg, _ws = load_profiles(
+            projects_config, SimpleNamespace(project="", keywords="", email="")
+        )
+    except ValueError:
+        profiles = []
     names = [n.strip() for n in (calendar_names or "").split(",") if n.strip()]
 
     try:
@@ -66,20 +69,60 @@ def calendar_suggest(
         print(json.dumps([s.as_json_dict() for s in suggestions], ensure_ascii=False, indent=2))
         return
 
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
+    from rich.markup import escape
+    from rich.syntax import Syntax
+    from outputs.terminal_theme import (
+        STYLE_LABEL,
+        STYLE_MUTED,
+        STYLE_BORDER,
+        CLR_VALUE_ORANGE,
+        STYLE_DIM,
+    )
+
+    console = Console()
+
     scope = ", ".join(names) if names else "all calendars"
-    print(f"Scanned {len(rows)} calendar event(s) ({scope}, {from_str} .. {to_str or 'today'}).")
+    console.print(
+        f"Scanned [bold {STYLE_LABEL}]{len(rows)}[/bold {STYLE_LABEL}] calendar event(s) "
+        f"({scope}, {from_str} .. {to_str or 'today'})."
+    )
     if not suggestions:
-        print("No new project codes found (everything seen is already covered, or no distinctive codes).")
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]No new project codes found[/{CLR_VALUE_ORANGE}] (everything seen is already covered, or no distinctive codes)."
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: Check your config or widen the scanned window / calendars.[/{STYLE_MUTED}]"
+        )
         return
 
-    print(f"\nSuggested projects (codes not yet in your config), min {min_count} occurrence(s):\n")
-    print(f"  {'code':<22} {'events':>6}  example")
-    print(f"  {'-'*22} {'-'*6}  {'-'*30}")
+    console.print(
+        f"\n[bold {STYLE_LABEL}]Suggested projects[/bold {STYLE_LABEL}] (codes not yet in your config), min {min_count} occurrence(s):\n"
+    )
+
+    table = Table(box=box.ROUNDED, border_style=STYLE_BORDER, show_header=True)
+    table.add_column("Code", style=CLR_VALUE_ORANGE, header_style=STYLE_LABEL)
+    table.add_column("Events", justify="right", style=STYLE_MUTED, header_style=STYLE_LABEL)
+    table.add_column("Example Title", style=STYLE_DIM, header_style=STYLE_LABEL)
+
     for s in suggestions:
         example = (s.examples[0] if s.examples else "")[:40]
-        print(f"  {s.code:<22} {s.count:>6}  {example}")
+        table.add_row(escape(s.code), str(s.count), escape(example))
+
+    console.print(table)
 
     profiles_stub = {"projects": [s.as_profile() for s in suggestions]}
-    print("\nTo use, add these to your projects config (review names/terms first):\n")
-    print(json.dumps(profiles_stub, ensure_ascii=False, indent=2))
-    print("\nNote: heuristic suggestions — rename projects and merge related codes as needed.")
+    console.print(f"\n[{STYLE_MUTED}]To use, add these to your projects config (review names/terms first):[/{STYLE_MUTED}]\n")
+
+    json_str = json.dumps(profiles_stub, ensure_ascii=False, indent=2)
+    syntax = Syntax(json_str, "json", theme="ansi", background_color="default")
+    console.print(syntax)
+
+    console.print(
+        f"\n[{STYLE_MUTED}]Note: heuristic suggestions — rename projects and merge related codes as needed.[/{STYLE_MUTED}]"
+    )
+    console.print(
+        f"[{STYLE_MUTED}]Next: Run `gittan report` once config is updated to re-analyze.[/{STYLE_MUTED}]"
+    )

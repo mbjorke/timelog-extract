@@ -1,3 +1,7 @@
+## 2026-08-02 - Standardizing `calendar-suggest` output and graceful fallback
+**Learning:** Commands like `calendar-suggest` that are run during early onboarding shouldn't crash with a traceback when config files are missing. Handing those fallbacks gracefully with a `ValueError` catch and styling suggestions/configs with Rich Tables, Syntax highlighters, and official palette tokens provides a much more trustworthy and smooth initial user experience.
+**Action:** Wrapped `load_profiles` in `core/cli_calendar_suggest.py` with a try-except block to gracefully fall back on empty profiles on missing config. Converted all raw tabular printing to Rich tables and Syntax syntax block highlighting using standard theme tokens, and added actionable `Next:` guidance. Added a comprehensive test suite `CliCalendarSuggestUXTests` to prevent regressions.
+
 ## 2026-07-09 - Aligning `projects` command with UX guidelines
 **Learning:** Commands that maintain an in-memory state (like interactive project management) can leave users uncertain about whether their changes are permanent. Explicit "Next:" guidance after memory-only updates is crucial for trustworthiness.
 **Action:** Replaced ad-hoc colors with theme tokens/icons and added muted "Next: Select 'Save & Exit'..." hints to the `projects` command. Standardized the project list table with `box.ROUNDED` and shared theme tokens.

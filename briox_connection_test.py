@@ -17,7 +17,20 @@ import os
 from datetime import datetime
 from pathlib import Path
 from urllib import error as urlerror, request as urlrequest
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
+
+class RejectHttpRedirectHandler(HTTPRedirectHandler):
+    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if (urlparse(newurl).scheme or "").lower() == "http":
+            raise urlerror.URLError(
+                "Briox redirect to insecure http:// rejected to protect credentials"
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+_briox_opener = build_opener(RejectHttpRedirectHandler(), HTTPSHandler())
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_BRIOX_API_BASE = "https://api-se.briox.services/v2"
@@ -49,6 +62,10 @@ def parse_args():
 
 
 def http_json(method, url, body=None, headers=None, timeout=20):
+    if not url.lower().startswith("https://"):
+        raise ValueError(
+            "Briox API URL must use HTTPS to prevent credential leakage over unencrypted HTTP"
+        )
     encoded = None if body is None else json.dumps(body).encode("utf-8")
     req_headers = {"Accept": "application/json"}
     if encoded is not None:
@@ -57,7 +74,7 @@ def http_json(method, url, body=None, headers=None, timeout=20):
         req_headers.update(headers)
     req = urlrequest.Request(url, data=encoded, method=method, headers=req_headers)
     try:
-        with urlrequest.urlopen(req, timeout=timeout) as resp:
+        with _briox_opener.open(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             return resp.status, json.loads(raw) if raw else {}
     except urlerror.HTTPError as exc:

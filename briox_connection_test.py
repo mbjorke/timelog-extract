@@ -20,6 +20,7 @@ from urllib import error as urlerror, request as urlrequest
 from urllib.parse import urlencode, urlparse
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, build_opener
 
+
 class RejectHttpRedirectHandler(HTTPRedirectHandler):
     """Block redirects to plain HTTP so Authorization headers are never forwarded."""
 

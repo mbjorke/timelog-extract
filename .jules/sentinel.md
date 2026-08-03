@@ -12,4 +12,9 @@ This journal tracks critical security learnings, vulnerability patterns specific
 ## 2026-07-25 - Extensible Redirect Blocking for REST Collectors
 **Vulnerability:** Standard library `urllib.request.urlopen` following insecure HTTP redirects and forwarding sensitive Authorization bearer tokens/headers to unencrypted HTTP channels.
 **Learning:** External integrations like GitHub and Toggl require similar protection levels as Jira. Reusing localized, customized `urlopen` functions with `_RejectHttpRedirectHandler` redirect blocking and initial scheme validations ensures credentials are never transmitted over plain text channels, even across custom redirect sequences.
-**Prevention:** Always register a custom redirect handler on openers managing authentication tokens to explicitly reject plain HTTP redirects, protecting headers from cross-protocol leaks.
+**Prevention:** Always register a water-tight custom redirect handler on openers managing authentication tokens to explicitly reject plain HTTP redirects, protecting headers from cross-protocol leaks.
+
+## 2026-08-03 - Enforcing Security Hardening in Standalone Utilities
+**Vulnerability:** Standalone testing/connection utilities (like `briox_connection_test.py`) using raw standard library `urllib.request.urlopen` without scheme verification or custom redirect filters, exposing sensitive credentials to cleartext transport or insecure downgrade redirections.
+**Learning:** Non-production/standalone script targets are often overlooked in security updates but may handle production-level environment secrets. Applying the identical strict `RejectHttpRedirectHandler` pattern and explicit HTTPS validation checks directly within standalone helpers ensures defense-in-depth security covers developer scripts.
+**Prevention:** Secure standalone HTTP clients with the same rigorous redirect filtering and HTTPS schema gating rules as those built into production collector pipelines.

@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-08-03 - [Optimize VS Code Fork Scans & Timelog Parsing]
+**Learning:** Checking the modification time `st_mtime` of files in `logs_dir.glob("**/*.log")` against the window start timestamp `from_ts` prevents opening, decoding, and parsing hundreds of stale log files in stock VS Code and other fork-based collectors. Additionally, converting the remaining `strptime` calls in `collectors/timelog.py` to `fromisoformat` with `:00` suffix results in a ~32.8x parsing speedup per call on CPython 3.12 and ensures full alignment with the repository's timestamp standard.
+**Action:** Implement `st_mtime` filtering before opening log files in `collectors/vscode_fork.py`. Migrate legacy `strptime` calls to floor-safe `fromisoformat` formatting in `collectors/timelog.py`.

@@ -16,8 +16,8 @@ Then do not open a new PR. Push to that branch, or answer its review threads,
 and stop.
 
 **3. Does your persona already have 2 or more open PRs?**
-Then do zero new work. Spend the entire run answering CodeRabbit / Qodo threads
-on them, then stop.
+Then do zero new work. Spend the entire run answering CodeRabbit and Greptile
+threads on them, then stop.
 
 **4. Before fixing anything, verify the problem still exists on current `main`
 *and* is not already fixed in an open PR.**
@@ -46,8 +46,12 @@ End every run that touched a PR with one comment:
 - **Done:** <what changed, one line per item>
 - **Verified:** <exact commands run + actual result — not "should work">
 - **Not done / skipped:** <deliberate omissions + why>
-- **Awaiting:** CodeRabbit / Qodo review; next run answers them.
+- **Awaiting:** CodeRabbit / Greptile review; next run answers them.
 ```
+
+The two review bots active on this repo are **`coderabbitai`** and
+**`greptile-apps`**. Qodo is referenced in older docs but does not run here —
+do not wait for it.
 
 Next run, before anything else: give every new review finding a disposition —
 fix it and reply with the commit, or reply with one sentence on why not.

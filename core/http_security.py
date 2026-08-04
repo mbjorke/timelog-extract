@@ -8,11 +8,17 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, OpenerDirector, bu
 
 
 class RejectHttpRedirectHandler(HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+    """Block redirects and initial requests to plain HTTP so Authorization headers are never forwarded."""
 
     def __init__(self, service: str = "API") -> None:
         super().__init__()
         self._service = service
+
+    def http_request(self, req):
+        """Intercept and reject any initial plain HTTP requests."""
+        raise URLError(
+            f"{self._service} connection to insecure http:// rejected to protect credentials"
+        )
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if (urlparse(newurl).scheme or "").lower() == "http":

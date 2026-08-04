@@ -13,3 +13,8 @@ This journal tracks critical security learnings, vulnerability patterns specific
 **Vulnerability:** Standard library `urllib.request.urlopen` following insecure HTTP redirects and forwarding sensitive Authorization bearer tokens/headers to unencrypted HTTP channels.
 **Learning:** External integrations like GitHub and Toggl require similar protection levels as Jira. Reusing localized, customized `urlopen` functions with `_RejectHttpRedirectHandler` redirect blocking and initial scheme validations ensures credentials are never transmitted over plain text channels, even across custom redirect sequences.
 **Prevention:** Always register a custom redirect handler on openers managing authentication tokens to explicitly reject plain HTTP redirects, protecting headers from cross-protocol leaks.
+
+## 2026-08-04 - Defense-in-Depth HTTPS-Only Opener Hardening
+**Vulnerability:** Even if redirect-blocking handles insecure protocol transitions, an opener created via `urllib.request.build_opener` still contains standard HTTP/HTTPS fallback handlers, meaning an initial `http://` request could still be dispatched if scheme validation is omitted at the caller boundary.
+**Learning:** Overriding `http_request` in a custom redirect or base handler registered with the opener guarantees that any plain HTTP connection attempts (initial or redirected) are rejected automatically at the network level, providing robust defense-in-depth.
+**Prevention:** Hardcode default scheme rejection within shared connection builders so that downstream collectors or integration tests can never accidentally transmit plaintext credentials.

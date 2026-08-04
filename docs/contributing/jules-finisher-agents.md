@@ -1,7 +1,33 @@
 # Finisher agents for Jules PRs (Cursor or Claude)
 
-Status: active  
-Last updated: 2026-07-17
+Status: **disabled — do not re-enable without fixing the author gate**  
+Last updated: 2026-08-04
+
+> ## ⚠️ The author gate in this document does not work
+>
+> Every rule below hinges on `AUTHOR_GATE: INTERNAL` and the hard stop
+> *"if PR author is not `google-labs-jules[bot]` … exit"*. **No PR in this repo
+> has that author.** Jules pushes through the maintainer's credentials, so
+> Jules, Cursor and Claude pull requests are all authored by `mbjorke` and are
+> indistinguishable to any author-based check.
+>
+> The consequence is not that the finisher does nothing — it is that the
+> finisher cannot tell whose work it is touching, and it began modifying
+> Claude-authored PRs. The scheduled finisher was switched off in the Jules UI
+> on 2026-08-04 for that reason.
+>
+> Branch prefixes do not rescue it either: `task/*` is used by Jules *and* by
+> Cursor/human work (`task/capture-cursor-and-device-labels` is maintainer
+> work). The only reliable Jules marker observed is the long random numeric
+> suffix its branches carry — `task/sentinel-briox-security-15222079743999920120`,
+> `jules-15936502309434636671-2aa414bb` — which is a weak thing to gate merge
+> permission on.
+>
+> **Before re-enabling any finisher**, decide how a Jules PR is identified with
+> certainty. A dedicated label applied by a trusted workflow, or a distinct bot
+> identity for Jules, are the two options that actually hold. Until then the
+> personas hand off to a human — see
+> [`jules-personas/shared-rules.md`](jules-personas/shared-rules.md).
 
 ## Dress rehearsal
 

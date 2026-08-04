@@ -1,12 +1,26 @@
-# Standing instructions for Jules (Bolt / Palette)
+# Standing instructions for Jules (Bolt / Palette / Sentinel)
 
-**Audience:** Google Jules scheduled Bolt and Palette runs on this repo.  
+**Audience:** Google Jules scheduled Bolt, Palette **and Sentinel** runs on this repo.  
 **Why this exists:** Daily briefs reopened the same work as new PRs without
 looking at the open queue (#374–#386 Bolt, #375–#387 Palette), and a post-review
 commit on #386 reintroduced a cache bug that review had just fixed.
 
-Read this at the start of every scheduled Bolt or Palette run. Learnings under
-`.jules/bolt.md` / `.jules/palette.md` must not contradict it.
+**It happened again, worse.** #478–#506 put 29 PRs in the queue over ten
+unattended days; 14 were duplicates, including the same
+`briox_connection_test.py` HTTPS fix in seven separate PRs. Sentinel produced
+the worst cluster and was the one persona this document did not name — it was
+titled "Bolt / Palette" and `.jules/sentinel.md` never pointed here. Scope is
+now all three.
+
+Read this at the start of every scheduled run. Learnings under
+`.jules/bolt.md` / `.jules/palette.md` / `.jules/sentinel.md` must not
+contradict it.
+
+**The operative version of §1 now lives in
+[`jules-personas/shared-rules.md`](jules-personas/shared-rules.md)**, which each
+persona prompt in [`jules-personas/`](jules-personas/README.md) references
+directly. This document is the rationale; that one is what the agents execute.
+Keep them consistent — if they disagree, `shared-rules.md` wins.
 
 ## 1. Check the open PR queue before you invent work
 

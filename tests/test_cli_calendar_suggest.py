@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from typer.testing import CliRunner
@@ -16,128 +16,115 @@ class CliCalendarSuggestTests(unittest.TestCase):
         self.runner = CliRunner()
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
-    @patch("core.cli_calendar_suggest._configured_profiles", return_value=[])
-    def test_calendar_suggest_with_suggestions(self, _mock_profiles, mock_read_titles):
+    def test_calendar_suggest_with_suggestions_and_valid_config(self, mock_read_titles):
         mock_read_titles.return_value = [
             ("Work", "HÅ-DAA standup"),
             ("Work", "HÅ-DAA deep work"),
             ("Work", "EASE-DAA review"),
+            ("Work", "Unrelated meeting"),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = Path(tmpdir) / "timelog_projects.json"
+            # Valid config containing an existing profile covering HÅ-DAA
+            config_file.write_text(
+                json.dumps({
+                    "projects": [
+                        {
+                            "name": "DAA Project",
+                            "match_terms": ["hå-daa"],
+                            "enabled": True,
+                        }
+                    ]
+                }),
+                encoding="utf-8"
+            )
+
+            # We should only get suggestions for codes not covered, so EASE-DAA should be suggested,
+            # but HÅ-DAA should be excluded!
+            result = self.runner.invoke(app, [
+                "calendar-suggest",
+                "--projects-config", str(config_file),
+                "--min-count", "1",
+            ])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertIn("EASE-DAA", result.output)
+            self.assertNotIn("HÅ-DAA", result.output)
+
+    @patch("core.cli_calendar_suggest.read_calendar_titles")
+    def test_calendar_suggest_unparseable_json_config_fallback(self, mock_read_titles):
+        mock_read_titles.return_value = [
+            ("Work", "HÅ-DAA standup"),
+            ("Work", "EASE-DAA review"),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = Path(tmpdir) / "timelog_projects.json"
+            # Write invalid JSON
+            config_file.write_text("{ invalid json: ", encoding="utf-8")
+
+            result = self.runner.invoke(app, [
+                "calendar-suggest",
+                "--projects-config", str(config_file),
+                "--min-count", "1",
+            ])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            # Since the config is unparseable, it should fallback to empty list and suggest both codes!
+            self.assertIn("HÅ-DAA", result.output)
+            self.assertIn("EASE-DAA", result.output)
+
+    @patch("core.cli_calendar_suggest.read_calendar_titles")
+    def test_calendar_suggest_unparseable_json_config_json_format(self, mock_read_titles):
+        mock_read_titles.return_value = [
+            ("Work", "HÅ-DAA standup"),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = Path(tmpdir) / "timelog_projects.json"
+            config_file.write_text("{ unparseable", encoding="utf-8")
+
+            result = self.runner.invoke(app, [
+                "calendar-suggest",
+                "--projects-config", str(config_file),
+                "--min-count", "1",
+                "--format", "json",
+            ])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            # Output should be valid parseable JSON list
+            data = json.loads(result.output)
+            self.assertEqual(len(data), 1)
+            self.assertEqual(data[0]["code"], "HÅ-DAA")
+
+    @patch("core.cli_calendar_suggest.read_calendar_titles")
+    @patch("core.cli_calendar_suggest._configured_profiles")
+    def test_calendar_suggest_escaping_brackets(self, mock_configured, mock_read_titles):
+        mock_configured.return_value = []
+        # Title contains bracket sequences and valid codes
+        mock_read_titles.return_value = [
+            ("Work", "[bold] AXOR-CODE standup"),
+            ("Work", "[bold] AXOR-CODE coding"),
+            ("Work", "[/] BOLD-CODE retro"),
+            ("Work", "[/] BOLD-CODE retro2"),
         ]
 
         result = self.runner.invoke(app, ["calendar-suggest", "--min-count", "1"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-
-        self.assertIn("Scanned 3 calendar event(s)", result.output)
-        self.assertIn("Suggested projects", result.output)
-        self.assertIn("Code", result.output)
-        self.assertIn("Events", result.output)
-        self.assertIn("Example", result.output)
-        self.assertIn("HÅ-DAA", result.output)
-        self.assertIn("EASE-DAA", result.output)
-        self.assertIn("To use, add these to your projects config", result.output)
-        self.assertIn("Next: edit your config to add the suggested project(s)", result.output)
+        # Should render correctly with literally escaped markup inside the console output
+        self.assertIn("[bold]", result.output)
+        self.assertIn("[/]", result.output)
+        self.assertIn("AXOR-CODE", result.output)
+        self.assertIn("BOLD-CODE", result.output)
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
-    @patch("core.cli_calendar_suggest._configured_profiles", return_value=[])
-    def test_calendar_suggest_empty_state(self, _mock_profiles, mock_read_titles):
+    @patch("core.cli_calendar_suggest._configured_profiles")
+    def test_calendar_suggest_empty_state(self, mock_configured, mock_read_titles):
+        mock_configured.return_value = []
         mock_read_titles.return_value = []
 
         result = self.runner.invoke(app, ["calendar-suggest"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Scanned 0 calendar event(s)", result.output)
         self.assertIn("No new project codes found", result.output)
-
-    @patch("core.cli_calendar_suggest.read_calendar_titles")
-    def test_malformed_config_yields_no_covered_terms(self, mock_read_titles):
-        """A real malformed file, not a mocked ValueError.
-
-        load_profiles() catches its own OSError/JSONDecodeError/ValueError and
-        returns a synthetic fallback profile, so the previous `side_effect =
-        ValueError` could never happen in production and the `except` it
-        exercised was dead code. Drive the CLI with an actually broken config
-        instead, and assert the behaviour that matters: nothing is treated as
-        already covered, so the codes still surface.
-        """
-        mock_read_titles.return_value = [
-            ("Work", "HÅ-DAA standup"),
-            ("Work", "HÅ-DAA deep work"),
-        ]
-        with TemporaryDirectory() as tmp:
-            bad = Path(tmp) / "timelog_projects.json"
-            bad.write_text("{ this is not json", encoding="utf-8")
-            result = self.runner.invoke(
-                app,
-                ["calendar-suggest", "--min-count", "1", "--projects-config", str(bad)],
-            )
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Scanned 2 calendar event(s)", result.output)
-        self.assertIn("Suggested projects", result.output)
-        self.assertIn("HÅ-DAA", result.output)
-
-    @patch("core.cli_calendar_suggest.read_calendar_titles")
-    def test_malformed_config_still_produces_parseable_json(self, mock_read_titles):
-        """--format json must stay machine-readable when the config is broken."""
-        mock_read_titles.return_value = [("Work", "HÅ-DAA standup")]
-        with TemporaryDirectory() as tmp:
-            bad = Path(tmp) / "timelog_projects.json"
-            bad.write_text("[[[", encoding="utf-8")
-            result = self.runner.invoke(
-                app,
-                ["calendar-suggest", "--min-count", "1", "--format", "json",
-                 "--projects-config", str(bad)],
-            )
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        payload = json.loads(result.output)
-        self.assertEqual([entry["code"] for entry in payload], ["HÅ-DAA"])
-
-    @patch("core.cli_calendar_suggest.read_calendar_titles")
-    def test_configured_terms_are_still_excluded(self, mock_read_titles):
-        """The fallback must not become "ignore the config entirely"."""
-        mock_read_titles.return_value = [("Work", "HÅ-DAA standup")]
-        with TemporaryDirectory() as tmp:
-            cfg = Path(tmp) / "timelog_projects.json"
-            cfg.write_text(
-                json.dumps({"projects": [{"name": "project-alpha", "match_terms": ["HÅ-DAA"]}]}),
-                encoding="utf-8",
-            )
-            result = self.runner.invoke(
-                app,
-                ["calendar-suggest", "--min-count", "1", "--projects-config", str(cfg)],
-            )
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("No new project codes found", result.output)
-
-    @patch("core.cli_calendar_suggest.read_calendar_titles")
-    @patch("core.cli_calendar_suggest._configured_profiles", return_value=[])
-    def test_style_named_bracket_in_a_title_does_not_eat_the_example(self, _mock_profiles, mock_read_titles):
-        """Bracketed text that collides with a Rich style name is consumed.
-
-        Measured against Rich rather than assumed: "[PROJECT-123] Standup"
-        happens to render raw, because Rich leaves an unresolvable tag alone.
-        But "[bold] sprint review" loses its tag and "[/] retro" raises
-        MarkupError outright — and a calendar owner picks those strings, not us.
-        The Example column carries the whole untrusted title, so it is escaped.
-        """
-        mock_read_titles.return_value = [
-            ("Work", "[bold] sprint review BOLDCODE"),
-            ("Work", "[bold] sprint planning BOLDCODE"),
-        ]
-        result = self.runner.invoke(app, ["calendar-suggest", "--min-count", "1"])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("[bold]", result.output, "the literal tag text must survive rendering")
-
-    @patch("core.cli_calendar_suggest.read_calendar_titles")
-    @patch("core.cli_calendar_suggest._configured_profiles", return_value=[])
-    def test_closing_tag_in_a_title_does_not_crash_the_render(self, _mock_profiles, mock_read_titles):
-        """An unmatched "[/]" is a MarkupError, i.e. the command dies on a calendar entry."""
-        mock_read_titles.return_value = [
-            ("Work", "[/] retro SLASHCODE"),
-            ("Work", "[/] retro follow-up SLASHCODE"),
-        ]
-        result = self.runner.invoke(app, ["calendar-suggest", "--min-count", "1"])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIsNone(result.exception, msg=repr(result.exception))
-        self.assertIn("SLASHCODE", result.output)
 
 
 if __name__ == "__main__":

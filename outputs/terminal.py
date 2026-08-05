@@ -188,7 +188,10 @@ def print_report(
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ):
-    print_command_hero(console, "report")
+    # Explicitly map command_name to avoid passing unknown commands that would
+    # resolve to the status hero in print_command_hero (e.g., review -> status)
+    hero_name = "search" if getattr(args, "command_name", "report") == "search" else "report"
+    print_command_hero(console, hero_name)
     console.print()
 
     # Header Info

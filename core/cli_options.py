@@ -92,6 +92,8 @@ class TimelogRunOptions:
     # "v1" = match_terms classify_project (default). "work_unit_v2" = signals →
     # WorkUnit → customer_ref (docs/task-prompts/work-unit-v2-task.md item 1).
     attribution_classifier: str = "v1"
+    # The name of the subcommand being executed ("report", "search", etc.)
+    command_name: str = "report"
 
 
 def split_comma_separated_list(value: Optional[str]) -> List[str]:

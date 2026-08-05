@@ -33,7 +33,7 @@ class UrlCandidate:
     suggested_project: str
     confidence_label: str
     confidence_score: float
-    impact_hours: float
+    impact_hours: float | None
     events: int
     days: int
     last_seen: str
@@ -146,7 +146,7 @@ def _finalize_url_candidates_from_grouped(
                 suggested_project=suggested_project,
                 confidence_label=_confidence_label(confidence_score, events),
                 confidence_score=confidence_score,
-                impact_hours=float(bucket.get("impact_hours", 0.0) or 0.0),
+                impact_hours=bucket.get("impact_hours"),
                 events=events,
                 days=len(bucket["days"]),
                 last_seen=(
@@ -289,13 +289,24 @@ def merge_url_candidate_lists(*lists: list[UrlCandidate], max_rows: int) -> list
                 by_key[row.url_key] = row
                 continue
             sample_urls = list(dict.fromkeys([*prev.sample_urls, *row.sample_urls]))[:3]
+            h1 = prev.impact_hours
+            h2 = row.impact_hours
+            if h1 is None and h2 is None:
+                merged_impact = None
+            elif h1 is None:
+                merged_impact = h2
+            elif h2 is None:
+                merged_impact = h1
+            else:
+                merged_impact = max(h1, h2)
+
             by_key[row.url_key] = UrlCandidate(
                 title=row.title if row.events >= prev.events else prev.title,
                 url_key=row.url_key,
                 suggested_project=row.suggested_project if row.confidence_score >= prev.confidence_score else prev.suggested_project,
                 confidence_label=row.confidence_label if row.confidence_score >= prev.confidence_score else prev.confidence_label,
                 confidence_score=max(prev.confidence_score, row.confidence_score),
-                impact_hours=max(prev.impact_hours, row.impact_hours),
+                impact_hours=merged_impact,
                 events=prev.events + row.events,
                 days=max(prev.days, row.days),
                 last_seen=max(prev.last_seen, row.last_seen),

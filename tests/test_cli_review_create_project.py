@@ -51,7 +51,7 @@ class ProposeCreateTests(unittest.TestCase):
         row = _row(
             title="Project Alpha portal",
             url_key="github.com/acme/project-alpha",
-            impact_hours=0.0,
+            impact_hours=1.0,
         )
         proposal = propose_create_from_candidate(row)
         self.assertIsNotNone(proposal)
@@ -118,12 +118,12 @@ class ProposeCreateTests(unittest.TestCase):
 
 
 class RankingAndPartitionTests(unittest.TestCase):
-    def test_decidable_impact_zero_kept_and_ranked_above_undecidable(self):
+    def test_decidable_kept_and_ranked_above_undecidable(self):
         decidable = _row(
             title="Project Alpha",
             url_key="github.com/acme/project-alpha",
             events=2,
-            impact_hours=0.0,
+            impact_hours=1.0,
         )
         undecidable = _row(
             title="Untitled",
@@ -195,6 +195,42 @@ class LovableImpactDecidabilityTests(unittest.TestCase):
         # 0.05 rounds to 0.1
         row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=0.05)
         self.assertTrue(is_decidable_candidate(row))
+
+    def test_zero_impact_with_human_title_is_undecidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_nonzero_impact_with_human_title_is_decidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=1.0)
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_below_is_undecidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.04)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_above_is_decidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.05)
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_none_impact_hours_with_human_title_is_decidable(self):
+        # Omitted/uncalculated impact hours (None) should NOT be filtered out as zero-impact.
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo")
+        row.impact_hours = None
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_downstream_park_create_contract_for_zero_impact_row(self):
+        # Downstream contract for zero impact row: must go to Park, not Create.
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+        self.assertIsNone(propose_create_from_candidate(row))
+
+        decidable, parked = partition_candidates([row])
+        self.assertNotIn(row, decidable)
+        self.assertIn(row, parked)
+
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertNotIn(create_choice_label(), choices)
+        self.assertIn(park_choice_label(), choices)
 
 
 if __name__ == "__main__":

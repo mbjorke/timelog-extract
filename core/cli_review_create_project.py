@@ -117,7 +117,7 @@ def is_decidable_candidate(row: UrlCandidate) -> bool:
     """True when evidence supports map/create — not mere event volume."""
     if _UNMAPPED_LOVABLE_PREFIX in str(row.title or "").strip().lower():
         return False
-    if _is_lovable_project_url_key(row.url_key) and round(row.impact_hours, 1) == 0.0:
+    if row.impact_hours is not None and round(row.impact_hours, 1) == 0.0:
         return False
     if has_human_title(row.title):
         return True

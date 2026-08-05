@@ -80,6 +80,15 @@ _HEROES: dict[str, tuple[list[str], str]] = {
         ],
         "collect -> classify -> summarize",
     ),
+    "search": (
+        [
+            "    __      Gittan Search",
+            "   /oo\\     Search timeline quickly with all events shown.",
+            "   \\__/     Add --project or --chrome-raw to filter.",
+            "  o    o    Highly detailed: inspect exactly why hours got counted.",
+        ],
+        "fast all-events timeline view",
+    ),
 }
 
 

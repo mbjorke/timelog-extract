@@ -94,6 +94,6 @@ def search(
             "attribution_mode": attribution_mode,
             "quiet": quiet,
         },
-        overrides={"all_events": True},
+        overrides={"all_events": True, "command_name": "search"},
     )
     run_timelog_cli(options)

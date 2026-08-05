@@ -127,5 +127,59 @@ class CliCalendarSuggestTests(unittest.TestCase):
         self.assertIn("No new project codes found", result.output)
 
 
+class ConfiguredProfilesTests(unittest.TestCase):
+    """The direct config reader that replaced load_profiles()."""
+
+    def _write(self, tmp: str, payload) -> Path:
+        path = Path(tmp) / "timelog_projects.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    def test_tilde_path_is_expanded(self):
+        """A quoted --projects-config '~/…' must resolve, not read as a literal."""
+        from core.cli_calendar_suggest import _configured_profiles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            self._write(str(home), {"projects": [{"name": "project-alpha"}]})
+            with patch("pathlib.Path.home", return_value=home), patch.dict(
+                "os.environ", {"HOME": str(home)}
+            ):
+                profiles = _configured_profiles("~/timelog_projects.json")
+        self.assertEqual(len(profiles), 1)
+        self.assertEqual(profiles[0]["name"], "project-alpha")
+
+    def test_one_unnamed_profile_does_not_discard_the_others(self):
+        """normalize_profile raises on a missing name; that must not empty the list."""
+        from core.cli_calendar_suggest import _configured_profiles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(
+                tmp,
+                {"projects": [{"match_terms": ["orphan"]}, {"name": "project-beta"}]},
+            )
+            profiles = _configured_profiles(str(path))
+        self.assertEqual([p["name"] for p in profiles], ["project-beta"])
+
+    def test_name_alone_covers_its_own_code(self):
+        """normalize_profile folds the name into match_terms, so it counts as covered."""
+        from core.cli_calendar_suggest import _configured_profiles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, {"projects": [{"name": "HÅ-DAA"}]})
+            profiles = _configured_profiles(str(path))
+        self.assertIn("hå-daa", profiles[0]["match_terms"])
+
+    def test_disabled_profile_does_not_suppress_its_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            from core.cli_calendar_suggest import _configured_profiles
+
+            path = self._write(
+                tmp, {"projects": [{"name": "project-alpha", "enabled": False}]}
+            )
+            self.assertEqual(_configured_profiles(str(path)), [])
+
+
 if __name__ == "__main__":
     unittest.main()

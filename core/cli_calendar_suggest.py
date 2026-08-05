@@ -37,25 +37,45 @@ _LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 
 
 def _configured_profiles(projects_config: str) -> list[dict]:
-    """Parse projects config file directly to avoid fallbacks."""
-    path = Path(projects_config)
+    """Profiles already in the config, or ``[]`` when it cannot be read.
+
+    Deliberately not ``load_profiles()``. That helper catches ``OSError``,
+    ``JSONDecodeError`` and ``ValueError`` itself, prints a warning, and returns
+    a *synthetic fallback* profile built from the caller's args — so a malformed
+    config would arrive here as one profile named ``""`` rather than as an error.
+
+    This command only needs the codes already covered, and it never writes. An
+    unreadable config therefore has to mean "cover nothing" — suggesting a code
+    the user already has is a small annoyance, while silently suppressing
+    suggestions because of a synthetic profile is a wrong answer with no signal.
+    """
+    path = Path(projects_config).expanduser()
     if not path.is_file():
         return []
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            raw = data
-        elif isinstance(data, dict):
-            raw = data.get("projects", [])
-        else:
-            return []
-        return [
-            normalize_profile(p)
-            for p in raw
-            if isinstance(p, dict) and p.get("enabled", True)
-        ]
-    except Exception:
+    except (OSError, ValueError):
         return []
+    if isinstance(data, list):
+        raw = data
+    elif isinstance(data, dict):
+        raw = data.get("projects", [])
+    else:
+        return []
+    if not isinstance(raw, list):
+        return []
+    profiles: list[dict] = []
+    for entry in raw:
+        if not isinstance(entry, dict) or not entry.get("enabled", True):
+            continue
+        try:
+            # normalize_profile folds the project name into match_terms, so a
+            # profile that only carries a name still counts as covering its code.
+            profiles.append(normalize_profile(entry))
+        except ValueError:
+            # One unnamed profile must not discard every other profile's terms.
+            continue
+    return profiles
 
 
 @app.command("calendar-suggest")
@@ -127,6 +147,10 @@ def calendar_suggest(
 
     for s in suggestions:
         example = (s.examples[0] if s.examples else "")[:40]
+        # Both values come from calendar event titles, which routinely contain
+        # square brackets — "[PROJECT-123] Standup" is the exact shape this
+        # command exists to find. Rich would read a style-named tag as markup
+        # and swallow the text, and an unmatched "[/]" raises MarkupError.
         table.add_row(escape(s.code), str(s.count), escape(example))
 
     console.print(table)
@@ -143,5 +167,6 @@ def calendar_suggest(
         f"\n[{STYLE_DIM}]Note: heuristic suggestions — rename projects and merge related codes as needed.[/{STYLE_DIM}]"
     )
     console.print(
-        f"[{STYLE_MUTED}]Next: see `docs/runbooks/calendar-time-report-onboarding.md` to map suggested projects to local folders.[/{STYLE_MUTED}]"
+        f"[{STYLE_MUTED}]Next: edit your config to add the suggested project(s), or run `gittan setup` to map local folders.[/{STYLE_MUTED}]\n"
+        f"[{STYLE_DIM}]Docs: docs/runbooks/calendar-time-report-onboarding.md[/{STYLE_DIM}]"
     )

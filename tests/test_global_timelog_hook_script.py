@@ -323,6 +323,71 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             payload = json.loads(spool_files[0].read_text(encoding="utf-8"))
             self.assertEqual(payload["source_provenance"]["subject"], "feat: atomic spool")
 
+    def _spool_once(self, home_dir: Path, *, repo: str, commit: str, subject: str) -> None:
+        gittan_dir = home_dir / ".gittan"
+        gittan_dir.mkdir(parents=True, exist_ok=True)
+        cfg_path = gittan_dir / "timelog_projects.json"
+        cfg_path.write_text(
+            json.dumps({
+                "shadow_log": "on",
+                "projects": [{"name": repo, "project_id": repo}],
+            }),
+            encoding="utf-8",
+        )
+        from core.global_timelog_hook_script import _RESOLVER_PY
+
+        proc = subprocess.run(
+            [sys.executable, "-c", _RESOLVER_PY],
+            capture_output=True,
+            text=True,
+            env={
+                "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                "GITTAN_HOOK_REPO": repo,
+                "GITTAN_HOOK_SUBJECT": subject,
+                "GITTAN_HOOK_BRANCH": "main",
+                "GITTAN_HOOK_HASH": commit,
+                "HOME": str(home_dir),
+                "PYTHONPATH": "",
+            },
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+
+    def test_same_commit_hash_in_two_repos_keeps_both_events(self):
+        """Two repos can produce byte-identical commit objects, hence one hash.
+
+        Naming the spool file by hash alone made the second os.replace()
+        overwrite the first, and that commit never reached the evidence store.
+        """
+        shared_hash = "0123456789abcdef0123456789abcdef01234567"
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            self._spool_once(home_dir, repo="repo-alpha", commit=shared_hash, subject="first")
+            self._spool_once(home_dir, repo="repo-beta", commit=shared_hash, subject="second")
+
+            spool_files = sorted((home_dir / ".gittan" / "spool").glob("*.json"))
+            self.assertEqual(len(spool_files), 2, "one commit was overwritten by the other")
+            subjects = {
+                json.loads(p.read_text(encoding="utf-8"))["source_provenance"]["subject"]
+                for p in spool_files
+            }
+            self.assertEqual(subjects, {"first", "second"})
+
+    def test_respooling_the_same_commit_stays_idempotent(self):
+        """The hash in the name is load-bearing — a pid suffix would break this.
+
+        Two files for one commit would carry different `timestamp` values, and
+        the dedup fingerprint is (source, observed_at, detail), so both would
+        survive into the store as separate records for a single commit.
+        """
+        commit = "fedcba9876543210fedcba9876543210fedcba98"
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            self._spool_once(home_dir, repo="repo-alpha", commit=commit, subject="same commit")
+            self._spool_once(home_dir, repo="repo-alpha", commit=commit, subject="same commit")
+
+            spool_files = list((home_dir / ".gittan" / "spool").glob("*.json"))
+            self.assertEqual(len(spool_files), 1, "re-spooling one commit must not duplicate it")
+
     def test_spool_temp_name_is_outside_the_drainer_glob(self):
         """The temp name must not match the "*.json" pattern the drainer reads."""
         from core.global_timelog_hook_script import _RESOLVER_PY

@@ -83,7 +83,21 @@ try:
                 spool_dir = Path(home) / ".gittan" / "spool"
                 spool_dir.mkdir(parents=True, exist_ok=True)
                 name_part = commit_hash if commit_hash else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
-                spool_file = spool_dir / f"commit-{name_part}.json"
+                # Scope the name by repo, not by pid. Two repositories can in
+                # principle produce the same commit hash — byte-identical commit
+                # objects, e.g. two empty initial commits made in the same second
+                # by the same author — and then one os.replace() would silently
+                # overwrite the other's event. Repo is the axis that actually
+                # separates them.
+                #
+                # Deliberately NOT a pid or random suffix: the hash in the name is
+                # what makes re-spooling the same commit idempotent. Uniquifying
+                # per run would instead write two files whose events carry
+                # different `timestamp` values, and since the dedup fingerprint is
+                # (source, observed_at, detail), they would survive as two records
+                # for one commit.
+                repo_part = norm(repo) or "unknown-repo"
+                spool_file = spool_dir / f"commit-{repo_part}-{name_part}.json"
                 # Publish atomically: the drainer globs "*.json" and unlinks
                 # anything it cannot parse, so a half-written file is a silently
                 # lost commit event. The temp name ends in .tmp, outside that glob.

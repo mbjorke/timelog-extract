@@ -11,12 +11,12 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Annotated, Optional
 
 import typer
 from rich import box
 from rich.console import Console
+from rich.markup import escape
 from rich.syntax import Syntax
 from rich.table import Table
 
@@ -24,7 +24,7 @@ from collectors.calendar import read_calendar_titles
 from core.analytics import get_date_range
 from core.calendar_suggest import suggest_projects_from_titles
 from core.cli_app import app
-from core.config import default_projects_config_option, load_profiles
+from core.config import default_projects_config_option
 from outputs.terminal_theme import (
     CLR_VALUE_ORANGE,
     STYLE_BORDER,
@@ -34,6 +34,33 @@ from outputs.terminal_theme import (
 )
 
 _LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
+
+
+def _configured_profiles(projects_config: str) -> list:
+    """Profiles already in the config, or ``[]`` when it cannot be read.
+
+    Deliberately not ``load_profiles()``. That helper catches ``OSError``,
+    ``JSONDecodeError`` and ``ValueError`` itself, prints a warning, and returns
+    a *synthetic fallback* profile built from the caller's args — so wrapping it
+    in ``except ValueError`` guards nothing, and a malformed config arrived here
+    as one profile named ``""`` rather than as an error.
+
+    This command only needs the codes already covered, and it never writes. An
+    unreadable config therefore has to mean "cover nothing" — suggesting a code
+    the user already has is a small annoyance, while silently suppressing
+    suggestions because of a synthetic profile is a wrong answer with no signal.
+    """
+    path = Path(projects_config).expanduser()
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    raw = data.get("projects", []) if isinstance(data, dict) else data
+    if not isinstance(raw, list):
+        return []
+    return [profile for profile in raw if isinstance(profile, dict)]
 
 
 @app.command("calendar-suggest")
@@ -56,12 +83,7 @@ def calendar_suggest(
     to_str = date_to.strftime("%Y-%m-%d") if date_to else None
     dt_from, dt_to = get_date_range(from_str, to_str, _LOCAL_TZ)
 
-    try:
-        profiles, _cfg, _ws = load_profiles(
-            projects_config, SimpleNamespace(project="", keywords="", email="")
-        )
-    except ValueError:
-        profiles = []
+    profiles = _configured_profiles(projects_config)
     names = [n.strip() for n in (calendar_names or "").split(",") if n.strip()]
 
     try:
@@ -82,7 +104,7 @@ def calendar_suggest(
 
     console = Console()
 
-    scope = ", ".join(names) if names else "all calendars"
+    scope = escape(", ".join(names)) if names else "all calendars"
     console.print(
         f"Scanned [bold {STYLE_LABEL}]{len(rows)}[/bold {STYLE_LABEL}] calendar event(s) "
         f"({scope}, {from_str} .. {to_str or 'today'})."
@@ -110,7 +132,11 @@ def calendar_suggest(
 
     for s in suggestions:
         example = (s.examples[0] if s.examples else "")[:40]
-        table.add_row(s.code, str(s.count), example)
+        # Both values come from calendar event titles, which routinely contain
+        # square brackets — "[PROJECT-123] Standup" is the exact shape this
+        # command exists to find. Rich would read those as markup tags and
+        # either swallow the text or fail to close, so escape before rendering.
+        table.add_row(escape(s.code), str(s.count), escape(example))
 
     console.print(table)
 
@@ -126,5 +152,6 @@ def calendar_suggest(
         f"\n[{STYLE_DIM}]Note: heuristic suggestions — rename projects and merge related codes as needed.[/{STYLE_DIM}]"
     )
     console.print(
-        f"[{STYLE_MUTED}]Next: edit your config to add the suggested project(s), or run `gittan setup` to map local folders.[/{STYLE_MUTED}]"
+        f"[{STYLE_MUTED}]Next: edit your config to add the suggested project(s), or run `gittan setup` to map local folders.[/{STYLE_MUTED}]\n"
+        f"[{STYLE_DIM}]Docs: docs/runbooks/calendar-time-report-onboarding.md[/{STYLE_DIM}]"
     )

@@ -13,24 +13,6 @@ from core.mapping_review import (
 )
 
 
-class _Cancelled:
-    """Sentinel telling an interrupted prompt apart from a validation failure.
-
-    ``prompt_new_project_fields`` returns ``None`` for recoverable cases the
-    caller should skip past (no slug, slug already mapped). Ctrl+C is not
-    recoverable — without a distinct value the caller cannot tell the two
-    apart and silently continues to the next prompt after the user quit.
-    """
-
-    __slots__ = ()
-
-    def __repr__(self) -> str:  # pragma: no cover - debugging aid
-        return "CANCELLED"
-
-
-CANCELLED = _Cancelled()
-
-
 def _print_mapping_cancelled(console) -> None:
     from outputs.terminal_theme import CLR_VALUE_ORANGE
     console.print(f"[{CLR_VALUE_ORANGE}]Cancelled — no mapping changes saved.[/{CLR_VALUE_ORANGE}]")
@@ -42,7 +24,7 @@ def prompt_new_project_fields(
     default_profile_name: str,
     existing_names: set[str],
     default_customer: str = "",
-) -> tuple[str, str, str] | _Cancelled | None:
+) -> tuple[str, str, str] | None:
     """Collect customer and optional display name; slug comes from the repository."""
     import questionary
 
@@ -67,7 +49,7 @@ def prompt_new_project_fields(
             default="",
         ).ask()
         if customer_answer is None:
-            return CANCELLED
+            return None
         customer = str(customer_answer).strip() or str(default_customer or "").strip()
         if not customer:
             console.print(f"[{CLR_VALUE_ORANGE}]Customer cannot be empty.[/{CLR_VALUE_ORANGE}]")
@@ -77,7 +59,7 @@ def prompt_new_project_fields(
         default="",
     ).ask()
     if title_answer is None:
-        return CANCELLED
+        return None
     return slug, customer, str(title_answer).strip()
 
 
@@ -204,9 +186,6 @@ def run_batch_mapping_review(
                 default_profile_name=proposal.suggested_name,
                 existing_names=existing_names,
             )
-            if fields is CANCELLED:
-                _print_mapping_cancelled(console)
-                return None
             if fields is None:
                 continue
             profile_name, customer, invoice_title = fields

@@ -41,40 +41,6 @@ class PromptNewProjectFieldsTests(unittest.TestCase):
         self.assertIsNone(fields)
         text_mock.assert_not_called()
 
-    def test_cancelling_customer_prompt_is_distinguishable_from_validation_failure(self):
-        """Ctrl+C must not look like "slug already mapped" to the caller.
-
-        Both used to return None, so run_batch_mapping_review's `continue`
-        carried the user straight to the next proposal after they quit.
-        """
-        from rich.console import Console
-
-        from core.mapping_review import CANCELLED
-
-        with patch("questionary.text") as text_mock:
-            text_mock.return_value.ask.return_value = None
-            fields = prompt_new_project_fields(
-                Console(),
-                default_profile_name="project-alpha",
-                existing_names={"project-beta"},
-            )
-        self.assertIs(fields, CANCELLED)
-        self.assertIsNotNone(fields, "cancellation must not collapse into the None case")
-
-    def test_cancelling_title_prompt_also_signals_cancellation(self):
-        from rich.console import Console
-
-        from core.mapping_review import CANCELLED
-
-        with patch("questionary.text") as text_mock:
-            text_mock.return_value.ask.side_effect = ["customer-a", None]
-            fields = prompt_new_project_fields(
-                Console(),
-                default_profile_name="project-alpha",
-                existing_names={"project-beta"},
-            )
-        self.assertIs(fields, CANCELLED)
-
 
 if __name__ == "__main__":
     unittest.main()

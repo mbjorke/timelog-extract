@@ -434,18 +434,12 @@ def run_url_mapping_review(
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True, code=1)
     console.print(preview.get("preview", "No preview available."))
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
-    # questionary returns None on Ctrl+C and False on a deliberate "no". Only the
-    # former is an interrupt; answering no is a normal review that wrote nothing,
-    # so it exits 0 through the usual guidance path.
     if confirmed is None:
         console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
         raise typer.Exit(code=130)
     if not confirmed:
-        _exit_url_mapping_review(
-            console,
-            projects_config=resolved_projects_config,
-            has_candidates=True,
-        )
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     applied = apply_triage_decisions_payload(
         decisions=decisions,

@@ -8,10 +8,15 @@ from textwrap import dedent
 # would defeat dedent() and leave the shebang indented — a broken shebang
 # means git runs the hook under sh, where zsh's ${VAR:A} aborts the script.
 _RESOLVER_PY = """\
-import json, os, re, sys
+import hashlib, json, os, re, sys
 
 home = os.path.expanduser("~")
-cfg = os.environ.get("GITTAN_PROJECTS_CONFIG") or os.path.join(home, ".gittan", "timelog_projects.json")
+# One state root, matching core/evidence_store.py::spool_dir(): $GITTAN_HOME
+# *is* the data dir when set. Writing to $HOME/.gittan while capture_events()
+# drains $GITTAN_HOME left the event permanently undrained.
+_env_root = (os.environ.get("GITTAN_HOME") or "").strip()
+state_root = os.path.expanduser(_env_root) if _env_root else os.path.join(home, ".gittan")
+cfg = os.environ.get("GITTAN_PROJECTS_CONFIG") or os.path.join(state_root, "timelog_projects.json")
 repo = os.environ.get("GITTAN_HOOK_REPO", "")
 
 
@@ -52,7 +57,7 @@ for profile in profiles:
                 path = os.path.join(os.path.dirname(cfg), path)
             worklog_path = path
         else:
-            worklog_path = os.path.join(home, ".gittan", "worklogs", identity + ".md")
+            worklog_path = os.path.join(state_root, "worklogs", identity + ".md")
         break
 
 if worklog_path:
@@ -80,7 +85,7 @@ try:
                 }
             }
             try:
-                spool_dir = Path(home) / ".gittan" / "spool"
+                spool_dir = Path(state_root) / "spool"
                 spool_dir.mkdir(parents=True, exist_ok=True)
                 name_part = commit_hash if commit_hash else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
                 # Scope the name by repo, not by pid. Two repositories can in
@@ -96,7 +101,13 @@ try:
                 # different `timestamp` values, and since the dedup fingerprint is
                 # (source, observed_at, detail), they would survive as two records
                 # for one commit.
-                repo_part = norm(repo) or "unknown-repo"
+                # norm() alone is lossy — "repo-a" and "repo_a" collapse to the
+                # same slug, so a shared commit hash would still overwrite. The
+                # digest is over the raw name, mirroring _device_slug() in
+                # core/evidence_store.py; the readable stem is kept for humans.
+                repo_stem = norm(repo) or "unknown-repo"
+                repo_digest = hashlib.sha256((repo or "").encode("utf-8")).hexdigest()[:12]
+                repo_part = f"{repo_stem}-{repo_digest}"
                 spool_file = spool_dir / f"commit-{repo_part}-{name_part}.json"
                 # Publish atomically: the drainer globs "*.json" and unlinks
                 # anything it cannot parse, so a half-written file is a silently
@@ -106,7 +117,7 @@ try:
                     json.dump(event, sf, ensure_ascii=False)
                 os.replace(temp_file, spool_file)
             except Exception as exc:
-                err_file = Path(home) / ".gittan" / "capture-errors.jsonl"
+                err_file = Path(state_root) / "capture-errors.jsonl"
                 try:
                     err_file.parent.mkdir(parents=True, exist_ok=True)
                     with err_file.open("a", encoding="utf-8") as ef:

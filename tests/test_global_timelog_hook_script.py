@@ -10,6 +10,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from core.global_timelog_hook_script import HOOK_BODY
@@ -387,6 +388,76 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
 
             spool_files = list((home_dir / ".gittan" / "spool").glob("*.json"))
             self.assertEqual(len(spool_files), 1, "re-spooling one commit must not duplicate it")
+
+    def test_repo_names_that_normalize_alike_stay_distinct(self):
+        """norm() is lossy: "repo-a" and "repo_a" collapse to one slug.
+
+        With a shared commit hash that made the second os.replace() overwrite
+        the first, which is the bug the repo scoping was meant to remove.
+        """
+        shared = "abcdef0123456789abcdef0123456789abcdef01"
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            self._spool_once(home_dir, repo="repo-a", commit=shared, subject="dash")
+            self._spool_once(home_dir, repo="repo_a", commit=shared, subject="underscore")
+
+            spool_files = sorted((home_dir / ".gittan" / "spool").glob("*.json"))
+            self.assertEqual(len(spool_files), 2, "lossy normalisation lost one event")
+            subjects = {
+                json.loads(p.read_text(encoding="utf-8"))["source_provenance"]["subject"]
+                for p in spool_files
+            }
+            self.assertEqual(subjects, {"dash", "underscore"})
+
+    def test_spool_follows_gittan_home_so_capture_events_can_drain_it(self):
+        """$GITTAN_HOME *is* the data dir for the store, so the hook must use it.
+
+        Writing to $HOME/.gittan while capture_events() drains $GITTAN_HOME left
+        the commit event stranded with nothing reporting it.
+        """
+        from core.evidence_store import capture_events, spool_dir
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            state_root = Path(tmp) / "elsewhere"
+            gittan_dir = home_dir / ".gittan"
+            gittan_dir.mkdir(parents=True)
+            cfg_path = gittan_dir / "timelog_projects.json"
+            cfg_path.write_text(
+                json.dumps({"shadow_log": "on",
+                            "projects": [{"name": "repo-alpha", "project_id": "repo-alpha"}]}),
+                encoding="utf-8",
+            )
+
+            from core.global_timelog_hook_script import _RESOLVER_PY
+
+            proc = subprocess.run(
+                [sys.executable, "-c", _RESOLVER_PY],
+                capture_output=True, text=True,
+                env={
+                    "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                    "GITTAN_HOOK_REPO": "repo-alpha",
+                    "GITTAN_HOOK_SUBJECT": "routed by GITTAN_HOME",
+                    "GITTAN_HOOK_BRANCH": "main",
+                    "GITTAN_HOOK_HASH": "1111111111111111111111111111111111111111",
+                    "HOME": str(home_dir),
+                    "GITTAN_HOME": str(state_root),
+                    "PYTHONPATH": "",
+                },
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+
+            self.assertEqual(
+                list((state_root / "spool").glob("*.json")).__len__(), 1,
+                "the hook must write where the store looks",
+            )
+            self.assertFalse((gittan_dir / "spool").exists(), "not under $HOME/.gittan")
+
+            # And the store actually finds it.
+            with unittest.mock.patch.dict(os.environ, {"GITTAN_HOME": str(state_root)}):
+                self.assertEqual(spool_dir(), state_root / "spool")
+                result = capture_events([])
+            self.assertGreaterEqual(result.get("appended", 0), 1)
 
     def test_spool_temp_name_is_outside_the_drainer_glob(self):
         """The temp name must not match the "*.json" pattern the drainer reads."""

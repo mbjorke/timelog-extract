@@ -96,3 +96,36 @@ class IsolatedBaseDirTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MalformedSpoolFileTests(unittest.TestCase):
+    """json.load() accepts values that are not events; they must not linger.
+
+    `[]`, `null` and bare scalars parse cleanly, so the old `if isinstance(ev,
+    dict)` branch neither drained nor removed them — every later capture
+    rescanned the same file, forever.
+    """
+
+    def _drain(self, payload: str) -> bool:
+        """Return whether the spool file survived the drain."""
+        with TemporaryDirectory() as root_s:
+            root = Path(root_s)
+            spool = root / "spool"
+            spool.mkdir(parents=True)
+            path = spool / "commit-bad.json"
+            path.write_text(payload, encoding="utf-8")
+            capture_events([], base_dir=root / "evidence")
+            return path.exists()
+
+    def test_json_array_is_removed(self):
+        self.assertFalse(self._drain("[]"), "a parseable non-event must not be left behind")
+
+    def test_json_null_is_removed(self):
+        self.assertFalse(self._drain("null"))
+
+    def test_bare_scalar_is_removed(self):
+        self.assertFalse(self._drain("42"))
+
+    def test_unparseable_json_is_still_removed(self):
+        """The pre-existing behaviour must not regress while widening the rule."""
+        self.assertFalse(self._drain("{ not json"))

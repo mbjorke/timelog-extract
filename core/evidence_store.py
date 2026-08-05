@@ -201,9 +201,14 @@ def capture_events(
             try:
                 with path.open(encoding="utf-8") as fh:
                     ev = json.load(fh)
-                if isinstance(ev, dict):
-                    spooled_events.append(ev)
-                    drained_files.append(path)
+                if not isinstance(ev, dict):
+                    # json.load() happily returns [], null or a bare number.
+                    # Those parse but are not events, and the old branch neither
+                    # drained nor removed them — so every later capture rescanned
+                    # the same file forever. Same disposal path as a decode error.
+                    raise ValueError(f"expected a JSON object, got {type(ev).__name__}")
+                spooled_events.append(ev)
+                drained_files.append(path)
             except Exception as exc:
                 _LOGGER.warning("Failed to read spool file %s: %s", path, exc)
                 try:

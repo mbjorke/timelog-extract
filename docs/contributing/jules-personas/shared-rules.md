@@ -58,6 +58,10 @@ fix it and reply with the commit, or reply with one sentence on why not.
 Silence is not a disposition.
 
 Do not merge your own PRs and do not act as finisher for another agent's PR.
-Pull requests in this repo — from Jules, Cursor and Claude alike — are all
-authored by `mbjorke`, so you cannot reliably tell whose work you are touching.
-Leave other branches alone.
+
+If you need to know whose branch you are looking at, read **commit** authorship,
+not the pull request author. Every PR on this repo reports `mbjorke` regardless
+of which agent produced it, because they all push through the maintainer's
+credentials. Commits are honest: `google-labs-jules[bot]`, `Cursor Agent`,
+`Claude`. A branch carrying more than one of those has already been worked on by
+someone else — leave it alone rather than pushing over their changes.

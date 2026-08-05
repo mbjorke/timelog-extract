@@ -1,32 +1,71 @@
 # Finisher agents for Jules PRs (Cursor or Claude)
 
-Status: **disabled — do not re-enable without fixing the author gate**  
-Last updated: 2026-08-04
+Status: **disabled — do not re-enable until a step here can identify a Jules PR**  
+Last updated: 2026-08-05
 
-> ## ⚠️ The author gate in this document does not work
+> ## ⚠️ Nothing in this document identifies a Jules PR
 >
-> Every rule below hinges on `AUTHOR_GATE: INTERNAL` and the hard stop
-> *"if PR author is not `google-labs-jules[bot]` … exit"*. **No PR in this repo
-> has that author.** Jules pushes through the maintainer's credentials, so
-> Jules, Cursor and Claude pull requests are all authored by `mbjorke` and are
-> indistinguishable to any author-based check.
+> The scheduled finisher was switched off in the Jules UI on 2026-08-05 after it
+> began modifying Claude-authored pull requests. The cause is not a broken
+> `author_gate()` — that function does its job correctly. It is that **no step
+> here distinguishes one agent from another**, and two separate instructions
+> below assume one does.
 >
-> The consequence is not that the finisher does nothing — it is that the
-> finisher cannot tell whose work it is touching, and it began modifying
-> Claude-authored PRs. The scheduled finisher was switched off in the Jules UI
-> on 2026-08-04 for that reason.
+> ### `author_gate()` answers a different question
 >
-> Branch prefixes do not rescue it either: `task/*` is used by Jules *and* by
-> Cursor/human work (`task/capture-cursor-and-device-labels` is maintainer
-> work). The only reliable Jules marker observed is the long random numeric
-> suffix its branches carry — `task/sentinel-briox-security-15222079743999920120`,
-> `jules-15936502309434636671-2aa414bb` — which is a weak thing to gate merge
-> permission on.
+> `scripts/rabbit_loop.sh::author_gate` checks *internal vs external*: it
+> rejects forks and allows an allowlist, `GITTAN_INTERNAL_AUTHORS` defaulting to
+> `mbjorke google-labs-jules[bot]`. That is a security boundary against outside
+> contributors and it works. It is **not** an "is this Jules" test, and it was
+> never written as one.
 >
-> **Before re-enabling any finisher**, decide how a Jules PR is identified with
-> certainty. A dedicated label applied by a trusted workflow, or a distinct bot
-> identity for Jules, are the two options that actually hold. Until then the
-> personas hand off to a human — see
+> ### The PR author field cannot tell the agents apart
+>
+> Every pull request on this repo — Jules, Cursor, Claude and hand-written alike
+> — reports `author.login = mbjorke`, because all of them push through the
+> maintainer's credentials. So `author_gate()` returns `INTERNAL` for all of
+> them, which is correct and also useless for routing.
+>
+> Two instructions below read that field as if it were an agent marker, and both
+> fail — in opposite directions:
+>
+> - *"if PR author is not `google-labs-jules[bot]`, comment 'not a Jules PR —
+>   skipping' and exit"* (Automation instructions) — taken literally, this skips
+>   **every** PR, including the Jules ones it exists to process.
+> - *"Confirm this PR is from `google-labs-jules[bot]` (or a Jules task branch)"*
+>   (both finisher prompts) — the parenthetical is the escape hatch an agent
+>   actually takes, and it is far too loose. `task/*` is shared with Cursor and
+>   maintainer work (`task/capture-cursor-and-device-labels` is hand-written).
+>   This is the reading that let the finisher touch Claude's PRs.
+>
+> ### Commit authorship *does* distinguish them
+>
+> Unlike the PR author field, commit authorship is reliable. Surveyed across all
+> open PRs on 2026-08-05:
+>
+> | Agent | Commit author |
+> | --- | --- |
+> | Jules | `google-labs-jules[bot]` |
+> | Cursor | `Cursor Agent` |
+> | Claude | `Claude <noreply@anthropic.com>` |
+>
+> One caveat that decides the rule's shape: branches are **not** single-author
+> once anyone helps. Five open PRs currently carry both `Claude` and
+> `google-labs-jules[bot]` commits, because Claude pushed review fixes onto
+> Jules branches. So:
+>
+> - *any* commit by Jules → too loose; matches every branch Claude co-authored.
+> - **all** commits by Jules → correct, and correctly excludes the mixed
+>   branches. A branch another agent or a human has touched is exactly the case
+>   that should go to a person, not to an auto-merger.
+>
+> ### Before re-enabling
+>
+> Replace every "is this a Jules PR" step with a check on commit authorship —
+> *all* commits in `main..HEAD` authored by `google-labs-jules[bot]` — or with a
+> dedicated label applied by a trusted workflow. Keep `author_gate()` as-is: it
+> is the fork boundary and remains necessary, just not sufficient. Until then
+> the personas hand off to a human, see
 > [`jules-personas/shared-rules.md`](jules-personas/shared-rules.md).
 
 ## Dress rehearsal
@@ -45,8 +84,9 @@ left that day. Same rules either way.
 > **Canonical identifiers in this doc.** The handles and slug below are the real,
 > canonical operational values for *this* setup — substitute your own when
 > adapting:
-> - `google-labs-jules[bot]` — the Jules bot's author handle (the exact string
->   the finisher's author hard-stop must match; not a placeholder).
+> - `google-labs-jules[bot]` — the Jules bot's **commit** author handle (not a
+>   placeholder). Match it against commit authorship, never against the PR
+>   author field, which is `mbjorke` for every agent on this repo.
 > - `OWNER/REPO` = `mbjorke/timelog-extract` — this repository.
 > - `@cursor` / `@claude` — the mention handles that actually trigger each
 >   finisher; they are commands you type, not example names.
@@ -90,9 +130,14 @@ Paste on the Jules PR (or start a Cloud Agent with the PR URL):
 ```text
 You are the Jules finisher for this repo (timelog-extract / Gittan).
 
-1. Confirm this PR is from google-labs-jules[bot] (or a Jules task branch).
+1. Confirm EVERY commit on this PR is authored by google-labs-jules[bot]:
+     git log --format='%an' origin/main..HEAD | sort -u
+   Exactly that one name, nothing else. Any other author (Claude, Cursor Agent,
+   a human) means another party has worked on this branch — stop, do not merge,
+   leave it for a person. Do NOT fall back to the branch name: task/* is shared
+   with Cursor and maintainer work.
 2. Checkout the PR head. Run from repo root:
-   - bash scripts/rabbit_loop.sh --author-gate --pr <N>   # FIRST — hard boundary
+   - bash scripts/rabbit_loop.sh --author-gate --pr <N>   # fork boundary, NOT an agent check
    - bash scripts/run_autotests.sh   # if not already green on CI
    - bash scripts/rabbit_loop.sh --merge-gate --pr <N>
    - bash scripts/rabbit_loop.sh --classify-merge
@@ -119,11 +164,11 @@ Paste into Cursor Automations (edit scopes/tools in the UI):
 | --- | --- |
 | **Name** | Jules finisher (SAFE merge) |
 | **Description** | After Jules marks a PR ready, run merge-gate + classify; squash-merge only SAFE |
-| **Trigger** | **Must be scoped to Jules PRs.** Prefer: CI completed success **and** author is `google-labs-jules[bot]`. If the product also allows comment/label triggers, combine with an author filter — never “any PR comment contains `ready to merge`” alone. Label `jules-merge-ready` is fine only when the automation still exits immediately unless the PR author is Jules. |
+| **Trigger** | **Must be scoped to Jules PRs — and the PR author field cannot do that scoping here** (every PR on this repo reports `mbjorke`). Prefer: CI completed success, with the agent check done in the instructions as a commit-authorship test. If the product also allows comment/label triggers, never use “any PR comment contains `ready to merge`” alone. A `jules-merge-ready` label is fine only when the automation still exits immediately unless the commit-authorship test passes. |
 | **Repo scope** | `mbjorke/timelog-extract` (this repo only) |
 | **Tools** | Shell / repo checkout, GitHub comment, approve (optional), GitHub MCP or `gh` with merge permission |
-| **Instructions** | **First step (hard stop):** if PR author is not `google-labs-jules[bot]`, comment “not a Jules PR — skipping” and exit. Then use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
-| **To finish in editor** | Wire the Jules-author filter into the trigger if the UI supports it. If the UI **cannot** filter by author, do **not** enable broad comment/label triggers — keep hands-off automation disabled and finish manually (or use a Jules-only label applied by a trusted workflow); the hard-stop first step is defense in depth, not the trigger scope. Attach GitHub MCP or secrets for `gh`; enable only if branch protection allows the Cursor actor to merge/approve |
+| **Instructions** | **First step (hard stop):** run `git log --format='%an' origin/main..HEAD \| sort -u`. If that prints anything other than exactly `google-labs-jules[bot]`, comment “not a Jules-only branch — skipping” and exit. Do **not** test the PR author field; it is `mbjorke` for Jules, Cursor and Claude alike, so it passes everything. Then use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
+| **To finish in editor** | Do **not** wire a PR-author filter into the trigger — no value of it separates Jules from Cursor or Claude on this repo, so it either passes everything or nothing. Scope the trigger as narrowly as the UI allows (repo + CI success), and rely on the commit-authorship hard stop in **Instructions** as the real boundary; it runs on a checkout, which a trigger filter cannot. A Jules-only label applied by a trusted workflow is the one trigger-level filter that would hold. Attach GitHub MCP or secrets for `gh`; enable only if branch protection allows the Cursor actor to merge/approve |
 
 Safer variant: Automation only **approves** + enables GitHub **auto-merge**; GitHub completes the squash when required checks pass. Finisher still must have run merge-gate in the prompt before approving.
 
@@ -137,7 +182,11 @@ Safer variant: Automation only **approves** + enables GitHub **auto-merge**; Git
 Follow docs/contributing/jules-finisher-agents.md (Shared merge rules).
 
 Steps:
-1. Verify author is google-labs-jules[bot] (or Jules task branch).
+1. Verify EVERY commit is authored by google-labs-jules[bot]:
+   git log --format='%an' origin/main..HEAD | sort -u
+   Exactly that one name. Any other author (Claude, Cursor Agent, a human)
+   means someone else worked on this branch — stop, do not merge. Branch names
+   do not qualify: task/* is shared with Cursor and maintainer work.
 2. On the PR head, run:
    bash scripts/rabbit_loop.sh --author-gate --pr <this-PR-number>
    bash scripts/cli_impact_smoke.sh

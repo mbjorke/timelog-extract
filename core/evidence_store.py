@@ -71,6 +71,18 @@ def spool_dir(home: Optional[Path] = None) -> Path:
     return canonical_gittan_home() / "spool"
 
 
+def spool_dir_for_base(base: Path) -> Path:
+    """Spool belonging to the same store root as *base*.
+
+    The spool is always a sibling of the evidence directory, under every
+    resolution mode (explicit ``home``, ``$GITTAN_HOME``, canonical default).
+    Deriving it from ``base`` rather than from the ambient home keeps read,
+    write and delete on one root — see ``capture_events``, where a caller may
+    pass ``base_dir`` without ``home``.
+    """
+    return Path(base).parent / "spool"
+
+
 def _month_key(observed_at_iso: str) -> str:
     # observed_at is a normalized UTC ISO string; first 7 chars are YYYY-MM.
     return (observed_at_iso or "")[:7] or "unknown"
@@ -175,8 +187,13 @@ def capture_events(
     fingerprints, last_hash = load_store_state(ev_dir)
 
     all_events = list(events)
-    # Read spool events
-    sp_dir = spool_dir(home)
+    # Read spool events from the store we are writing to. spool_dir(home)
+    # resolves from the ambient home, which is wrong whenever a caller passes
+    # base_dir without home: the real user's pending commit events would be
+    # drained into an isolated store and then deleted, destroyed along with the
+    # temporary directory. Both paths agree when base_dir is omitted, since the
+    # spool is always a sibling of the evidence dir.
+    sp_dir = spool_dir_for_base(base)
     spooled_events = []
     drained_files = []
     if sp_dir.is_dir():

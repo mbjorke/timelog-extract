@@ -92,10 +92,7 @@ class TimelogRunOptions:
     # "v1" = match_terms classify_project (default). "work_unit_v2" = signals →
     # WorkUnit → customer_ref (docs/task-prompts/work-unit-v2-task.md item 1).
     attribution_classifier: str = "v1"
-    # Which CLI command produced this run. Presentation (hero, empty-state
-    # guidance) keys off this rather than off `all_events`: that flag is set by
-    # `search`, but `report` also exposes it as a legacy alias, so inferring the
-    # command from it makes `gittan report --all-events` render as Search.
+    # The name of the subcommand being executed ("report", "search", etc.)
     command_name: str = "report"
 
 

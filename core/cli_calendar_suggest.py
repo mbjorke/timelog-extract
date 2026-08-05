@@ -11,18 +11,57 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Annotated, Optional
 
 import typer
+from rich import box
+from rich.console import Console
+from rich.markup import escape
+from rich.syntax import Syntax
+from rich.table import Table
 
 from collectors.calendar import read_calendar_titles
 from core.analytics import get_date_range
 from core.calendar_suggest import suggest_projects_from_titles
 from core.cli_app import app
-from core.config import default_projects_config_option, load_profiles
+from core.config import default_projects_config_option, normalize_profile
+from outputs.terminal_theme import (
+    CLR_VALUE_ORANGE,
+    STYLE_BORDER,
+    STYLE_DIM,
+    STYLE_LABEL,
+    STYLE_MUTED,
+)
 
 _LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
+
+
+def _configured_profiles(projects_config: str) -> list[dict]:
+    """Parse projects config file directly to avoid fallbacks."""
+    path = Path(projects_config).expanduser()
+    if not path.is_file():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            raw = data
+        elif isinstance(data, dict):
+            raw = data.get("projects", [])
+        else:
+            return []
+    except Exception:
+        return []
+
+    profiles: list[dict] = []
+    for p in raw:
+        if isinstance(p, dict) and p.get("enabled", True):
+            try:
+                profiles.append(normalize_profile(p))
+            except Exception:
+                # Skip individual malformed profiles (e.g. missing 'name') so
+                # we don't discard the entire valid projects list.
+                continue
+    return profiles
 
 
 @app.command("calendar-suggest")
@@ -45,9 +84,7 @@ def calendar_suggest(
     to_str = date_to.strftime("%Y-%m-%d") if date_to else None
     dt_from, dt_to = get_date_range(from_str, to_str, _LOCAL_TZ)
 
-    profiles, _cfg, _ws = load_profiles(
-        projects_config, SimpleNamespace(project="", keywords="", email="")
-    )
+    profiles = _configured_profiles(projects_config)
     names = [n.strip() for n in (calendar_names or "").split(",") if n.strip()]
 
     try:
@@ -66,20 +103,56 @@ def calendar_suggest(
         print(json.dumps([s.as_json_dict() for s in suggestions], ensure_ascii=False, indent=2))
         return
 
-    scope = ", ".join(names) if names else "all calendars"
-    print(f"Scanned {len(rows)} calendar event(s) ({scope}, {from_str} .. {to_str or 'today'}).")
+    console = Console()
+
+    # Escape user calendar names and event details to prevent Rich from misinterpreting
+    # bracketed characters (like '[bold]' or '[/]') as markup tags.
+    scope = escape(", ".join(names) if names else "all calendars")
+    console.print(
+        f"Scanned [bold {STYLE_LABEL}]{len(rows)}[/bold {STYLE_LABEL}] calendar event(s) "
+        f"({scope}, {from_str} .. {to_str or 'today'})."
+    )
     if not suggestions:
-        print("No new project codes found (everything seen is already covered, or no distinctive codes).")
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]No new project codes found[/{CLR_VALUE_ORANGE}] "
+            f"[{STYLE_MUTED}](everything seen is already covered, or no distinctive codes).[/{STYLE_MUTED}]"
+        )
         return
 
-    print(f"\nSuggested projects (codes not yet in your config), min {min_count} occurrence(s):\n")
-    print(f"  {'code':<22} {'events':>6}  example")
-    print(f"  {'-'*22} {'-'*6}  {'-'*30}")
+    console.print(
+        f"\n[bold {STYLE_LABEL}]Suggested projects[/bold {STYLE_LABEL}] "
+        f"[{STYLE_MUTED}](codes not yet in your config, min {min_count} occurrence(s)):[/{STYLE_MUTED}]\n"
+    )
+
+    table = Table(
+        box=box.ROUNDED,
+        border_style=STYLE_BORDER,
+        header_style=f"bold {STYLE_LABEL}",
+    )
+    table.add_column("Code", style=CLR_VALUE_ORANGE)
+    table.add_column("Events", justify="right", style=STYLE_MUTED)
+    table.add_column("Example", style=STYLE_DIM)
+
     for s in suggestions:
         example = (s.examples[0] if s.examples else "")[:40]
-        print(f"  {s.code:<22} {s.count:>6}  {example}")
+        table.add_row(escape(s.code), str(s.count), escape(example))
+
+    console.print(table)
 
     profiles_stub = {"projects": [s.as_profile() for s in suggestions]}
-    print("\nTo use, add these to your projects config (review names/terms first):\n")
-    print(json.dumps(profiles_stub, ensure_ascii=False, indent=2))
-    print("\nNote: heuristic suggestions — rename projects and merge related codes as needed.")
+    console.print(
+        f"\n[bold {STYLE_LABEL}]To use, add these to your projects config[/bold {STYLE_LABEL}] "
+        f"[{STYLE_MUTED}](review names/terms first):[/{STYLE_MUTED}]\n"
+    )
+    json_str = json.dumps(profiles_stub, ensure_ascii=False, indent=2)
+    syntax = Syntax(json_str, "json", theme="ansi", background_color="default")
+    console.print(syntax)
+    console.print(
+        f"\n[{STYLE_DIM}]Note: heuristic suggestions — rename projects and merge related codes as needed.[/{STYLE_DIM}]"
+    )
+    console.print(
+        f"[{STYLE_MUTED}]Next: edit your config to add the suggested project(s), or run `gittan setup` to map local folders.[/{STYLE_MUTED}]"
+    )
+    console.print(
+        f"[{STYLE_MUTED}]Docs: see `docs/runbooks/calendar-time-report-onboarding.md` to map suggested projects to local folders.[/{STYLE_MUTED}]"
+    )

@@ -59,13 +59,49 @@ class ReportEmptyStateUxTests(unittest.TestCase):
     def test_search_empty_state_shows_custom_guidance(self):
         report = _FakeReport()
         report.args.all_events = True
+        report.args.command_name = "search"
         with patch("core.report_cli.run_timelog_report", return_value=report):
             result = self.runner.invoke(app, ["search", "--today"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         output = _plain(result.output)
         self.assertIn("No events found.", output)
         flat = " ".join(output.split())
-        self.assertIn("gittan search --today --noise-profile lenient", flat)
+        self.assertIn("gittan search --last-week", flat)
+
+    def test_search_empty_state_does_not_suggest_the_default_noise_profile(self):
+        """`lenient` is already DEFAULT_NOISE_PROFILE and the loosest of the three.
+
+        Suggesting it re-runs the identical filtering and returns the same empty
+        result, so the hint reads as help but cannot change anything.
+        """
+        from core.noise_profiles import DEFAULT_NOISE_PROFILE, NOISE_PROFILES
+
+        self.assertEqual(DEFAULT_NOISE_PROFILE, "lenient")
+        self.assertIn("lenient", NOISE_PROFILES)
+
+        report = _FakeReport()
+        report.args.all_events = True
+        report.args.command_name = "search"
+        with patch("core.report_cli.run_timelog_report", return_value=report):
+            result = self.runner.invoke(app, ["search", "--today"])
+        flat = " ".join(_plain(result.output).split())
+        self.assertNotIn("--noise-profile lenient", flat)
+
+    def test_report_with_all_events_alias_keeps_report_guidance(self):
+        """`--all-events` is a legacy alias on `report`, not a command marker.
+
+        Guidance used to key off that flag, so `gittan report --all-events`
+        offered the search recovery path instead of the report one.
+        """
+        report = _FakeReport()
+        report.args.all_events = True
+        report.args.command_name = "report"
+        with patch("core.report_cli.run_timelog_report", return_value=report):
+            result = self.runner.invoke(app, ["report", "--today", "--all-events"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        flat = " ".join(_plain(result.output).split())
+        self.assertIn("gittan report --today --source-summary", flat)
+        self.assertNotIn("gittan search", flat)
 
     def test_report_project_empty_state_shows_guidance(self):
         report = _FakeReport(only_project="my-project")

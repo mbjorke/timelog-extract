@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-08-02 - [Optimize Session Presence and Attendance Classification Loops]
+**Learning:** Checking whether every event source is a presence signal or classifying attendance category is highly frequent in Gittan's session aggregation loops. The original `session_is_presence_signal_only` allocated a new `set` of sources from all events and performed subset comparison, adding substantial overhead. Refactoring to iterate and return `False` immediately on encountering any non-presence source completely bypasses set allocation and leverages early termination. Similarly, `classify_attendance` was refactored to break early once both flags were detected.
+**Action:** Use fast, short-circuiting iteration loops on collections instead of set-based logic and full scans in hot session aggregation paths. In addition, replace residual `strptime` calls in parser loops with standard `fromisoformat` where floor-safe on Python 3.10.

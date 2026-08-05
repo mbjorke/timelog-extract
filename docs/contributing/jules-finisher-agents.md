@@ -96,8 +96,13 @@ left that day. Same rules either way.
 Run from repo root on the Jules PR number `N`:
 
 ```bash
+scripts/rabbit_loop.sh --agent-gate --pr N
+# run on the PR head checkout. Must print AGENT_GATE: google-labs-jules[bot] —
+# any other author, or more than one, BLOCKS. This is the agent boundary.
+
 scripts/rabbit_loop.sh --author-gate --pr N
-# must print AUTHOR_GATE: INTERNAL — fork/external/unlisted authors BLOCK
+# must print AUTHOR_GATE: INTERNAL — fork/external/unlisted authors BLOCK.
+# This is the fork boundary; it does NOT identify which agent wrote the branch.
 
 scripts/rabbit_loop.sh --merge-gate --pr N
 # runs author-gate first; must print MERGE_GATE: CLEAR — else reply/resolve threads and stop
@@ -110,12 +115,14 @@ scripts/rabbit_loop.sh --classify-merge --pr N
 
 Only merge when:
 
-1. `AUTHOR_GATE: INTERNAL` (verified internal author on this repo, not a fork).
-2. PR body or a comment contains **ready to merge** / label `jules-merge-ready` (optional but preferred).
-3. CI green on the tip.
-4. `MERGE_GATE: CLEAR`.
-5. `MERGE_CLASS: SAFE`.
-6. Diff does **not** delete files that still exist on `origin/main` (stale-tip wipe check — see #387).
+1. `AGENT_GATE: google-labs-jules[bot]` (every commit is Jules'; a branch another
+   agent or a human has touched goes to a person).
+2. `AUTHOR_GATE: INTERNAL` (verified internal author on this repo, not a fork).
+3. PR body or a comment contains **ready to merge** / label `jules-merge-ready` (optional but preferred).
+4. CI green on the tip.
+5. `MERGE_GATE: CLEAR`.
+6. `MERGE_CLASS: SAFE`.
+7. Diff does **not** delete files that still exist on `origin/main` (stale-tip wipe check — see #387).
 
 Merge method: **squash**, delete branch when offered.
 
@@ -130,18 +137,15 @@ Paste on the Jules PR (or start a Cloud Agent with the PR URL):
 ```text
 You are the Jules finisher for this repo (timelog-extract / Gittan).
 
-1. Confirm EVERY commit on this PR is authored by google-labs-jules[bot]:
-     git log --format='%an' origin/main..HEAD | sort -u
-   Exactly that one name, nothing else. Any other author (Claude, Cursor Agent,
-   a human) means another party has worked on this branch — stop, do not merge,
-   leave it for a person. Do NOT fall back to the branch name: task/* is shared
-   with Cursor and maintainer work.
-2. Checkout the PR head. Run from repo root:
+1. Checkout the PR head. Run from repo root:
+   - bash scripts/rabbit_loop.sh --agent-gate --pr <N>    # FIRST — agent boundary
    - bash scripts/rabbit_loop.sh --author-gate --pr <N>   # fork boundary, NOT an agent check
    - bash scripts/run_autotests.sh   # if not already green on CI
    - bash scripts/rabbit_loop.sh --merge-gate --pr <N>
    - bash scripts/rabbit_loop.sh --classify-merge
-3. If AUTHOR_GATE is BLOCKED (fork / external / unverified author): **stop, do not
+3. If AGENT_GATE is BLOCKED (not Jules, or more than one author on the branch):
+   **stop, do not merge** — someone else has worked here.
+   If AUTHOR_GATE is BLOCKED (fork / external / unverified author): **stop, do not
    merge, do not approve** — external contributions require a human. This is a
    code-enforced boundary, not a branch-name heuristic (incident: external fork
    PR #N). If MERGE_GATE is not CLEAR, or MERGE_CLASS is NEEDS_HUMAN: comment
@@ -167,7 +171,7 @@ Paste into Cursor Automations (edit scopes/tools in the UI):
 | **Trigger** | **Must be scoped to Jules PRs — and the PR author field cannot do that scoping here** (every PR on this repo reports `mbjorke`). Prefer: CI completed success, with the agent check done in the instructions as a commit-authorship test. If the product also allows comment/label triggers, never use “any PR comment contains `ready to merge`” alone. A `jules-merge-ready` label is fine only when the automation still exits immediately unless the commit-authorship test passes. |
 | **Repo scope** | `mbjorke/timelog-extract` (this repo only) |
 | **Tools** | Shell / repo checkout, GitHub comment, approve (optional), GitHub MCP or `gh` with merge permission |
-| **Instructions** | **First step (hard stop):** run `git log --format='%an' origin/main..HEAD \| sort -u`. If that prints anything other than exactly `google-labs-jules[bot]`, comment “not a Jules-only branch — skipping” and exit. Do **not** test the PR author field; it is `mbjorke` for Jules, Cursor and Claude alike, so it passes everything. Then use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
+| **Instructions** | **First step (hard stop):** on the PR head checkout, run `bash scripts/rabbit_loop.sh --agent-gate --pr <N>`. Unless it prints `AGENT_GATE: google-labs-jules[bot]`, comment “not a Jules-only branch — skipping” and exit. Do **not** test the PR author field; it is `mbjorke` for Jules, Cursor and Claude alike, so it passes everything. Then use the **Manual** prompt above. Prefer approve + GitHub auto-merge if direct merge is blocked; never bypass protection. |
 | **To finish in editor** | Do **not** wire a PR-author filter into the trigger — no value of it separates Jules from Cursor or Claude on this repo, so it either passes everything or nothing. Scope the trigger as narrowly as the UI allows (repo + CI success), and rely on the commit-authorship hard stop in **Instructions** as the real boundary; it runs on a checkout, which a trigger filter cannot. A Jules-only label applied by a trusted workflow is the one trigger-level filter that would hold. Attach GitHub MCP or secrets for `gh`; enable only if branch protection allows the Cursor actor to merge/approve |
 
 Safer variant: Automation only **approves** + enables GitHub **auto-merge**; GitHub completes the squash when required checks pass. Finisher still must have run merge-gate in the prompt before approving.
@@ -182,18 +186,14 @@ Safer variant: Automation only **approves** + enables GitHub **auto-merge**; Git
 Follow docs/contributing/jules-finisher-agents.md (Shared merge rules).
 
 Steps:
-1. Verify EVERY commit is authored by google-labs-jules[bot]:
-   git log --format='%an' origin/main..HEAD | sort -u
-   Exactly that one name. Any other author (Claude, Cursor Agent, a human)
-   means someone else worked on this branch — stop, do not merge. Branch names
-   do not qualify: task/* is shared with Cursor and maintainer work.
-2. On the PR head, run:
+1. On the PR head, run:
+   bash scripts/rabbit_loop.sh --agent-gate --pr <this-PR-number>
    bash scripts/rabbit_loop.sh --author-gate --pr <this-PR-number>
    bash scripts/cli_impact_smoke.sh
    bash scripts/run_autotests.sh
    bash scripts/rabbit_loop.sh --merge-gate --pr <this-PR-number>
    bash scripts/rabbit_loop.sh --classify-merge --pr <this-PR-number>
-3. If AUTHOR_GATE is BLOCKED, or MERGE_GATE is not CLEAR, or MERGE_CLASS is not SAFE: comment the blocker and stop. Do not merge.
+3. If AGENT_GATE is BLOCKED, or AUTHOR_GATE is BLOCKED, or MERGE_GATE is not CLEAR, or MERGE_CLASS is not SAFE: comment the blocker and stop. Do not merge.
 4. Check for stale-tip wipes vs origin/main (unexpected deletions). If found, stop.
 5. If SAFE + CLEAR + CI green: `gh pr merge <N> --squash --delete-branch`.
 6. Comment the result on the PR.

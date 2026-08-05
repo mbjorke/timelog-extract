@@ -16,6 +16,7 @@
 #   scripts/rabbit_loop.sh --merge-gate [--pr <number>]   # author-gate + unresolved threads
 #   scripts/rabbit_loop.sh --classify-merge [--pr <number>]  # author-gate + ship class
 #   scripts/rabbit_loop.sh --author-gate --pr <number>    # internal author + not a fork
+#   scripts/rabbit_loop.sh --agent-gate [--pr <number>]   # every commit by the expected agent
 #   scripts/rabbit_loop.sh --skip-workflow       # skip GitButler/multi-agent preflight
 #   scripts/rabbit_loop.sh --ack-workflow      # record workflow acknowledgement
 #   scripts/rabbit_loop.sh --skip-board-sync   # skip project-board PR sync on CONVERGED
@@ -69,6 +70,7 @@ CLASSIFY=0
 MANUAL_PLAN=0
 MERGE_GATE=0
 AUTHOR_GATE=0
+AGENT_GATE=0
 MERGE_GATE_PR=""
 SKIP_WORKFLOW=0
 ACK_WORKFLOW=0
@@ -206,6 +208,76 @@ _resolve_pr_number() {
   fi
   [[ -n "$errf_local" ]] && rm -f "$errf_local"
   echo "$pr"
+  return 0
+}
+
+# Which agent produced this branch. Deliberately NOT the same question as
+# author_gate(), which decides internal-vs-fork; both are required and neither
+# substitutes for the other.
+#
+# The PR author field cannot answer this here: Jules, Cursor and Claude all push
+# through the maintainer's credentials, so every PR on this repo reports the same
+# login and an author-based test either passes everything or nothing. Commit
+# authorship is honest — google-labs-jules[bot], Cursor Agent, Claude.
+#
+# Passes only when EVERY commit in <base>..HEAD carries the expected author.
+# "Any commit by the agent" would be too loose: a branch a second agent or a
+# human has also worked on is exactly the case that needs a person rather than
+# an auto-merger. Pure git plus one gh metadata read; never runs PR code, and
+# fails closed. Expected author is overridable via GITTAN_AGENT_AUTHOR.
+agent_gate() {
+  local pr="$1" base="${2:-$BASE}"
+  local expected="${GITTAN_AGENT_AUTHOR:-google-labs-jules[bot]}"
+  local authors uniq count distinct head_sha pr_sha
+
+  if ! git rev-parse --verify --quiet "$base" >/dev/null; then
+    echo "AGENT_GATE: BLOCKED (base ref '$base' not found — try \`git fetch origin\`)"
+    return 1
+  fi
+
+  # Guard against auditing the wrong checkout: a gate that silently inspects
+  # some other branch is worse than no gate. Enforced only when both a PR
+  # number and gh are available.
+  if [[ -n "$pr" ]]; then
+    if ! _validate_pr_number "$pr"; then
+      echo "AGENT_GATE: BLOCKED (invalid PR number '$pr' — must be a positive decimal integer)"
+      return 1
+    fi
+    if command -v gh >/dev/null 2>&1; then
+      pr_sha="$(gh pr view "$pr" --json headRefOid --jq '.headRefOid' 2>/dev/null)" || pr_sha=""
+      if [[ -z "$pr_sha" ]]; then
+        echo "AGENT_GATE: BLOCKED (could not read head SHA for PR #$pr — fail closed)"
+        return 1
+      fi
+      head_sha="$(git rev-parse HEAD 2>/dev/null)" || head_sha=""
+      if [[ "$pr_sha" != "$head_sha" ]]; then
+        echo "AGENT_GATE: BLOCKED (checkout is not PR #$pr head — HEAD ${head_sha:0:12}, PR head ${pr_sha:0:12}; check out the PR first)"
+        return 1
+      fi
+    fi
+  fi
+
+  authors="$(git log --format='%an' "$base"..HEAD 2>/dev/null)" || {
+    echo "AGENT_GATE: BLOCKED (could not read commit authors for $base..HEAD — fail closed)"
+    return 1
+  }
+  if [[ -z "$authors" ]]; then
+    echo "AGENT_GATE: BLOCKED (no commits in $base..HEAD — nothing to attribute)"
+    return 1
+  fi
+  uniq="$(printf '%s\n' "$authors" | sort -u)"
+  count="$(printf '%s\n' "$authors" | grep -c . || true)"
+  distinct="$(printf '%s\n' "$uniq" | grep -c . || true)"
+
+  if [[ "$distinct" -gt 1 ]]; then
+    echo "AGENT_GATE: BLOCKED ($base..HEAD has commits from $distinct authors ($(printf '%s\n' "$uniq" | paste -sd, -)) — someone else has worked on this branch; leave it to a human)"
+    return 1
+  fi
+  if [[ "$uniq" != "$expected" ]]; then
+    echo "AGENT_GATE: BLOCKED ($base..HEAD authored by '$uniq', expected '$expected')"
+    return 1
+  fi
+  echo "AGENT_GATE: $expected ($count commit(s) in $base..HEAD, single author)"
   return 0
 }
 
@@ -392,6 +464,7 @@ while [[ $# -gt 0 ]]; do
     --classify-merge) CLASSIFY=1; shift ;;
     --merge-gate) MERGE_GATE=1; shift ;;
     --author-gate) AUTHOR_GATE=1; shift ;;
+    --agent-gate) AGENT_GATE=1; shift ;;
     --pr) MERGE_GATE_PR="${2:?--pr needs a PR number}"; shift 2 ;;
     --manual-test-plan) MANUAL_PLAN=1; shift ;;
     --skip-workflow) SKIP_WORKFLOW=1; shift ;;
@@ -415,6 +488,12 @@ cd "$REPO_ROOT"
 # Internal movement classifier (pure git; used by tests). No CodeRabbit call needed.
 if [[ $CLASSIFY_MOVE -eq 1 ]]; then
   _classify_movement "$CLASSIFY_MOVE_BR" "$CLASSIFY_MOVE_SHA"; exit 0
+fi
+
+# Agent gate: which agent produced the branch, via commit authorship. A separate
+# question from author_gate (internal-vs-fork); the finisher runs both.
+if [[ $AGENT_GATE -eq 1 ]]; then
+  agent_gate "$MERGE_GATE_PR"; exit $?
 fi
 
 # Author gate: verify the PR is from an internal identity (not a fork/external

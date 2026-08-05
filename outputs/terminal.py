@@ -188,7 +188,10 @@ def print_report(
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ):
-    hero_name = getattr(args, "command_name", "report") or "report"
+    # Constrained to the two heroes this path actually has. print_command_hero
+    # falls back to the *status* hero for an unknown name, so passing
+    # command_name straight through would render Status for any future command.
+    hero_name = "search" if getattr(args, "command_name", "report") == "search" else "report"
     print_command_hero(console, hero_name)
     console.print()
 

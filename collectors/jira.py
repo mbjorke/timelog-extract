@@ -14,7 +14,10 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_ope
 
 
 class _RejectHttpRedirectHandler(HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+    """Block redirects and initial requests to plain HTTP so Authorization headers are never forwarded."""
+
+    def http_request(self, req):
+        raise URLError("Jira request to insecure http:// rejected to protect credentials")
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if (urlparse(newurl).scheme or "").lower() == "http":

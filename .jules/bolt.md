@@ -34,3 +34,7 @@
 ## 2026-07-23 - [Optimize Cursor Log Day Dir Parsing]
 **Learning:** In Cursor log scanning (`collectors/cursor_log_scan.py`), parsing the day directory (e.g. `20260709T162324`) using `datetime.strptime` on every launch folder in the user's logs directory is exceptionally slow because `strptime` dynamically parses formats, sets locales, and compiles regexes.
 **Action:** Use manual integer conversion of sliced string components with `datetime.date(int(s[:4]), int(s[4:6]), int(s[6:8]))` to achieve a ~11.6x speedup over `datetime.strptime(..., "%Y%m%d").date()`.
+
+## 2026-08-05 - [Lazy Loading of urllib HTTPS Openers]
+**Learning:** Initializing urllib HTTPS/HTTP openers at the module level in collectors (`github.py`, `jira.py`, `toggl.py`) incurs significant, synchronous CPU and disk I/O overhead (SSL context building, trust store scans, etc.) during CLI startup, even for commands that do not use these collectors.
+**Action:** Defer build of urllib openers via lazy loading inside `urlopen` entry points, achieving ~33% to 88% cumulative import speedups for the collectors and shaving ~100ms off of the Gittan CLI report startup/import time.

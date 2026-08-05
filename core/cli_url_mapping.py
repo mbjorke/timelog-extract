@@ -82,7 +82,7 @@ def _render_candidates_table(
             row.url_key,
             row.suggested_project,
             f"{row.confidence_label} ({row.confidence_score:.0%})",
-            f"{row.impact_hours:.1f}",
+            "—" if row.impact_hours is None else f"{row.impact_hours:.1f}",
             str(row.events),
             str(row.days),
             row.last_seen,

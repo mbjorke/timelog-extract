@@ -13,7 +13,7 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-from core.global_timelog_hook_script import HOOK_BODY
+from core.global_timelog_hook_script import _RESOLVER_PY, HOOK_BODY
 
 
 class GlobalTimelogHookScriptTests(unittest.TestCase):
@@ -324,7 +324,9 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             payload = json.loads(spool_files[0].read_text(encoding="utf-8"))
             self.assertEqual(payload["source_provenance"]["subject"], "feat: atomic spool")
 
-    def _spool_once(self, home_dir: Path, *, repo: str, commit: str, subject: str) -> None:
+    def _spool_once(
+        self, home_dir: Path, *, repo: str, commit: str, subject: str, repo_path: str = ""
+    ) -> None:
         gittan_dir = home_dir / ".gittan"
         gittan_dir.mkdir(parents=True, exist_ok=True)
         cfg_path = gittan_dir / "timelog_projects.json"
@@ -344,6 +346,7 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             env={
                 "GITTAN_PROJECTS_CONFIG": str(cfg_path),
                 "GITTAN_HOOK_REPO": repo,
+                "GITTAN_HOOK_REPO_PATH": repo_path,
                 "GITTAN_HOOK_SUBJECT": subject,
                 "GITTAN_HOOK_BRANCH": "main",
                 "GITTAN_HOOK_HASH": commit,
@@ -372,6 +375,55 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
                 for p in spool_files
             }
             self.assertEqual(subjects, {"first", "second"})
+
+    def test_same_basename_in_two_directories_keeps_both_events(self):
+        """`~/work/api` and `~/personal/api` are different repos with one name.
+
+        The hook passes only the basename as GITTAN_HOOK_REPO, so digesting
+        that left both checkouts sharing a spool file; with a shared commit
+        hash the second os.replace() dropped the first commit silently.
+        """
+        shared_hash = "1122334455667788112233445566778811223344"
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            self._spool_once(
+                home_dir, repo="api", commit=shared_hash, subject="work",
+                repo_path=str(Path(tmp) / "work" / "api"),
+            )
+            self._spool_once(
+                home_dir, repo="api", commit=shared_hash, subject="personal",
+                repo_path=str(Path(tmp) / "personal" / "api"),
+            )
+
+            spool_files = sorted((home_dir / ".gittan" / "spool").glob("*.json"))
+            self.assertEqual(len(spool_files), 2, "same-named repos shared one spool file")
+            subjects = {
+                json.loads(p.read_text(encoding="utf-8"))["source_provenance"]["subject"]
+                for p in spool_files
+            }
+            self.assertEqual(subjects, {"work", "personal"})
+
+    def test_same_repo_path_still_dedupes_one_commit(self):
+        """Scoping by path must not defeat the idempotency the hash provides."""
+        commit = "9988776655443322998877665544332299887766"
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = Path(tmp) / "home"
+            repo_path = str(Path(tmp) / "work" / "api")
+            for _ in range(2):
+                self._spool_once(
+                    home_dir, repo="api", commit=commit, subject="one commit",
+                    repo_path=repo_path,
+                )
+
+            spool_files = list((home_dir / ".gittan" / "spool").glob("*.json"))
+            self.assertEqual(len(spool_files), 1, "re-spooling one commit must not duplicate it")
+
+    def test_hook_passes_the_repo_path_for_spool_scoping_only(self):
+        """The path reaches the spool key, never the worklog filename."""
+        self.assertIn('GITTAN_HOOK_REPO_PATH="$ROOT_DIR"', HOOK_BODY)
+        self.assertIn('GITTAN_HOOK_REPO_PATH', _RESOLVER_PY)
+        # Identity still comes from the basename via timelog_projects.json.
+        self.assertIn('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_BASENAME}.md"', HOOK_BODY)
 
     def test_respooling_the_same_commit_stays_idempotent(self):
         """The hash in the name is load-bearing — a pid suffix would break this.

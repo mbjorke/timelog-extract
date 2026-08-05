@@ -103,10 +103,20 @@ try:
                 # for one commit.
                 # norm() alone is lossy — "repo-a" and "repo_a" collapse to the
                 # same slug, so a shared commit hash would still overwrite. The
-                # digest is over the raw name, mirroring _device_slug() in
-                # core/evidence_store.py; the readable stem is kept for humans.
+                # digest mirrors _device_slug() in core/evidence_store.py; the
+                # readable stem is kept for humans.
+                #
+                # The digest is over the repo's absolute path, not its basename:
+                # ~/work/api and ~/personal/api are different repositories with
+                # the same name, and hashing the name alone leaves them sharing
+                # one spool file. Path here is a transient queue key only — it
+                # must not reach the worklog filename, where a path-derived id
+                # splits one project across worktrees and moved checkouts
+                # (tests/test_global_timelog_hook_script.py::
+                # test_never_derives_worklog_name_from_path_hash).
                 repo_stem = norm(repo) or "unknown-repo"
-                repo_digest = hashlib.sha256((repo or "").encode("utf-8")).hexdigest()[:12]
+                repo_key = os.environ.get("GITTAN_HOOK_REPO_PATH", "") or repo or ""
+                repo_digest = hashlib.sha256(repo_key.encode("utf-8")).hexdigest()[:12]
                 repo_part = f"{repo_stem}-{repo_digest}"
                 spool_file = spool_dir / f"commit-{repo_part}-{name_part}.json"
                 # Publish atomically: the drainer globs "*.json" and unlinks
@@ -185,7 +195,7 @@ HOOK_BODY = dedent(
     GITTAN_HOOK_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
     GITTAN_HOOK_HASH="$(git rev-parse HEAD 2>/dev/null || true)"
     SUBJECT="$(git log -1 --pretty=%s)"
-    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" GITTAN_HOOK_BRANCH="$GITTAN_HOOK_BRANCH" GITTAN_HOOK_SUBJECT="$SUBJECT" GITTAN_HOOK_HASH="$GITTAN_HOOK_HASH" python3 -c '
+    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" GITTAN_HOOK_REPO_PATH="$ROOT_DIR" GITTAN_HOOK_BRANCH="$GITTAN_HOOK_BRANCH" GITTAN_HOOK_SUBJECT="$SUBJECT" GITTAN_HOOK_HASH="$GITTAN_HOOK_HASH" python3 -c '
     @RESOLVER_PY@' 2>/dev/null || true)"
     if [[ -z "${PROJECT_WORKLOG:-}" ]]; then
       # Unknown repo: still central, still no hash — a plain name a human can

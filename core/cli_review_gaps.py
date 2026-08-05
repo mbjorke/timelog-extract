@@ -37,6 +37,7 @@ from core.uncategorized_review import (
     format_cluster_headline,
     format_cluster_rule_hint,
     format_cluster_sample,
+    print_review_cancelled,
 )
 from outputs.terminal_theme import CLR_VALUE_ORANGE
 
@@ -258,7 +259,7 @@ def run_gap_attribution_review(
             choices=[*project_names, _SKIP, _QUIT],
         ).ask()
         if target is None:
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            print_review_cancelled(console, applied_any=applied_any)
             raise typer.Exit(code=130)
         if target == _QUIT:
             break
@@ -287,7 +288,7 @@ def run_gap_attribution_review(
             default=False,
         ).ask()
         if confirmed is None:
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            print_review_cancelled(console, applied_any=applied_any)
             raise typer.Exit(code=130)
         if not confirmed:
             console.print("[dim]Skipped — no config change.[/dim]")

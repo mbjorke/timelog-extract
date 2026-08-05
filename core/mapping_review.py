@@ -491,6 +491,7 @@ def _merge_removals_for_change(
 
 
 from core.mapping_review_flow import (  # noqa: E402, F401  re-export for callers
+    CANCELLED,
     print_mapping_review,
     print_mapping_review_summary,
     prompt_new_project_fields,

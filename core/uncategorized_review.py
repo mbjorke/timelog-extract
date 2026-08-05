@@ -223,3 +223,21 @@ def format_cluster_sample(sample: str, *, max_len: int = 140) -> str:
     if len(text) <= max_len:
         return text
     return text[: max_len - 1] + "…"
+
+def print_review_cancelled(console, *, applied_any: bool) -> None:
+    """Report cancellation honestly about what is already on disk.
+
+    The gap and uncategorized cluster loops both save each accepted cluster
+    immediately, so "Cancelled before writing config" becomes false as soon as
+    one has been applied — it invites the user to redo work already persisted,
+    or to assume a write did not happen when it did.
+    """
+    from outputs.terminal_theme import CLR_VALUE_ORANGE
+
+    if applied_any:
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]Cancelled. Rules already applied above are saved "
+            f"and remain in your config.[/{CLR_VALUE_ORANGE}]"
+        )
+    else:
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")

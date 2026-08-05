@@ -27,6 +27,7 @@ from core.uncategorized_review import (
     format_cluster_headline,
     format_cluster_rule_hint,
     format_cluster_sample,
+    print_review_cancelled,
 )
 
 
@@ -108,12 +109,26 @@ def run_uncategorized_cluster_review(
     config_path = Path(projects_config)
     payload = _load_projects_payload(console, config_path)
 
+    # Set before the A/B block: it has its own cancellation point, and the
+    # message there must not claim writes that have not happened yet.
+    applied_any = False
+
     if ab_suggestions:
         warn_deprecated_command(
             "gittan review --ab-suggestions",
             extra="Use default `gittan review` for URL mapping.",
         )
-        target_project = project or questionary.text("Target project for A/B suggestions:").ask() or ""
+        if project:
+            target_project = project
+        else:
+            # `.ask() or ""` collapsed Ctrl+C into an empty string, which then
+            # took the "no project name" branch and carried on as if the user
+            # had simply pressed enter. None means interrupted; "" means empty.
+            answer = questionary.text("Target project for A/B suggestions:").ask()
+            if answer is None:
+                print_review_cancelled(console, applied_any=applied_any)
+                raise typer.Exit(code=130)
+            target_project = answer
         target_project = target_project.strip()
         if not target_project:
             console.print("[yellow]No project name; skipping A/B suggestions.[/yellow]")
@@ -167,8 +182,7 @@ def run_uncategorized_cluster_review(
             ],
         ).ask()
         if action is None:
-            from outputs.terminal_theme import CLR_VALUE_ORANGE
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            print_review_cancelled(console, applied_any=applied_any)
             raise typer.Exit(code=130)
         if action == "Quit":
             break
@@ -182,15 +196,13 @@ def run_uncategorized_cluster_review(
                 continue
             p_select = questionary.select("Target project:", choices=project_names).ask()
             if p_select is None:
-                from outputs.terminal_theme import CLR_VALUE_ORANGE
-                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+                print_review_cancelled(console, applied_any=applied_any)
                 raise typer.Exit(code=130)
             project_name = p_select
         else:
             p_text = questionary.text("New project name:").ask()
             if p_text is None:
-                from outputs.terminal_theme import CLR_VALUE_ORANGE
-                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+                print_review_cancelled(console, applied_any=applied_any)
                 raise typer.Exit(code=130)
             project_name = p_text
         if not project_name.strip():
@@ -202,8 +214,7 @@ def run_uncategorized_cluster_review(
             default=cluster.rule_value,
         ).ask()
         if rule_value is None:
-            from outputs.terminal_theme import CLR_VALUE_ORANGE
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+            print_review_cancelled(console, applied_any=applied_any)
             raise typer.Exit(code=130)
         if not rule_value.strip():
             console.print("[yellow]No rule value entered; cluster skipped.[/yellow]")
@@ -226,6 +237,7 @@ def run_uncategorized_cluster_review(
         except Exception as exc:
             console.print(f"[red]Error:[/red] Failed to save config to '{config_path}': {exc}")
             raise typer.Exit(code=1) from exc
+        applied_any = True
         created_note = " (created project)" if created else ""
         console.print(f"[green]Saved[/green] {field} -> {value!r} for {project_name!r}{created_note}.")
         project_names = sorted(

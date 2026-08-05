@@ -10,22 +10,13 @@ from core.cli_app import app
 
 
 class _ControlChoice:
-    """A menu action that is not a project.
+    """Sentinel type for control choices in interactive questionary selection."""
 
-    The list mixes configured project names with "Skip this session" and
-    "Cancel". Comparing the answer as a string makes a project actually named
-    `Cancel` indistinguishable from the cancel action, so selecting it would
-    abort instead of binding and leave the session unattributed. Identity
-    against a sentinel cannot collide with any name a user can configure.
-    """
+    def __init__(self, name: str):
+        self.name = name
 
-    __slots__ = ("label",)
-
-    def __init__(self, label: str) -> None:
-        self.label = label
-
-    def __repr__(self) -> str:  # pragma: no cover - debugging aid
-        return f"_ControlChoice({self.label!r})"
+    def __repr__(self) -> str:
+        return self.name
 
 
 SKIP_SESSION = _ControlChoice("Skip this session")
@@ -153,9 +144,6 @@ def intent(
         )
         return
 
-    # Gate on the terminal before the expensive part: collecting and grouping
-    # the window's events only to reject the run afterwards scans local logs for
-    # nothing. Non-interactive callers exit here having read no files.
     from core.anchor_nudge import should_prompt
     if not should_prompt():
         console.print(
@@ -206,13 +194,12 @@ def intent(
             f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
 
-        # Control actions carry sentinel values, not their labels: a project may
-        # legitimately be named "Cancel", and matching on the string would turn
-        # picking it into an abort.
-        choices = [questionary.Choice(title=name, value=name) for name in known] + [
-            questionary.Choice(title=SKIP_SESSION.label, value=SKIP_SESSION),
-            questionary.Choice(title=CANCEL_MAPPING.label, value=CANCEL_MAPPING),
-        ]
+        choices = []
+        for name in known:
+            choices.append(questionary.Choice(title=name, value=name))
+        choices.append(questionary.Choice(title="Skip this session", value=SKIP_SESSION))
+        choices.append(questionary.Choice(title="Cancel", value=CANCEL_MAPPING))
+
         answer = questionary.select(
             "  Which project?",
             choices=choices,

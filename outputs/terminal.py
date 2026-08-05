@@ -188,7 +188,7 @@ def print_report(
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
 ):
-    hero_name = "search" if getattr(args, "command_name", "report") == "search" else "report"
+    hero_name = getattr(args, "command_name", "report") or "report"
     print_command_hero(console, hero_name)
     console.print()
 

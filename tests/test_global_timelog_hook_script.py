@@ -271,6 +271,66 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             err_file = home_dir / ".gittan" / "capture-errors.jsonl"
             self.assertFalse(err_file.exists())
 
+    def test_resolver_publishes_spool_file_atomically(self):
+        """A spool file must appear complete or not at all.
+
+        The drainer in core/evidence_store.py globs "*.json" and unlinks
+        anything it fails to parse, so a reader that catches the hook
+        mid-write would delete the commit event instead of keeping it. The
+        hook therefore writes to a temp name outside that glob and renames.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            home_dir = tmp_path / "home"
+            gittan_dir = home_dir / ".gittan"
+            gittan_dir.mkdir(parents=True)
+
+            cfg_path = gittan_dir / "timelog_projects.json"
+            cfg_path.write_text(
+                json.dumps({
+                    "shadow_log": "on",
+                    "projects": [{"name": "test-repo", "project_id": "test-project"}],
+                }),
+                encoding="utf-8",
+            )
+
+            from core.global_timelog_hook_script import _RESOLVER_PY
+
+            proc = subprocess.run(
+                [sys.executable, "-c", _RESOLVER_PY],
+                capture_output=True,
+                text=True,
+                env={
+                    "GITTAN_PROJECTS_CONFIG": str(cfg_path),
+                    "GITTAN_HOOK_REPO": "test-repo",
+                    "GITTAN_HOOK_SUBJECT": "feat: atomic spool",
+                    "GITTAN_HOOK_BRANCH": "task/atomic",
+                    "GITTAN_HOOK_HASH": "abcdef1234567",
+                    "HOME": str(home_dir),
+                    "PYTHONPATH": "",
+                },
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+
+            spool_dir = gittan_dir / "spool"
+            # No temp file survives a successful run, and nothing the drainer
+            # would pick up is left behind half-written.
+            self.assertEqual([p.name for p in spool_dir.glob("*.tmp")], [])
+            spool_files = list(spool_dir.glob("*.json"))
+            self.assertEqual(len(spool_files), 1)
+
+            # The one published file parses — which is what the rename guarantees.
+            payload = json.loads(spool_files[0].read_text(encoding="utf-8"))
+            self.assertEqual(payload["source_provenance"]["subject"], "feat: atomic spool")
+
+    def test_spool_temp_name_is_outside_the_drainer_glob(self):
+        """The temp name must not match the "*.json" pattern the drainer reads."""
+        from core.global_timelog_hook_script import _RESOLVER_PY
+
+        self.assertIn("os.replace(temp_file, spool_file)", _RESOLVER_PY)
+        temp_name = Path("commit-abcdef.json").with_suffix(".4242.tmp")
+        self.assertFalse(temp_name.match("*.json"))
+
 
 if __name__ == "__main__":
     unittest.main()

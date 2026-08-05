@@ -84,8 +84,13 @@ try:
                 spool_dir.mkdir(parents=True, exist_ok=True)
                 name_part = commit_hash if commit_hash else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
                 spool_file = spool_dir / f"commit-{name_part}.json"
-                with spool_file.open("w", encoding="utf-8") as sf:
+                # Publish atomically: the drainer globs "*.json" and unlinks
+                # anything it cannot parse, so a half-written file is a silently
+                # lost commit event. The temp name ends in .tmp, outside that glob.
+                temp_file = spool_file.with_suffix(f".{os.getpid()}.tmp")
+                with temp_file.open("w", encoding="utf-8") as sf:
                     json.dump(event, sf, ensure_ascii=False)
+                os.replace(temp_file, spool_file)
             except Exception as exc:
                 err_file = Path(home) / ".gittan" / "capture-errors.jsonl"
                 try:

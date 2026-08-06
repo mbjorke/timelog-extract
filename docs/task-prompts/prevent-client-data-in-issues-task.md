@@ -17,6 +17,9 @@ maintainer's stated priority between the two.
 - validation.evidence: pending
 - validation.decision: NO-GO (not built)
 - changelog:
+  - 2026-08-06: Bot amplification found on #431 — one CodeRabbit reply held 278
+    of the thread's occurrences. `issue_comment` moved into the first slice;
+    app authors explicitly in scope. Recorded the MIN_TERM_LEN=4 blind spot.
   - 2026-08-06: Initial draft. Split from #431 after finding ~278 term
     occurrences in that issue's own comment thread vs ~22 lines in `docs/`.
 
@@ -41,14 +44,20 @@ surface — the working tree — and every leak found on 2026-08-06 was outside 
 than ten times the docs surface it was opened to track — and its body listed
 them in clear under a "(masked terms)" heading until it was corrected.
 
-**Two things make this worth automating rather than writing a rule about.**
+**Three things make this worth automating rather than writing a rule about.**
 
 First, the leak arrives by paste. Someone runs a report on their own machine
 and pastes the output into an issue to explain what they saw. No discipline
 survives that reliably, and the maintainer has explicitly less time for
 discipline going forward.
 
-Second, **agent sessions cannot self-check.** A hosted Claude or Cursor session
+Second — and this is the one that changes the design — **the review bot
+amplifies it**. #431's body listed a handful of terms. CodeRabbit's
+auto-generated *Coding Plan* reply quoted them **278 times** across 52 code
+blocks, roughly a fortyfold multiplication of a small human mistake. A guard
+scoped to human-authored text would have watched the six and missed the 278.
+
+Third, **agent sessions cannot self-check.** A hosted Claude or Cursor session
 has no access to `~/.gittan/timelog_projects.json` — it is local, gitignored,
 and on a different machine. Agents author a large share of this repo's issue
 and PR text. For that content, a server-side check is not the convenient place
@@ -102,26 +111,35 @@ comma-separated, mirroring what `check_docs_no_client_data.py` derives from
 a project is added — name the refresh trigger, or accept staleness as
 acceptable for a guard whose purpose is catching the obvious case.
 
-**2. The check must never echo a match.** Output is a count and a field name,
+**2. Bot comments count.** The check must not skip `github-actions[bot]`,
+`coderabbitai[bot]` or any other app author. The instinct to ignore bot noise is
+exactly backwards here — the bot produced 98% of the exposure on #431.
+
+**3. The check must never echo a match.** Output is a count and a field name,
 never the term, not even partially. Workflow logs on a public repo are public.
 A leak detector that prints the leak is worse than no detector, and `#431`'s
 body is the proof — it printed the terms while claiming to mask them.
 
-**3. Trigger surface — start with issues only.**
-`issues: [opened, edited]` covers the surface where the damage was measured.
-`issue_comment` and `pull_request_target` are the obvious extensions, but
-`pull_request_target` carries secrets into a fork-triggered context and must
-never check out fork code. Slice it: issues first, prove it, then widen.
+**4. Trigger surface — issues *and* comments in the first slice.**
+This was originally scoped to `issues: [opened, edited]`, on the reasoning that
+it covers "the surface where the damage was measured". That was wrong: the
+damage was measured in an `issue_comment`, and a check on issue events alone
+would have caught none of the 278 occurrences. Both triggers ship together.
 
-**4. Reuse the matching logic, not a copy.** `check_docs_no_client_data.py`
+`pull_request_target` remains a later slice, and carefully — it carries secrets
+into a fork-triggered context and must never check out fork code.
+
+**5. Reuse the matching logic, not a copy.** `check_docs_no_client_data.py`
 already has `DEFAULT_ALLOW`, `MIN_TERM_LEN`, and masking. Factor the matcher so
 both entry points share it. Two implementations of "what counts as a term" will
 drift, and the drift will be discovered by a leak.
 
 ## Acceptance
 
-- An issue opened with a term from the secret is labelled and commented on
-  within one workflow run.
+- An issue **or comment** carrying a term from the secret is labelled and
+  reported within one workflow run, whether its author is a human or an app.
+- A three-character term is either detected, or its non-detection is a stated,
+  documented limit rather than a surprise (see below).
 - Neither the comment nor the workflow log contains the term, at any length.
 - An issue with no match produces no comment, no label, no noise.
 - Editing the term out removes the label.
@@ -139,6 +157,19 @@ drift, and the drift will be discovered by a leak.
   planted, non-client term in the secret; confirm the comment, the label, and
   that the term appears in neither the comment nor the run log.
 - Confirm the fork path by running the workflow with the secret unset.
+
+## Known limit inherited from the matcher
+
+`check_docs_no_client_data.py` sets `MIN_TERM_LEN = 4` to keep false positives
+down. One of the six terms on #431 is **three characters**, so the guard could
+never have flagged it — it was cleaned only because it happened to be written
+out by hand in the issue body.
+
+Short client codes are therefore invisible to this design, not merely missed by
+it, and the same hole is inherited by anything built on the shared matcher.
+Decide before implementing: lower the floor and absorb the false positives, keep
+a short-code list that is exact-match and case-sensitive, or state the limit
+plainly so nobody trusts a clean result more than it deserves.
 
 ## Dependencies
 

@@ -12,20 +12,39 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
+from core.http_security import origin_key
+
 
 class _RejectHttpRedirectHandler(HTTPRedirectHandler):
-    """Block redirects to plain HTTP so Authorization headers are never forwarded."""
+    """Keep Jira credentials on the origin the request was aimed at.
+
+    Mirrors ``core.http_security.RejectHttpRedirectHandler``; Jira keeps a local
+    copy because it builds its opener directly. Blocking only ``http://`` left
+    the header exposed to any *other* HTTPS host a redirect could name, and
+    blocking only redirects left the initial request exposed.
+    """
+
+    def http_request(self, req):
+        raise URLError("Jira request to insecure http:// rejected to protect credentials")
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if (urlparse(newurl).scheme or "").lower() == "http":
             raise URLError("Jira redirect to insecure http:// rejected to protect credentials")
+        if origin_key(newurl) != origin_key(req.full_url):
+            raise URLError(
+                f"Jira redirect to a different host ({urlparse(newurl).hostname!r}) "
+                "rejected to protect credentials"
+            )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+_jira_opener = None
 
 
 def urlopen(req: Request, timeout: int = 20):
+    global _jira_opener
+    if _jira_opener is None:
+        _jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
     return _jira_opener.open(req, timeout=timeout)
 
 

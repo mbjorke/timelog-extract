@@ -16,6 +16,7 @@ import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
 
 from core.intent_store import (
@@ -105,20 +106,20 @@ class ApplyIntentsTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_bound_session_is_reprojected(self):
-        record_intent("s1", "Customer X", path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
         events, changed = apply_intents([event("s1", UNCAT)], path=self.path)
         self.assertEqual(changed, 1)
-        self.assertEqual(events[0]["project"], "Customer X")
+        self.assertEqual(events[0]["project"], "project-alpha")
 
     def test_the_original_event_is_not_mutated(self):
-        record_intent("s1", "Customer X", path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
         original = event("s1", UNCAT)
         apply_intents([original], path=self.path)
         self.assertEqual(original["project"], UNCAT)
 
     def test_reprojection_records_where_the_project_came_from(self):
-        """"Why is this Customer X?" must be answerable from the row itself."""
-        record_intent("s1", "Customer X", path=self.path)
+        """"Why is this project-alpha?" must be answerable from the row itself."""
+        record_intent("s1", "project-alpha", path=self.path)
         events, _ = apply_intents([event("s1", UNCAT)], path=self.path)
         anchors = events[0]["anchors"]
         self.assertEqual(anchors["project_from"], "intent")
@@ -131,20 +132,20 @@ class ApplyIntentsTests(unittest.TestCase):
         Without this, a stale match_term could silently override an explicit
         answer and asking the question would be pointless.
         """
-        record_intent("s1", "Customer X", path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
         events, changed = apply_intents([event("s1", "MatchedByTerm")], path=self.path)
         self.assertEqual(changed, 1)
-        self.assertEqual(events[0]["project"], "Customer X")
+        self.assertEqual(events[0]["project"], "project-alpha")
         self.assertEqual(events[0]["anchors"]["project_before_intent"], "MatchedByTerm")
 
     def test_already_correct_event_is_left_alone(self):
-        record_intent("s1", "Customer X", path=self.path)
-        events, changed = apply_intents([event("s1", "Customer X")], path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
+        events, changed = apply_intents([event("s1", "project-alpha")], path=self.path)
         self.assertEqual(changed, 0)
         self.assertNotIn("project_from", events[0].get("anchors", {}))
 
     def test_events_without_a_session_anchor_are_untouched(self):
-        record_intent("s1", "Customer X", path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
         events, changed = apply_intents([event(None, UNCAT)], path=self.path)
         self.assertEqual(changed, 0)
         self.assertEqual(events[0]["project"], UNCAT)
@@ -170,7 +171,7 @@ class UnboundSessionsTests(unittest.TestCase):
         self.assertEqual([row["session"] for row in rows], ["s1"])
 
     def test_already_bound_sessions_drop_out_of_the_queue(self):
-        record_intent("s1", "Customer X", path=self.path)
+        record_intent("s1", "project-alpha", path=self.path)
         rows = unbound_sessions([event("s1", UNCAT), event("s2", UNCAT)], path=self.path)
         self.assertEqual([row["session"] for row in rows], ["s2"])
 
@@ -209,7 +210,7 @@ class ReportAttributionTests(unittest.TestCase):
         self.config.write_text(
             json.dumps(
                 {
-                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "projects": [{"name": "project-alpha", "match_terms": ["project-alpha-term"]}],
                     "worklog": "none.md",
                 }
             ),
@@ -258,10 +259,10 @@ class ReportAttributionTests(unittest.TestCase):
         before = self._hours_by_project()
         unattributed = before[UNCAT]
 
-        record_intent("session_01DESKTOP", "Customer X", via="intent-prompt", home=self.home)
+        record_intent("session_01DESKTOP", "project-alpha", via="intent-prompt", home=self.home)
 
         after = self._hours_by_project()
-        self.assertAlmostEqual(after.get("Customer X", 0), unattributed, places=4)
+        self.assertAlmostEqual(after.get("project-alpha", 0), unattributed, places=4)
         self.assertNotIn(UNCAT, after, f"nothing should be left unattributed: {after}")
 
 
@@ -284,7 +285,7 @@ class UnknownProjectIsRejectedTests(unittest.TestCase):
         self.config.write_text(
             json.dumps(
                 {
-                    "projects": [{"name": "Customer X", "match_terms": ["customer-x"]}],
+                    "projects": [{"name": "project-alpha", "match_terms": ["project-alpha-term"]}],
                     "worklog": "none.md",
                 }
             ),
@@ -311,17 +312,17 @@ class UnknownProjectIsRejectedTests(unittest.TestCase):
 
     def test_the_error_names_the_projects_that_do_exist(self):
         result = self._run("--set", "s1=Ghost Project")
-        self.assertIn("Customer X", result.output)
+        self.assertIn("project-alpha", result.output)
 
     def test_a_configured_project_still_binds(self):
-        result = self._run("--set", "s1=Customer X")
+        result = self._run("--set", "s1=project-alpha")
         self.assertEqual(result.exit_code, 0, result.output)
         bindings = resolve_intents(home=self.home)
-        self.assertEqual(bindings[("session", "s1")]["project"], "Customer X")
+        self.assertEqual(bindings[("session", "s1")]["project"], "project-alpha")
 
     def test_failed_batch_writes_nothing(self):
         """A later typo must not leave earlier --set bindings recorded."""
-        result = self._run("--set", "s1=Customer X", "--set", "s2=Ghost Project")
+        result = self._run("--set", "s1=project-alpha", "--set", "s2=Ghost Project")
         self.assertEqual(result.exit_code, 1, result.output)
         self.assertIn("Ghost Project", result.output)
         self.assertEqual(read_intents(home=self.home), [])
@@ -365,6 +366,233 @@ class LocalTimeDisplayTests(unittest.TestCase):
         from core.cli_evidence import _local_stamp
 
         self.assertEqual(_local_stamp("not a timestamp"), "not a timestamp")
+
+
+class InteractiveIntentCliTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        (self.home / ".gittan").mkdir()
+        self.config = self.home / "projects.json"
+        self.config.write_text(
+            json.dumps(
+                {
+                    "projects": [{"name": "project-alpha", "match_terms": ["project-alpha-term"]}],
+                    "worklog": "none.md",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args):
+        from typer.testing import CliRunner
+
+        from core.cli import app
+
+        with patch("pathlib.Path.home", return_value=self.home):
+            return CliRunner().invoke(
+                app, ["intent", "--projects-config", str(self.config), *args]
+            )
+
+    def test_interactive_mode_fails_if_no_tty(self):
+        with patch("core.intent_store.unbound_sessions", return_value=[{"session": "s1", "first_seen": "2026-07-26T10:10:00+00:00", "label": "test", "source": "chrome", "events": 1}]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=False):
+            result = self._run()
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn("requires an interactive terminal", result.output)
+
+    def test_interactive_mode_empty_state_if_no_unbound_sessions(self):
+        with patch("core.intent_store.unbound_sessions", return_value=[]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("No unattributed sessions in this window", result.output)
+
+    def test_interactive_mode_can_bind_session(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "project-alpha"
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("bound → project-alpha", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertEqual(bindings[("session", "s1")]["project"], "project-alpha")
+
+    def test_interactive_mode_can_skip_session(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        from core.cli_intent import SKIP_SESSION
+        fake_select_mock.ask.return_value = SKIP_SESSION
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("skipped", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertNotIn(("session", "s1"), bindings)
+
+    def test_interactive_mode_can_cancel_mapping(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        from core.cli_intent import CANCEL_MAPPING
+        fake_select_mock.ask.return_value = CANCEL_MAPPING
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 130)
+            self.assertIn("Cancelled before writing config", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertNotIn(("session", "s1"), bindings)
+
+    def test_cancelling_after_a_binding_reports_what_was_written(self):
+        """record_intent() writes as it goes, and this exit skips the summary.
+
+        Cancelling on the second session used to print only "Session mapping
+        cancelled." — no count — for a binding that was already on disk.
+        """
+        sessions = [
+            {
+                "session": f"s{n}",
+                "first_seen": "2026-07-26T10:10:00+00:00",
+                "label": f"Chat {n}",
+                "source": "slack",
+                "events": 3,
+            }
+            for n in (1, 2)
+        ]
+        from core.cli_intent import CANCEL_MAPPING
+
+        select_mock = mock.Mock()
+        select_mock.ask.side_effect = ["project-alpha", CANCEL_MAPPING]
+
+        with patch("core.intent_store.unbound_sessions", return_value=sessions), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=select_mock):
+            result = self._run()
+
+        self.assertEqual(result.exit_code, 130)
+        flat = " ".join(result.output.split())
+        self.assertIn("1 session binding was already saved and kept", flat)
+        self.assertNotIn("Cancelled before writing config", flat)
+
+        bindings = resolve_intents(home=self.home)
+        self.assertIn(("session", "s1"), bindings, "the first binding must really be on disk")
+
+    def test_project_named_cancel_is_bound_not_treated_as_cancel(self):
+        """A configured project may legitimately be called "Cancel".
+
+        The menu mixes project names with control labels. Comparing the answer
+        as a string made picking such a project abort the run and leave the
+        session unattributed — the opposite of what the user asked for.
+        """
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "Cancel"  # the project, not the action
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertIn("bound → Cancel", result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertEqual(bindings[("session", "s1")]["project"], "Cancel")
+
+    def test_project_named_skip_this_session_is_bound_not_skipped(self):
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = "Skip this session"
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock):
+            result = self._run()
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            bindings = resolve_intents(home=self.home)
+            self.assertEqual(bindings[("session", "s1")]["project"], "Skip this session")
+
+    def test_control_choices_carry_sentinel_values_not_labels(self):
+        """The menu must offer control actions by identity, not by string."""
+        from core.cli_intent import CANCEL_MAPPING, SKIP_SESSION
+
+        fake_session = {
+            "session": "s1",
+            "first_seen": "2026-07-26T10:10:00+00:00",
+            "label": "My Chat",
+            "source": "slack",
+            "events": 3,
+        }
+        fake_select_mock = mock.Mock()
+        fake_select_mock.ask.return_value = CANCEL_MAPPING
+
+        with patch("core.intent_store.unbound_sessions", return_value=[fake_session]), \
+             patch("core.session_capture.collect_device_events", return_value=[]), \
+             patch("core.anchor_nudge.should_prompt", return_value=True), \
+             patch("questionary.select", return_value=fake_select_mock) as select_mock:
+            self._run()
+
+        values = [c.value for c in select_mock.call_args.kwargs["choices"]]
+        self.assertIs(values[-1], CANCEL_MAPPING)
+        self.assertIs(values[-2], SKIP_SESSION)
+        self.assertNotIn("Cancel", values, "a bare string would collide with a project name")
+
+    def test_non_interactive_run_collects_nothing(self):
+        """The terminal gate must precede the expensive scan, not follow it."""
+        with patch("core.session_capture.collect_device_events") as collect_mock, \
+             patch("core.anchor_nudge.should_prompt", return_value=False):
+            result = self._run()
+            self.assertEqual(result.exit_code, 1)
+            self.assertIn("requires an interactive terminal", result.output)
+            collect_mock.assert_not_called()
 
 
 if __name__ == "__main__":

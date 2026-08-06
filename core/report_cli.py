@@ -176,12 +176,29 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
             report_console.print(
                 f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events for project {report.args.only_project!r} in selected range.[/{CLR_VALUE_ORANGE}]"
             )
+            # Interpolated into a command the user is told to run, so it must be
+            # one that exists — not whatever string command_name happens to hold.
+            cmd_name = "search" if getattr(report.args, "command_name", "report") == "search" else "report"
+            report_console.print(
+                f"[{STYLE_MUTED}]Next: run `gittan {cmd_name} --today` with no project filter, or run `gittan doctor`.[/{STYLE_MUTED}]"
+            )
         else:
             report_console.print(f"{WARN_ICON} [{CLR_VALUE_ORANGE}]No events found.[/{CLR_VALUE_ORANGE}]")
-            report_console.print(
-                f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
-                f"`gittan report --today --source-summary` to inspect collected evidence.[/{STYLE_MUTED}]"
-            )
+            if getattr(report.args, "command_name", "report") == "search":
+                # Do not suggest --noise-profile lenient here: it is already the
+                # default (core/noise_profiles.DEFAULT_NOISE_PROFILE) and is the
+                # loosest of the three, so re-running with it filters identically
+                # and returns the same empty result. Widening the window is the
+                # suggestion that can actually change the outcome.
+                report_console.print(
+                    f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, or "
+                    f"`gittan search --last-week` to widen the window.[/{STYLE_MUTED}]"
+                )
+            else:
+                report_console.print(
+                    f"[{STYLE_MUTED}]Next: run `gittan doctor` to verify source access, then "
+                    f"`gittan report --today --source-summary` to inspect collected evidence.[/{STYLE_MUTED}]"
+                )
         _print_silent_source_warnings(silent_findings)
         if report.args.invoice_pdf:
             try:

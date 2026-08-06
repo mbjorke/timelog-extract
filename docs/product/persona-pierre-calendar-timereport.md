@@ -72,7 +72,7 @@ Tracker"* — breaks down into layered, checkable wins:
       **His entered hours stay authoritative** — corroboration is a confidence
       annotation, never an override.
 - [ ] **Gap nudges.** Find windows with strong work evidence but **no**
-      TimeReport entry: *"Tue 14–16: heavy financing-portal activity, no time
+      TimeReport entry: *"Tue 14–16: heavy sample-project activity, no time
       entry — log 2h?"* (this is the bridge's reconcile loop).
 - [ ] **Onboarding magic.** Scan his existing TimeReport history, extract distinct
       title prefixes, and **propose project profiles automatically** (ties into

@@ -15,7 +15,7 @@ it. Two concrete failures:
   config fields are spread across the code; there is no current index that maps
   each to its spec, status, and tests.
 
-A sibling project (`akturo`) solves this with a generated
+A sibling project (`client-b`) solves this with a generated
 `docs/generated/feature-inventory.md` (`npm run planning:inventory`): a
 code-derived raw inventory plus curated capability notes that cross-link
 code ↔ docs ↔ tests ↔ backlog. We want the same for gittan, adapted to a CLI.
@@ -29,7 +29,7 @@ dev tooling lives in `scripts/` (alongside `check_file_lengths.py`,
 
 ## gittan's "features" (what the generator enumerates)
 
-| akturo primitive | gittan equivalent | Derived from |
+| client-b primitive | gittan equivalent | Derived from |
 |---|---|---|
 | App routes | **CLI commands / groups** | the Typer app in `core/cli_app.py` (registered commands) |
 | API handlers | **Collectors / sources** (role, enablement) | `core/collector_registry.py` + `core/sources.py` (roles per `docs/specs/source-evidence-policy.md`) |
@@ -62,7 +62,7 @@ dev tooling lives in `scripts/` (alongside `check_file_lengths.py`,
 - scope: parse the `## Traceability` blocks in `docs/task-prompts/*.md` and
   `docs/specs/*.md`; link each feature (command/collector) to its spec +
   `implementation_status`. Curated capability notes (hand-written) sit above the
-  auto rows, mirroring akturo's "Curated capabilities".
+  auto rows, mirroring client-b's "Curated capabilities".
 - acceptance: each command/collector shows its linked spec + status, or
   "(no spec)" when none references it; a feature→spec map is emitted.
 
@@ -82,7 +82,7 @@ dev tooling lives in `scripts/` (alongside `check_file_lengths.py`,
 - priority: **later** (continuous)
 - hand-written cross-cutting flow notes (e.g. "Toggl posting", "reported-time
   layer") with command · code · source-role · config · spec(+status) · tests,
-  like akturo's curated capabilities.
+  like client-b's curated capabilities.
 
 ## Behavior Contract
 
@@ -149,7 +149,7 @@ delivery phases. This is what the generator's `--check` would have demanded.
 - implementation_status: in progress — Phase 1 (code-derived inventory + `--check`
   staleness) built this PR; Phases 2-3 (spec linkage + un-specced gate) not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-06-26
+- last_updated_at: 2026-08-06
 - implementation.pr: this PR (Phase 1)
 - implementation.branch: task/feature-inventory-generator
 - implementation.commits: []
@@ -157,12 +157,13 @@ delivery phases. This is what the generator's `--check` would have demanded.
   `tests/test_feature_inventory.py`, `docs/generated/feature-inventory.md`
 - validation.decision: GO for Phase 1; Phases 2-3 pending
 - related:
-  - model: the sibling `akturo` project's generated `docs/generated/feature-inventory.md`
+  - model: the sibling `client-b` project's generated `docs/generated/feature-inventory.md`
   - policy: `AGENTS.md` §223 (task spec traceability); `docs/task-prompts/task-traceability-template.md`
   - surfaced by: reported-time layer PRs #186 / #187 shipping without a linked spec
 - changelog:
+  - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-25: Initial draft. Shaped from the docs/backlog-freshness discussion
-    after #186/#187 shipped without a traceable spec link; modeled on akturo's
+    after #186/#187 shipped without a traceable spec link; modeled on client-b's
     generated feature inventory; scoped as a dev script (not a gittan command).
   - 2026-06-26: Phase 1 built — `scripts/generate_feature_inventory.py` +
     `docs/generated/feature-inventory.md` + tests. Resolved the `--check` gate

@@ -117,7 +117,7 @@ Scenario: Primary-claim hours are annotated, never overridden
 ### P6 — Gap nudges — leapfrog
 - priority: later
 - problem: he forgets to log; strong work evidence with no time entry is invisible.
-- user value: "Tue 14–16: heavy financing-portal activity, no entry — log 2h?"
+- user value: "Tue 14–16: heavy sample-project activity, no entry — log 2h?"
 - acceptance: this is the bridge reconcile loop surfacing missing entries; writes
   `reported_time` only on confirm.
 - dependencies: P1, P5, bridge reconcile phase.

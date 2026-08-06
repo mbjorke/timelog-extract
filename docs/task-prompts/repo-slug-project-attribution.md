@@ -17,7 +17,7 @@ worktrees this is fragile:
 
 A leaf-pattern heuristic cannot fix the anchor leak: a Claude worktree leaf
 (`confident-hopper-fe58c2`, `<slug>-<hex>`) is byte-for-byte indistinguishable
-from a real Lovable-renamed repo (`financing-portal-dev-31e799cf`). A
+from a real Lovable-renamed repo (`sample-project-dev-00000000`). A
 `<slug>-<hex>` filter therefore produces false positives on real projects and
 was deliberately rejected. The only reliable signal is the **path** (a leaf
 under `.claude/worktrees/`) or the **remote slug**, which this spec uses.
@@ -71,13 +71,14 @@ attribution key that the directory leaf is not.
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-06-12
-- last_updated_at: 2026-06-12
+- last_updated_at: 2026-08-06
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/144
 - implementation.branch: task/repo-slug-attribution
 - implementation.commits: [c9abfc41dbfebe91572ef8d8ae3261ecb48ba559]
 - validation.evidence: investigation in PR #140 thread (2026-06-11/12); worktree leaves observed leaking as anchors; repo slug shown stable across worktrees in git-worktrees.json, diff-stats keys, and /events payloads; fixture tests prove sibling-worktree attribution and leaf-nag suppression
 - validation.decision: conditional GO
 - changelog:
+  - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-12: Initial draft from git-worktree attribution investigation.
   - 2026-06-12: Implemented on `task/repo-slug-attribution` —
     `core/repo_slug.py` (cached path→slug, worktree-aware), `repo` anchor kind

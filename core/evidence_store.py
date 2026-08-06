@@ -62,6 +62,27 @@ def events_dir(base_dir: Path) -> Path:
     return base_dir / "events"
 
 
+def spool_dir(home: Optional[Path] = None) -> Path:
+    if home is not None:
+        return Path(home) / ".gittan" / "spool"
+    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
+    if env_home:
+        return Path(env_home).expanduser() / "spool"
+    return canonical_gittan_home() / "spool"
+
+
+def spool_dir_for_base(base: Path) -> Path:
+    """Spool belonging to the same store root as *base*.
+
+    The spool is always a sibling of the evidence directory, under every
+    resolution mode (explicit ``home``, ``$GITTAN_HOME``, canonical default).
+    Deriving it from ``base`` rather than from the ambient home keeps read,
+    write and delete on one root — see ``capture_events``, where a caller may
+    pass ``base_dir`` without ``home``.
+    """
+    return Path(base).parent / "spool"
+
+
 def _month_key(observed_at_iso: str) -> str:
     # observed_at is a normalized UTC ISO string; first 7 chars are YYYY-MM.
     return (observed_at_iso or "")[:7] or "unknown"
@@ -165,9 +186,41 @@ def capture_events(
 
     fingerprints, last_hash = load_store_state(ev_dir)
 
+    all_events = list(events)
+    # Read spool events from the store we are writing to. spool_dir(home)
+    # resolves from the ambient home, which is wrong whenever a caller passes
+    # base_dir without home: the real user's pending commit events would be
+    # drained into an isolated store and then deleted, destroyed along with the
+    # temporary directory. Both paths agree when base_dir is omitted, since the
+    # spool is always a sibling of the evidence dir.
+    sp_dir = spool_dir_for_base(base)
+    spooled_events = []
+    drained_files = []
+    if sp_dir.is_dir():
+        for path in sorted(sp_dir.glob("*.json")):
+            try:
+                with path.open(encoding="utf-8") as fh:
+                    ev = json.load(fh)
+                if not isinstance(ev, dict):
+                    # json.load() happily returns [], null or a bare number.
+                    # Those parse but are not events, and the old branch neither
+                    # drained nor removed them — so every later capture rescanned
+                    # the same file forever. Same disposal path as a decode error.
+                    raise ValueError(f"expected a JSON object, got {type(ev).__name__}")
+                spooled_events.append(ev)
+                drained_files.append(path)
+            except Exception as exc:
+                _LOGGER.warning("Failed to read spool file %s: %s", path, exc)
+                try:
+                    path.unlink()
+                except Exception:
+                    pass
+
+    all_events.extend(spooled_events)
+
     # Build records, then order by observed time so the hash chain is
     # deterministic regardless of collector iteration order.
-    records = [evidence_record_from_event(ev, captured_at=captured) for ev in events]
+    records = [evidence_record_from_event(ev, captured_at=captured) for ev in all_events]
     records.sort(key=lambda r: (r.get("observed_at", ""), r.get("fingerprint", "")))
 
     appended = 0
@@ -209,6 +262,14 @@ def capture_events(
         for month, lines in by_month_lines.items():
             with _month_path(ev_dir, month).open("a", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
+
+    # Only delete successfully processed spool files once everything is done and no exceptions were raised
+    if drained_files:
+        for path in drained_files:
+            try:
+                path.unlink()
+            except Exception as exc:
+                _LOGGER.warning("Failed to delete spool file %s: %s", path, exc)
 
     return {
         "enabled": True,
@@ -428,6 +489,7 @@ def replay_into_events(
                 "timestamp": obs_dt,
                 "detail": rec.get("detail", ""),
                 "project": rec.get("project_at_capture", ""),
+                "source_provenance": rec.get("source_provenance"),
                 "replayed": True,
             }
         )

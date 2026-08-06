@@ -1,7 +1,7 @@
 # Runbook: capture session evidence from another device
 
 Status: active
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 Spec: `docs/task-prompts/device-session-capture-task.md`
 
 Use this when work happened somewhere other than your main machine — a cloud
@@ -15,12 +15,14 @@ gittan capture --dry-run          # what would be captured, writes nothing
 gittan capture                    # append to this device's ledger
 ```
 
-Two surfaces are captured: `claude-code` (Claude Code transcripts) and
-`desktop-code` (Claude Desktop in Code mode). Both carry a repo anchor, so the
-work attributes itself. Narrow the run with `--source`, repeatable:
+Three surfaces are captured by default: `claude-code` (Claude Code transcripts),
+`desktop-code` (Claude Desktop in Code mode), and `cursor` (Cursor composer /
+workspace sessions). All three carry a repo or workspace anchor, so the work
+attributes itself. Narrow the run with `--source`, repeatable:
 
 ```bash
 gittan capture --source desktop-code
+gittan capture --source cursor
 ```
 
 An unknown name lists the valid ones, and every run prints which sources actually
@@ -69,6 +71,12 @@ all — commit and pull instead. Evidence is filed per device
 (`2026-07.laptop.jsonl`, `2026-07.phone.jsonl`) when those labels stay distinct,
 so two devices do not write the same file and git has nothing to merge.
 
+`gittan capture` defaults include **Cursor** as well as Claude Code / Desktop
+Code (`--source cursor` to limit). Report project/session labels append a short
+device list only when **two or more** devices contributed to that project in the
+window (`project-alpha (Mac, iPhone)`); a single-device day stays quiet. Billing
+project keys are unchanged.
+
 If you have an **older store** where both devices appended to one `2026-07.jsonl`
 and git merged them, the hash chain is broken even though every record is real.
 Fix it once:
@@ -104,12 +112,13 @@ nothing to bind.
 
 ## What this does and does not cover
 
-- **Covers:** Claude Code CLI session transcripts on any device you can run
-  `gittan` on, including cloud containers.
-- **Which surface to work in, if the hours are billable:** Claude Code and Claude
-  Desktop **Code mode** both carry a repo anchor, so the work attributes itself.
-  Desktop **plain chat** gives correct hours but lands on `Uncategorized` unless
-  you happen to type the project name. Measured in
+- **Covers:** Claude Code CLI session transcripts, Claude Desktop Code mode, and
+  Cursor sessions on any device you can run `gittan` on, including cloud
+  containers.
+- **Which surface to work in, if the hours are billable:** Claude Code, Claude
+  Desktop **Code mode**, and Cursor all carry a repo or workspace anchor, so the
+  work attributes itself. Desktop **plain chat** gives correct hours but lands on
+  `Uncategorized` unless you happen to type the project name. Measured in
   `docs/evals/claude-surface-attribution-measurement.md`.
 - **Does not cover:** the Claude mobile app. It leaves no local artifact on any
   device you control, so there is nothing to read. That gap needs intent capture

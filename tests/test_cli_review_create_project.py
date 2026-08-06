@@ -19,7 +19,7 @@ from core.cli_review_create_project import (
     propose_create_from_candidate,
     write_created_project,
 )
-from core.cli_triage_map_candidates import UrlCandidate
+from core.cli_triage_map_candidates import UrlCandidate, merge_impact_hours
 from core.cli_url_mapping import _project_choices_for_row
 
 
@@ -28,7 +28,7 @@ def _row(
     title: str,
     url_key: str,
     events: int = 3,
-    impact_hours: float = 0.0,
+    impact_hours: float | None = 0.0,
     days: int = 1,
     last_seen: str = "2026-07-21",
 ) -> UrlCandidate:
@@ -51,7 +51,7 @@ class ProposeCreateTests(unittest.TestCase):
         row = _row(
             title="Project Alpha portal",
             url_key="github.com/acme/project-alpha",
-            impact_hours=0.0,
+            impact_hours=1.0,
         )
         proposal = propose_create_from_candidate(row)
         self.assertIsNotNone(proposal)
@@ -118,12 +118,12 @@ class ProposeCreateTests(unittest.TestCase):
 
 
 class RankingAndPartitionTests(unittest.TestCase):
-    def test_decidable_impact_zero_kept_and_ranked_above_undecidable(self):
+    def test_decidable_kept_and_ranked_above_undecidable(self):
         decidable = _row(
             title="Project Alpha",
             url_key="github.com/acme/project-alpha",
             events=2,
-            impact_hours=0.0,
+            impact_hours=1.0,
         )
         undecidable = _row(
             title="Untitled",
@@ -195,6 +195,123 @@ class LovableImpactDecidabilityTests(unittest.TestCase):
         # 0.05 rounds to 0.1
         row = _row(title="Lunch Connect", url_key=uuid_host, impact_hours=0.05)
         self.assertTrue(is_decidable_candidate(row))
+
+    def test_zero_impact_with_human_title_is_undecidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_nonzero_impact_with_human_title_is_decidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=1.0)
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_below_is_undecidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.04)
+        self.assertFalse(is_decidable_candidate(row))
+
+    def test_rounding_threshold_boundary_above_is_decidable_non_lovable(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.05)
+        self.assertTrue(is_decidable_candidate(row))
+
+
+
+class UnmeasuredImpactTests(unittest.TestCase):
+    """`impact_hours=None` means "never measured", not "measured as zero".
+
+    Only build_url_candidates_from_gap_days apportions unexplained hours per URL
+    key. build_url_candidates works from report events and has no hour signal to
+    attribute, so it leaves the field unset. Treating that absence as 0.0 parked
+    every GitHub / Chrome / WordPress candidate before its title was considered,
+    leaving the user with Park/Skip where map/create belonged.
+    """
+
+    def test_unmeasured_impact_with_human_title_stays_decidable(self):
+        row = _row(
+            title="Project Alpha portal",
+            url_key="github.com/acme/project-alpha",
+            impact_hours=None,
+        )
+        self.assertTrue(is_decidable_candidate(row))
+
+    def test_unmeasured_impact_reaches_the_create_proposal(self):
+        row = _row(
+            title="Project Alpha portal",
+            url_key="github.com/acme/project-alpha",
+            impact_hours=None,
+        )
+        proposal = propose_create_from_candidate(row)
+        self.assertIsNotNone(proposal, "an unmeasured row must not be parked out of create")
+        assert proposal is not None
+        self.assertEqual(proposal.profile_name, "project-alpha")
+
+    def test_measured_zero_still_parks(self):
+        """The rule this PR added must survive: a real 0.0 is still undecidable."""
+        row = _row(
+            title="Project Alpha portal",
+            url_key="github.com/acme/project-alpha",
+            impact_hours=0.0,
+        )
+        self.assertFalse(is_decidable_candidate(row))
+        self.assertIsNone(propose_create_from_candidate(row))
+
+    def test_unmeasured_impact_without_evidence_is_still_undecidable(self):
+        """None is not a free pass — it just stops being a veto."""
+        row = _row(
+            title="Untitled",
+            url_key="85f3c1b3-64e9-4296-85f4-10dc31037933.lovableproject.com",
+            impact_hours=None,
+        )
+        self.assertFalse(is_decidable_candidate(row))
+
+
+class MergeImpactHoursTests(unittest.TestCase):
+    """Merging two rows for the same URL key must not lose a measurement."""
+
+    def test_measured_value_wins_over_unmeasured(self):
+        self.assertEqual(merge_impact_hours(None, 2.5), 2.5)
+        self.assertEqual(merge_impact_hours(2.5, None), 2.5)
+
+    def test_both_unmeasured_stays_unmeasured(self):
+        self.assertIsNone(merge_impact_hours(None, None))
+
+    def test_two_measured_values_take_the_larger(self):
+        self.assertEqual(merge_impact_hours(1.0, 3.0), 3.0)
+
+    def test_measured_zero_is_not_treated_as_missing(self):
+        """0.0 is falsy — a truthiness-based merge would silently drop it."""
+        self.assertEqual(merge_impact_hours(0.0, None), 0.0)
+        self.assertEqual(merge_impact_hours(None, 0.0), 0.0)
+
+class DownstreamParkContractTests(unittest.TestCase):
+    """A measured-zero row must be parked all the way down, not just flagged.
+
+    is_decidable_candidate() is one gate; the operator meets the consequence
+    through partition_candidates() and the row's choice list. Ported from #508,
+    which covered this end of the contract while this branch covered the
+    unmeasured/merge end.
+    """
+
+    def test_measured_zero_row_reaches_park_and_never_create(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+        self.assertIsNone(propose_create_from_candidate(row))
+
+        decidable, parked = partition_candidates([row])
+        self.assertNotIn(row, decidable)
+        self.assertIn(row, parked)
+
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertNotIn(create_choice_label(), choices)
+        self.assertIn(park_choice_label(), choices)
+
+    def test_unmeasured_row_reaches_create(self):
+        """The mirror case: absence must not park a row out of the create path."""
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=None)
+        decidable, parked = partition_candidates([row])
+        self.assertIn(row, decidable)
+        self.assertNotIn(row, parked)
+
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertIn(create_choice_label(), choices)
 
 
 if __name__ == "__main__":

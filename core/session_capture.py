@@ -45,16 +45,15 @@ UNCATEGORIZED = "Uncategorized"
 #: Sources this device can capture, mapped to the source name they emit.
 #: Each collector takes ``(profiles, dt_from, dt_to, home, classify, make_event)``.
 #:
-#: Only surfaces that carry a **structural** project anchor are captured. Both of
-#: these resolve a repo identity — ``claude-code`` from ``cwd``, ``desktop-code``
-#: from the session's git metadata (worktree-invariant, so a sandbox ``cwd`` does
-#: not break it). Plain desktop chat is deliberately absent: measured
-#: 2026-07-26, it yields honest hours with no anchor at all, so it lands on
-#: ``Uncategorized`` unless the operator happened to type the project name
-#: (``docs/evals/claude-surface-attribution-measurement.md``).
+#: Only surfaces that carry a **structural** project anchor are captured:
+#: ``claude-code`` (cwd), ``desktop-code`` (session git metadata), ``cursor``
+#: (workspace path / composer / agent turns). Plain Claude desktop chat is
+#: deliberately absent: measured 2026-07-26, it yields honest hours with no
+#: anchor (``docs/evals/claude-surface-attribution-measurement.md``).
 CAPTURE_SOURCES: Dict[str, str] = {
     "claude-code": "Claude Code CLI",
     "desktop-code": "Claude Desktop (Code)",
+    "cursor": "Cursor",
 }
 
 
@@ -98,10 +97,18 @@ def collect_device_events(
     """
     from collectors.ai_logs import collect_claude_code
     from collectors.claude_desktop_events import collect_claude_desktop_code
+    from collectors.cursor import collect_cursor
+
+    def _collect_cursor(profiles, dt_from, dt_to, home, classify, make_event):
+        # Capture collectors share a home-first signature; Cursor also needs a
+        # timezone for log timestamps — use the window's zone.
+        local_tz = dt_from.tzinfo or timezone.utc
+        return collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify, make_event)
 
     collectors: Dict[str, Callable[..., List[Dict[str, Any]]]] = {
         "claude-code": collect_claude_code,
         "desktop-code": collect_claude_desktop_code,
+        "cursor": _collect_cursor,
     }
     wanted = list(sources) if sources is not None else list(CAPTURE_SOURCES)
     unknown = [name for name in wanted if name not in collectors]

@@ -20,6 +20,7 @@ from core.cli_ab_rule_suggestions import (
 )
 from core.cli_deprecation import warn_deprecated_command
 from core.cli_options import TimelogRunOptions
+from core.cli_prompts import cancel_interactive
 from core.config import apply_rule_to_project, save_projects_config_payload
 from core.uncategorized_review import (
     build_uncategorized_clusters,
@@ -28,6 +29,15 @@ from core.uncategorized_review import (
     format_cluster_rule_hint,
     format_cluster_sample,
 )
+
+
+def _saved_note(saved_count: int) -> bool | str:
+    """What to tell the operator about writes that already landed this run."""
+    if saved_count <= 0:
+        return False
+    if saved_count == 1:
+        return "1 cluster rule was"
+    return f"{saved_count} cluster rules were"
 
 
 def run_uncategorized_cluster_review(
@@ -146,6 +156,7 @@ def run_uncategorized_cluster_review(
         }
     )
 
+    saved_count = 0
     for index, cluster in enumerate(clusters, start=1):
         remaining = len(clusters) - index
         console.print(
@@ -166,7 +177,9 @@ def run_uncategorized_cluster_review(
                 "Quit",
             ],
         ).ask()
-        if not action or action == "Quit":
+        if action is None:
+            cancel_interactive(console, already_saved=_saved_note(saved_count))
+        if action == "Quit":
             break
         if action == "Skip":
             continue
@@ -176,9 +189,15 @@ def run_uncategorized_cluster_review(
             if not project_names:
                 console.print("[yellow]No existing projects found; skipping this cluster.[/yellow]")
                 continue
-            project_name = questionary.select("Target project:", choices=project_names).ask() or ""
+            p_select = questionary.select("Target project:", choices=project_names).ask()
+            if p_select is None:
+                cancel_interactive(console, already_saved=_saved_note(saved_count))
+            project_name = p_select
         else:
-            project_name = questionary.text("New project name:").ask() or ""
+            p_text = questionary.text("New project name:").ask()
+            if p_text is None:
+                cancel_interactive(console, already_saved=_saved_note(saved_count))
+            project_name = p_text
         if not project_name.strip():
             console.print("[yellow]No project selected; cluster skipped.[/yellow]")
             continue
@@ -187,7 +206,9 @@ def run_uncategorized_cluster_review(
             f"{cluster.rule_type} value to save:",
             default=cluster.rule_value,
         ).ask()
-        if rule_value is None or not rule_value.strip():
+        if rule_value is None:
+            cancel_interactive(console, already_saved=_saved_note(saved_count))
+        if not rule_value.strip():
             console.print("[yellow]No rule value entered; cluster skipped.[/yellow]")
             continue
 
@@ -208,6 +229,7 @@ def run_uncategorized_cluster_review(
         except Exception as exc:
             console.print(f"[red]Error:[/red] Failed to save config to '{config_path}': {exc}")
             raise typer.Exit(code=1) from exc
+        saved_count += 1
         created_note = " (created project)" if created else ""
         console.print(f"[green]Saved[/green] {field} -> {value!r} for {project_name!r}{created_note}.")
         project_names = sorted(

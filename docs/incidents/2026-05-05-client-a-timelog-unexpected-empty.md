@@ -1,4 +1,4 @@
-# Incident: ass-membra TIMELOG unexpectedly empty
+# Incident: client-a TIMELOG unexpectedly empty
 
 ## Date
 
@@ -6,31 +6,31 @@
 
 ## Summary
 
-- `ass-membra/TIMELOG.md` was observed as `0` bytes even though prior workflow expected historical content.
-- Recovery source `ass-membra/worklog.txt` existed with non-empty content and was used to restore.
+- `client-a/TIMELOG.md` was observed as `0` bytes even though prior workflow expected historical content.
+- Recovery source `client-a/worklog.txt` existed with non-empty content and was used to restore.
 
 ## Impact
 
-- Per-project TIMELOG evidence for `ÅSS: Membra` was missing from runs while the file was empty.
+- Per-project TIMELOG evidence for `CLIENT A: Membra` was missing from runs while the file was empty.
 - This could reduce confidence in March attribution/reconciliation.
 
 ## Observed facts
 
 - Empty file observed:
-  - `$HOME/Workspace/Project/ass-membra/TIMELOG.md` (`0` bytes)
+  - `$HOME/Workspace/Project/client-a/TIMELOG.md` (`0` bytes)
 - Recoverable source found:
-  - `$HOME/Workspace/Project/ass-membra/worklog.txt` (`4606` bytes)
+  - `$HOME/Workspace/Project/client-a/worklog.txt` (`4606` bytes)
 - No committed `TIMELOG.md` history in that repo was available for direct git restore.
 
 ## Recovery actions
 
 - Backed up current targets:
-  - `$HOME/Workspace/Project/ass-membra/TIMELOG.md.backup.20260505-165015`
-  - `$HOME/.gittan/worklogs/ass-membra.md.backup.20260505-165015`
+  - `$HOME/Workspace/Project/client-a/TIMELOG.md.backup.20260505-165015`
+  - `$HOME/.gittan/worklogs/client-a.md.backup.20260505-165015`
 - Restored:
-  - copied `worklog.txt` -> `ass-membra/TIMELOG.md`
+  - copied `worklog.txt` -> `client-a/TIMELOG.md`
 - Synced central store:
-  - copied `worklog.txt` -> `~/.gittan/worklogs/ass-membra.md`
+  - copied `worklog.txt` -> `~/.gittan/worklogs/client-a.md`
 
 ## Prevention steps
 

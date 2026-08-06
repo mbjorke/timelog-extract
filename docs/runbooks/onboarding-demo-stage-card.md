@@ -26,7 +26,7 @@ Command flow and fixed narration:
 
 What to point out:
 
-- `setup seed names`: "Akturo (pdc), Sundblom (blueberry), Gittan (blueberry), plus blueberry-*."
+- `setup seed names`: "Client-b (pdc), Client-c (blueberry), Gittan (blueberry), plus blueberry-*."
 - `setup`: "In under a minute we create a usable project/customer baseline."
 - `EMPTY_START_OK`: "This always starts from zero, no preloaded config."
 - `timelog_projects.json`: "This is from scratch and high quality: real projects, real customers, useful match terms."

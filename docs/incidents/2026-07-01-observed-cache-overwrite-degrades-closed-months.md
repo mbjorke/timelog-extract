@@ -21,11 +21,11 @@
 
 - **Invoiced records: NOT affected.** The authoritative source for closed months is
   `~/.gittan/invoice/invoiced/ledger.yaml` ("AUTHORITATIVE — vad som faktiskt skickats i Briox").
-  It is intact (e.g. `ass-membra-2026-03` = 18.75 h). The observed cache is a statusline
+  It is intact (e.g. `client-a-2026-03` = 18.75 h). The observed cache is a statusline
   convenience (`observed − handled`), not invoiced truth.
 - **Observed (raw) cache for closed months Mar/Apr** was lowered to current-evidence values;
   earlier higher captures lost.
-- The ledger already documented that gittan-tracked ÅSS March was below the invoiced 18.75 h at
+- The ledger already documented that gittan-tracked CLIENT A March was below the invoiced 18.75 h at
   invoice time (untracked SFTP/wp-admin/meetings), so the raw observed figure being low for those
   months is expected — the incident is the *silent downward rewrite*, not the low number itself.
 
@@ -33,7 +33,7 @@
 
 - The **config trim** (removal of 31 zero-hit noise rules) was verified zero-impact: a per-line
   before/after comparison (pre-trim backup config vs trimmed config) was **identical for Mar, Apr,
-  May, Jun**, and the trim touched none of the invoiced projects (`ÅSS: Nav` / `ÅSS: Membra`).
+  May, Jun**, and the trim touched none of the invoiced projects (`CLIENT A: Nav` / `CLIENT A: Membra`).
 
 ## Root cause
 

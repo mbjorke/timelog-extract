@@ -257,12 +257,13 @@ def create_project_interactive(
         f"{', '.join(proposal.match_terms)}"
     )
 
+    import typer
     name_answer = questionary.text(
         "Project slug / name:",
         default=proposal.profile_name,
     ).ask()
     if name_answer is None:
-        return None
+        raise typer.Exit(code=130)
     profile_name = str(name_answer).strip()
     if not profile_name:
         console.print("[yellow]Project name cannot be empty.[/yellow]")
@@ -275,7 +276,7 @@ def create_project_interactive(
 
     customer_answer = questionary.text("Customer (who you bill):", default="").ask()
     if customer_answer is None:
-        return None
+        raise typer.Exit(code=130)
     customer = str(customer_answer).strip()
     if not customer:
         console.print("[yellow]Customer cannot be empty.[/yellow]")
@@ -286,7 +287,7 @@ def create_project_interactive(
         default=proposal.display_name or "",
     ).ask()
     if title_answer is None:
-        return None
+        raise typer.Exit(code=130)
 
     terms = list(proposal.match_terms)
     if profile_name.lower() not in {t.lower() for t in terms}:
@@ -301,6 +302,8 @@ def create_project_interactive(
         f"Create project {final.profile_name!r} and write to config now?",
         default=True,
     ).ask()
+    if confirmed is None:
+        raise typer.Exit(code=130)
     if not confirmed:
         return None
 

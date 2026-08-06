@@ -82,5 +82,63 @@ class CollectorOpenerHttpRejectionTests(unittest.TestCase):
         self.assertIn("Toggl request to insecure http:// rejected", str(ctx.exception))
 
 
+class CombinedProtectionTests(unittest.TestCase):
+    """Both guards live on one handler; a merge must not drop either.
+
+    The initial-request block (#507) and the cross-origin redirect block (#496)
+    were developed on separate branches against the same class. Each was
+    verified in isolation, so nothing else fails if one is lost.
+    """
+
+    def _handler(self):
+        return RejectHttpRedirectHandler("service-a")
+
+    def test_initial_plain_http_is_still_blocked(self):
+        with self.assertRaises(URLError) as ctx:
+            self._handler().http_request(Request("http://api.example.test/v2"))
+        self.assertIn("request to insecure http://", str(ctx.exception))
+
+    def test_cross_origin_https_redirect_is_still_blocked(self):
+        with self.assertRaises(URLError) as ctx:
+            self._handler().redirect_request(
+                Request("https://api.example.test/v2"), None, 301, "Moved Permanently", {},
+                "https://elsewhere.example.test/v2",
+            )
+        self.assertIn("different host", str(ctx.exception))
+
+    def test_same_origin_redirect_still_follows(self):
+        from unittest.mock import patch
+
+        with patch("urllib.request.HTTPRedirectHandler.redirect_request") as super_mock:
+            super_mock.return_value = "followed"
+            result = self._handler().redirect_request(
+                Request("https://api.example.test/v2"), None, 301, "Moved Permanently", {},
+                "https://api.example.test/v2/token",
+            )
+        self.assertEqual(result, "followed")
+
+    def test_jira_local_copy_carries_both_guards(self):
+        from unittest.mock import patch
+
+        handler = _RejectHttpRedirectHandler()
+        with self.assertRaises(URLError):
+            handler.http_request(Request("http://jira.example.test/rest/api/3/myself"))
+        with self.assertRaises(URLError) as ctx:
+            handler.redirect_request(
+                Request("https://jira.example.test/rest/api/3/myself"),
+                None, 301, "Moved Permanently", {},
+                "https://elsewhere.example.test/rest/api/3/myself",
+            )
+        self.assertIn("different host", str(ctx.exception))
+        with patch("urllib.request.HTTPRedirectHandler.redirect_request") as super_mock:
+            super_mock.return_value = "followed"
+            result = handler.redirect_request(
+                Request("https://jira.example.test/rest/api/3/myself"),
+                None, 301, "Moved Permanently", {},
+                "https://jira.example.test/rest/api/3/self",
+            )
+        self.assertEqual(result, "followed")
+
+
 if __name__ == "__main__":
     unittest.main()

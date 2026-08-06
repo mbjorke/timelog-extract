@@ -213,9 +213,6 @@ class LovableImpactDecidabilityTests(unittest.TestCase):
         self.assertTrue(is_decidable_candidate(row))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class UnmeasuredImpactTests(unittest.TestCase):
     """`impact_hours=None` means "never measured", not "measured as zero".
@@ -283,3 +280,39 @@ class MergeImpactHoursTests(unittest.TestCase):
         """0.0 is falsy — a truthiness-based merge would silently drop it."""
         self.assertEqual(merge_impact_hours(0.0, None), 0.0)
         self.assertEqual(merge_impact_hours(None, 0.0), 0.0)
+
+class DownstreamParkContractTests(unittest.TestCase):
+    """A measured-zero row must be parked all the way down, not just flagged.
+
+    is_decidable_candidate() is one gate; the operator meets the consequence
+    through partition_candidates() and the row's choice list. Ported from #508,
+    which covered this end of the contract while this branch covered the
+    unmeasured/merge end.
+    """
+
+    def test_measured_zero_row_reaches_park_and_never_create(self):
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=0.0)
+        self.assertFalse(is_decidable_candidate(row))
+        self.assertIsNone(propose_create_from_candidate(row))
+
+        decidable, parked = partition_candidates([row])
+        self.assertNotIn(row, decidable)
+        self.assertIn(row, parked)
+
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertNotIn(create_choice_label(), choices)
+        self.assertIn(park_choice_label(), choices)
+
+    def test_unmeasured_row_reaches_create(self):
+        """The mirror case: absence must not park a row out of the create path."""
+        row = _row(title="Some Repo", url_key="github.com/acme/some-repo", impact_hours=None)
+        decidable, parked = partition_candidates([row])
+        self.assertIn(row, decidable)
+        self.assertNotIn(row, parked)
+
+        choices = _project_choices_for_row(row, project_names=["project-alpha"])
+        self.assertIn(create_choice_label(), choices)
+
+
+if __name__ == "__main__":
+    unittest.main()

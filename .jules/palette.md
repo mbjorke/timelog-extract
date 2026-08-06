@@ -70,3 +70,7 @@
 ## 2026-07-27 - Standardizing `intent` command with Questionary select and UX styling
 **Learning:** Typer prompt loops for project mapping can be error-prone and fail to present the operator with clear options. Converting them to standard Questionary selections prevents typos, provides an immediate escape hatch, and ensures interactive consistency. Additionally, styling list-only and unbound session empty states with Gittan's official accent headers and next-step guidelines significantly improves command clarity and scannability.
 **Action:** Replaced free-form `typer.prompt` loops in `core/cli_intent.py` with `questionary.select`. Handled escape hatches by raising `typer.Exit(code=130)` and displaying a clean orange cancellation message on Cancel/None. Added a TTY check to gracefully abort in non-interactive terminals. Redesigned empty states with `CLR_VALUE_ORANGE` and `STYLE_MUTED` next steps, and added a robust test suite to `tests/test_intent_store.py`.
+
+## 2026-08-05 - Standardizing `projects-audit` tables with the shared theme
+**Learning:** Dense audit tables drift into ad-hoc styling — a bare `header_style="bold"` and no box at all — which breaks the cohesive terminal look and makes the output harder to scan. The shared tokens exist so every table speaks the same visual language.
+**Action:** Applied `box.ROUNDED`, `STYLE_BORDER` and `STYLE_LABEL` to both tables in `core/cli_projects_audit.py`, and pinned them with a test so the next edit does not quietly drop them back to defaults.

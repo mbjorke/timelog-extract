@@ -24,6 +24,7 @@ from rich.console import Console
 
 from core.cli_ab_rule_suggestions import _apply_timeframe_prompt
 from core.cli_options import TimelogRunOptions
+from core.cli_prompts import cancel_interactive
 from core.config import (
     apply_rule_to_project,
     backup_projects_config_if_exists,
@@ -131,6 +132,15 @@ def _gap_candidates_json(
         "existing_projects": project_names,
         "gaps": rows,
     }
+
+
+def _saved_note(applied_count: int) -> bool | str:
+    """What to tell the operator about writes that already landed this run."""
+    if applied_count <= 0:
+        return False
+    if applied_count == 1:
+        return "1 attribution rule was"
+    return f"{applied_count} attribution rules were"
 
 
 def run_gap_attribution_review(
@@ -241,7 +251,7 @@ def run_gap_attribution_review(
     )
 
     config_path = Path(projects_config)
-    applied_any = False
+    applied_count = 0
     for index, cluster in enumerate(clusters, start=1):
         remaining = len(clusters) - index
         console.print(
@@ -258,8 +268,7 @@ def run_gap_attribution_review(
             choices=[*project_names, _SKIP, _QUIT],
         ).ask()
         if target is None:
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-            raise typer.Exit(code=130)
+            cancel_interactive(console, already_saved=_saved_note(applied_count))
         if target == _QUIT:
             break
         if target == _SKIP:
@@ -287,8 +296,7 @@ def run_gap_attribution_review(
             default=False,
         ).ask()
         if confirmed is None:
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-            raise typer.Exit(code=130)
+            cancel_interactive(console, already_saved=_saved_note(applied_count))
         if not confirmed:
             console.print("[dim]Skipped — no config change.[/dim]")
             continue
@@ -329,8 +337,8 @@ def run_gap_attribution_review(
         if backup:
             console.print(f"[dim]Backup:[/dim] {backup}")
         console.print(f"[green]Saved[/green] {field} -> {value!r} for {target!r}.")
-        applied_any = True
+        applied_count += 1
 
-    if applied_any:
+    if applied_count:
         console.print("[dim]Re-run `gittan report` to see updated project hours.[/dim]")
     return True

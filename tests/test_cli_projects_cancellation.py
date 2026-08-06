@@ -119,3 +119,69 @@ class CliProjectsCancellationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CancelMessageHonestyTests(unittest.TestCase):
+    """Cancelling is not the same claim as "nothing was written".
+
+    These review loops save as they go. Telling the operator that config is
+    untouched after a rule or project has already been persisted is worse than
+    saying nothing: they go looking for work that is already done, or create a
+    project that now exists.
+    """
+
+    def _cancel_output(self, **kwargs) -> str:
+        import typer
+        from rich.console import Console
+
+        from core.cli_prompts import cancel_interactive
+
+        console = Console(record=True, width=100, force_terminal=False)
+        with self.assertRaises(typer.Exit) as ctx:
+            cancel_interactive(console, **kwargs)
+        self.assertEqual(ctx.exception.exit_code, 130)
+        return console.export_text()
+
+    def test_nothing_written_still_says_so(self):
+        out = self._cancel_output(already_saved=False)
+        self.assertIn("Cancelled before writing config.", out)
+
+    def test_prior_writes_are_not_denied(self):
+        out = self._cancel_output(already_saved=True)
+        self.assertNotIn("before writing config", out)
+        self.assertIn("already saved and kept", out)
+
+    def test_prior_writes_are_named_when_the_caller_knows(self):
+        out = " ".join(self._cancel_output(already_saved="2 attribution rules were").split())
+        self.assertIn("2 attribution rules were already saved and kept", out)
+        self.assertIn("Re-run to continue", out)
+
+
+class SavedNoteTests(unittest.TestCase):
+    """The per-flow summaries that feed the message."""
+
+    def test_gaps_note_counts_applied_rules(self):
+        from core.cli_review_gaps import _saved_note
+
+        self.assertIs(_saved_note(0), False)
+        self.assertEqual(_saved_note(1), "1 attribution rule was")
+        self.assertEqual(_saved_note(3), "3 attribution rules were")
+
+    def test_uncategorized_note_counts_saved_clusters(self):
+        from core.cli_review_uncategorized import _saved_note
+
+        self.assertIs(_saved_note(0), False)
+        self.assertEqual(_saved_note(1), "1 cluster rule was")
+        self.assertEqual(_saved_note(2), "2 cluster rules were")
+
+    def test_url_mapping_note_covers_both_write_paths(self):
+        from core.cli_url_mapping import _saved_note
+
+        self.assertIs(_saved_note(False, set()), False)
+        self.assertEqual(_saved_note(True, set()), "remote repository mapping was")
+        self.assertEqual(_saved_note(False, {"a"}), "1 new project was")
+        self.assertEqual(_saved_note(False, {"a", "b"}), "2 new projects were")
+        self.assertEqual(
+            _saved_note(True, {"a"}),
+            "remote repository mapping and 1 new project were",
+        )

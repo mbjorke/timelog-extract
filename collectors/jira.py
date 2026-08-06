@@ -20,8 +20,12 @@ class _RejectHttpRedirectHandler(HTTPRedirectHandler):
 
     Mirrors ``core.http_security.RejectHttpRedirectHandler``; Jira keeps a local
     copy because it builds its opener directly. Blocking only ``http://`` left
-    the header exposed to any *other* HTTPS host a redirect could name.
+    the header exposed to any *other* HTTPS host a redirect could name, and
+    blocking only redirects left the initial request exposed.
     """
+
+    def http_request(self, req):
+        raise URLError("Jira request to insecure http:// rejected to protect credentials")
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if (urlparse(newurl).scheme or "").lower() == "http":

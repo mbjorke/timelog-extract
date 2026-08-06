@@ -31,13 +31,16 @@ class RejectHttpRedirectHandler(HTTPRedirectHandler):
 
     urllib follows redirects and re-sends the request's headers, so a redirect
     is a request to hand the ``Authorization`` header to whoever the response
-    names. Two things are therefore refused:
+    names. Three things are therefore refused:
 
-    - a target on plain ``http://`` — the token would cross the wire in clear;
-    - a target on a *different host*, even over HTTPS — TLS protects the token
-      in transit but says nothing about whether the new host should receive it,
-      and a redirect is attacker-controlled input whenever the endpoint is
-      misconfigured or compromised.
+    - an *initial* request on plain ``http://`` — build_opener() installs an
+      HTTPHandler by default, so a misconfigured base URL would otherwise send
+      the token in clear before any redirect is involved;
+    - a redirect target on plain ``http://`` — same exposure, one hop later;
+    - a redirect target on a *different host*, even over HTTPS — TLS protects
+      the token in transit but says nothing about whether the new host should
+      receive it, and a redirect is attacker-controlled input whenever the
+      endpoint is misconfigured or compromised.
 
     Same-origin redirects (path or query changes) still follow normally, which
     covers the legitimate cases. This repo's integrations address fixed, known
@@ -49,6 +52,11 @@ class RejectHttpRedirectHandler(HTTPRedirectHandler):
     def __init__(self, service: str = "API") -> None:
         super().__init__()
         self._service = service
+
+    def http_request(self, req):
+        raise URLError(
+            f"{self._service} request to insecure http:// rejected to protect credentials"
+        )
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if (urlparse(newurl).scheme or "").lower() == "http":

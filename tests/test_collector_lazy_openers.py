@@ -31,8 +31,20 @@ class LazyOpenerContractTests(unittest.TestCase):
     """Import builds nothing; first use builds once and keeps it."""
 
     def _fresh(self, module_name: str):
-        module = importlib.import_module(module_name)
-        return importlib.reload(module)
+        """Reload the module, and clear its opener cache again afterwards.
+
+        Several cases below patch the builder and drive urlopen(), which leaves
+        a MagicMock sitting in the module-level cache. That mock outlives the
+        test — the lazy `if cache is None` check then hands it to whoever
+        imports the collector next, so an unrelated test asking the real opener
+        to reject `http://` silently gets a mock that raises nothing.
+        Module-level caches are process-global; a test that fills one has to
+        empty it.
+        """
+        module = importlib.reload(importlib.import_module(module_name))
+        cache_attr = next(a for name, a, _b, _s in _COLLECTORS if name == module_name)
+        self.addCleanup(setattr, module, cache_attr, None)
+        return module
 
     def test_import_does_not_construct_an_opener(self):
         for module_name, attr, builder, _service in _COLLECTORS:
@@ -101,6 +113,7 @@ class JiraOpenerHandlerTests(unittest.TestCase):
         import collectors.jira as jira
 
         jira = importlib.reload(jira)
+        self.addCleanup(setattr, jira, "_jira_opener", None)
         try:
             jira.urlopen(Request("https://127.0.0.1:1/never"), timeout=0.01)
         except Exception:

@@ -28,13 +28,15 @@ def prompt_new_project_fields(
     """Collect customer and optional display name; slug comes from the repository."""
     import questionary
 
+    from outputs.terminal_theme import CLR_VALUE_ORANGE
+
     slug = str(default_profile_name or "").strip()
     if not slug:
-        console.print("[yellow]Could not derive a project slug from the repository.[/yellow]")
+        console.print(f"[{CLR_VALUE_ORANGE}]Could not derive a project slug from the repository.[/{CLR_VALUE_ORANGE}]")
         return None
     if slug.lower() in existing_names:
         console.print(
-            f"[yellow]'{slug}' is already mapped — use 'Map to existing project' instead.[/yellow]"
+            f"[{CLR_VALUE_ORANGE}]'{slug}' is already mapped — use 'Map to existing project' instead.[/{CLR_VALUE_ORANGE}]"
         )
         return None
 
@@ -50,7 +52,7 @@ def prompt_new_project_fields(
             return None
         customer = str(customer_answer).strip() or str(default_customer or "").strip()
         if not customer:
-            console.print("[yellow]Customer cannot be empty.[/yellow]")
+            console.print(f"[{CLR_VALUE_ORANGE}]Customer cannot be empty.[/{CLR_VALUE_ORANGE}]")
 
     title_answer = questionary.text(
         "Display name (optional, for invoices):",
@@ -67,10 +69,11 @@ def _print_repo_binding(console, *, dot: str, remote_url: str, local_path: str, 
 
 
 def _print_activity_legend(console) -> None:
+    from outputs.terminal_theme import CLR_VALUE_ORANGE
     console.print(
         "[dim]Recency dot on the primary duplicate line only[/dim] "
         "([green]● <= 30d[/green], "
-        "[yellow]● <= 90d[/yellow], "
+        f"[{CLR_VALUE_ORANGE}]● <= 90d[/{CLR_VALUE_ORANGE}], "
         "[red]● > 90d[/red], "
         "[dim]● none in report window[/dim]); "
         "[dim]other variants show ● dim.[/dim]"

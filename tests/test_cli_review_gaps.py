@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
+
+import typer
+from rich.console import Console
 
 from core.cli_review_gaps import run_gap_attribution_review
 from core.config import load_projects_config_payload, save_projects_config_payload
@@ -241,3 +245,60 @@ class GapAttributionInteractiveTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GapCancelMessageTests(unittest.TestCase):
+    """Cancelling after a write must not report that nothing was written.
+
+    This loop saves each confirmed attribution immediately. The cancel path
+    used to print "Cancelled before writing config." unconditionally, so an
+    operator who applied a rule and then hit Ctrl-C was told their config was
+    untouched — and would go re-do work that had already landed.
+    """
+
+    def _run_and_capture(self, select_answers, confirm_answers, cfg, profiles):
+        buffer = io.StringIO()
+        with mock.patch("core.report_service.run_timelog_report", return_value=self.fake_report), mock.patch(
+            "core.anchor_nudge.should_prompt", return_value=True
+        ), mock.patch("core.cli_review_gaps.questionary.select") as select_mock, mock.patch(
+            "core.cli_review_gaps.questionary.confirm"
+        ) as confirm_mock, mock.patch(
+            "core.cli_review_gaps.backup_projects_config_if_exists", return_value=None
+        ), mock.patch(
+            "core.cli_review_gaps.Console",
+            return_value=Console(file=buffer, width=100, force_terminal=False),
+        ):
+            select_mock.return_value.ask.side_effect = select_answers
+            confirm_mock.return_value.ask.side_effect = confirm_answers
+            with self.assertRaises(typer.Exit) as ctx:
+                run_gap_attribution_review(
+                    today=True, projects_config=str(cfg), json_out=False
+                )
+        self.assertEqual(ctx.exception.exit_code, 130)
+        return " ".join(buffer.getvalue().split())
+
+    def setUp(self):
+        self.profiles = [_prof("Acme", ["acme"], customer="Acme Inc")]
+        events = [_event("Worked on acme-alpha implementation") for _ in range(3)]
+        events += [_event("Worked on acme-beta implementation") for _ in range(3)]
+        self.fake_report = _fake_report(self.profiles, events)
+
+    def test_cancel_before_any_write_still_says_nothing_was_written(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            save_projects_config_payload(cfg, {"projects": self.profiles})
+            out = self._run_and_capture([None], [], cfg, self.profiles)
+        self.assertIn("Cancelled before writing config.", out)
+
+    def test_cancel_after_a_write_reports_the_saved_rule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "timelog_projects.json"
+            save_projects_config_payload(cfg, {"projects": self.profiles})
+            out = self._run_and_capture(["Acme", None], [True], cfg, self.profiles)
+
+            saved = load_projects_config_payload(cfg)
+            acme = next(p for p in saved["projects"] if p["name"] == "Acme")
+            self.assertGreater(len(acme["match_terms"]), 1, "the first cluster should have been written")
+
+        self.assertNotIn("Cancelled before writing config.", out)
+        self.assertIn("1 attribution rule was already saved and kept", out)

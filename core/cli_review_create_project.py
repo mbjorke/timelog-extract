@@ -117,7 +117,12 @@ def is_decidable_candidate(row: UrlCandidate) -> bool:
     """True when evidence supports map/create — not mere event volume."""
     if _UNMAPPED_LOVABLE_PREFIX in str(row.title or "").strip().lower():
         return False
-    if _is_lovable_project_url_key(row.url_key) and round(row.impact_hours, 1) == 0.0:
+    # Only a *measured* zero parks a row. An unmeasured impact (None) says
+    # nothing about the candidate, so decidability falls through to the title
+    # and URL-key evidence below — otherwise every candidate from
+    # build_url_candidates, which has no hour signal to attribute, was parked
+    # before its human title was ever considered.
+    if row.impact_hours is not None and round(row.impact_hours, 1) == 0.0:
         return False
     if has_human_title(row.title):
         return True
@@ -252,12 +257,13 @@ def create_project_interactive(
         f"{', '.join(proposal.match_terms)}"
     )
 
+    import typer
     name_answer = questionary.text(
         "Project slug / name:",
         default=proposal.profile_name,
     ).ask()
     if name_answer is None:
-        return None
+        raise typer.Exit(code=130)
     profile_name = str(name_answer).strip()
     if not profile_name:
         console.print("[yellow]Project name cannot be empty.[/yellow]")
@@ -270,7 +276,7 @@ def create_project_interactive(
 
     customer_answer = questionary.text("Customer (who you bill):", default="").ask()
     if customer_answer is None:
-        return None
+        raise typer.Exit(code=130)
     customer = str(customer_answer).strip()
     if not customer:
         console.print("[yellow]Customer cannot be empty.[/yellow]")
@@ -281,7 +287,7 @@ def create_project_interactive(
         default=proposal.display_name or "",
     ).ask()
     if title_answer is None:
-        return None
+        raise typer.Exit(code=130)
 
     terms = list(proposal.match_terms)
     if profile_name.lower() not in {t.lower() for t in terms}:
@@ -296,6 +302,8 @@ def create_project_interactive(
         f"Create project {final.profile_name!r} and write to config now?",
         default=True,
     ).ask()
+    if confirmed is None:
+        raise typer.Exit(code=130)
     if not confirmed:
         return None
 

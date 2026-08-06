@@ -7,20 +7,39 @@ from typing import Annotated, List, Optional
 import typer
 
 from core.cli_app import app
+from core.cli_prompts import cancel_interactive
 
 
 class _ControlChoice:
-    """Sentinel type for control choices in interactive questionary selection."""
+    """A menu action that is not a project.
 
-    def __init__(self, name: str):
-        self.name = name
+    The list mixes configured project names with "Skip this session" and
+    "Cancel". Comparing the answer as a string makes a project actually named
+    `Cancel` indistinguishable from the cancel action, so selecting it would
+    abort instead of binding and leave the session unattributed. Identity
+    against a sentinel cannot collide with any name a user can configure.
+    """
 
-    def __repr__(self) -> str:
-        return self.name
+    __slots__ = ("label",)
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return f"_ControlChoice({self.label!r})"
 
 
 SKIP_SESSION = _ControlChoice("Skip this session")
 CANCEL_MAPPING = _ControlChoice("Cancel")
+
+
+def _bound_note(bound: int) -> bool | str:
+    """What to tell the operator about bindings already written this run."""
+    if bound <= 0:
+        return False
+    if bound == 1:
+        return "1 session binding was"
+    return f"{bound} session bindings were"
 
 
 @app.command("intent")
@@ -144,6 +163,9 @@ def intent(
         )
         return
 
+    # Gate on the terminal before the expensive part: collecting and grouping
+    # the window's events only to reject the run afterwards scans local logs for
+    # nothing. Non-interactive callers exit here having read no files.
     from core.anchor_nudge import should_prompt
     if not should_prompt():
         console.print(
@@ -194,20 +216,23 @@ def intent(
             f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
 
-        choices = []
-        for name in known:
-            choices.append(questionary.Choice(title=name, value=name))
-        choices.append(questionary.Choice(title="Skip this session", value=SKIP_SESSION))
-        choices.append(questionary.Choice(title="Cancel", value=CANCEL_MAPPING))
-
+        # Control actions carry sentinel values, not their labels: a project may
+        # legitimately be named "Cancel", and matching on the string would turn
+        # picking it into an abort.
+        choices = [questionary.Choice(title=name, value=name) for name in known] + [
+            questionary.Choice(title=SKIP_SESSION.label, value=SKIP_SESSION),
+            questionary.Choice(title=CANCEL_MAPPING.label, value=CANCEL_MAPPING),
+        ]
         answer = questionary.select(
             "  Which project?",
             choices=choices,
         ).ask()
 
         if answer is None or answer is CANCEL_MAPPING:
-            console.print(f"[{CLR_VALUE_ORANGE}]Session mapping cancelled.[/{CLR_VALUE_ORANGE}]")
-            raise typer.Exit(code=130)
+            # record_intent() writes each binding as it is made, and the summary
+            # line below is skipped by this exit — so cancelling used to leave
+            # the operator with no count at all for work that had landed.
+            cancel_interactive(console, already_saved=_bound_note(bound))
 
         if answer is SKIP_SESSION:
             console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")

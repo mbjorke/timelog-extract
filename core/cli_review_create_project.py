@@ -117,7 +117,12 @@ def is_decidable_candidate(row: UrlCandidate) -> bool:
     """True when evidence supports map/create — not mere event volume."""
     if _UNMAPPED_LOVABLE_PREFIX in str(row.title or "").strip().lower():
         return False
-    if _is_lovable_project_url_key(row.url_key) and round(row.impact_hours, 1) == 0.0:
+    # Only a *measured* zero parks a row. An unmeasured impact (None) says
+    # nothing about the candidate, so decidability falls through to the title
+    # and URL-key evidence below — otherwise every candidate from
+    # build_url_candidates, which has no hour signal to attribute, was parked
+    # before its human title was ever considered.
+    if row.impact_hours is not None and round(row.impact_hours, 1) == 0.0:
         return False
     if has_human_title(row.title):
         return True

@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from collectors.chrome import chrome_ts
@@ -33,7 +33,12 @@ class UrlCandidate:
     suggested_project: str
     confidence_label: str
     confidence_score: float
-    impact_hours: float
+    # None means "this path never measured impact", which is not the same claim
+    # as 0.0 ("measured, and it is zero"). Only build_url_candidates_from_gap_days
+    # apportions unexplained hours per URL key; build_url_candidates works from
+    # report events and has no hour signal to attribute. Collapsing the two made
+    # every GitHub / Chrome / WordPress candidate look like a zero-impact row.
+    impact_hours: Optional[float]
     events: int
     days: int
     last_seen: str
@@ -112,6 +117,20 @@ def _is_lovable_project_url_key(key: str) -> bool:
     return is_plausible_lovable_project_uuid(host.split(".", 1)[0])
 
 
+def merge_impact_hours(left: Optional[float], right: Optional[float]) -> Optional[float]:
+    """Combine two candidates' impact, keeping "unmeasured" distinct from zero.
+
+    A measured value always wins over an unmeasured one: if either side carries
+    an hour signal, the merged row has one. Only when neither side measured
+    anything does the result stay None.
+    """
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return max(left, right)
+
+
 def _finalize_url_candidates_from_grouped(
     grouped: dict[str, dict[str, Any]],
     *,
@@ -146,7 +165,13 @@ def _finalize_url_candidates_from_grouped(
                 suggested_project=suggested_project,
                 confidence_label=_confidence_label(confidence_score, events),
                 confidence_score=confidence_score,
-                impact_hours=float(bucket.get("impact_hours", 0.0) or 0.0),
+                # Absent key → unmeasured (None). Present → keep the value, including
+                # a real 0.0, which stays a decidability signal.
+                impact_hours=(
+                    None
+                    if bucket.get("impact_hours") is None
+                    else float(bucket["impact_hours"])
+                ),
                 events=events,
                 days=len(bucket["days"]),
                 last_seen=(
@@ -295,7 +320,7 @@ def merge_url_candidate_lists(*lists: list[UrlCandidate], max_rows: int) -> list
                 suggested_project=row.suggested_project if row.confidence_score >= prev.confidence_score else prev.suggested_project,
                 confidence_label=row.confidence_label if row.confidence_score >= prev.confidence_score else prev.confidence_label,
                 confidence_score=max(prev.confidence_score, row.confidence_score),
-                impact_hours=max(prev.impact_hours, row.impact_hours),
+                impact_hours=merge_impact_hours(prev.impact_hours, row.impact_hours),
                 events=prev.events + row.events,
                 days=max(prev.days, row.days),
                 last_seen=max(prev.last_seen, row.last_seen),

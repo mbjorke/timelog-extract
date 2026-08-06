@@ -67,7 +67,7 @@ Beta testing proved it was not: `collectors/cursor_composer.py` laid a 14-minute
 heartbeat grid across each composer thread's entire `createdAt → lastUpdatedAt`
 span. Long-lived threads (days–weeks) fabricated continuous activity around the
 clock, so the 15-minute session gap never closed and whole days merged into single
-~24h sessions. 27 of 30 days collapsed; client-b read 293.8h for one month.
+~24h sessions. 27 of 30 days collapsed; client-b read 180.0h for one month.
 
 Fixed by switching to **bounded bursts anchored on real touches** (createdAt,
 lastUpdatedAt, checkpoints, branch interactions); idle gaps are no longer filled.

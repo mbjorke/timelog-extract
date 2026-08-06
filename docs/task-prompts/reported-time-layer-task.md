@@ -11,7 +11,7 @@ designed the `reported_time` record (states `proposed`/`confirmed`/`edited`/
 `dismissed`); this task-prompt slices the build into phases and tracks status.
 
 **Amendment (invoice lens):** gittan systematically UNDERCOUNTS — it can't see
-SFTP, mail, phone/in-person meetings, or other machines (CLIENT A mars: 18.75h billed
+SFTP, mail, phone/in-person meetings, or other machines (CLIENT A mars: 12.00h billed
 vs ~3.0h observed). Observed is the **floor, not the ceiling**, so the layer must
 let the user **add net-new manual time** with no observed origin. Implemented as
 `source="manual"` with nullable `origin_ref` but a **required note** (never a

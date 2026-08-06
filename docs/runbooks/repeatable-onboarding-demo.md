@@ -103,7 +103,7 @@ Use this order on stage/recording:
 
 Canonical demo seed set (use these names in setup prompts):
 
-- `Client-b` -> customer `pdc`
+- `Client-b` -> customer `customer-a`
 - `Client-c` -> customer `blueberry`
 - `Gittan` -> customer `blueberry`
 - include other `blueberry-*` projects under customer `blueberry`

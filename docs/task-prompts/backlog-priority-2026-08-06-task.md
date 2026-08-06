@@ -9,13 +9,17 @@ noticing.
 
 - story_id: `GH-513` (https://github.com/mbjorke/timelog-extract/issues/513)
 - spec_status: approved
-- implementation_status: n/a (planning artifact — no code)
+- implementation_status: not built (planning artifact — no code)
 - created_at: 2026-08-06
 - last_updated_at: 2026-08-06
 - implementation.pr: pending
 - implementation.branch: `claude/many-open-prs-y8lun4`
 - implementation.commits: []
-- validation.evidence: this document (planning pass; labels applied, stragglers closed)
+- validation.evidence:
+  - labels applied: #431 `priority:now`, #515 `priority:now`, #416 `priority:next`
+  - stragglers closed as completed: #473 (by #497), #454 (by #488)
+  - spec promoted to an issue: #515
+  - this pass: #513 · PR #514
 - validation.decision: GO
 - changelog:
   - 2026-08-06: Added #515 to `now` — prevention outranks cleanup, per the
@@ -231,7 +235,7 @@ Scenario: A committed doc carries no live client identifier
 ### Unchanged `next`
 
 #454's closure does not move #414, #419, #448 or #327. #267 (work-unit v2),
-#254 (shadow log slice 1) and #264 (setup write safety) keep their band.
+Issue #254 (shadow log slice 1) and #264 (setup write safety) keep their band.
 
 ## later / do not build yet
 

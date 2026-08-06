@@ -17,7 +17,7 @@ worktrees this is fragile:
 
 A leaf-pattern heuristic cannot fix the anchor leak: a Claude worktree leaf
 (`confident-hopper-fe58c2`, `<slug>-<hex>`) is byte-for-byte indistinguishable
-from a real Lovable-renamed repo (`client-d-portal-dev-31e799cf`). A
+from a real Lovable-renamed repo (`sample-project-dev-00000000`). A
 `<slug>-<hex>` filter therefore produces false positives on real projects and
 was deliberately rejected. The only reliable signal is the **path** (a leaf
 under `.claude/worktrees/`) or the **remote slug**, which this spec uses.

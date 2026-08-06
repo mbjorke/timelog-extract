@@ -54,7 +54,7 @@ For now, we also have a temporary demo page at **[https://gittan-sales.lovable.a
   - "That is not enough when someone asks what happened and why the hours are real."
 2. **Show setup-first workflow**
   - Prove empty start (`EMPTY_START_OK`) so audience sees no hidden seed data.
-  - Use canonical demo seeds: `Client-b (pdc)`, `Client-c (blueberry)`, `Gittan (blueberry)`, plus other `blueberry-*` projects.
+  - Use canonical demo seeds: `Client-b (customer-a)`, `Client-c (blueberry)`, `Gittan (blueberry)`, plus other `blueberry-*` projects.
   - Run `gittan setup` and highlight project/customer bootstrap.
   - Open `timelog_projects.json` and show quality from scratch (projects, customers, match terms).
   - Show `TIMELOG.md` presence in demo home to anchor local-first evidence.

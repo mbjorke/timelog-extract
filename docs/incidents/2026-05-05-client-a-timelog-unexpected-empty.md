@@ -17,16 +17,16 @@
 ## Observed facts
 
 - Empty file observed:
-  - `$HOME/Workspace/Project/client-a/TIMELOG.md` (`0` bytes)
+  - `<workspace>/client-a/TIMELOG.md` (`0` bytes)
 - Recoverable source found:
-  - `$HOME/Workspace/Project/client-a/worklog.txt` (`4606` bytes)
+  - `<workspace>/client-a/worklog.txt` (`4606` bytes)
 - No committed `TIMELOG.md` history in that repo was available for direct git restore.
 
 ## Recovery actions
 
 - Backed up current targets:
-  - `$HOME/Workspace/Project/client-a/TIMELOG.md.backup.20260505-165015`
-  - `$HOME/.gittan/worklogs/client-a.md.backup.20260505-165015`
+  - `<workspace>/client-a/TIMELOG.md.backup.20260505-165015`
+  - `~/.gittan/worklogs/client-a.md.backup.20260505-165015`
 - Restored:
   - copied `worklog.txt` -> `client-a/TIMELOG.md`
 - Synced central store:

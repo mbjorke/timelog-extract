@@ -91,7 +91,8 @@ Scenario: A clean issue is left alone
 Scenario: An edit that removes the term clears the flag
   Given a flagged issue
   When its body is edited so no term matches
-  Then the privacy:review label is removed
+  Then the current body and every comment are rechecked
+  And the privacy:review label is removed only when no surface matches
 
 Scenario: A fork without the secret degrades to skipped, never to a leak
   Given a repository or run with no term list configured
@@ -136,6 +137,10 @@ drift, and the drift will be discovered by a leak.
 
 ## Acceptance
 
+- The label is issue-scoped while the check reads several mutable surfaces, so
+  clearing it requires re-reading all of them. Removing it on a body edit while
+  a comment still matches would hide the finding — which is how the larger half
+  of #431 stayed invisible in the first place.
 - An issue **or comment** carrying a term from the secret is labelled and
   reported within one workflow run, whether its author is a human or an app.
 - A three-character term is either detected, or its non-detection is a stated,
@@ -157,6 +162,34 @@ drift, and the drift will be discovered by a leak.
   planted, non-client term in the secret; confirm the comment, the label, and
   that the term appears in neither the comment nor the run log.
 - Confirm the fork path by running the workflow with the secret unset.
+
+## The term list is not the whole leak surface
+
+Found while cleaning #431: a reviewer flagged four categories of business data
+in docs the guard had just passed as clean.
+
+| Leaked | Why the guard cannot see it |
+| --- | --- |
+| `$HOME/Workspace/Project/…` | a home-directory path is not a project name |
+| Real billed hours (`18.75h`) | a number is not a term |
+| A customer code in demo seed data | too short, and not in `projects[]` |
+| A repo slug with its hash | derived from a name, not equal to one |
+
+`check_docs_no_client_data.py` derives its terms from `projects[]` in
+`timelog_projects.json` — names, `match_terms`, `tracked_urls`. Everything above
+is real business data that never appears in that file, so a clean run says
+"no configured project name is present", not "no client data is present".
+
+`AGENTS.md` already forbids all four ("**real hours/amounts per project or
+client**, … invoice/ledger figures, and **live config values**"), but only prose
+enforces it. Whatever #515 builds inherits the same gap unless it adds
+pattern-based rules alongside the term list — a plausible first set being
+`$HOME/…` paths, decimal figures next to `h`/`hours`/`SEK`, and slugs ending in
+a hex suffix.
+
+Worth being blunt about the implication: **a clean guard run is weaker evidence
+than it reads as.** The docs pass on #514 was verified clean by the guard and
+still carried four leaks.
 
 ## Known limit inherited from the matcher
 

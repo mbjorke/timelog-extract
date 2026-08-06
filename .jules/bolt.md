@@ -42,3 +42,34 @@
 ## 2026-08-02 - [Optimize Session Presence and Attendance Classification Loops]
 **Learning:** Checking whether every event source is a presence signal, and classifying attendance, runs constantly in the session aggregation loops. `session_is_presence_signal_only` allocated a set of sources and did a subset comparison; iterating with an early `False` return avoids the allocation entirely. `classify_attendance` can break once both flags are set.
 **Action:** Prefer short-circuiting iteration over set-building in hot aggregation paths. Replace residual `strptime` with `fromisoformat` where floor-safe on Python 3.10. Preserve empty/missing-`source` handling exactly — it feeds `presence_hours`, which is subtracted from billable time, so a "cleanup" there is a billing change.
+
+## 2026-08-06 - [Unlanded work, kept for the record]
+These two optimisations were measured and written but never merged; the PRs
+were closed when the scheduled agents were retired. The finding is worth
+keeping even though the diff is not — if either cost shows up in a real run,
+start here rather than rediscovering it.
+
+**Collector I/O via log mtime filtering (closed #485).** IDE and agent log
+files are append-only, so a file whose `st_mtime` predates the query window
+start cannot contain an in-window event. Checking `st_mtime` before opening
+skips parsing stale logs entirely — the claim was an near-instant startup for
+`--today` runs on a large logs directory. Touches six collectors plus
+`core/git_activity_discovery.py`. Wrap the stat in `try/except OSError`; files
+disappear mid-scan. Unverified caveat: this assumes mtime is trustworthy, so a
+restored backup or a synced directory that rewrites mtimes could hide events.
+That is the thing to test first if it is ever revisited.
+
+**Set intersection and fingerprint construction (closed #479).** In
+`classify_project`, `matched = fast_terms.keys() & word_set` replaces a manual
+`for ... add()` loop and runs the intersection at C speed; `tuple([...])` beats
+`tuple(...)` for the cache fingerprint because a list comprehension avoids
+generator overhead. Also skips `_normalized_url_variants()` when `"http"` is
+not in the text, which is safe because the URL regex cannot match without it.
+Touches `core/domain.py` and `core/work_unit_classifier.py` — attribution
+paths, so any revisit needs a real-data before/after, not only a benchmark.
+
+**Method note.** Both were benchmarked with `scripts/bench_hotpath.py` against
+a synthetic dataset. A synthetic 50k-event set exercises the loop but not the
+shape of real evidence, so a percentage there is a hypothesis about the real
+run, not a measurement of it. Prefer a broad profile of one real report over a
+sequence of narrow micro-optimisations.

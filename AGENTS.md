@@ -323,3 +323,51 @@ update `last_updated_at` and append a short note to `changelog`.
 - If a spec has no implementation yet, `implementation_status` must explicitly
 be `not built` (never implicit).
 
+## Cursor Cloud specific instructions
+
+Gittan is a single local-first Python CLI (`gittan` / `timelog-extract`); the
+`cursor-extension`, static landing site, and demo API are optional companions.
+Standard commands live in `CLAUDE.md` (Commands) and `scripts/` — reference those
+rather than re-deriving them. Notes below are the non-obvious caveats for this
+Linux cloud VM.
+
+- **Use the repo venv.** The startup/update script maintains `.venv` at the repo
+  root via an editable install (`.venv/bin/python -m pip install -e '.[dev]'`).
+  Run tools as `.venv/bin/gittan`, `.venv/bin/ruff`, or `source .venv/bin/activate`
+  first. `scripts/run_lint.sh` auto-prefers `.venv/bin/ruff`, so lint/autotests
+  work without activation. Creating the venv needs the `python3.12-venv` apt
+  package (part of the VM image/snapshot, not the update script).
+- **Most collectors are macOS-only, so on this Linux VM they return no events —
+  this is expected, not a failure.** A bare `gittan report --today` prints
+  "No events found." Always pass `--screen-time off` (Screen Time is macOS-only).
+- **To exercise the pipeline end-to-end here, feed it worklog data.** The block
+  below creates its own throwaway fixture with `mktemp -d`, so it reproduces on
+  a fresh VM and cannot pick up stale data from an earlier run. Worklog
+  `## YYYY-MM-DD HH:MM` entries whose text matches a profile's `match_terms`
+  flow through classify → sessions → project-hour report:
+
+  ```bash
+  DEMO="$(mktemp -d)"
+  cat > "$DEMO/timelog_projects.json" <<'JSON'
+  {"projects": [{"name": "project-alpha", "match_terms": ["alpha"]}], "worklog": "TIMELOG.md"}
+  JSON
+  printf '# TIMELOG\n\n## %s 09:15\n- alpha: drafted the intake form\n\n## %s 13:40\n- alpha: reviewed the intake form\n' \
+    "$(date +%F)" "$(date +%F)" > "$DEMO/TIMELOG.md"
+
+  CFG=(--projects-config "$DEMO/timelog_projects.json" --worklog "$DEMO/TIMELOG.md")
+
+  # Terminal report — expect two project-alpha sessions.
+  gittan report --today --screen-time off "${CFG[@]}"
+
+  # The exports, which the terminal run does not cover.
+  gittan report --today --screen-time off "${CFG[@]}" --format json --json-file "$DEMO/report.json"
+  gittan report --today --screen-time off "${CFG[@]}" --report-html "$DEMO/report.html"
+
+  rm -rf "$DEMO"
+  ```
+- **Never touch or auto-create the real `timelog_projects.json` / `TIMELOG.md`**
+  (see Git Safety above). For any demo/experiment always use `--projects-config`
+  and `--worklog` with throwaway paths under `/tmp`.
+- **Cursor extension (optional):** `cd cursor-extension && npm install && npm run build`
+  (Node 22, `tsc` only — no bundler/dev server). It is not needed to test the CLI.
+

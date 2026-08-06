@@ -38,10 +38,13 @@ class _RejectHttpRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
+_jira_opener = None
 
 
 def urlopen(req: Request, timeout: int = 20):
+    global _jira_opener
+    if _jira_opener is None:
+        _jira_opener = build_opener(_RejectHttpRedirectHandler(), HTTPSHandler())
     return _jira_opener.open(req, timeout=timeout)
 
 

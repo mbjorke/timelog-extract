@@ -296,7 +296,7 @@ Feature: Git-only column in gittan status
 - spec_status: draft (reopened 2026-06-15 after accuracy regression)
 - implementation_status: P2 shipped; P1 column withdrawn pending accuracy net
 - created_at: 2026-06-12
-- last_updated_at: 2026-06-15
+- last_updated_at: 2026-08-06
 - implementation.pr: #147 (P1 + P2)
 - implementation.branch: task/repo-time-totals
 - implementation.commits: []
@@ -309,6 +309,7 @@ Feature: Git-only column in gittan status
   - session-integrity fix in `collectors/cursor_composer.py` (burst-per-touch)
   - follow-up backlog: accuracy guardrails, golden telemetry fixture, P1 column removal
 - changelog:
+  - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-12: Initial draft. Feature shaped from beta tester request and product-owner planning session. Prerequisite PR #144 (repo_slug.py) confirmed merged.
   - 2026-06-15: Reopened after beta testing exposed period-`Hours` day-collapse
     (composer heartbeat fill). Documented session-integrity dependency, withdrew

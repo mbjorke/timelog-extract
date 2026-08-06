@@ -214,7 +214,7 @@ Python file over 500 lines.
   (#194), Phase 3b (per-issue mapping) built (this PR, stacked on #194);
   Phases 4–5 + Calendar not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-06-26
+- last_updated_at: 2026-08-06
 - implementation.pr: #186 (merged), #187 (merged), #190 (merged, Phase 2b),
   #194 (Phase 3), this PR (#196, Phase 3b — stacked on #194)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
@@ -230,6 +230,7 @@ Python file over 500 lines.
   - policy: [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md)
   - invoice reality: gittan undercount (see Context)
 - changelog:
+  - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-25: Backfilled from a local plan-mode file into a committed task-prompt
     after Phases 1–2 had already shipped (#186/#187) without a traceable spec —
     the exact gap the product-owner skill update now prevents. Locked decisions

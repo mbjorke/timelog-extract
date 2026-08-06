@@ -18,6 +18,8 @@ noticing.
 - validation.evidence: this document (planning pass; labels applied, stragglers closed)
 - validation.decision: GO
 - changelog:
+  - 2026-08-06: Added #515 to `now` — prevention outranks cleanup, per the
+    maintainer. Renumbered the `now` list.
   - 2026-08-06: Scope correction on #431 — the issue thread holds ~278 term
     occurrences vs ~22 docs lines, and its body listed the terms in clear
     (now masked). Decision 2 retired: the runtime-config guard already exists
@@ -156,7 +158,25 @@ Scenario: A committed doc carries no live client identifier
   knowing what it was meant to demonstrate. An agent can find the occurrences;
   it should not invent the replacements unaided.
 
-### 2. GH-414 — Chrome dashboard-work evaporation
+### 2. GH-515 — prevent client data reaching issues, PR bodies and comments
+
+- priority: **now** (new; split from #431)
+- problem: `check_docs_no_client_data.py` guards the working tree. Issue
+  bodies, PR descriptions and comments never pass through git, so no hook and
+  no existing CI check can see them — and that is where every occurrence
+  measured today actually lives.
+- user value: #431 is a one-time cleanup; without this the surface reopens the
+  next time someone pastes local output into an issue.
+- spec: `docs/task-prompts/prevent-client-data-in-issues-task.md`
+- **why this outranks the cleanup:** the maintainer's own framing — stopping
+  new leaks matters more than removing old ones. It is also the half that does
+  not require judgment per occurrence, so it costs less of the scarce resource.
+- key constraint: agent sessions cannot self-check. A hosted session has no
+  access to the local `timelog_projects.json`, so for agent-authored text a
+  server-side check is the only place a guard can exist at all.
+- dependencies: #429 (matcher). Independent of #431 in both directions.
+
+### 3. GH-414 — Chrome dashboard-work evaporation
 
 - priority: **now** (unchanged)
 - problem: per-URL-per-day thinning drops work that happened, so reported hours
@@ -172,7 +192,7 @@ Scenario: A committed doc carries no live client identifier
 - **Why first among the accuracy bugs:** verification is entirely automatic.
   Under a reduced time budget this is the cheapest correctness win available.
 
-### 3. GH-448 — Lovable Desktop: open-app cache ≠ authorship
+### 4. GH-448 — Lovable Desktop: open-app cache ≠ authorship
 
 - priority: **now** (unchanged)
 - problem: ambient cache/storage mtimes from an open app produce ghost projects

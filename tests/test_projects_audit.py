@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from rich import table as rich_table
 from typer.testing import CliRunner
 
 from core.cli import app
@@ -413,6 +414,48 @@ class ProjectsAuditTests(unittest.TestCase):
 
         os.close(fd)
         return path
+
+
+class ProjectsAuditTableStylingTests(unittest.TestCase):
+    """Both tables use the shared theme rather than Rich defaults.
+
+    Asserting on the constructor arguments rather than the rendered output:
+    a border style is an ANSI colour that Rich strips when stdout is not a
+    terminal, so a text assertion would pass on an unstyled table.
+    """
+
+    def _tables_built_by_projects_audit(self):
+        from rich import box
+
+        from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL
+
+        built = []
+        real_table = rich_table.Table
+
+        def _recording_table(*args, **kwargs):
+            built.append(kwargs)
+            return real_table(*args, **kwargs)
+
+        payload = {
+            "event_count": 1,
+            "hit_definition": "definition",
+            "rows": [],
+            "top_signals": [],
+            "top_signals_note": "",
+        }
+        with patch("rich.table.Table", side_effect=_recording_table), patch(
+            "core.report_service.run_timelog_report"
+        ), patch("core.projects_audit.build_projects_audit_payload", return_value=payload):
+            CliRunner().invoke(app, ["projects-audit", "--today"])
+        return built, box.ROUNDED, STYLE_BORDER, STYLE_LABEL
+
+    def test_audit_table_uses_rounded_box_and_theme_tokens(self):
+        built, rounded, border, label = self._tables_built_by_projects_audit()
+        self.assertTrue(built, "projects-audit built no table")
+        for kwargs in built:
+            self.assertIs(kwargs.get("box"), rounded)
+            self.assertEqual(kwargs.get("border_style"), border)
+            self.assertEqual(kwargs.get("header_style"), f"bold {label}")
 
 
 if __name__ == "__main__":

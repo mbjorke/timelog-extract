@@ -123,10 +123,12 @@ def projects_audit(
     ] = False,
 ) -> None:
     """Count match_terms / tracked_urls hits over deduped collector events (read-only)."""
+    from rich import box
     from rich.console import Console
     from rich.table import Table
 
     from core.report_service import run_timelog_report
+    from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL
 
     console = Console()
 
@@ -209,7 +211,12 @@ def projects_audit(
         f"{payload['event_count']} deduped events, {df} → {dt}"
     )
     console.print(f"[dim]{payload['hit_definition']}[/dim]")
-    table = Table(show_header=True, header_style="bold")
+    table = Table(
+        show_header=True,
+        box=box.ROUNDED,
+        border_style=STYLE_BORDER,
+        header_style=f"bold {STYLE_LABEL}",
+    )
     table.add_column("Project")
     table.add_column("Rule")
     table.add_column("Hits", justify="right")
@@ -230,7 +237,12 @@ def projects_audit(
     if int(max_top_hosts) > 0 and payload.get("top_signals"):
         console.print()
         console.print(f"[dim]{payload.get('top_signals_note', '')}[/dim]")
-        st = Table(show_header=True, header_style="bold")
+        st = Table(
+            show_header=True,
+            box=box.ROUNDED,
+            border_style=STYLE_BORDER,
+            header_style=f"bold {STYLE_LABEL}",
+        )
         st.add_column("Kind")
         st.add_column("Signal")
         st.add_column("Rule", justify="center")

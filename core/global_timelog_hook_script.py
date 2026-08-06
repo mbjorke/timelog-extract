@@ -8,10 +8,15 @@ from textwrap import dedent
 # would defeat dedent() and leave the shebang indented — a broken shebang
 # means git runs the hook under sh, where zsh's ${VAR:A} aborts the script.
 _RESOLVER_PY = """\
-import json, os, re, sys
+import hashlib, json, os, re, sys
 
 home = os.path.expanduser("~")
-cfg = os.environ.get("GITTAN_PROJECTS_CONFIG") or os.path.join(home, ".gittan", "timelog_projects.json")
+# One state root, matching core/evidence_store.py::spool_dir(): $GITTAN_HOME
+# *is* the data dir when set. Writing to $HOME/.gittan while capture_events()
+# drains $GITTAN_HOME left the event permanently undrained.
+_env_root = (os.environ.get("GITTAN_HOME") or "").strip()
+state_root = os.path.expanduser(_env_root) if _env_root else os.path.join(home, ".gittan")
+cfg = os.environ.get("GITTAN_PROJECTS_CONFIG") or os.path.join(state_root, "timelog_projects.json")
 repo = os.environ.get("GITTAN_HOOK_REPO", "")
 
 
@@ -52,7 +57,7 @@ for profile in profiles:
                 path = os.path.join(os.path.dirname(cfg), path)
             worklog_path = path
         else:
-            worklog_path = os.path.join(home, ".gittan", "worklogs", identity + ".md")
+            worklog_path = os.path.join(state_root, "worklogs", identity + ".md")
         break
 
 if worklog_path:
@@ -80,10 +85,49 @@ try:
                 }
             }
             try:
-                from core.evidence_store import capture_events
-                capture_events([event], home=Path(home))
+                spool_dir = Path(state_root) / "spool"
+                spool_dir.mkdir(parents=True, exist_ok=True)
+                name_part = commit_hash if commit_hash else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+                # Scope the name by repo, not by pid. Two repositories can in
+                # principle produce the same commit hash — byte-identical commit
+                # objects, e.g. two empty initial commits made in the same second
+                # by the same author — and then one os.replace() would silently
+                # overwrite the other's event. Repo is the axis that actually
+                # separates them.
+                #
+                # Deliberately NOT a pid or random suffix: the hash in the name is
+                # what makes re-spooling the same commit idempotent. Uniquifying
+                # per run would instead write two files whose events carry
+                # different `timestamp` values, and since the dedup fingerprint is
+                # (source, observed_at, detail), they would survive as two records
+                # for one commit.
+                # norm() alone is lossy — "repo-a" and "repo_a" collapse to the
+                # same slug, so a shared commit hash would still overwrite. The
+                # digest mirrors _device_slug() in core/evidence_store.py; the
+                # readable stem is kept for humans.
+                #
+                # The digest is over the repo's absolute path, not its basename:
+                # ~/work/api and ~/personal/api are different repositories with
+                # the same name, and hashing the name alone leaves them sharing
+                # one spool file. Path here is a transient queue key only — it
+                # must not reach the worklog filename, where a path-derived id
+                # splits one project across worktrees and moved checkouts
+                # (tests/test_global_timelog_hook_script.py::
+                # test_never_derives_worklog_name_from_path_hash).
+                repo_stem = norm(repo) or "unknown-repo"
+                repo_key = os.environ.get("GITTAN_HOOK_REPO_PATH", "") or repo or ""
+                repo_digest = hashlib.sha256(repo_key.encode("utf-8")).hexdigest()[:12]
+                repo_part = f"{repo_stem}-{repo_digest}"
+                spool_file = spool_dir / f"commit-{repo_part}-{name_part}.json"
+                # Publish atomically: the drainer globs "*.json" and unlinks
+                # anything it cannot parse, so a half-written file is a silently
+                # lost commit event. The temp name ends in .tmp, outside that glob.
+                temp_file = spool_file.with_suffix(f".{os.getpid()}.tmp")
+                with temp_file.open("w", encoding="utf-8") as sf:
+                    json.dump(event, sf, ensure_ascii=False)
+                os.replace(temp_file, spool_file)
             except Exception as exc:
-                err_file = Path(home) / ".gittan" / "capture-errors.jsonl"
+                err_file = Path(state_root) / "capture-errors.jsonl"
                 try:
                     err_file.parent.mkdir(parents=True, exist_ok=True)
                     with err_file.open("a", encoding="utf-8") as ef:
@@ -151,7 +195,7 @@ HOOK_BODY = dedent(
     GITTAN_HOOK_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
     GITTAN_HOOK_HASH="$(git rev-parse HEAD 2>/dev/null || true)"
     SUBJECT="$(git log -1 --pretty=%s)"
-    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" GITTAN_HOOK_BRANCH="$GITTAN_HOOK_BRANCH" GITTAN_HOOK_SUBJECT="$SUBJECT" GITTAN_HOOK_HASH="$GITTAN_HOOK_HASH" python3 -c '
+    PROJECT_WORKLOG="$(GITTAN_HOOK_REPO="$REPO_BASENAME" GITTAN_HOOK_REPO_PATH="$ROOT_DIR" GITTAN_HOOK_BRANCH="$GITTAN_HOOK_BRANCH" GITTAN_HOOK_SUBJECT="$SUBJECT" GITTAN_HOOK_HASH="$GITTAN_HOOK_HASH" python3 -c '
     @RESOLVER_PY@' 2>/dev/null || true)"
     if [[ -z "${PROJECT_WORKLOG:-}" ]]; then
       # Unknown repo: still central, still no hash — a plain name a human can

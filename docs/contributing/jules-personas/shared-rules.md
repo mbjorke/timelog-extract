@@ -1,7 +1,7 @@
 # Shared rules — every Jules persona
 
 Status: active
-Last updated: 2026-08-04
+Last updated: 2026-08-06
 
 Applies to Bolt, Palette **and** Sentinel. Read this before any work, every run.
 
@@ -65,3 +65,38 @@ of which agent produced it, because they all push through the maintainer's
 credentials. Commits are honest: `google-labs-jules[bot]`, `Cursor Agent`,
 `Claude`. A branch carrying more than one of those has already been worked on by
 someone else — leave it alone rather than pushing over their changes.
+
+## Never rewrite a fix that answered a review thread
+
+If a commit you did not author is the reply to a review finding, it is settled.
+Do not restate it, tidy it, or replace it with your own version of the same
+idea. Reply in the thread if you disagree; do not push over it.
+
+Two rules follow from that, and both are absolute:
+
+**Never delete a test.** Not to simplify it, not to fold it into another case,
+not because it looks redundant. A test written against a review finding is the
+only thing keeping that finding fixed. On #499 the same two tests were deleted
+three times, including
+`test_report_with_all_events_alias_keeps_report_guidance` — the regression test
+for the exact defect that PR existed to fix.
+
+**Never delete a comment that explains why.** A comment saying "not X, because
+X breaks Y" is what stops the next run from re-introducing X. Deleting it and
+keeping the code is how a fix survives one round and dies the next.
+
+## A test that cannot fail is worse than no test
+
+Before adding or changing a test, break the code it covers and confirm the test
+goes red. If it stays green, it is decoration and it will hide the next
+regression.
+
+Two shapes that pass while proving nothing, both seen on this repo:
+
+- **One mock shared across cases.** `assert_any_call` matches *cumulatively*, so
+  case 5 is satisfied by the call case 2 made. Either use `reset_mock()` between
+  cases or read `call_args` per case — better, split them into separate test
+  methods.
+- **Mocking the thing under test.** Patching `print_command_hero` and asserting
+  it was called cannot observe that `print_command_hero` resolves an unknown
+  name to the wrong hero. Assert on the rendered result, not on the call.

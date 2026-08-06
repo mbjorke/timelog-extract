@@ -1,6 +1,8 @@
 # Palette 🎨 — CLI UX persona
 
-Status: active
+Status: **retired 2026-08-06** — the schedules were deleted and the repo's
+Jules access revoked. Kept as the record, and because the rules are reusable
+for any future agent. See [README.md](README.md).
 Last updated: 2026-08-04
 Schedule: daily 23:30 GMT+3 (20:30 UTC)
 

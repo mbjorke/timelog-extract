@@ -7,6 +7,39 @@ from typing import Annotated, List, Optional
 import typer
 
 from core.cli_app import app
+from core.cli_prompts import cancel_interactive
+
+
+class _ControlChoice:
+    """A menu action that is not a project.
+
+    The list mixes configured project names with "Skip this session" and
+    "Cancel". Comparing the answer as a string makes a project actually named
+    `Cancel` indistinguishable from the cancel action, so selecting it would
+    abort instead of binding and leave the session unattributed. Identity
+    against a sentinel cannot collide with any name a user can configure.
+    """
+
+    __slots__ = ("label",)
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return f"_ControlChoice({self.label!r})"
+
+
+SKIP_SESSION = _ControlChoice("Skip this session")
+CANCEL_MAPPING = _ControlChoice("Cancel")
+
+
+def _bound_note(bound: int) -> bool | str:
+    """What to tell the operator about bindings already written this run."""
+    if bound <= 0:
+        return False
+    if bound == 1:
+        return "1 session binding was"
+    return f"{bound} session bindings were"
 
 
 @app.command("intent")
@@ -53,7 +86,11 @@ def intent(
     if list_only:
         bindings = resolve_intents(home=home)
         if not bindings:
-            console.print(f"[{STYLE_MUTED}]No session bindings yet ({escape(str(intent_path(home)))}).[/{STYLE_MUTED}]")
+            console.print(f"[{CLR_VALUE_ORANGE}]No active session bindings found.[/{CLR_VALUE_ORANGE}]")
+            console.print(
+                f"[{STYLE_MUTED}]Next: Run `gittan intent` with no options to map "
+                f"unattributed sessions interactively.[/{STYLE_MUTED}]"
+            )
             return
         console.print(f"[bold {STYLE_LABEL}]Session bindings[/bold {STYLE_LABEL}] — {len(bindings)}")
         for (_kind, key), record in sorted(bindings.items(), key=lambda item: item[1]["captured_at"], reverse=True):
@@ -126,6 +163,16 @@ def intent(
         )
         return
 
+    # Gate on the terminal before the expensive part: collecting and grouping
+    # the window's events only to reject the run afterwards scans local logs for
+    # nothing. Non-interactive callers exit here having read no files.
+    from core.anchor_nudge import should_prompt
+    if not should_prompt():
+        console.print(
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Interactive mapping requires an interactive terminal.[/{CLR_VALUE_ORANGE}]"
+        )
+        raise typer.Exit(code=1)
+
     # Interactive: collect the window's events, then ask about each unbound session.
     dt_from, dt_to = get_date_range(date_from, date_to, local_tz)
     from core.session_capture import collect_device_events, device_name
@@ -136,16 +183,21 @@ def intent(
     rows = unbound_sessions(events, home=home)
     if not rows:
         console.print(
-            f"[{STYLE_MUTED}]No unattributed sessions in this window — nothing to ask.[/{STYLE_MUTED}]"
+            f"[{CLR_VALUE_ORANGE}]No unattributed sessions in this window.[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(
+            f"[{STYLE_MUTED}]Next: run `gittan report --today --source-summary` to inspect current work.[/{STYLE_MUTED}]"
         )
         return
+
+    import questionary
 
     console.print(
         f"[bold {STYLE_LABEL}]Unattributed sessions[/bold {STYLE_LABEL}] — {len(rows)} to decide"
     )
     if known:
         console.print(f"[{STYLE_MUTED}]Projects: {', '.join(known)}[/{STYLE_MUTED}]")
-    console.print(f"[{STYLE_MUTED}]Enter a project name, or blank to skip.[/{STYLE_MUTED}]\n")
+    console.print(f"[{STYLE_MUTED}]Select a project for each session below.[/{STYLE_MUTED}]\n")
 
     bound = 0
     for row in rows:
@@ -163,29 +215,32 @@ def intent(
             f"[{STYLE_MUTED}]{escape(str(row['source']))} · {escape(str(span))} · "
             f"{row['events']} event(s) · {escape(str(row['session']))}[/{STYLE_MUTED}]"
         )
-        # Re-ask on a name we do not know rather than recording it: blank always
-        # skips, so this cannot trap the operator in a loop.
-        while True:
-            answer = typer.prompt("  Which project?", default="", show_default=False).strip()
-            if not answer:
-                console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
-                break
-            if not known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]No configured projects to bind "
-                    f"to.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            if answer not in known:
-                console.print(
-                    f"  {FAIL_ICON} [{CLR_VALUE_ORANGE}]{escape(answer)!r} is not a configured "
-                    f"project.[/{CLR_VALUE_ORANGE}] [{STYLE_MUTED}]Blank to skip.[/{STYLE_MUTED}]"
-                )
-                continue
-            record_intent(row["session"], answer, via="intent-prompt", home=home)
-            console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
-            bound += 1
-            break
+
+        # Control actions carry sentinel values, not their labels: a project may
+        # legitimately be named "Cancel", and matching on the string would turn
+        # picking it into an abort.
+        choices = [questionary.Choice(title=name, value=name) for name in known] + [
+            questionary.Choice(title=SKIP_SESSION.label, value=SKIP_SESSION),
+            questionary.Choice(title=CANCEL_MAPPING.label, value=CANCEL_MAPPING),
+        ]
+        answer = questionary.select(
+            "  Which project?",
+            choices=choices,
+        ).ask()
+
+        if answer is None or answer is CANCEL_MAPPING:
+            # record_intent() writes each binding as it is made, and the summary
+            # line below is skipped by this exit — so cancelling used to leave
+            # the operator with no count at all for work that had landed.
+            cancel_interactive(console, already_saved=_bound_note(bound))
+
+        if answer is SKIP_SESSION:
+            console.print(f"[{STYLE_MUTED}]  skipped[/{STYLE_MUTED}]\n")
+            continue
+
+        record_intent(row["session"], answer, via="intent-prompt", home=home)
+        console.print(f"  bound → [{CLR_VALUE_ORANGE}]{escape(answer)}[/{CLR_VALUE_ORANGE}]\n")
+        bound += 1
 
     console.print(
         f"{bound} session(s) bound. "

@@ -11,7 +11,7 @@
 
 ## Impact
 
-- Per-project TIMELOG evidence for `CLIENT A: Membra` was missing from runs while the file was empty.
+- Per-project TIMELOG evidence for `CLIENT A: LINE 2` was missing from runs while the file was empty.
 - This could reduce confidence in March attribution/reconciliation.
 
 ## Observed facts

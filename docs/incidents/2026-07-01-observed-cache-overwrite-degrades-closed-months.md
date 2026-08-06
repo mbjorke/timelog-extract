@@ -33,7 +33,7 @@
 
 - The **config trim** (removal of 31 zero-hit noise rules) was verified zero-impact: a per-line
   before/after comparison (pre-trim backup config vs trimmed config) was **identical for Mar, Apr,
-  May, Jun**, and the trim touched none of the invoiced projects (`CLIENT A: Nav` / `CLIENT A: Membra`).
+  May, Jun**, and the trim touched none of the invoiced projects (`CLIENT A: LINE 1` / `CLIENT A: LINE 2`).
 
 ## Root cause
 

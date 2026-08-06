@@ -82,6 +82,29 @@ class CrossHostRedirectTests(unittest.TestCase):
         with self.assertRaises(URLError):
             self._redirect("https://api.example.test/v2", "https://api.example.test:8443/v2")
 
+    def test_malformed_port_is_rejected(self):
+        """origin_key's fail-closed branch: a port that will not parse.
+
+        urlparse raises ValueError on `.port` here rather than returning None,
+        so without the guard the comparison would raise out of the handler
+        instead of refusing the redirect.
+        """
+        with self.assertRaises(URLError) as ctx:
+            self._redirect(
+                "https://api.example.test/v2",
+                "https://api.example.test:not-a-port/v2",
+            )
+        self.assertIn("different host", str(ctx.exception))
+
+    def test_malformed_port_does_not_match_another_malformed_port(self):
+        """The sentinel carries the URL, so two unparseable targets stay distinct."""
+        from core.http_security import origin_key
+
+        self.assertNotEqual(
+            origin_key("https://a.example.test:bad/v2"),
+            origin_key("https://b.example.test:bad/v2"),
+        )
+
     def test_plain_http_target_reports_the_scheme_not_the_host(self):
         """http:// must keep its own message — it is the more specific failure."""
         with self.assertRaises(URLError) as ctx:

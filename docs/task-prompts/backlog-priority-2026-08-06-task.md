@@ -18,6 +18,10 @@ noticing.
 - validation.evidence: this document (planning pass; labels applied, stragglers closed)
 - validation.decision: GO
 - changelog:
+  - 2026-08-06: Scope correction on #431 — the issue thread holds ~278 term
+    occurrences vs ~22 docs lines, and its body listed the terms in clear
+    (now masked). Decision 2 retired: the runtime-config guard already exists
+    from #429.
   - 2026-08-06: Initial pass. Successor to `backlog-priority-2026-07-26-task.md`
     (GH-472); lineage 2026-07-08 → 07-10 → 07-21 → 07-25 → 07-26 → 08-06.
     Closed #473 and #454 as shipped. Promoted #431 to `priority:now`, demoted
@@ -117,6 +121,18 @@ to `next` with the scope corrected.
   stops future exposure, it does not undo past); auditing `private/`, which is
   gitignored by design; changing the placeholder convention itself, which is
   already documented in `AGENTS.md` → *Test and fixture data hygiene*.
+- **scope correction (same day):** the docs tree is the *smaller* half. #431's
+  own issue thread carries roughly **278 occurrences** across six terms —
+  more than ten times the ~22 lines it was opened for — and its body listed
+  them in clear under a "(masked terms)" label. The body is now genuinely
+  masked, keeping the file paths, which is all the triage needs. The comment
+  thread is untouched and needs a maintainer decision first: editing a comment
+  leaves an edit history visible to anyone with repository access, so masking
+  in place reduces public exposure without erasing it, while deleting the
+  comments removes the reasoning along with the names.
+- **`scripts/check_docs_no_client_data.py` cannot see this surface.** It scans
+  the working tree; GitHub issues are not in it. Whatever is decided for the
+  thread will not be enforced by the guard.
 - behavior:
 
 ```gherkin
@@ -220,10 +236,15 @@ though its underlying point — the loop has more than one reviewer — is not.
 1. **#431 replacements** — an agent can locate every occurrence, but what each
    anonymised example should *say* needs someone who knows what it was
    demonstrating. Expect to review that diff properly rather than skim it.
-2. **The #431 CI check must not commit the denylist.** Proposal: read the
-   forbidden strings from the local `timelog_projects.json` at runtime and skip
-   the check when that file is absent, so CI on a fork degrades to a no-op
-   rather than to a leak. Confirm before an agent implements it.
+2. ~~**The #431 CI check must not commit the denylist.**~~ **Already built** —
+   `scripts/check_docs_no_client_data.py` (from #429) reads
+   `GITTAN_PROJECTS_CONFIG` at runtime and masks the terms in its own output.
+   The design this pass proposed is the design that exists; nothing to decide.
+   The open question is narrower: whether to promote it to a full-tree CI gate
+   once the ~22 docs lines are clean, which #431 already suggests.
+2b. **The #431 comment thread** — mask in place, or delete? See the scope
+   correction above. This is the larger surface and the only part still
+   waiting on a decision.
 3. **#416 re-promotion trigger** — name the condition now ("the first week I
    have two free evenings") so it is not left to drift indefinitely.
 4. **Performance work** — four optimisations were closed unmerged (#479, #482,

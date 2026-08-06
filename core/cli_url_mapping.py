@@ -16,6 +16,7 @@ from rich.table import Table
 
 from core.anchor_nudge import should_prompt
 from core.cli_date_range import resolve_date_window
+from core.cli_prompts import cancel_interactive
 from core.cli_review_create_project import (
     create_choice_label,
     create_project_interactive,
@@ -82,7 +83,7 @@ def _render_candidates_table(
             row.url_key,
             row.suggested_project,
             f"{row.confidence_label} ({row.confidence_score:.0%})",
-            f"{row.impact_hours:.1f}",
+            "—" if row.impact_hours is None else f"{row.impact_hours:.1f}",
             str(row.events),
             str(row.days),
             row.last_seen,
@@ -168,6 +169,28 @@ def _prompt_project_for_row(
         # tracked_urls already written; no deferred decision needed.
         return "__created__", project_names, allowed_project_names
     return str(selected), project_names, allowed_project_names
+
+
+def _saved_note(remotes_applied: bool, created_keys) -> bool | str:
+    """Name the writes this run already committed, for an honest cancel message.
+
+    Both happen before the prompts below: run_review_new_remotes_step() saves
+    remote mappings, and create_project_interactive() writes each new project
+    immediately (core/cli_review_create_project.py). Reporting "cancelled
+    before writing config" after either one sends the operator looking for work
+    that is already done, or creating a project that now exists.
+    """
+    parts = []
+    if remotes_applied:
+        parts.append("remote repository mapping")
+    count = len(created_keys or ())
+    if count == 1:
+        parts.append("1 new project")
+    elif count > 1:
+        parts.append(f"{count} new projects")
+    if not parts:
+        return False
+    return " and ".join(parts) + (" were" if count > 1 or len(parts) > 1 else " was")
 
 
 def run_url_mapping_review(
@@ -301,8 +324,7 @@ def run_url_mapping_review(
             default="high",
         ).ask()
         if choice is None:
-            console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-            _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+            cancel_interactive(console, already_saved=_saved_note(remotes_applied, created_keys))
 
         if choice == "high":
             auto_assigned = dict(_auto_assign_high(review_pool, project_names))
@@ -347,8 +369,7 @@ def run_url_mapping_review(
             default=False,
         ).ask()
     if review_more is None:
-        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-        _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+        cancel_interactive(console, already_saved=_saved_note(remotes_applied, created_keys))
     if review_more:
         # Include parked so operator can Park/Skip (never force create).
         review_rows = [row for row in rows if row.url_key not in auto_assigned and row.url_key not in created_keys]
@@ -375,8 +396,7 @@ def run_url_mapping_review(
                 ],
             ).ask()
             if edit_choice is None:
-                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+                cancel_interactive(console, already_saved=_saved_note(remotes_applied, created_keys))
             if edit_choice == "__done__":
                 break
             row = next((r for r in rows if r.url_key == edit_choice), None)
@@ -391,8 +411,7 @@ def run_url_mapping_review(
                 current=assignment_by_key.get(row.url_key),
             )
             if selected_project == "__cancel__":
-                console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
-                _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
+                cancel_interactive(console, already_saved=_saved_note(remotes_applied, created_keys))
             if selected_project == "__created__":
                 created_keys.add(row.url_key)
                 assignment_by_key[row.url_key] = None
@@ -434,8 +453,17 @@ def run_url_mapping_review(
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True, code=1)
     console.print(preview.get("preview", "No preview available."))
     confirmed = questionary.confirm("Apply these URL mappings now?", default=False).ask()
+    if confirmed is None:
+        cancel_interactive(console, already_saved=_saved_note(remotes_applied, created_keys))
     if not confirmed:
-        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+        note = _saved_note(remotes_applied, created_keys)
+        if note:
+            console.print(
+                f"[{CLR_VALUE_ORANGE}]Declined — URL mappings not applied.[/{CLR_VALUE_ORANGE}] "
+                f"[{STYLE_MUTED}]{note} already saved and kept.[/{STYLE_MUTED}]"
+            )
+        else:
+            console.print(f"[{CLR_VALUE_ORANGE}]Declined — nothing written to config.[/{CLR_VALUE_ORANGE}]")
         _exit_url_mapping_review(console, projects_config=resolved_projects_config, has_candidates=True)
 
     applied = apply_triage_decisions_payload(

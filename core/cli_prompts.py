@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import NoReturn
 
 import questionary
 import typer
@@ -66,3 +67,30 @@ def prompt_for_timeframe() -> dict:
         return {"date_from": start_str, "date_to": end_str}
 
     return {}
+
+
+def cancel_interactive(console, *, already_saved=False) -> NoReturn:
+    """Report a Ctrl-C truthfully, then exit 130.
+
+    Interactive review loops save as they go, so "cancelled" is not the same
+    claim as "nothing was written". Telling the operator that config is
+    untouched when a rule or project has already been persisted is worse than
+    saying nothing: they go looking for work that is already done, or create a
+    project that now exists (GH review on #480).
+
+    ``already_saved`` may be a bool or a short phrase naming what landed; the
+    phrase is preferred where the caller knows it, since "some changes" sends
+    the operator back to diff the config themselves.
+    """
+    from outputs.terminal_theme import CLR_VALUE_ORANGE, STYLE_MUTED
+
+    if not already_saved:
+        console.print(f"[{CLR_VALUE_ORANGE}]Cancelled before writing config.[/{CLR_VALUE_ORANGE}]")
+        raise typer.Exit(code=130)
+
+    what = already_saved if isinstance(already_saved, str) else "Earlier changes in this run were"
+    console.print(
+        f"[{CLR_VALUE_ORANGE}]Cancelled — {what} already saved and kept.[/{CLR_VALUE_ORANGE}]\n"
+        f"[{STYLE_MUTED}]Nothing after that point was applied. Re-run to continue from here.[/{STYLE_MUTED}]"
+    )
+    raise typer.Exit(code=130)

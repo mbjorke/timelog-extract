@@ -16,10 +16,13 @@ from core.http_security import build_https_opener
 
 TOGGL_API_BASE = "https://api.track.toggl.com"
 
-_toggl_opener = build_https_opener("Toggl")
+_toggl_opener = None
 
 
 def urlopen(req: Request, timeout: int = 20):
+    global _toggl_opener
+    if _toggl_opener is None:
+        _toggl_opener = build_https_opener("Toggl")
     return _toggl_opener.open(req, timeout=timeout)
 
 

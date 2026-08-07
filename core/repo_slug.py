@@ -77,6 +77,37 @@ _JUNK_DIR_LEAVES = frozenset(
 )
 
 
+def workspace_roots(paths) -> tuple[str, ...]:
+    """Normalize opened-workspace folder paths into a lookup for `workspace_root_for`."""
+    roots = {str(p or "").rstrip("/") for p in (paths or ())}
+    return tuple(sorted(r for r in roots if r))
+
+
+def workspace_root_for(path, roots: tuple[str, ...]) -> str | None:
+    """The opened workspace a scraped log-line path belongs to, or ``None``.
+
+    IDE logs mention paths for many reasons: a file a watcher touched, an
+    extension's storage, a crash dump, a directory some harness writes session
+    data into. Mentioning a path is not evidence that work happened in it, so a
+    scraped path only counts when an opened workspace independently vouches for
+    it — it is a workspace root, or sits inside one (GH-529).
+
+    Returns the **root**, not the scraped path, so a nested file attributes to
+    the project rather than to whatever directory it happens to sit in. The
+    longest matching root wins, which keeps a workspace nested inside another
+    attributed to itself.
+    """
+    norm = str(path or "").rstrip("/")
+    if not norm:
+        return None
+    best = None
+    for root in roots:
+        if norm == root or norm.startswith(root + "/"):
+            if best is None or len(root) > len(best):
+                best = root
+    return best
+
+
 def path_attribution_anchor(path) -> dict[str, str] | None:
     """Attribution anchor for a working path.
 

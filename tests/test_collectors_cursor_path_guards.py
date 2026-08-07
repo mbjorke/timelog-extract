@@ -137,5 +137,80 @@ class CursorPathGuardTests(unittest.TestCase):
             self.assertEqual(self._collect(home), [])
 
 
+class CursorScrapedPathVouchTests(unittest.TestCase):
+    """GH-529: a path in a log line is only a workspace if an opened one vouches."""
+
+    _write_workspace = CursorPathGuardTests._write_workspace
+    _write_log = CursorPathGuardTests._write_log
+    _collect = CursorPathGuardTests._collect
+
+    def test_unvouched_path_produces_no_event(self):
+        # The reported symptom: a directory some harness writes session data into
+        # is mentioned on many log lines and outranks every real repository.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:00:00 [info] wrote "
+                    "/Users/me/scratch/harness-sessions/run-91/state.json",
+                    "2026-04-22 10:00:01 [info] wrote "
+                    "/Users/me/scratch/harness-sessions/run-92/state.json",
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_path_inside_an_opened_workspace_attributes_to_its_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_workspace(home, "a" * 32, "/Users/me/Workspace/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:02:00 [info] saved "
+                    "/Users/me/Workspace/project-alpha/src/deep/module.ts"
+                ],
+            )
+            out = self._collect(home)
+            self.assertEqual(len(out), 1)
+            # The root, not "deep" — a nested file belongs to the project.
+            self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
+
+    def test_nested_workspace_wins_over_its_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_workspace(home, "a" * 32, "/Users/me/Workspace/outer")
+            self._write_workspace(home, "b" * 32, "/Users/me/Workspace/outer/inner")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:03:00 [info] saved "
+                    "/Users/me/Workspace/outer/inner/src/app.ts"
+                ],
+            )
+            out = self._collect(home)
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["anchors"]["dir"], "inner")
+
+    def test_sibling_of_an_opened_workspace_is_not_vouched(self):
+        # Prefix matching must respect path boundaries: "project-alpha-scratch"
+        # is not inside "project-alpha".
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_workspace(home, "a" * 32, "/Users/me/Workspace/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:04:00 [info] wrote "
+                    "/Users/me/Workspace/project-alpha-scratch/tmp.json"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+
 if __name__ == "__main__":
     unittest.main()

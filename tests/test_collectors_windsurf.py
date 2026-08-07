@@ -45,6 +45,9 @@ class WindsurfCollectorTests(unittest.TestCase):
     def test_keeps_user_editing_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "1" * 32, "/Users/me/Workspace/Project/timelog-extract")
             self._write_log(
                 home,
                 "main.log",
@@ -63,6 +66,9 @@ class WindsurfCollectorTests(unittest.TestCase):
     def test_scans_legacy_windsurf_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "3" * 32, "/Users/me/Workspace/Project/timelog-extract", app="Windsurf")
             self._write_log(
                 home,
                 "main.log",
@@ -160,6 +166,9 @@ class WindsurfCollectorTests(unittest.TestCase):
         # must default them to local_tz instead of raising on the window check.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "2" * 32, "/Users/me/Workspace/Project/timelog-extract")
             self._write_log(
                 home,
                 "main.log",
@@ -175,6 +184,9 @@ class WindsurfCollectorTests(unittest.TestCase):
     def test_scans_windsurf_next_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "4" * 32, "/Users/me/Workspace/Project/blueberry", app="Windsurf - Next")
             self._write_log(
                 home,
                 "main.log",

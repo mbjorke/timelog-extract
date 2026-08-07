@@ -46,6 +46,9 @@ class AntigravityCollectorTests(unittest.TestCase):
     def test_keeps_workspace_path_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "5" * 32, "/Users/me/Workspace/Project/timelog-extract")
             self._write_log(
                 home,
                 "window1/renderer.log",
@@ -122,6 +125,9 @@ class AntigravityCollectorTests(unittest.TestCase):
     def test_lenient_profile_keeps_extension_activation(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "6" * 32, "/Users/me/Workspace/Project/timelog-extract")
             self._write_log(
                 home,
                 "window1/exthost/exthost.log",
@@ -169,6 +175,9 @@ class AntigravityCollectorTests(unittest.TestCase):
         # must default it to local_tz instead of raising on the window check.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "7" * 32, "/Users/me/Workspace/Project/timelog-extract")
             self._write_log(
                 home,
                 "main.log",

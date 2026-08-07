@@ -46,6 +46,9 @@ class VSCodeCollectorTests(unittest.TestCase):
     def test_keeps_user_editing_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "e" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main.log",
@@ -77,6 +80,14 @@ class VSCodeCollectorTests(unittest.TestCase):
     def test_scans_insiders_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # Insiders keeps its own workspaceStorage, so the vouching folder
+            # must be registered under the same app dir (GH-529).
+            self._write_workspace(
+                home,
+                "8" * 32,
+                "/Users/me/Workspace/Project/project-beta",
+                app="Code - Insiders",
+            )
             self._write_log(
                 home,
                 "main.log",
@@ -151,6 +162,9 @@ class VSCodeCollectorTests(unittest.TestCase):
     def test_ultra_strict_keeps_path_containing_telemetry_token(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "f" * 32, "/Users/me/Workspace/Project/telemetry-dashboard")
             self._write_log(
                 home,
                 "main.log",
@@ -231,6 +245,9 @@ class VSCodeCollectorTests(unittest.TestCase):
         # Bare ``/.vscode`` must not match ``/.vscode-test`` / ``/.vscode-community``.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "9" * 32, "/Users/me/Workspace/Project/.vscode-community")
             self._write_log(
                 home,
                 "main.log",
@@ -291,6 +308,44 @@ class VSCodeCollectorTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(self._collect(home), [])
+
+    def test_unvouched_scraped_path_produces_no_event(self):
+        # GH-529: the fork collectors scraped the first /Users path out of a log
+        # line and called it a workspace. A directory a harness writes session
+        # data into then outranked every real repository, because the count was
+        # of log lines mentioning it rather than of work.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:40:00.000 [info] wrote "
+                    "/Users/me/scratch/harness-sessions/run-91/state.json",
+                    "2026-05-28 09:40:01.000 [info] wrote "
+                    "/Users/me/scratch/harness-sessions/run-92/state.json",
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_vouched_nested_path_attributes_to_the_workspace_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_workspace(
+                home, "7" * 32, "/Users/me/Workspace/Project/project-alpha"
+            )
+            self._write_log(
+                home,
+                "main.log",
+                [
+                    "2026-05-28 09:41:00.000 [info] saved "
+                    "/Users/me/Workspace/Project/project-alpha/src/deep/module.ts"
+                ],
+            )
+            out = self._collect(home)
+            self.assertEqual(len(out), 1)
+            # The root, not "deep" — a nested file belongs to the project.
+            self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
 
 
 if __name__ == "__main__":

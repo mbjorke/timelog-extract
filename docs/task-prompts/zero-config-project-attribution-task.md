@@ -8,7 +8,7 @@ No code in this pass.
 
 ## Traceability
 
-- story_id: `GH-526` (https://github.com/mbjorke/timelog-extract/issues/526) · slice 1 = GH-527
+- story_id: `GH-526` · slice 1 = `GH-527`
 - spec_status: approved
 - implementation_status: not built (planning artifact — no code)
 - created_at: 2026-08-07
@@ -23,6 +23,11 @@ No code in this pass.
   - priority labels applied per the ordering below
 - validation.decision: GO
 - changelog:
+  - 2026-08-07: Review pass. Restricted slice 1 to git-remote anchors (the dir
+    leaf is not a durable identity), defined the `--format json` row shape for
+    derived projects, required an explicit temporary config path in the no-write
+    validation covering both the present and absent file, and added the Ctrl-C
+    cancellation case to #522.
   - 2026-08-07: Added #529 to `now` after tracing the unrecognised top anchor to
     the scraped-path fallback in two collectors. It gates #527.
   - 2026-08-07: Initial pass. Successor to `backlog-priority-2026-08-06-task.md`
@@ -41,8 +46,8 @@ Two complaints came out of the session, and they are the same complaint:
    operator wanted it to default to **No**. Project setup should not be a
    necessary step.
 2. Wiring project → customer is too laborious to be worth doing up front, so it
-   does not get done. The consequence showed up in the same run: dozens of
-   configured profiles, and the strongest evidence source unwired (#524).
+   does not get done. The consequence showed up in the same run: many profiles
+   configured, and the strongest evidence source left unwired (#524).
 
 The underlying design fault is that **Gittan currently requires configuration
 before it can attribute anything**. That conflates two different things:
@@ -81,7 +86,7 @@ overlapping spec.
 "Auto-detect new project config when you run a report" cannot mean "a report
 writes to `timelog_projects.json`".
 
-#406 exists specifically to stop bulk anchor → config application, the report
+Issue #406 exists specifically to stop bulk anchor → config application, the report
 postamble already warns *"do not bulk-apply them as `match_terms`"*, and the
 setup and mapping heroes promise *"Every write is explicit and reviewable"* and
 *"Nothing is saved without your approval"*. A report that silently edits config
@@ -149,20 +154,23 @@ Feature: Project mapping is offered, not imposed
   does). Different fix, different code.
 - acceptance: cancel means "stop asking", not "discard". Either apply what was
   completed and say so, or offer save-or-discard explicitly at the cancel point.
-- validation: complete one mapping, cancel at the next prompt, confirm the first
-  survived.
+- validation: complete one mapping, then cancel at the next prompt, and confirm
+  the first survived. Repeat with Ctrl-C at the next prompt rather than a menu
+  cancel: `questionary` returns `None` for both, so the interrupt path has to be
+  proved separately, not assumed.
 - dependencies: none. Pairs naturally with the default-No flip: one makes the
   step optional, the other makes it safe.
 
 ### #529 — any `/Users` path in an IDE log line becomes a workspace
 
-- priority: **now**
+- priority: **now** — fixed, PR #530
 - problem: `collectors/vscode_fork.py:290` and `collectors/cursor.py:237` fall back
   to scraping the first `/Users/...` substring out of a log line and treating it
   as the workspace. A path mentioned in a log line is not a workspace, and the
   only guards are denylists, so anything nobody thought to exclude passes. In the
   first-run session this put an unrecognisable container directory at the top of
-  the anchor list with roughly five times the events of any real repository.
+  the anchor list, ahead of every real repository, because the count is of log
+  lines mentioning a path rather than of work.
 - user value: the first report stops leading with something the user cannot place.
 - non-goals: the workspace-id path (step 1) is correct and stays.
 - acceptance: a scraped path is used only when it independently looks like a
@@ -182,9 +190,15 @@ Feature: Project mapping is offered, not imposed
 - user value: a useful report on the first run, with no config at all.
 - non-goals: writing config; inventing customers; branch- or session-title-derived
   identity (#406 keeps those out of apply paths); anything about billing.
-- behavior: when events carry a repository or working-directory anchor with no
-  matching profile, the report attributes them to the derived slug and marks the
-  row as derived, so it is visually distinct from a declared project.
+- **scope limit — git remotes only.** A derived row is created only where a git
+  remote yields `owner/repo`. Working-directory anchors are explicitly out of
+  this slice: the dir leaf is not a durable identity, it collides across
+  machines, and #529 showed how easily a junk leaf reaches the user. Local-only
+  repositories and non-git directories keep today's behaviour until a safe
+  local identity key is decided (open decision 3), which is its own slice.
+- behavior: when events carry a repository anchor with no matching profile, the
+  report attributes them to the derived slug and marks the row as derived, so it
+  is visually distinct from a declared project.
 
 ```gherkin
 Feature: A report attributes unmapped repositories without configuration
@@ -217,13 +231,30 @@ Feature: A report attributes unmapped repositories without configuration
     Then no derived project row is created from them
 ```
 
-- acceptance: an empty `timelog_projects.json` plus a day of work in three git
-  repositories produces three attributed rows; the file is byte-identical
-  afterwards; derived rows are visually and structurally distinct from declared
-  ones; branch and session-title signals produce no rows.
-- validation: run against a synthetic fixture config from repo root
-  (`gittan-dev`), diff the config file before and after, and assert the derived
-  rows in `--format json`.
+- acceptance: a day of work in three git repositories produces three attributed
+  rows; derived rows are structurally distinct from declared ones in both the
+  terminal and JSON output; branch, session-title, and working-directory signals
+  produce no rows.
+- **`--format json` contract.** Consumers must not be able to mistake a derived
+  project for a declared one, so the shape is part of the acceptance, not an
+  implementation detail:
+
+  | Field | Declared project | Derived project |
+  | --- | --- | --- |
+  | `project` | profile name | the derived `owner/repo` slug |
+  | `derived` | `false` | `true` |
+  | `customer` | as configured | `null` |
+  | `billable_hours` | as computed | `null`, never `0.0` |
+
+  `null` rather than `0.0`, so a consumer summing the field cannot silently
+  treat a derived row as a zero-value billable one. Bumping
+  `TRUTH_PAYLOAD_VERSION` is part of this slice.
+- validation: point the run at an **explicit temporary config path**, never the
+  ambient one — a report must not be able to resolve the operator's live
+  `timelog_projects.json` during a no-write test. Cover both directions: an
+  existing fixture file is byte-identical afterwards, **and** an absent config
+  file is still absent afterwards, so the report cannot be creating one. Then
+  assert the row shape above in `--format json`.
 - dependencies: #262 (built) supplies the derivation. Must not violate #406.
   Overlaps #410 — fold rather than duplicate.
 
@@ -304,9 +335,12 @@ but not yet forced.
 2. **Does a derived row carry hours into totals?** Proposal: yes for observed
    totals, never for billable. Needs confirming against the accuracy guardrails
    before implementation.
-3. **What is the identity key when there is no remote?** A local-only repository
-   has no `owner/repo`. Falling back to the directory name risks collisions;
-   never a path hash (that decision is already settled elsewhere).
+3. **What is the identity key when there is no remote?** Settled for this slice
+   by excluding it: derived rows require a git remote, so local-only
+   repositories and non-git directories keep today's behaviour. Still open for
+   the follow-up slice — a directory name collides across machines and projects,
+   and a path hash is already ruled out — so nothing here should be built on the
+   assumption that a local-only identity exists.
 4. **Does the default-No flip apply to `gittan setup --yes`?** Non-interactive
    runs already skip prompts, so probably moot, but confirm before changing the
    default.

@@ -15,9 +15,7 @@ from outputs.terminal_theme import OK_ICON, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 
-_FIX_SHADOW_CMD = (
-    "curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow"
-)
+_FIX_SHADOW_CMD = "curl -fsSL https://gittan.sh/install | bash"
 
 
 def _shell_profile_hint() -> str:

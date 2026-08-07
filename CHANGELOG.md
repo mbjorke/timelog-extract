@@ -2,11 +2,13 @@
 
 ## Unreleased
 
-- Install: `https://gittan.sh/install` now **fails** when PATH still resolves to an
-  older `gittan` after a successful upgrade, and supports
-  `--fix-shadow` to uninstall the shadowing Anaconda / `pip --user` copies.
-  `gittan doctor` warns on the same PATH conflict. Prefer the installer or
-  pipx on Python 3.10+ — bare `pip install -U` on 3.9 silently stays on 0.3.0.
+## 0.4.1 - 2026-08-07
+
+- Install: `https://gittan.sh/install` **cleans PATH shadows by default** (Anaconda /
+  old `pip --user` that would keep `gittan -V` on an old version). Opt out with
+  `--no-fix-shadow`. `gittan doctor` warns on the same conflict. Prefer the
+  installer or pipx on Python 3.10+ — bare `pip install -U` on 3.9 silently stays
+  on 0.3.0 ([#518](https://github.com/mbjorke/timelog-extract/pull/518)).
 
 ## 0.4.0 - 2026-08-07
 

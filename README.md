@@ -28,10 +28,10 @@ curl -fsSL https://gittan.sh/install | bash
 gittan -V
 ```
 
-Upgrading (including after a stale Anaconda / old `pip --user` install wins on PATH):
+Upgrading (including after a stale Anaconda / old `pip --user` install wins on PATH) — same command; the installer removes shadowing copies by default:
 
 ```bash
-curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
+curl -fsSL https://gittan.sh/install | bash
 hash -r && gittan -V
 ```
 
@@ -154,7 +154,7 @@ gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/tr
 | Symptom | Where to look |
 |--------|----------------|
 | `gittan` not found | PATH (pipx `~/.local/bin`, or pip `--user` bin); then **`gittan doctor`**. |
-| `gittan -V` shows an old version after upgrade | Another install earlier on PATH (Anaconda / old pip). Run `curl -fsSL https://gittan.sh/install \| bash -s -- --fix-shadow`, then `hash -r && gittan -V`. |
+| `gittan -V` shows an old version after upgrade | Another install earlier on PATH (Anaconda / old pip). Re-run `curl -fsSL https://gittan.sh/install \| bash` (cleans shadows by default), then `hash -r && gittan -V`. |
 | No events / empty sources | [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md) |
 | Bad or missing config | `gittan setup` · backups `timelog_projects.backup-*.json` |
 | Permissions / paths | `--worklog`, browser DB access, Mail / Screen Time |

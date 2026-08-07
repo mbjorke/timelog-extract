@@ -55,7 +55,7 @@ class AddCliPathRowsShadowTests(unittest.TestCase):
                 ok = add_cli_path_rows(_FakeTable(), home=home)  # type: ignore[arg-type]
             self.assertFalse(ok)
             self.assertEqual(len(calls), 1)
-            self.assertIn("--fix-shadow", calls[0][2])
+            self.assertIn("gittan.sh/install", calls[0][2])
             self.assertIn(str(shadow), calls[0][2])
 
 

@@ -9,14 +9,15 @@
 #   curl -fsSL https://gittan.sh/install | bash
 #   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
 #   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
-#   curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
+#   curl -fsSL https://gittan.sh/install | bash -s -- --no-fix-shadow
 #   curl -fsSL https://gittan.sh/install | bash -s -- --help
 #
 # What it does:
 #   - verifies Python 3.10+ is available
 #   - installs gittan via pipx (preferred) or `pip install --user` as a fallback
 #   - prints `gittan -V` to confirm
-#   - fails if PATH still resolves to an older install (unless --fix-shadow)
+#   - by default uninstalls other timelog-extract copies that would shadow PATH
+#     (Anaconda / old pip --user); use --no-fix-shadow to keep them
 #
 # The script does not read stdin, so piping from curl into bash is safe.
 set -euo pipefail
@@ -30,7 +31,7 @@ INSTALL_URL="https://gittan.sh/install"
 
 DRY_RUN=0
 PIN_VERSION=""
-FIX_SHADOW=0
+FIX_SHADOW=1
 
 print_help() {
   cat <<'EOF'
@@ -40,14 +41,15 @@ Usage:
   curl -fsSL https://gittan.sh/install | bash
   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
-  curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
+  curl -fsSL https://gittan.sh/install | bash -s -- --no-fix-shadow
 
 Options:
-  --dry-run          Print what would happen; make no changes.
-  --version VERSION  Install a specific PyPI version, e.g. 0.4.0.
-  --fix-shadow      After install, uninstall other timelog-extract copies that
-                     shadow the fresh binary on PATH (Anaconda / old pip --user).
-  --help, -h         Show this help and exit.
+  --dry-run            Print what would happen; make no changes.
+  --version VERSION    Install a specific PyPI version, e.g. 0.4.0.
+  --fix-shadow        Default: uninstall other timelog-extract copies that
+                       shadow the fresh binary on PATH (Anaconda / old pip).
+  --no-fix-shadow     Keep other installs; only warn if PATH still shadows.
+  --help, -h           Show this help and exit.
 
 Do not use plain `pip install -U timelog-extract` on an old Python: pip will
 silently install the newest release that Python still supports (e.g. 0.3.0 on
@@ -61,6 +63,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
     --fix-shadow) FIX_SHADOW=1; shift ;;
+    --no-fix-shadow) FIX_SHADOW=0; shift ;;
     --version)
       if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == -* || ! "$2" =~ ^[0-9] ]]; then
         printf '\033[1;31m !!\033[0m --version needs a version like 0.4.0, got: %s\n' "${2:-<none>}" >&2
@@ -280,10 +283,14 @@ elif [[ -n "$INSTALLED_BIN" && -x "$INSTALLED_BIN" ]]; then
   if [[ -n "$RESOLVED" && "$SAME" != "yes" ]]; then
     OLD_VER="$("$RESOLVED" -V 2>/dev/null | awk '{print $NF}' || true)"
     warn "Your shell resolves '${COMMAND}' to ${RESOLVED}${OLD_VER:+ (${OLD_VER})} — that OLDER install shadows the one just installed (${INSTALLED_BIN}${NEW_VERSION:+ (${NEW_VERSION})})."
-    warn "Fix with:  curl -fsSL ${INSTALL_URL} | bash -s -- --fix-shadow"
-    warn "Or manually:  $(dirname "$RESOLVED")/python -m pip uninstall -y ${PACKAGE}   # if that python exists"
+    if [[ "$FIX_SHADOW" -eq 0 ]]; then
+      warn "Re-run without --no-fix-shadow (default cleans this up), or manually:"
+    else
+      warn "Automatic cleanup did not clear PATH. Manually:"
+    fi
+    warn "  $(dirname "$RESOLVED")/python -m pip uninstall -y ${PACKAGE}   # if that python exists"
     warn "Then:  hash -r && ${COMMAND} -V"
-    die "Install succeeded, but PATH still shadows the new ${COMMAND}. Re-run with --fix-shadow (see above)."
+    die "Install succeeded, but PATH still shadows the new ${COMMAND}."
   fi
 elif command -v "$COMMAND" >/dev/null 2>&1; then
   "$COMMAND" -V || warn "${COMMAND} -V did not succeed."

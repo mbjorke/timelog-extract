@@ -92,7 +92,7 @@ try:
                 # principle produce the same commit hash — byte-identical commit
                 # objects, e.g. two empty initial commits made in the same second
                 # by the same author — and then one os.replace() would silently
-                # overwrite the other's event. Repo is the axis that actually
+                # overwrite the other event. Repo is the axis that actually
                 # separates them.
                 #
                 # Deliberately NOT a pid or random suffix: the hash in the name is
@@ -106,7 +106,7 @@ try:
                 # digest mirrors _device_slug() in core/evidence_store.py; the
                 # readable stem is kept for humans.
                 #
-                # The digest is over the repo's absolute path, not its basename:
+                # The digest is over the absolute repo path, not its basename:
                 # ~/work/api and ~/personal/api are different repositories with
                 # the same name, and hashing the name alone leaves them sharing
                 # one spool file. Path here is a transient queue key only — it

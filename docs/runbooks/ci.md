@@ -32,7 +32,7 @@ Optional: require at least one **maintainer** approval for sensitive repos — m
 - **File:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - **Triggers:** `push` and `pull_request` (so PRs and the merge target both run checks).
 
-- **PyPI publish:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — builds sdist + wheel and publishes on **version tags** `v*.*.*` or **workflow_dispatch** (requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI). See **`docs/runbooks/versioning.md`**.
+- **PyPI publish + GitHub Release:** [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml) — on **version tags** `v*.*.*`, builds/publishes to PyPI **and** creates a GitHub Release from `CHANGELOG.md` (so the Releases **Latest** badge tracks the tag). `workflow_dispatch` still publishes to PyPI only. Requires [trusted publishing](https://docs.pypi.org/trusted-publishers/) on PyPI. See **`docs/runbooks/versioning.md`**.
 
 - **GitHub Pages (landing site):** [`.github/workflows/static.yml`](../.github/workflows/static.yml)
 

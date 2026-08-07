@@ -8,7 +8,7 @@
 # Usage:
 #   curl -fsSL https://gittan.sh/install | bash
 #   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
-#   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.2.20
+#   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
 #   curl -fsSL https://gittan.sh/install | bash -s -- --help
 #
 # What it does:
@@ -35,11 +35,11 @@ gittan installer — https://gittan.sh
 Usage:
   curl -fsSL https://gittan.sh/install | bash
   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
-  curl -fsSL https://gittan.sh/install | bash -s -- --version 0.2.20
+  curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
 
 Options:
   --dry-run          Print what would happen; make no changes.
-  --version VERSION  Install a specific PyPI version, e.g. 0.2.20.
+  --version VERSION  Install a specific PyPI version, e.g. 0.4.0.
   --help, -h         Show this help and exit.
 
 The script does not read stdin, so piping from curl into bash is safe.
@@ -51,7 +51,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=1; shift ;;
     --version)
       if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == -* || ! "$2" =~ ^[0-9] ]]; then
-        printf '\033[1;31m !!\033[0m --version needs a version like 0.2.20, got: %s\n' "${2:-<none>}" >&2
+        printf '\033[1;31m !!\033[0m --version needs a version like 0.4.0, got: %s\n' "${2:-<none>}" >&2
         exit 2
       fi
       PIN_VERSION="$2"

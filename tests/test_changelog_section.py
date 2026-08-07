@@ -56,6 +56,10 @@ class TestChangelogSection(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.mod.extract_section(_CHANGELOG, "9.9.9")
 
+    def test_rejects_draft_heading(self) -> None:
+        with self.assertRaises(ValueError):
+            self.mod.extract_section(_CHANGELOG, "1.0.0")
+
     def test_cli_writes_section(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "CHANGELOG.md"

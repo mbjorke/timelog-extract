@@ -5,8 +5,9 @@ Usage:
   python3 scripts/changelog_section.py 0.4.0
   python3 scripts/changelog_section.py 0.4.0 --file CHANGELOG.md
 
-Prints the body under ``## 0.4.0 …`` (heading excluded) until the next
-``## `` heading. Exits 1 when the version section is missing or empty.
+Prints the body under ``## 0.4.0 - YYYY-MM-DD`` (heading excluded) until the
+next ``## `` heading. Exits 1 when the version section is missing or empty.
+Draft headings such as ``## 1.0.0 - Draft`` are rejected (no release date).
 """
 
 from __future__ import annotations
@@ -16,7 +17,8 @@ import re
 import sys
 from pathlib import Path
 
-_HEADING_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b")
+# Final-release headings only: "## X.Y.Z - YYYY-MM-DD" (not "## X.Y.Z - Draft …").
+_HEADING_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\s+-\s+\d{4}-\d{2}-\d{2}\s*$")
 
 
 def extract_section(changelog_text: str, version: str) -> str:
@@ -29,7 +31,10 @@ def extract_section(changelog_text: str, version: str) -> str:
             start = idx + 1
             break
     if start is None:
-        raise ValueError(f"No CHANGELOG section for version {version}")
+        raise ValueError(
+            f"No dated CHANGELOG section for version {version} "
+            f"(expected '## {version} - YYYY-MM-DD')"
+        )
 
     end = len(lines)
     for idx in range(start, len(lines)):

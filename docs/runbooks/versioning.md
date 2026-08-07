@@ -57,13 +57,15 @@ A **git tag** (`v0.3.1`) is enough for the PyPI workflow and for `git describe`.
 Pushing `v*.*.*` runs [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml), which:
 
 1. Publishes the wheel/sdist to PyPI (trusted publishing).
-2. Creates a GitHub Release from the matching `CHANGELOG.md` section (`scripts/changelog_section.py`) and marks it **Latest**.
-
+2. After publish succeeds, creates a GitHub Release from the matching
+   `CHANGELOG.md` section (`scripts/changelog_section.py`) and marks it **Latest**.
+   Headings must be dated (`## X.Y.Z - YYYY-MM-DD`); draft sections are rejected.
 If you only tagged historically and never opened a Release, the UI can still show an older **Latest** (e.g. tags `v0.3.0` / `v0.3.1` existed while Releases stopped at `v0.2.17`).
 
 **Backfill a missing Release** for an existing tag (from repo root, after `git fetch --tags`):
 
 ```bash
+set -euo pipefail
 VERSION=0.3.1   # no leading v
 TAG=v${VERSION}
 python3 scripts/changelog_section.py "$VERSION" > /tmp/notes.md

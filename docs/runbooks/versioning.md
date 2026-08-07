@@ -48,7 +48,34 @@ There is **no single automated `release` command** in this repository — follow
 2. Update the **dev fallback** in **`core/cli_options.py`** (`package_version()`) to `X.Y.Z-dev` so runs without an editable install still report a sensible string.
 3. **GitHub HTTP `User-Agent`** is built from `package_version()` in `collectors/github.py` — no separate version string to edit.
 4. Add a **`CHANGELOG.md`** section `## X.Y.Z - YYYY-MM-DD` and move items out of **Unreleased** as appropriate.
-5. Tagging on Git (optional): `git tag -a vX.Y.Z -m "Release X.Y.Z"` after the version commit is on the branch you intend to release.
+5. After the bump is on **`main`**: `git tag -a vX.Y.Z -m "Release X.Y.Z"` and `git push origin vX.Y.Z`.
+
+### Git tag ≠ GitHub Release
+
+A **git tag** (`v0.3.1`) is enough for the PyPI workflow and for `git describe`. The GitHub **Releases** page (and the green **Latest** badge) only moves when a **Release object** exists for that tag.
+
+Pushing `v*.*.*` runs [`.github/workflows/pypi.yml`](../.github/workflows/pypi.yml), which:
+
+1. Publishes the wheel/sdist to PyPI (trusted publishing).
+2. Creates a GitHub Release from the matching `CHANGELOG.md` section (`scripts/changelog_section.py`) and marks it **Latest**.
+
+If you only tagged historically and never opened a Release, the UI can still show an older **Latest** (e.g. tags `v0.3.0` / `v0.3.1` existed while Releases stopped at `v0.2.17`).
+
+**Backfill a missing Release** for an existing tag (from repo root, after `git fetch --tags`):
+
+```bash
+VERSION=0.3.1   # no leading v
+TAG=v${VERSION}
+python3 scripts/changelog_section.py "$VERSION" > /tmp/notes.md
+{
+  echo "**Install:** \`pip install -U timelog-extract\` / \`curl -fsSL https://gittan.sh/install | bash\`"
+  echo
+  cat /tmp/notes.md
+} > /tmp/body.md
+gh release create "$TAG" --title "$TAG" --notes-file /tmp/body.md --verify-tag --latest
+```
+
+Use `--latest=false` when backfilling an older tag that must not steal **Latest** from a newer Release.
 
 ## PyPI distribution
 
@@ -66,10 +93,10 @@ The project is a normal **setuptools** package (`pyproject.toml`, `[project] nam
      - **Workflow name:** `pypi.yml` — the **filename** under `.github/workflows/` (must end in `.yml` or `.yaml`), **not** the workflow’s human-readable `name:` in the YAML (e.g. not “Publish to PyPI”).
      - **Environment name:** leave **empty** (this repo’s workflow does not use a GitHub Environment).
    - Save. PyPI will allow the **Publish to PyPI** GitHub Action to create **`timelog-extract`** on first successful run. Official reference: [Adding a pending publisher](https://docs.pypi.org/trusted-publishers/creating-a-pending-publisher/).
-2. On GitHub, ensure **`main`** has the release you want (e.g. version **0.2.3** in `pyproject.toml`), then either:
-   - `git tag -a v0.2.3 -m "Release 0.2.3"` and `git push origin v0.2.3`, **or**
-   - **Actions → Publish to PyPI → Run workflow** (uses the same `pypi.yml`).
-3. After the workflow turns green, open **`https://pypi.org/project/timelog-extract/`** — the project should exist. **Smoke-test:** `python3 -m pip install timelog-extract` and `gittan -V`.
+2. On GitHub, ensure **`main`** has the release you want (e.g. version **0.2.3** in `pyproject.toml`), then:
+   - `git tag -a v0.2.3 -m "Release 0.2.3"` and `git push origin v0.2.3`.
+   - That tag push runs **`pypi.yml`**: PyPI publish **and** a GitHub Release (so the Releases page **Latest** badge updates). Manual **Actions → Publish to PyPI → Run workflow** still publishes to PyPI but does **not** create a GitHub Release (tag-only job).
+3. After the workflow turns green, open **`https://pypi.org/project/timelog-extract/`** and **`https://github.com/mbjorke/timelog-extract/releases`** — smoke-test: `python3 -m pip install timelog-extract` and `gittan -V`.
 
 Local dry-run (no upload):
 

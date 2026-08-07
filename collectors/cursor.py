@@ -230,7 +230,6 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
                             continue
                         workspace_path = None
-                        from_line_path = False
                         m_id = workspace_id_pattern.search(line)
                         if m_id and workspace_map:
                             workspace_id = m_id.group(1) or m_id.group(2)
@@ -238,19 +237,21 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if not workspace_path:
                             m_path = workspace_path_pattern.search(line)
                             if m_path:
+                                raw_path = m_path.group(1)
+                                # Guard the raw path before resolving it to a root:
+                                # `<project>/.cursor/state.json` is IDE metadata even
+                                # though it sits inside a real workspace, and the root
+                                # alone can no longer tell you that.
+                                if _is_cursor_internal_path(
+                                    raw_path, line, home
+                                ) or _is_ide_metadata_workspace(raw_path):
+                                    continue
                                 # A path in a log line is not a workspace unless an
                                 # opened workspace vouches for it (GH-529).
                                 workspace_path = workspace_root_for(
-                                    m_path.group(1), known_roots
+                                    raw_path, known_roots
                                 )
-                                from_line_path = bool(workspace_path)
                         if not workspace_path:
-                            continue
-                        # Line-extracted paths need the Application Support guard;
-                        # mapped workspace folders are already the project root.
-                        if from_line_path and _is_cursor_internal_path(
-                            workspace_path, line, home
-                        ):
                             continue
                         if _is_ide_metadata_workspace(workspace_path):
                             continue

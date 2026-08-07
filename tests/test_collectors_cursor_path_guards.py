@@ -195,6 +195,50 @@ class CursorScrapedPathVouchTests(unittest.TestCase):
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["anchors"]["dir"], "inner")
 
+    def test_metadata_path_inside_an_opened_workspace_is_still_skipped(self):
+        # Regression: resolving to the workspace root before the metadata guards
+        # ran made `<project>/.cursor/...` look like ordinary work in the root.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_workspace(home, "a" * 32, "/Users/me/Workspace/project-alpha")
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:05:00 [info] wrote "
+                    "/Users/me/Workspace/project-alpha/.cursor/state.json"
+                ],
+            )
+            self.assertEqual(self._collect(home), [])
+
+    def test_multi_root_workspace_folders_are_vouched(self):
+        # A .code-workspace entry names the config file, not the folders in it;
+        # without expanding it every multi-root folder fails containment.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cfg = home / "Workspace" / "team.code-workspace"
+            cfg.parent.mkdir(parents=True, exist_ok=True)
+            # Absolute folder entry: the collector's path extractor only matches
+            # /Users/... paths, which a temp dir can never be.
+            cfg.write_text(
+                json.dumps(
+                    {"folders": [{"path": "/Users/me/Workspace/project-alpha"}]}
+                ),
+                encoding="utf-8",
+            )
+            self._write_workspace(home, "a" * 32, str(cfg))
+            self._write_log(
+                home,
+                "main/window.log",
+                [
+                    "2026-04-22 10:07:00 [info] saved "
+                    "/Users/me/Workspace/project-alpha/src/app.ts"
+                ],
+            )
+            out = self._collect(home)
+            self.assertEqual(len(out), 1)
+            self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
+
     def test_sibling_of_an_opened_workspace_is_not_vouched(self):
         # Prefix matching must respect path boundaries: "project-alpha-scratch"
         # is not inside "project-alpha".

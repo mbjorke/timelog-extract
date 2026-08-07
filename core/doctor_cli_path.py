@@ -15,6 +15,10 @@ from outputs.terminal_theme import OK_ICON, STYLE_MUTED, WARN_ICON
 
 _DOCTOR_LOG = logging.getLogger(__name__)
 
+_FIX_SHADOW_CMD = (
+    "curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow"
+)
+
 
 def _shell_profile_hint() -> str:
     shell = os.environ.get("SHELL", "").lower()
@@ -77,26 +81,81 @@ def _same_file(left: Path, right: Path) -> bool:
         return False
 
 
+def list_gittan_on_path(path_env: str | None = None) -> list[Path]:
+    """Return every ``gittan`` executable found on PATH (deduped by realpath)."""
+    raw = path_env if path_env is not None else os.environ.get("PATH", "")
+    name = "gittan.exe" if sys.platform == "win32" else "gittan"
+    found: list[Path] = []
+    seen: set[str] = set()
+    for part in raw.split(os.pathsep):
+        if not part.strip():
+            continue
+        candidate = Path(part) / name
+        if not candidate.is_file():
+            continue
+        try:
+            key = str(candidate.resolve())
+        except OSError:
+            key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(candidate)
+    return found
+
+
 def add_cli_path_rows(table: Table, *, home: Path) -> bool:
-    """Warn when gittan exists but user script dirs are not on PATH."""
+    """Warn when gittan is missing from PATH or shadowed by another install."""
     path_exe = shutil.which("gittan")
     running = _running_gittan()
+    on_path = list_gittan_on_path()
+
     if running and path_exe:
-        # gittan is genuinely on PATH; report the install that is actually
-        # executing (venv vs PATH can differ) and note when PATH resolves
-        # elsewhere. If path_exe is None, gittan runs but is NOT on PATH, so
-        # fall through to the warning + ensurepath/user-bin hints below.
-        detail = f"[{STYLE_MUTED}]{running}[/{STYLE_MUTED}]"
-        if path_exe and not _same_file(Path(path_exe), running):
-            detail += (
-                f"\n[{STYLE_MUTED}]Note: [bold]gittan[/bold] on PATH resolves elsewhere "
-                f"({path_exe}) — a plain [bold]gittan[/bold] runs that one instead.[/{STYLE_MUTED}]"
+        path_path = Path(path_exe)
+        if not _same_file(path_path, running):
+            extras = [
+                str(p)
+                for p in on_path
+                if not _same_file(p, running) and not _same_file(p, path_path)
+            ]
+            extra_note = f" Also on PATH: {', '.join(extras)}." if extras else ""
+            table.add_row(
+                "CLI (gittan on PATH)",
+                WARN_ICON,
+                f"[{STYLE_MUTED}]This process: [bold]{running}[/bold]\n"
+                f"Plain [bold]gittan[/bold] resolves to [bold]{path_path}[/bold] "
+                f"(older/other install shadows this one).{extra_note}\n"
+                f"Fix: [bold]{_FIX_SHADOW_CMD}[/bold] then open a new terminal.[/{STYLE_MUTED}]",
             )
+            return False
+        detail = f"[{STYLE_MUTED}]{running}[/{STYLE_MUTED}]"
+        if len(on_path) > 1:
+            others = [str(p) for p in on_path if not _same_file(p, running)]
+            detail += (
+                f"\n[{STYLE_MUTED}]Also on PATH (unused): {', '.join(others)}. "
+                f"Safe to remove with [bold]{_FIX_SHADOW_CMD}[/bold].[/{STYLE_MUTED}]"
+            )
+            table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
+            return False
         table.add_row("CLI (gittan on PATH)", OK_ICON, detail)
         return True
+
     if path_exe:
+        path_path = Path(path_exe)
+        if len(on_path) > 1:
+            others = [str(p) for p in on_path[1:]]
+            table.add_row(
+                "CLI (gittan on PATH)",
+                WARN_ICON,
+                f"[{STYLE_MUTED}]{path_path}\n"
+                f"Additional installs later on PATH: {', '.join(others)}. "
+                f"If [bold]gittan -V[/bold] looks stale after upgrading, run "
+                f"[bold]{_FIX_SHADOW_CMD}[/bold].[/{STYLE_MUTED}]",
+            )
+            return False
         table.add_row("CLI (gittan on PATH)", OK_ICON, f"[{STYLE_MUTED}]{path_exe}[/{STYLE_MUTED}]")
         return True
+
     if sys.platform == "win32":
         table.add_row(
             "CLI (gittan on PATH)",
@@ -129,4 +188,3 @@ def add_cli_path_rows(table: Table, *, home: Path) -> bool:
     )
     table.add_row("CLI (gittan on PATH)", WARN_ICON, detail)
     return False
-

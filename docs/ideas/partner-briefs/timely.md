@@ -4,9 +4,21 @@
 
 **Relationship (draft):** Compete on the **evidence layer** (Memory.app / AI-tool capture) *and* potentially **partner** if Timely prefers to license or co-develop developer-grade collectors instead of rebuilding every AI/IDE source in-house.
 
-**Last updated:** 2026-07-03
+**Last updated:** 2026-08-07
+
+**Outreach status:** a founder-level outreach mail went out on 2026-07-21 and has had no reply as of 2026-08-07. The mail was written on purpose with no follow-up obligation, so silence is the expected shape of that choice and **should not be read as a no**. Follow-up approach is undecided and not urgent. Wording, recipient, and any hour totals stay in `private/`.
 
 ---
+
+## Dream partner and largest competitor, at the same time
+
+Both are true, and the brief is only useful if it holds both.
+
+- **Dream partner:** the overlap below is real, and a licensing or co-development shape would be the fastest path to distribution Gittan cannot build alone.
+- **Unlikely:** treat a partnership as a low-probability outcome. Nothing in the roadmap should depend on it.
+- **Largest competitor:** Timely sells the outcome Gittan targets, to the same buyers, with more people and more revenue.
+
+The consequence is a requirement, not an open question: whoever owns commercial work has to run **both tracks in parallel**, partner and compete, without one poisoning the other. Do not resolve this brief by picking a side. See [`README.md`](README.md) for the two partner shapes.
 
 ## Why Timely is a dream partner
 

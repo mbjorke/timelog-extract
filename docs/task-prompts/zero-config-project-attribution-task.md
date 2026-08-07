@@ -14,15 +14,17 @@ No code in this pass.
 - created_at: 2026-08-07
 - last_updated_at: 2026-08-07
 - implementation.pr: pending
-- implementation.branch: `claude/gittan-omriktning-partner-02debf`
+- implementation.branch: `task/zero-config-project-attribution`
 - implementation.commits: []
 - validation.evidence:
   - first-run session on a clean machine, 0.4.0 (raw transcript stays local; it
     carries third-party client data and must not be quoted in the repo)
-  - defects filed and verified in code: #521, #522, #523, #524, #525
+  - defects filed and verified in code: #521, #522, #523, #524, #525, #529
   - priority labels applied per the ordering below
 - validation.decision: GO
 - changelog:
+  - 2026-08-07: Added #529 to `now` after tracing the unrecognised top anchor to
+    the scraped-path fallback in two collectors. It gates #527.
   - 2026-08-07: Initial pass. Successor to `backlog-priority-2026-08-06-task.md`
     (GH-513).
 
@@ -152,6 +154,25 @@ Feature: Project mapping is offered, not imposed
 - dependencies: none. Pairs naturally with the default-No flip: one makes the
   step optional, the other makes it safe.
 
+### #529 — any `/Users` path in an IDE log line becomes a workspace
+
+- priority: **now**
+- problem: `collectors/vscode_fork.py:290` and `collectors/cursor.py:237` fall back
+  to scraping the first `/Users/...` substring out of a log line and treating it
+  as the workspace. A path mentioned in a log line is not a workspace, and the
+  only guards are denylists, so anything nobody thought to exclude passes. In the
+  first-run session this put an unrecognisable container directory at the top of
+  the anchor list with roughly five times the events of any real repository.
+- user value: the first report stops leading with something the user cannot place.
+- non-goals: the workspace-id path (step 1) is correct and stays.
+- acceptance: a scraped path is used only when it independently looks like a
+  workspace — present in `workspace_map`'s values, or resolving to a git remote.
+  Otherwise the line produces no anchor. Both collectors fixed together.
+- dependencies: gates #527. Derived attribution must not inherit these anchors,
+  or zero-config reports will lead with junk instead of `Uncategorized`.
+- note: event counts here measure log lines mentioning a path, not work, which is
+  why the ranking is inverted. The ranking half is tracked on #222.
+
 ### Report-time attribution for unmapped repositories (slice 1)
 
 - priority: **next**
@@ -264,8 +285,9 @@ on day one.
 2. #515 — client data reaching issues and PR bodies
 3. #414 — Chrome dashboard-work evaporation
 4. #448 — Lovable Desktop open-app ≠ authorship
-5. **default-No flip** — hours of work, removes the friction the first run named
-6. **#522** — stops the mapping step destroying work
+5. **#529** — junk anchors leading the report; gates #527
+6. **default-No flip** — hours of work, removes the friction the first run named
+7. **#522** — stops the mapping step destroying work
 
 Then `next`: report-time attribution slice 1, #521, #523 (with #414), #524
 (after attribution), #416.

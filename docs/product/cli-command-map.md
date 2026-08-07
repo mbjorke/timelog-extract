@@ -19,6 +19,8 @@ Do not make breaking renames now. If we later want `capture/review` wording, add
 | Observed evidence | Verify local setup and source health | `gittan doctor` | Fast setup visibility and next steps when sources are missing. |
 | Observed evidence | Build an evidence report for a date range | `gittan report --today --source-summary` | Default reporting shape for demos and onboarding. |
 | Observed evidence | Inspect all event-level details for a project/date | `gittan search --today --project "<name>"` | Search is the audit/debug lens (`all_events=True` path). |
+| Observed evidence | Record this device's AI session evidence | `gittan capture` | Writes under `~/.gittan`; multi-device labels on reports. |
+| Classified candidates | Bind a chat session to a project by decision | `gittan intent` | Decision binding, not pattern matching. |
 | Classified candidates | Manually curate uncategorized clusters (advanced) | `gittan review --uncategorized` | Legacy log-cluster loop; use default `gittan review` for URL mapping instead. |
 | Classified candidates | Map URL hosts to projects (interactive) | `gittan review` | Canonical mapping flow; bulk + row review, writes `tracked_urls`. |
 | Classified candidates | Read-only URL mapping candidates | `gittan review --json` | Machine-readable candidates; no config writes. |
@@ -46,7 +48,7 @@ Reference implementation: `core/live_terminal/contract.py`.
 
 ## Copy rules
 
-- Do not market unimplemented commands (for example `gittan capture`) as real CLI behavior.
+- Do not market unimplemented commands as real CLI behavior.
 - For onboarding/default flow text, prefer this setup sequence:
   - Step 1: Global Timelog Setup
   - Step 2: Project Bootstrap

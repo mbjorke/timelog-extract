@@ -2,19 +2,83 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-07
+
 - Sources: **Devin Desktop** (Cognition; formerly Windsurf) — scan the macOS
   Application Support `Devin` directory plus legacy `Windsurf` /
-  `Windsurf - Next` dirs; report/doctor source label is `Devin Desktop`.
+  `Windsurf - Next` dirs; report/doctor source label is `Devin Desktop`
+  ([#423](https://github.com/mbjorke/timelog-extract/pull/423),
+  [#426](https://github.com/mbjorke/timelog-extract/pull/426)).
 - Sources: **VS Code** (stock `Code` / `Code - Insiders`) via shared fork log
   scrape plus workspace ``chatSessions`` (Copilot / VS Code chat requests) —
-  stock logs alone are too thin to match Cursor-class evidence.
+  stock logs alone are too thin to match Cursor-class evidence
+  ([#422](https://github.com/mbjorke/timelog-extract/pull/422)).
+- Capture / multi-device: **`gittan capture`** records this device's AI session
+  evidence under `~/.gittan`; reports can show multi-device labels; evidence
+  files are keyed per device so a shared data repo has nothing to merge
+  ([#469](https://github.com/mbjorke/timelog-extract/pull/469),
+  [#477](https://github.com/mbjorke/timelog-extract/pull/477)).
+- Intent: **`gittan intent`** binds a chat session to a project by decision
+  (not pattern matching); unknown projects and empty configs are refused
+  ([#469](https://github.com/mbjorke/timelog-extract/pull/469)).
+- Evidence: opt-in **shadow log** for commit events (replaces markdown-only
+  capture for that path) ([#440](https://github.com/mbjorke/timelog-extract/pull/440)).
+- Review / onboarding (GH-419): create a project from decidable URL candidates;
+  new remotes get **Add / Map / Skip** in `gittan review`; candidate provenance
+  and decidability polish; park only measured-zero candidates
+  ([#450](https://github.com/mbjorke/timelog-extract/pull/450),
+  [#452](https://github.com/mbjorke/timelog-extract/pull/452),
+  [#468](https://github.com/mbjorke/timelog-extract/pull/468),
+  [#488](https://github.com/mbjorke/timelog-extract/pull/488)).
 - Cursor (agent): when Multitask/Glass chats are missing from
   `composer.composerHeaders`, enrich labels from Glass PR tabs and/or the git
-  branch under `workspace_roots` so detail can show `(@branch)` again ([#348](https://github.com/mbjorke/timelog-extract/issues/348)).
+  branch under `workspace_roots` so detail can show `(@branch)` again
+  ([#348](https://github.com/mbjorke/timelog-extract/issues/348)).
 - Fix ([#351](https://github.com/mbjorke/timelog-extract/issues/351)): reject
   Glass-derived session titles shaped like `PR #<n>` / `PR #<n>: …`, and skip
   the same shape in GitHub/worklog session-label enrich so sticky PR tabs do
   not overpaint the timeline.
+- Fix: stop `Application→dir=application` noise and VS Code AgentsHandoff flood
+  ([#447](https://github.com/mbjorke/timelog-extract/pull/447)); drop implausible
+  Lovable UUID review candidates
+  ([#449](https://github.com/mbjorke/timelog-extract/pull/449),
+  [#461](https://github.com/mbjorke/timelog-extract/pull/461)).
+- Fix: global git-commit hook no longer fails on import via spooling
+  ([#497](https://github.com/mbjorke/timelog-extract/pull/497)); session/capture
+  times render on the reader's clock, not UTC
+  ([#469](https://github.com/mbjorke/timelog-extract/pull/469)).
+- Security: HTTPS-only openers and reject insecure / cross-origin redirects for
+  GitHub, Toggl, Briox, and Jira paths
+  ([#435](https://github.com/mbjorke/timelog-extract/pull/435),
+  [#460](https://github.com/mbjorke/timelog-extract/pull/460),
+  [#496](https://github.com/mbjorke/timelog-extract/pull/496),
+  [#507](https://github.com/mbjorke/timelog-extract/pull/507)).
+- CLI UX: Questionary select + escape hatches, search hero / empty-state
+  guidance, projects-audit / calendar-suggest / intent / evidence styling aligned
+  with the terminal style guide
+  ([#434](https://github.com/mbjorke/timelog-extract/pull/434),
+  [#459](https://github.com/mbjorke/timelog-extract/pull/459),
+  [#480](https://github.com/mbjorke/timelog-extract/pull/480),
+  [#495](https://github.com/mbjorke/timelog-extract/pull/495),
+  [#499](https://github.com/mbjorke/timelog-extract/pull/499),
+  [#510](https://github.com/mbjorke/timelog-extract/pull/510)).
+- Perf: faster Cursor day parsing, timelog `fromisoformat`, group_by_day,
+  session presence loops, and lazy HTTPS openers at CLI startup
+  ([#432](https://github.com/mbjorke/timelog-extract/pull/432),
+  [#456](https://github.com/mbjorke/timelog-extract/pull/456),
+  [#465](https://github.com/mbjorke/timelog-extract/pull/465),
+  [#498](https://github.com/mbjorke/timelog-extract/pull/498),
+  [#501](https://github.com/mbjorke/timelog-extract/pull/501)).
+- Packaging: SPDX license metadata
+  ([#427](https://github.com/mbjorke/timelog-extract/pull/427)).
+- Dev / safety: author-gate and external-PR triage workflows; repo-native
+  `/gittan-review`; retire Jules personas (`--agent-gate`); privacy pre-commit
+  guard for client data in docs
+  ([#428](https://github.com/mbjorke/timelog-extract/pull/428),
+  [#430](https://github.com/mbjorke/timelog-extract/pull/430),
+  [#441](https://github.com/mbjorke/timelog-extract/pull/441),
+  [#455](https://github.com/mbjorke/timelog-extract/pull/455),
+  [#512](https://github.com/mbjorke/timelog-extract/pull/512)).
 
 ## 0.3.1 - 2026-07-04
 

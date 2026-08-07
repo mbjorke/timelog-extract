@@ -9,12 +9,14 @@
 #   curl -fsSL https://gittan.sh/install | bash
 #   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
 #   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
+#   curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
 #   curl -fsSL https://gittan.sh/install | bash -s -- --help
 #
 # What it does:
 #   - verifies Python 3.10+ is available
 #   - installs gittan via pipx (preferred) or `pip install --user` as a fallback
 #   - prints `gittan -V` to confirm
+#   - fails if PATH still resolves to an older install (unless --fix-shadow)
 #
 # The script does not read stdin, so piping from curl into bash is safe.
 set -euo pipefail
@@ -24,9 +26,11 @@ COMMAND="gittan"            # CLI command this puts on your PATH
 PY_MIN_MAJOR=3
 PY_MIN_MINOR=10
 PYPI_BASE="https://pypi.org/project"
+INSTALL_URL="https://gittan.sh/install"
 
 DRY_RUN=0
 PIN_VERSION=""
+FIX_SHADOW=0
 
 print_help() {
   cat <<'EOF'
@@ -36,11 +40,18 @@ Usage:
   curl -fsSL https://gittan.sh/install | bash
   curl -fsSL https://gittan.sh/install | bash -s -- --dry-run
   curl -fsSL https://gittan.sh/install | bash -s -- --version 0.4.0
+  curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
 
 Options:
   --dry-run          Print what would happen; make no changes.
   --version VERSION  Install a specific PyPI version, e.g. 0.4.0.
+  --fix-shadow      After install, uninstall other timelog-extract copies that
+                     shadow the fresh binary on PATH (Anaconda / old pip --user).
   --help, -h         Show this help and exit.
+
+Do not use plain `pip install -U timelog-extract` on an old Python: pip will
+silently install the newest release that Python still supports (e.g. 0.3.0 on
+3.9) instead of current. Prefer this installer or pipx on Python 3.10+.
 
 The script does not read stdin, so piping from curl into bash is safe.
 EOF
@@ -49,6 +60,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
+    --fix-shadow) FIX_SHADOW=1; shift ;;
     --version)
       if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == -* || ! "$2" =~ ^[0-9] ]]; then
         printf '\033[1;31m !!\033[0m --version needs a version like 0.4.0, got: %s\n' "${2:-<none>}" >&2
@@ -72,6 +84,84 @@ run() {
   else
     "$@"
   fi
+}
+
+same_path() {
+  python3 -c 'import os,sys; print("yes" if os.path.realpath(sys.argv[1])==os.path.realpath(sys.argv[2]) else "no")' "$1" "$2" 2>/dev/null || echo no
+}
+
+# List every gittan on PATH (first wins for a plain `gittan` invocation).
+list_command_on_path() {
+  local name="$1"
+  local -a seen=()
+  local dir candidate real already s
+  local old_ifs="$IFS"
+  IFS=':'
+  # shellcheck disable=SC2086
+  for dir in $PATH; do
+    IFS="$old_ifs"
+    [[ -z "$dir" ]] && continue
+    candidate="${dir%/}/${name}"
+    [[ -x "$candidate" || -f "$candidate" ]] || continue
+    real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$candidate" 2>/dev/null || echo "$candidate")"
+    already=0
+    for s in "${seen[@]+"${seen[@]}"}"; do
+      if [[ "$s" == "$real" ]]; then already=1; break; fi
+    done
+    [[ "$already" -eq 1 ]] && continue
+    seen+=("$real")
+    printf '%s\n' "$candidate"
+  done
+  IFS="$old_ifs"
+}
+
+# Best-effort: uninstall timelog-extract via the Python that owns a console script.
+owner_python_for_script() {
+  local bin="$1"
+  local shebang first rest sibling
+  shebang="$(head -n 1 "$bin" 2>/dev/null || true)"
+  if [[ "$shebang" == "#!"* ]]; then
+    first="${shebang:2}"
+    first="${first%%[[:space:]]*}"
+    rest="${shebang#*[[:space:]]}"
+    if [[ "$(basename "$first")" == "env" && "$rest" != "$shebang" ]]; then
+      printf '%s\n' "${rest%%[[:space:]]*}"
+      return 0
+    fi
+    if [[ -x "$first" ]]; then
+      printf '%s\n' "$first"
+      return 0
+    fi
+  fi
+  sibling="$(dirname "$bin")/python"
+  if [[ -x "$sibling" ]]; then
+    printf '%s\n' "$sibling"
+    return 0
+  fi
+  sibling="$(dirname "$bin")/python3"
+  if [[ -x "$sibling" ]]; then
+    printf '%s\n' "$sibling"
+    return 0
+  fi
+  return 1
+}
+
+uninstall_via_script() {
+  local bin="$1"
+  local owner
+  if ! owner="$(owner_python_for_script "$bin")"; then
+    warn "Could not find Python that owns ${bin}; skip uninstall."
+    return 1
+  fi
+  note "Uninstalling ${PACKAGE} via ${owner} (was shadowing at ${bin})"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf '   (dry-run) %s -m pip uninstall -y %s\n' "$owner" "$PACKAGE"
+    return 0
+  fi
+  "$owner" -m pip uninstall -y "$PACKAGE" 2>/dev/null || {
+    warn "pip uninstall via ${owner} failed — remove ${bin} manually if it still shadows."
+    return 1
+  }
 }
 
 # --- Python ---
@@ -156,6 +246,9 @@ fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   printf '   (dry-run) %s\n' "${INSTALLED_BIN:-$COMMAND} -V"
+  if [[ "$FIX_SHADOW" -eq 1 ]]; then
+    printf '   (dry-run) would uninstall PATH shadows of %s\n' "$COMMAND"
+  fi
 elif [[ -n "$INSTALLED_BIN" && -x "$INSTALLED_BIN" ]]; then
   "$INSTALLED_BIN" -V || warn "${COMMAND} -V did not succeed."
   NEW_VERSION="$("$INSTALLED_BIN" -V 2>/dev/null | awk '{print $NF}' || true)"
@@ -166,14 +259,31 @@ elif [[ -n "$INSTALLED_BIN" && -x "$INSTALLED_BIN" ]]; then
       note "Reinstalled ${COMMAND} (already at ${NEW_VERSION})."
     fi
   fi
+
+  # Optional: remove other timelog-extract installs that win on PATH.
+  if [[ "$FIX_SHADOW" -eq 1 ]]; then
+    while IFS= read -r other; do
+      [[ -z "$other" ]] && continue
+      if [[ "$(same_path "$other" "$INSTALLED_BIN")" == "yes" ]]; then
+        continue
+      fi
+      uninstall_via_script "$other" || true
+    done < <(list_command_on_path "$COMMAND")
+    hash -r 2>/dev/null || true
+  fi
+
   RESOLVED="$(command -v "$COMMAND" 2>/dev/null || true)"
   SAME="no"
   if [[ -n "$RESOLVED" ]]; then
-    SAME="$(python3 -c 'import os,sys; print("yes" if os.path.realpath(sys.argv[1])==os.path.realpath(sys.argv[2]) else "no")' "$RESOLVED" "$INSTALLED_BIN" 2>/dev/null || echo no)"
+    SAME="$(same_path "$RESOLVED" "$INSTALLED_BIN")"
   fi
   if [[ -n "$RESOLVED" && "$SAME" != "yes" ]]; then
-    warn "Your shell resolves '${COMMAND}' to ${RESOLVED} — an OLDER install that shadows the one just installed (${INSTALLED_BIN})."
-    warn "Fix: remove the old one (python3 -m pip uninstall ${PACKAGE}, using the Python that owns ${RESOLVED}), or put $(dirname "$INSTALLED_BIN") earlier in PATH. Then open a new terminal and re-run: ${COMMAND} -V"
+    OLD_VER="$("$RESOLVED" -V 2>/dev/null | awk '{print $NF}' || true)"
+    warn "Your shell resolves '${COMMAND}' to ${RESOLVED}${OLD_VER:+ (${OLD_VER})} — that OLDER install shadows the one just installed (${INSTALLED_BIN}${NEW_VERSION:+ (${NEW_VERSION})})."
+    warn "Fix with:  curl -fsSL ${INSTALL_URL} | bash -s -- --fix-shadow"
+    warn "Or manually:  $(dirname "$RESOLVED")/python -m pip uninstall -y ${PACKAGE}   # if that python exists"
+    warn "Then:  hash -r && ${COMMAND} -V"
+    die "Install succeeded, but PATH still shadows the new ${COMMAND}. Re-run with --fix-shadow (see above)."
   fi
 elif command -v "$COMMAND" >/dev/null 2>&1; then
   "$COMMAND" -V || warn "${COMMAND} -V did not succeed."

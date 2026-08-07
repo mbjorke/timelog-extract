@@ -28,6 +28,13 @@ curl -fsSL https://gittan.sh/install | bash
 gittan -V
 ```
 
+Upgrading (including after a stale Anaconda / old `pip --user` install wins on PATH):
+
+```bash
+curl -fsSL https://gittan.sh/install | bash -s -- --fix-shadow
+hash -r && gittan -V
+```
+
 Prefer the manual steps? Install with **pipx** directly:
 
 ```bash
@@ -41,7 +48,9 @@ gittan -V
 <details>
 <summary><b>Other install paths</b></summary>
 
-**`pip install --user`** — scripts may land outside your default PATH. Add the user-level `bin` for that Python install (OS-specific; `python3 -m site --user-base` helps locate it), or run **`gittan doctor`** after install for hints.
+**Avoid bare `pip install -U timelog-extract`** unless you know which Python it hits. On Python 3.9, pip silently installs the last 3.9-compatible release (**0.3.0**) instead of current (3.10+). Prefer the installer or pipx above.
+
+**`pip install --user`** (Python 3.10+ only) — scripts may land outside your default PATH. Add the user-level `bin` for that Python install (OS-specific; `python3 -m site --user-base` helps locate it), or run **`gittan doctor`** after install for hints.
 
 ```bash
 python3 -m pip install --user timelog-extract
@@ -65,7 +74,7 @@ gittan -V
 
 A Homebrew tap (`brew install gittan`) is planned; until then use the installer or pipx above. Maintainer notes: [`docs/runbooks/homebrew-tap.md`](docs/runbooks/homebrew-tap.md).
 
-Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md).
+Maintainers: release steps — [`docs/runbooks/versioning.md`](docs/runbooks/versioning.md). When this install script changes, mirror it to [`gittan-home`](https://github.com/mbjorke/gittan-home) as `install` so `https://gittan.sh/install` updates.
 
 </details>
 
@@ -145,6 +154,7 @@ gittan report --from YYYY-MM-DD --to YYYY-MM-DD --format json --json-file out/tr
 | Symptom | Where to look |
 |--------|----------------|
 | `gittan` not found | PATH (pipx `~/.local/bin`, or pip `--user` bin); then **`gittan doctor`**. |
+| `gittan -V` shows an old version after upgrade | Another install earlier on PATH (Anaconda / old pip). Run `curl -fsSL https://gittan.sh/install \| bash -s -- --fix-shadow`, then `hash -r && gittan -V`. |
 | No events / empty sources | [`docs/sources/sources-and-flags.md`](docs/sources/sources-and-flags.md) |
 | Bad or missing config | `gittan setup` · backups `timelog_projects.backup-*.json` |
 | Permissions / paths | `--worklog`, browser DB access, Mail / Screen Time |

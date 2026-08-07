@@ -290,7 +290,14 @@ elif [[ -n "$INSTALLED_BIN" && -x "$INSTALLED_BIN" ]]; then
     fi
     warn "  $(dirname "$RESOLVED")/python -m pip uninstall -y ${PACKAGE}   # if that python exists"
     warn "Then:  hash -r && ${COMMAND} -V"
-    die "Install succeeded, but PATH still shadows the new ${COMMAND}."
+    # --no-fix-shadow is documented as warn-only: the user asked us to leave the
+    # competing install alone, so a shadowed PATH is the outcome they chose, not
+    # a failed install. Exiting non-zero there would break scripted opt-outs.
+    # The default path did try to clear the shadow, so still finding one means
+    # the cleanup did not work and that is a real error.
+    if [[ "$FIX_SHADOW" -eq 1 ]]; then
+      die "Install succeeded, but PATH still shadows the new ${COMMAND}."
+    fi
   fi
 elif command -v "$COMMAND" >/dev/null 2>&1; then
   "$COMMAND" -V || warn "${COMMAND} -V did not succeed."

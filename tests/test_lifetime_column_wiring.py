@@ -60,11 +60,13 @@ class LifetimeColumnWiringTests(unittest.TestCase):
         section = inspect.signature(print_project_hour_review_section).parameters
         self.assertIn("lifetime_window", section)
 
-    def _render(self, *, totals, window):
+    def _render(self, *, totals, window, additive=False):
         console = Console(file=io.StringIO(), width=200, no_color=True)
+        args = _args()
+        args.additive_summary = additive
         print_project_hour_review_section(
             console,
-            args=_args(),
+            args=args,
             overall_days={},
             # {project: {day: payload}} — the shape the renderer sums over.
             project_reports={"project-alpha": {"2026-06-10": {"hours": 1.0, "sessions": []}}},
@@ -106,6 +108,18 @@ class LifetimeColumnWiringTests(unittest.TestCase):
             window=("2026-05-04", "2026-06-10"),
         )
         self.assertNotIn("never-worked", out)
+
+    def test_additive_summary_does_not_crash_on_a_lifetime_only_project(self):
+        # The union adds projects the period never saw; under --additive-summary
+        # the per-project maps are keyed by period activity, so indexing them
+        # directly raised KeyError instead of rendering the row.
+        out = self._render(
+            totals={"project-alpha": 4.75, "dormant-project": 12.5},
+            window=("2026-05-04", "2026-06-10"),
+            additive=True,
+        )
+        self.assertIn("dormant-project", out)
+        self.assertIn("12.5", out)
 
     def test_no_column_when_there_is_nothing_to_show(self):
         out = self._render(totals=None, window=None)

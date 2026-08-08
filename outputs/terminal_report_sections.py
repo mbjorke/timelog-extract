@@ -396,7 +396,7 @@ def print_project_hour_review_section(
         customer_projects = projects_by_customer[customer_name]
         customer_hours = sum(
             (
-                additive_project_hours[p]
+                additive_project_hours.get(p, 0.0)
                 if additive_summary
                 else sum(day_payload["hours"] for day_payload in project_reports.get(p, {}).values())
             )
@@ -407,7 +407,7 @@ def print_project_hour_review_section(
         if args.billable_unit and args.billable_unit > 0:
             cust_b = sum(
                 billable_total_hours_fn(
-                    additive_project_hours[p]
+                    additive_project_hours.get(p, 0.0)
                     if additive_summary
                     else sum(day_payload["hours"] for day_payload in project_reports.get(p, {}).values()),
                     args.billable_unit,
@@ -461,7 +461,7 @@ def print_project_hour_review_section(
 
         for project_name in customer_projects:
             hours = (
-                additive_project_hours[project_name]
+                additive_project_hours.get(project_name, 0.0)
                 if additive_summary
                 else sum(day_payload["hours"] for day_payload in project_reports.get(project_name, {}).values())
             )

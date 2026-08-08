@@ -86,10 +86,18 @@ class LifetimeColumnWiringTests(unittest.TestCase):
         out = self._render(
             totals={"project-alpha": 4.75}, window=("2026-05-04", "2026-06-10")
         )
-        self.assertIn("Lifetime", out)
         self.assertIn("2026-05-04", out)
         self.assertIn("2026-06-10", out)
         self.assertNotIn("Total observed", out)
+
+    def test_header_says_the_figure_is_a_ceiling(self):
+        # GH-543: the source is keep-max, so the sum is the most any run ever saw.
+        # A bare "Lifetime" beside a re-scanning Hours column presents two different
+        # epistemics as the same kind of number — GH-146's mistake in a new form.
+        out = self._render(
+            totals={"project-alpha": 4.75}, window=("2026-05-04", "2026-06-10")
+        )
+        self.assertIn("Lifetime max", out)
 
     def test_a_project_with_no_period_activity_still_shows_its_lifetime(self):
         # GH-537: rows used to come only from the selected period, so a project

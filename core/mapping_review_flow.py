@@ -13,8 +13,17 @@ from core.mapping_review import (
 )
 
 
-def _print_mapping_cancelled(console) -> None:
+def _print_mapping_cancelled(console, completed: int = 0) -> None:
+    """Report a cancel. Cancel stops the queue; it never discards completed answers."""
     from outputs.terminal_theme import CLR_VALUE_ORANGE
+
+    if completed > 0:
+        noun = "mapping" if completed == 1 else "mappings"
+        console.print(
+            f"[{CLR_VALUE_ORANGE}]Stopped — saving the {completed} {noun} you already completed; "
+            f"the rest of the queue was left unreviewed.[/{CLR_VALUE_ORANGE}]"
+        )
+        return
     console.print(f"[{CLR_VALUE_ORANGE}]Cancelled — no mapping changes saved.[/{CLR_VALUE_ORANGE}]")
 
 
@@ -150,7 +159,7 @@ def run_batch_mapping_review(
     review: MappingReview,
     profiles: list[dict],
     projects_config: str,
-) -> int | None:
+) -> int:
     import questionary
 
     if review.change_count() == 0:
@@ -159,6 +168,8 @@ def run_batch_mapping_review(
     print_mapping_review_summary(console, review)
     additions: list[tuple[str, str, str]] = []
     removals: list[tuple[str, str, str]] = []
+    completed = 0
+    cancelled = False
     existing_names = {
         str(p.get("name") or "").strip().lower()
         for p in profiles
@@ -176,8 +187,8 @@ def run_batch_mapping_review(
             default="Add as new project",
         ).ask()
         if answer is None or answer == _CANCEL:
-            _print_mapping_cancelled(console)
-            return None
+            cancelled = True
+            break
         if answer == "Skip":
             continue
         if answer == "Add as new project":
@@ -194,18 +205,22 @@ def run_batch_mapping_review(
                 additions.append((profile_name, "match_terms", proposal.suggested_name))
             existing_names.add(profile_name.lower())
             existing.append(profile_name)
+            completed += 1
             continue
         target = questionary.select(
             "Map to which project?",
             choices=existing + ["Skip", _CANCEL],
         ).ask()
         if target is None or target == _CANCEL:
-            _print_mapping_cancelled(console)
-            return None
+            cancelled = True
+            break
         if target and target != "Skip":
             additions.append((target, "match_terms", proposal.slug))
+            completed += 1
 
     for change in review.changes:
+        if cancelled:
+            break
         _print_change_group(console, change)
         _print_activity_legend(console)
         label = f"{change.customer} → {change.target_project}" if change.customer else change.target_project
@@ -215,13 +230,17 @@ def run_batch_mapping_review(
             default="Merge (default)",
         ).ask()
         if answer is None or answer == _CANCEL:
-            _print_mapping_cancelled(console)
-            return None
+            cancelled = True
+            break
         if answer == "Skip":
             continue
         if answer == "Merge (default)":
             additions.extend(_merge_additions_for_change(change))
             removals.extend(_merge_removals_for_change(change, profiles))
+            completed += 1
+
+    if cancelled:
+        _print_mapping_cancelled(console, completed)
 
     if not additions and not removals:
         return 0

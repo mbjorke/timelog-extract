@@ -8,7 +8,8 @@ No code in this pass.
 
 ## Traceability
 
-- story_id: `GH-536` · all-source slice = `GH-537`
+- story_id: `GH-537`
+- superseded_item: `GH-536` (closed, not built — see the backlog section)
 - spec_status: approved
 - implementation_status: not built (planning artifact — no code)
 - created_at: 2026-08-08
@@ -24,8 +25,21 @@ No code in this pass.
     in `scripts/run_autotests.sh` and therefore in CI
   - `core/timelog_totals.py` intact; `core/report_service.py:359` holds the
     withdrawal stub
-- validation.decision: GO
+  - benchmark of classification + session math at 82 profiles, and of
+    `collect_git_commit_timestamps` over one repository's full history
+  - **not covered:** the lifetime rendering path itself. `timelog_totals` is
+    still `{}` at the stub and no lifetime column exists, so nothing here
+    verifies output. That is `GH-537`'s acceptance to satisfy, not this pass's.
+- validation.decision: GO **for the planning claims only** — the gate check, the
+  cost measurements, and the priority ordering. It asserts nothing about an
+  implementation that does not exist yet.
 - changelog:
+  - 2026-08-08: Review pass. Split the combined `story_id` (the live story is
+    GH-537 now that GH-536 is closed), scoped `validation.decision` to the
+    planning claims since nothing here verifies an unbuilt rendering path,
+    changed the lifetime span from "all time" to the retained observation
+    window, and made the worklog column's priority agree with its label
+    (`priority:do-not-build`, corrected on the issue too).
   - 2026-08-08: Third correction. The speed complaint was about the *Git-only*
     column, not the withdrawn one: one `git log` over all history per profile,
     about 6.7s at 82 profiles, dormant only because `git_repo` is unset.
@@ -37,7 +51,7 @@ No code in this pass.
     on replaced storage.
   - 2026-08-08: Corrected after learning the requester's setup — 82 profiles and
     no worklog. Swapped the priorities: the worklog-only column cannot serve him
-    and drops to `later`; all-source totals become the `now` item. Measured the
+    and is closed; all-source totals become the `now` item. Measured the
     aggregation cost (about a second for a year at 82 profiles), which removes
     the caching question entirely.
   - 2026-08-08: Initial pass.
@@ -167,16 +181,18 @@ run.
 The withdrawn column and "total time for a project" are usually spoken of as one
 thing. They are not, and conflating them is why the ask keeps stalling.
 
-| | Withdrawn column | Lifetime totals |
+| | Withdrawn column (#536) | Lifetime totals (#537) |
 | --- | --- | --- |
 | Sources | worklog only (`TIMELOG.md`) | all sources |
-| Span | all time | all time |
-| Cost | cheap — one file parse | scales with retained evidence |
-| Blocked by | nothing, as of the gate check above | a storage decision |
+| Span | all time in principle, in practice whatever the worklog holds | the retained observation window |
+| Cost | cheap — one file parse | cheap — measured above |
+| State | **closed, not built** — blank for the requester, and its storage is being retired by #408 | the live requirement |
 
-The first can come back now. The second is the one where performance is a real
-question, and where the storage decision has to be made honestly rather than by
-reaching for config because it is nearby.
+Neither is blocked by cost. The first is closed because it cannot answer the ask
+on the installation that made it; the second is unblocked because the storage
+question turned out to have no cache in it. "The retained observation window" is
+deliberate: an all-time claim over a store that prunes would be false, which is
+why the figure has to state what it covers.
 
 ---
 
@@ -267,9 +283,10 @@ Feature: Lifetime worklog hours are visible again
 only thing that was blocking it turned out not to exist. It is a display plus a
 source decision, both small.
 
-The worklog-only column drops to `later`. It was never the ask, and shipping a
-column that is structurally empty for the requester would spend goodwill that is
-already scarce.
+The worklog-only column is **not being built**: #536 is closed, and its label is
+`priority:do-not-build`. It was never the ask, shipping a column that is
+structurally empty for the requester would spend goodwill that is already scarce,
+and #408 is retiring the storage it reads.
 
 ## Open decisions
 

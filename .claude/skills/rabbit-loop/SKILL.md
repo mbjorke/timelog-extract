@@ -17,6 +17,12 @@ for a review that never ran; check the detail column, never the status alone. Af
 opens a PR and auto-merges the SAFE class; it pauses only for human-judgment
 changes (see Ship gate).
 
+**Reviewer override:** `RABBIT_LOOP_REVIEWER=auto|greptile|coderabbit`. Clean-review
+evidence differs by reviewer (Greptile: `confidence` + empty `comments`, and on a
+PR a `greptile-apps` check run that succeeded on the head SHA; CodeRabbit: its
+`complete` event, and on a PR its summary comment). Both fail closed. Full table:
+`docs/skills/rabbit-loop.md`.
+
 **Critic fallback (both CLIs unavailable):** use `/gittan-review` as the
 independent critic instead (Claude Code's own model, no third-party rate limit),
 or `/code-review ultra` for high-risk PRs. Run it from a **fresh session, subagent,

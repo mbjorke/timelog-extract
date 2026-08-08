@@ -25,6 +25,26 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 |------|-----|------|
 | Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
 | Critic 1 | **Greptile CLI** (default when signed in), *or* **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
+
+**Reviewer selection.** `scripts/rabbit_loop.sh` picks **one** critic per run and
+says which in its header line. `RABBIT_LOOP_REVIEWER=auto|greptile|coderabbit`
+overrides; `auto` prefers Greptile when its CLI is signed in and falls back to
+CodeRabbit. Greptile leads because CodeRabbit's check often reports `pass` with
+the detail `Review rate limited`, which is a green signal for a review that never
+ran — read the detail column, never the status alone.
+
+**What counts as reviewed, per reviewer.** Convergence and the merge gate treat
+these as equivalent evidence:
+
+| Reviewer | Clean-review evidence |
+| --- | --- |
+| Greptile | `--json` object with a `confidence` and an empty `comments` list; on a PR, a **`greptile-apps` check run that succeeded on the PR's head SHA** |
+| CodeRabbit | JSONL stream ending in `{"type":"complete","status":"review_completed"}`; on a PR, its review-summary comment |
+
+Both parsers **fail closed**: output that cannot be parsed, or is missing the
+field that proves a review happened, counts as *not reviewed* rather than clean.
+The PR-side signal is deliberately identity-bound — a marker in the PR body would
+be author-editable, and this gate exists to stop exactly that kind of fail-open.
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (file-length report + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 

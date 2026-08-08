@@ -178,11 +178,22 @@ _pr_review_signals() {
   # Greptile posts review threads when it has findings, which the review query
   # above already counts. A *clean* pass is the gap: when it judges the PR safe to
   # merge it says so only in the summary it writes into the PR body, submitting no
-  # review and leaving no comment. Without this check the gate blocks precisely the
-  # PRs a reviewer approved, which matters now that CodeRabbit frequently answers
-  # "pass / Review rate limited" without reviewing at all.
-  if gh pr view "$pr" --json body --jq '.body' 2>/dev/null | grep -q "greptile_comment"; then
-    n=$((n + 1))
+  # review and leaving no comment. Without some signal for that case the gate
+  # blocks precisely the PRs a reviewer approved, which matters now that CodeRabbit
+  # frequently answers "pass / Review rate limited" without reviewing at all.
+  #
+  # The signal must be identity-bound. The PR body is author-editable, so matching
+  # a marker in it would let anyone clear this gate by typing a string — a
+  # fail-open in the one check that exists to prevent fail-open (#430). A check run
+  # is written by the GitHub App and cannot be forged from the PR, and pinning it
+  # to the PR's own head SHA also rejects a review of an earlier commit.
+  gate_head="$(gh pr view "$pr" --json headRefOid --jq '.headRefOid' 2>/dev/null || echo '')"
+  if [[ -n "$gate_head" ]]; then
+    greptile_ok="$(gh api "repos/$owner/$repo/commits/$gate_head/check-runs" \
+      --jq '[.check_runs[] | select(.app.slug == "greptile-apps" and .status == "completed" and .conclusion == "success")] | length' 2>/dev/null)" || err=1
+    if [[ "${greptile_ok:-}" =~ ^[0-9]+$ ]] && [[ "$greptile_ok" -gt 0 ]]; then
+      n=$((n + 1))
+    fi
   fi
   # Tie the local converged.ack to the PR's OWN head commit, not the local
   # checkout — otherwise gating an unrelated --pr would borrow this branch's ack.
@@ -673,29 +684,30 @@ if os.environ.get("REVIEWER") == "greptile":
     #  "securitySummary":null, "instructions":null, "comments":[...]}
     # Fail closed: no parseable object, or no confidence field, means no review.
     # The CLI prefixes advisory lines before the JSON ("warning: N uncommitted
-    # files not included in the review"), so the file is not pure JSON. Take the
-    # first line that parses as an object; fall back to the whole text.
+    # files not included in the review"), so the file is not pure JSON, and the
+    # object is not guaranteed to sit on one line. raw_decode finds the first
+    # complete object from any offset, which handles both without assuming a
+    # layout that happens to hold today.
     obj = None
     try:
         text = pathlib.Path(sys.argv[1]).read_text()
     except OSError:
         text = ""
-    for line in text.splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
+    decoder = json.JSONDecoder()
+    idx = text.find("{")
+    while idx != -1:
         try:
-            candidate = json.loads(line)
+            candidate, _end = decoder.raw_decode(text, idx)
         except ValueError:
+            idx = text.find("{", idx + 1)
             continue
-        if isinstance(candidate, dict):
+        # Keep looking until a review-shaped object turns up: advisory prose can
+        # contain a brace ("use {} for empty"), and stopping at the first dict
+        # would accept that and miss the real payload behind it.
+        if isinstance(candidate, dict) and candidate.get("confidence") is not None:
             obj = candidate
             break
-    if obj is None:
-        try:
-            obj = json.loads(text)
-        except ValueError:
-            obj = None
+        idx = text.find("{", idx + 1)
     if obj is None:
         sys.stderr.write("Greptile: no parseable JSON review\n")
         print("0 0")
@@ -704,7 +716,15 @@ if os.environ.get("REVIEWER") == "greptile":
         sys.stderr.write("Greptile: review object missing confidence — treating as not reviewed\n")
         print("0 0")
         raise SystemExit(0)
-    items = obj.get("comments") or []
+    # A review whose findings are not a list is a shape we do not understand;
+    # counting it as reviewed would be guessing at the one number this gates on.
+    items = obj.get("comments")
+    if items is None:
+        items = []
+    if not isinstance(items, list):
+        sys.stderr.write("Greptile: 'comments' is not a list — treating as not reviewed\n")
+        print("0 0")
+        raise SystemExit(0)
     for c in items:
         if not isinstance(c, dict):
             sys.stderr.write(f"  {c}\n")

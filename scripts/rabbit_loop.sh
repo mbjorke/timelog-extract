@@ -718,11 +718,13 @@ if os.environ.get("REVIEWER") == "greptile":
         raise SystemExit(0)
     # A review whose findings are not a list is a shape we do not understand;
     # counting it as reviewed would be guessing at the one number this gates on.
+    # Absent is not empty. A response with no findings field is a shape we do not
+    # understand, and substituting [] would report "reviewed, zero findings" —
+    # converging the loop on an answer nobody read.
     items = obj.get("comments")
-    if items is None:
-        items = []
     if not isinstance(items, list):
-        sys.stderr.write("Greptile: 'comments' is not a list — treating as not reviewed\n")
+        what = "missing" if items is None else "not a list"
+        sys.stderr.write(f"Greptile: 'comments' is {what} — treating as not reviewed\n")
         print("0 0")
         raise SystemExit(0)
     for c in items:

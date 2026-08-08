@@ -9,7 +9,8 @@ No code in this pass.
 
 ## Traceability
 
-- story_id: `GH-531` · substrate = `GH-237`
+- story_id: `GH-531`
+- substrate: `GH-237` (promoted by this pass; blocks the items below)
 - spec_status: approved
 - implementation_status: not built (planning artifact — no code)
 - created_at: 2026-08-07
@@ -24,6 +25,11 @@ No code in this pass.
     itself stays local, it holds customer and invoice data)
 - validation.decision: GO
 - changelog:
+  - 2026-08-08: Review pass. Split the combined `story_id`, corrected backup
+    retirement from `next` to `later` (it is two dependencies deep and has no
+    issue, which is the correct state for `later`), and recorded #535 as
+    blocking #237 — found by installing the timer for real after this was
+    drafted.
   - 2026-08-07: Initial pass.
 
 Labels are the priority source of truth
@@ -84,7 +90,10 @@ working until the day it doesn't. See #366, and the collector measurement in
 
 ### #237 — `gittan setup-data-autocommit`, promoted
 
-- priority: **next** (from `later`)
+- priority: **next** (from `later`), behind #535 — the global commit hook fires
+  on the data directory itself, so shipping this command first would hand every
+  user an infinite commit loop. Found while installing the timer manually after
+  this spec was drafted.
 - problem: the protection that came out of a real data-loss incident depends on
   a user hand-editing a launchd plist, and there is no check that it still runs.
   A runbook step that must be performed once, correctly, by hand, and then keeps
@@ -131,7 +140,9 @@ Feature: The data directory protects itself without hand-editing a plist
 
 ### Retire the timestamped backup copies once git is the mechanism
 
-- priority: **next**
+- priority: **later** — it sits behind #237, which sits behind #535, so calling
+  it `next` would claim a position nothing can be picked up from. No issue is
+  filed for it yet, which is the correct state for a `later` item.
 - problem: the config directory accumulates copies under several different
   naming schemes, written by different code paths at different times. They exist
   because there was no history. Once the directory is a git repo with a working
@@ -226,15 +237,16 @@ Feature: A collector can be verified without anyone's real data
 
 ## Ordering
 
-Nothing here enters `now`. The existing `now` set is already six deep and the
-binding constraint is maintainer attention, so this pass adds to `next` and
-`later` only.
+Nothing here enters `now`. That set is already deep and the binding constraint is
+maintainer attention, so this pass adds to `next` and `later` only.
 
-Within the pass: #237 first because it is the substrate and closes a known
-incident path; then materializer coverage, because it is the direct answer to
-verification depending on one machine; then backup retirement, which needs #237
-proven; then the variant corpus and device portability, which both get much
-cheaper once the first three exist.
+Within the pass: **#535 first**, because it was found after this spec was drafted
+and #237 cannot ship over it — the global hook fires on the data directory, so an
+auto-commit timer would churn forever. Then #237, the substrate, which closes a
+known incident path. Then materializer coverage, the direct answer to
+verification depending on one machine. Backup retirement waits for #237 to be
+proven, and the variant corpus and device portability get much cheaper once the
+first items exist.
 
 ## Open decisions
 

@@ -601,7 +601,7 @@ print(suggested_chat_title(d) or '')
       echo "rabbit_loop: workflow BLOCKERS — resolve before CodeRabbit (or --skip-workflow)." >&2
       exit 2
     fi
-    echo "rabbit_loop: workflow acknowledgement required before CodeRabbit." >&2
+    echo "rabbit_loop: workflow acknowledgement required before the review." >&2
     exit 2
   fi
   echo ""
@@ -666,16 +666,37 @@ set -e
 # We fail closed if it is missing or status != review_completed. Python prints
 # the human summary to stderr and "<completed> <count>" to stdout.
 PARSE="$(REVIEWER="$REVIEWER" python3 - "$FINDINGS_FILE" <<'PY'
-import json, os, sys
+import json, os, pathlib, sys
 
 if os.environ.get("REVIEWER") == "greptile":
     # {"summary":..., "confidence":1-5, "confidenceReasoning":...,
     #  "securitySummary":null, "instructions":null, "comments":[...]}
     # Fail closed: no parseable object, or no confidence field, means no review.
+    # The CLI prefixes advisory lines before the JSON ("warning: N uncommitted
+    # files not included in the review"), so the file is not pure JSON. Take the
+    # first line that parses as an object; fall back to the whole text.
+    obj = None
     try:
-        with open(sys.argv[1]) as f:
-            obj = json.load(f)
-    except (OSError, ValueError):
+        text = pathlib.Path(sys.argv[1]).read_text()
+    except OSError:
+        text = ""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            candidate = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(candidate, dict):
+            obj = candidate
+            break
+    if obj is None:
+        try:
+            obj = json.loads(text)
+        except ValueError:
+            obj = None
+    if obj is None:
         sys.stderr.write("Greptile: no parseable JSON review\n")
         print("0 0")
         raise SystemExit(0)

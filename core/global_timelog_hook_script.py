@@ -152,6 +152,22 @@ HOOK_BODY = dedent(
     ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || true)"
     [[ -n "${ROOT_DIR:-}" ]] || exit 0
 
+    # Gittan's own data directory is not a project, and a commit there is
+    # bookkeeping rather than work. The autocommit runbook makes that directory a
+    # git repo, so without this guard every auto-commit fires this hook, which
+    # spools an event and appends a worklog *inside* the same directory, which the
+    # next tick commits, which fires the hook again. It never settles, and every
+    # cycle fabricates a worklog entry attributed as activity (GH-535).
+    #
+    # GITTAN_HOME is honoured because the rest of the code already treats it as the
+    # data dir; canonical paths so a symlinked home still matches.
+    GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"
+    gittan_data_canon="${GITTAN_DATA_DIR:A}"
+    root_dir_canon="${ROOT_DIR:A}"
+    if [[ "$root_dir_canon" == "$gittan_data_canon" || "$root_dir_canon" == "$gittan_data_canon"/* ]]; then
+      exit 0
+    fi
+
     GITTAN_CFG_DIR="$HOME/.gittan"
     SCOPE_FILE="$GITTAN_CFG_DIR/timelog_repos.txt"
     FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"

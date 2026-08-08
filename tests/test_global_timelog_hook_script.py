@@ -94,6 +94,64 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
             self.assertTrue(proc.stdout.strip().endswith("worklogs/sample-repo.md"), proc.stdout)
             self.assertNotIn("-", Path(proc.stdout.strip()).stem[len("sample-repo"):])
 
+    def _run_guard(self, tmp: Path, repo: Path, data_dir: Path):
+        """Run only the hook's early guard; echo REACHED if it falls through."""
+        zsh = shutil.which("zsh")
+        if not zsh:
+            self.skipTest("zsh not found")
+        start = HOOK_BODY.index("# Gittan's own data directory is not a project")
+        end = HOOK_BODY.index('GITTAN_CFG_DIR="$HOME/.gittan"')
+        guard = textwrap.dedent(HOOK_BODY[start:end])
+        snippet = 'set -euo pipefail\nROOT_DIR="${1:?}"\n' + guard + '\nprint -r -- REACHED\n'
+        return subprocess.run(
+            [zsh, "-c", snippet, "zsh", str(repo.resolve())],
+            capture_output=True, text=True,
+            env={**os.environ, "GITTAN_HOME": str(data_dir.resolve())},
+        )
+
+    def test_hook_skips_the_gittan_data_directory(self):
+        # GH-535: the autocommit runbook makes the data dir a git repo, so without
+        # this guard every auto-commit fires the hook, which writes a spool event
+        # and a worklog *inside* that directory, which the next tick commits, which
+        # fires the hook again — forever, fabricating attributed activity each time.
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "gittan-data"
+            data.mkdir()
+            proc = self._run_guard(Path(tmp), data, data)
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertNotIn("REACHED", proc.stdout)
+
+    def test_hook_skips_a_repo_nested_inside_the_data_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "gittan-data"
+            nested = data / "worklogs" / "inner"
+            nested.mkdir(parents=True)
+            proc = self._run_guard(Path(tmp), nested, data)
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertNotIn("REACHED", proc.stdout)
+
+    def test_hook_still_runs_for_an_ordinary_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "gittan-data"
+            data.mkdir()
+            repo = Path(tmp) / "some-project"
+            repo.mkdir()
+            proc = self._run_guard(Path(tmp), repo, data)
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertIn("REACHED", proc.stdout)
+
+    def test_hook_does_not_skip_a_sibling_sharing_a_name_prefix(self):
+        # "gittan-data-backup" is not inside "gittan-data"; prefix matching must
+        # respect path boundaries.
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "gittan-data"
+            data.mkdir()
+            sibling = Path(tmp) / "gittan-data-backup"
+            sibling.mkdir()
+            proc = self._run_guard(Path(tmp), sibling, data)
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertIn("REACHED", proc.stdout)
+
     def test_resolver_writes_to_shadow_log_when_enabled(self):
         """When GITTAN_HOOK_SUBJECT is set and shadow_log is enabled, write the event."""
         with tempfile.TemporaryDirectory() as tmp:

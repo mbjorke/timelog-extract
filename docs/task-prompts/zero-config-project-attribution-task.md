@@ -23,6 +23,10 @@ No code in this pass.
   - priority labels applied per the ordering below
 - validation.decision: GO
 - changelog:
+  - 2026-08-07: Third review pass. Scoped the signal exclusion to derived rows so
+    existing declared directory mappings are untouched, and added `hours` to the
+    JSON contract (derived rows carry observed hours; only `billable_hours` is
+    null), which settled open decision 2.
   - 2026-08-07: Second review pass. Restated the setup-friction consequence as a
     structural one and dropped the last observational metrics, so no argument
     here rests on one machine's configuration.
@@ -238,8 +242,11 @@ Feature: A report attributes unmapped repositories without configuration
 
 - acceptance: a day of work in three git repositories produces three attributed
   rows; derived rows are structurally distinct from declared ones in both the
-  terminal and JSON output; branch, session-title, and working-directory signals
-  produce no rows.
+  terminal and JSON output; branch, session-title, and working-directory-only
+  signals produce no **derived** rows. Declared mappings are untouched: a
+  directory that an existing profile already claims through `match_terms` or a
+  durable anchor keeps attributing exactly as it does today. This slice only
+  decides what happens where **no** profile matches.
 - **`--format json` contract.** Consumers must not be able to mistake a derived
   project for a declared one, so the shape is part of the acceptance, not an
   implementation detail:
@@ -249,11 +256,20 @@ Feature: A report attributes unmapped repositories without configuration
   | `project` | profile name | the derived `owner/repo` slug |
   | `derived` | `false` | `true` |
   | `customer` | as configured | `null` |
+  | `hours` | as computed | as computed — derived rows **do** carry observed hours |
   | `billable_hours` | as computed | `null`, never `0.0` |
 
-  `null` rather than `0.0`, so a consumer summing the field cannot silently
-  treat a derived row as a zero-value billable one. Bumping
-  `TRUTH_PAYLOAD_VERSION` is part of this slice.
+  `hours` keeps its current meaning and contributes to observed totals, so the
+  day still adds up: the work happened, and hiding it would recreate the
+  under-reporting this whole direction exists to fix. Existing consumers that
+  read per-project `hours` (`core/cli_cast.py`) therefore keep working without
+  changes, and only gain rows they previously would not have seen.
+
+  `billable_hours` is `null` rather than `0.0`, so a consumer summing the field
+  cannot silently treat a derived row as a zero-value billable one. A consumer
+  that wants only billable work filters on `derived`, not on a zero.
+
+  Bumping `TRUTH_PAYLOAD_VERSION` is part of this slice.
 - validation: point the run at an **explicit temporary config path**, never the
   ambient one — a report must not be able to resolve the operator's live
   `timelog_projects.json` during a no-write test. Cover both directions: an
@@ -337,18 +353,21 @@ but not yet forced.
 
 1. **How is a derived row displayed?** A prefix, a separate section, or a column
    flag. It must be unmistakable without making the report noisy.
-2. **Does a derived row carry hours into totals?** Proposal: yes for observed
-   totals, never for billable. Needs confirming against the accuracy guardrails
-   before implementation.
-3. **What is the identity key when there is no remote?** Settled for this slice
+2. **What is the identity key when there is no remote?** Settled for this slice
    by excluding it: derived rows require a git remote, so local-only
    repositories and non-git directories keep today's behaviour. Still open for
    the follow-up slice — a directory name collides across machines and projects,
    and a path hash is already ruled out — so nothing here should be built on the
    assumption that a local-only identity exists.
-4. **Does the default-No flip apply to `gittan setup --yes`?** Non-interactive
+3. **Does the default-No flip apply to `gittan setup --yes`?** Non-interactive
    runs already skip prompts, so probably moot, but confirm before changing the
    default.
+
+Settled during review, kept here so the reasoning is not lost:
+
+- **Do derived rows carry hours into totals?** Yes for observed, never for
+  billable. The work happened, and hiding it would recreate the under-reporting
+  this direction exists to fix. Written into the JSON contract above.
 
 ## Non-goals for this pass
 

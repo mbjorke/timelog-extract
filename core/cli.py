@@ -38,7 +38,7 @@ from core.cli_options import (
 
 # Top-level options handled by Typer/the app itself — never redirect these into `report`.
 _TOP_LEVEL_ONLY_OPTIONS = frozenset(
-    {"--help", "-h", "--install-completion", "--show-completion", "--version", "-V"}
+    {"--help", "-h", "--install-completion", "--show-completion", "--version", "-V", "-v"}
 )
 
 
@@ -66,7 +66,11 @@ def redirect_legacy_report_argv(argv: list[str]) -> list[str]:
 
 def main() -> None:
     """CLI entrypoint; handles top-level --version and legacy report flags before Typer."""
-    if len(sys.argv) == 2 and sys.argv[1] in ("--version", "-V"):
+    # -v as well as -V: the installer's own remediation text tells the user to run
+    # `gittan -V`, and lowercase is what most people type first. Rejecting it with
+    # "No such option" at the exact moment someone is checking whether an upgrade
+    # landed is a bad first impression for a one-character difference (GH-525).
+    if len(sys.argv) == 2 and sys.argv[1] in ("--version", "-V", "-v"):
         typer.echo(f"timelog-extract {package_version()}")
         raise SystemExit(0)
     redirected = redirect_legacy_report_argv(sys.argv)

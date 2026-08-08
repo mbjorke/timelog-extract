@@ -179,6 +179,37 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
     return latest
 
 
+def observed_lifetime_hours(
+    home: Optional[Path] = None,
+) -> Tuple[Dict[str, float], Optional[Tuple[str, str]]]:
+    """Lifetime hours per project, and the day window those hours actually cover.
+
+    Sums the per-day rows the cache already holds, so no collector runs and no
+    event is re-classified: the expensive part of a report is reading the
+    sources, and this deliberately does not.
+
+    The window is returned alongside the totals rather than left to the caller
+    to guess. The cache is what survived retention, so "all time" would be a
+    claim this data cannot support — a caller that shows the number must be able
+    to show what it covers (GH-537).
+
+    Returns ``({}, None)`` when the cache is empty.
+    """
+    per_day = observed_hours_by_project_day(home)
+    if not per_day:
+        return {}, None
+    totals: Dict[str, float] = {}
+    first = last = None
+    for (project, day), hours in per_day.items():
+        totals[project] = totals.get(project, 0.0) + hours
+        if first is None or day < first:
+            first = day
+        if last is None or day > last:
+            last = day
+    window = (first, last) if first and last else None
+    return totals, window
+
+
 def observed_last_capture_date(home: Optional[Path] = None) -> Optional[str]:
     """The most recent ``captured_at`` date (``YYYY-MM-DD``) in the cache, or None.
 

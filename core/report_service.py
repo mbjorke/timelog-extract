@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from core import domain as core_domain
 from core.analytics import (
@@ -26,6 +26,7 @@ from core.events import (
     filter_included_events,
     make_event as core_make_event,
 )
+from core.observed_cache import observed_lifetime_hours
 from core.report_runtime import (
     build_run_context,
     collect_runtime_events,
@@ -94,6 +95,10 @@ class ReportPayload:
     args: argparse.Namespace
     source_strategy_effective: str
     timelog_project_totals: Dict[str, float] = field(default_factory=dict)
+    # The day span the lifetime totals actually cover; None when the cache is
+    # empty. Carried so no renderer has to guess, and so the figure can never be
+    # shown as "all time" over a store that prunes (GH-537).
+    lifetime_window: Optional[Tuple[str, str]] = None
     git_project_totals: Dict[str, float] = field(default_factory=dict)
     presence_estimated: PresenceEstimatedResult = field(
         default_factory=lambda: PresenceEstimatedResult({}, {}, 0.0)
@@ -354,10 +359,17 @@ def run_timelog_report(
         dt_to=dt_to,
     )
 
-    # "Total observed" column withdrawn (GH-146) until the accuracy net is complete
-    # and the column returns with a corrected label. Aggregation lives in
-    # core.timelog_totals.compute_timelog_project_totals for easy re-introduction.
-    timelog_totals: Dict[str, float] = {}
+    # Lifetime hours per project, summed from the observed cache (GH-537). The
+    # column withdrawn in GH-146 was worklog-only and read *lower* than the
+    # all-source period Hours beside it, which is what eroded trust — the number
+    # was fine, the label invited a comparison it could not support. This one is
+    # all-source and is labelled by the window it actually covers.
+    #
+    # No collector runs here: the cache already holds per-day totals, so this is a
+    # sum over data on disk (~2ms over six months) rather than a re-scan. The
+    # cache exists because source logs rotate; reading it is what makes a lifetime
+    # answer possible at all, not merely faster.
+    timelog_totals, lifetime_window = observed_lifetime_hours(HOME)
 
     git_totals: Dict[str, float] = {}
     collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(
@@ -449,6 +461,7 @@ def run_timelog_report(
         args=args,
         source_strategy_effective=context.source_strategy_effective,
         timelog_project_totals=timelog_totals,
+        lifetime_window=lifetime_window,
         git_project_totals=git_totals,
         presence_estimated=presence_estimated,
         presence_edge_gaps=presence_edge_gaps,

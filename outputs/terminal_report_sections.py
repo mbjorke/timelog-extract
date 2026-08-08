@@ -300,6 +300,7 @@ def print_project_hour_review_section(
     profiles: List[Dict[str, Any]],
     timelog_project_totals: Optional[Dict[str, float]],
     git_project_totals: Optional[Dict[str, float]],
+    lifetime_window: Optional[tuple] = None,
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
 ) -> None:
@@ -357,7 +358,15 @@ def print_project_hour_review_section(
     breakdown_table.add_column(justify="right", style=STYLE_META, no_wrap=True)
     header_row = ["", f"[{STYLE_META}]Hours[/{STYLE_META}]"]
     if show_totals:
-        header_row.append(f"[{STYLE_META}]Total observed[/{STYLE_META}]")
+        # Not "Total observed": that label sat beside an all-source period column
+        # while being worklog-only, and two figures inviting comparison they could
+        # not support is what got it withdrawn (GH-146). This one is all-source and
+        # says what it covers — the cache is what survived retention, so the span
+        # is the honest claim, not "all time" (GH-537).
+        lifetime_label = "Lifetime"
+        if lifetime_window:
+            lifetime_label = f"Lifetime ({lifetime_window[0]} → {lifetime_window[1]})"
+        header_row.append(f"[{STYLE_META}]{lifetime_label}[/{STYLE_META}]")
     if show_git:
         header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")
     header_row += [f"[{STYLE_META}]Billable[/{STYLE_META}]", f"[{STYLE_META}]Days[/{STYLE_META}]"]

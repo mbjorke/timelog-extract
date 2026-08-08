@@ -246,6 +246,7 @@ def run_timelog_cli(args: argparse.Namespace) -> None:
         report.timelog_project_totals or None,
         report.git_project_totals or None,
         report.presence_estimated,
+        lifetime_window=report.lifetime_window,
         presence_edge_gaps=report.presence_edge_gaps,
         presence_bracketing=report.presence_bracketing,
         billable_raw_by_project=billable_by_project,

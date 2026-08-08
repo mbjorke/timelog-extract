@@ -15,6 +15,7 @@ from core.observed_cache import (
     observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
+    observed_lifetime_hours,
     write_observed_summary,
 )
 
@@ -143,6 +144,53 @@ class ObservedCacheTests(unittest.TestCase):
         write_observed_summary(_report("2026-06-20", [_session("2026-06-20", "Alpha")]), home=self.home)
         today = datetime.now().date().isoformat()
         self.assertEqual(observed_last_capture_date(self.home), today)
+
+
+
+class ObservedLifetimeHoursTests(unittest.TestCase):
+    """GH-537: lifetime totals per project, from the cache rather than a re-scan."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write(self, day, project):
+        write_observed_summary(_report(day, [_session(day, project)]), home=self.home)
+
+    def test_empty_cache_yields_no_totals_and_no_window(self):
+        totals, window = observed_lifetime_hours(self.home)
+        self.assertEqual(totals, {})
+        self.assertIsNone(window)
+
+    def test_sums_across_days_and_months_per_project(self):
+        self._write("2026-05-20", "Alpha")
+        self._write("2026-06-20", "Alpha")
+        self._write("2026-06-21", "Beta")
+        totals, _window = observed_lifetime_hours(self.home)
+        per_day = observed_hours_by_project_day(self.home)
+        self.assertAlmostEqual(
+            totals["Alpha"],
+            per_day[("Alpha", "2026-05-20")] + per_day[("Alpha", "2026-06-20")],
+        )
+        self.assertAlmostEqual(totals["Beta"], per_day[("Beta", "2026-06-21")])
+
+    def test_window_is_the_span_the_cache_actually_covers(self):
+        # The figure must never imply coverage the store does not have: the cache
+        # is what survived retention, so "all time" would be a false claim.
+        self._write("2026-05-20", "Alpha")
+        self._write("2026-06-21", "Beta")
+        _totals, window = observed_lifetime_hours(self.home)
+        self.assertEqual(window, ("2026-05-20", "2026-06-21"))
+
+    def test_no_collector_runs_and_the_cache_is_not_written(self):
+        self._write("2026-06-20", "Alpha")
+        before = sorted((p.name, p.read_bytes()) for p in observed_base_dir(self.home).glob("*.jsonl"))
+        observed_lifetime_hours(self.home)
+        after = sorted((p.name, p.read_bytes()) for p in observed_base_dir(self.home).glob("*.jsonl"))
+        self.assertEqual(before, after)
 
 
 if __name__ == "__main__":

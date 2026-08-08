@@ -187,6 +187,9 @@ def print_report(
     presence_bracketing: Any = None,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
+    # Appended, not inserted: core/report_cli.py passes the totals positionally,
+    # so a new parameter between them would silently shift every argument after it.
+    lifetime_window: Optional[tuple] = None,
 ):
     # Constrained to the two heroes this path actually has. print_command_hero
     # falls back to the *status* hero for an unknown name, so passing
@@ -346,6 +349,7 @@ def print_report(
             project_reports=project_reports,
             profiles=profiles,
             timelog_project_totals=timelog_project_totals,
+            lifetime_window=lifetime_window,
             git_project_totals=git_project_totals,
             session_duration_hours_fn=session_duration_hours_fn,
             billable_total_hours_fn=billable_total_hours_fn,

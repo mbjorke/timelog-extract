@@ -26,6 +26,11 @@ No code in this pass.
     withdrawal stub
 - validation.decision: GO
 - changelog:
+  - 2026-08-08: Second correction. Reframed the store as durability rather than
+    performance (logs rotate; the answer must survive), withdrew the
+    `--screen-time off` question as mis-posed since Screen Time contributes no
+    hours, and closed #536 once the TIMELOG retirement in #408 made it a surface
+    on replaced storage.
   - 2026-08-08: Corrected after learning the requester's setup — 82 profiles and
     no worklog. Swapped the priorities: the worklog-only column cannot serve him
     and drops to `later`; all-source totals become the `now` item. Measured the
@@ -149,11 +154,11 @@ reaching for config because it is nearby.
 
 ### Bring back the worklog lifetime column, with an honest label
 
-- priority: **later** — it does not answer the ask. Worklog-only means it is
-  blank for an installation without a worklog, which is the case for the person
-  who requested the feature. If it ships at all it is a partial signal, never
-  labelled as the project's total time, and the empty-versus-zero distinction
-  below becomes its most important property.
+- priority: **do not build** (#536 closed). It does not answer the ask: it is
+  blank for the installation that requested the feature. It also reads
+  `TIMELOG.md` exclusively, and #408 is moving that storage to the shadow log
+  with markdown as a view, so this would build a new surface on the file being
+  replaced. The aggregation code can stay; nothing depends on removing it.
 - problem: the column was withdrawn under a condition that no longer holds, and
   the aggregation was deliberately kept intact for this moment.
 - user value: the sanity check the beta tester originally asked for — "does this
@@ -238,15 +243,22 @@ already scarce.
 
 ## Open decisions
 
-1. **What is the column called?** The original label invited a comparison it
-   could not support. The name is the fix, so it is a product decision rather
-   than an implementation detail.
-2. **Does the lifetime figure respect the report's source filters?** A lifetime
-   total that changes when `--screen-time off` is passed would be surprising;
-   one that ignores filters entirely might also be. Decide before building.
-3. **Retention.** An all-time figure over an evidence store that prunes is not
-   all-time. Whatever the aggregate ends up being, it has to state the window it
-   actually covers.
+1. **What is the figure called?** The withdrawn column's label invited a
+   comparison it could not support, and that was the failure. The name is part
+   of the fix, so it is a product decision rather than an implementation detail.
+2. **Retention.** An all-time figure over a store that prunes is not all-time.
+   The figure has to state the window it actually covers.
+
+Settled during review, kept so the reasoning is not lost:
+
+- **Do per-run source flags change a lifetime total?** No. A lifetime total is a
+  property of the store, not of the invocation; one that shifts because of a flag
+  on today's run is not a lifetime total.
+- **Does `--screen-time off` affect it?** The question was badly posed. Screen
+  Time contributes no hours at all: its role is `COVERAGE_COMPARATOR`, and
+  `collect_presence_comparators` keeps it in a separate daily map that never
+  enters the event stream. The flag changes the coverage comparison and its
+  evidence-gap warning; no hour figure moves.
 
 ## Non-goals for this pass
 

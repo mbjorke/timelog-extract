@@ -46,12 +46,15 @@ class AntigravityCollectorTests(unittest.TestCase):
     def test_keeps_workspace_path_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "5" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "window1/renderer.log",
                 [
                     "2026-05-29 09:00:00.123 [info] saved file "
-                    "/Users/me/Workspace/Project/timelog-extract/core/cli.py"
+                    "/Users/me/Workspace/Project/project-alpha/core/cli.py"
                 ],
             )
             out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
@@ -67,7 +70,7 @@ class AntigravityCollectorTests(unittest.TestCase):
             ws = self._base(home) / "User" / "workspaceStorage" / wid
             ws.mkdir(parents=True, exist_ok=True)
             (ws / "workspace.json").write_text(
-                json.dumps({"workspace": "file:///Users/me/Workspace/Project/timelog-extract"}),
+                json.dumps({"workspace": "file:///Users/me/Workspace/Project/project-alpha"}),
                 encoding="utf-8",
             )
             self._write_log(
@@ -83,7 +86,7 @@ class AntigravityCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "a" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main.log",
@@ -101,7 +104,7 @@ class AntigravityCollectorTests(unittest.TestCase):
                 "window1/exthost/google.antigravity/Antigravity IDE.log",
                 [
                     "2026-05-29 09:10:00.000 [info] Starting language server process "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(self._collect(home), [])
@@ -114,7 +117,7 @@ class AntigravityCollectorTests(unittest.TestCase):
                 "window1/exthost/exthost.log",
                 [
                     "2026-05-29 09:11:00.000 [info] ExtensionService#_doActivateExtension "
-                    "google.antigravity /Users/me/Workspace/Project/timelog-extract"
+                    "google.antigravity /Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(self._collect(home), [])
@@ -122,12 +125,15 @@ class AntigravityCollectorTests(unittest.TestCase):
     def test_lenient_profile_keeps_extension_activation(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "6" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "window1/exthost/exthost.log",
                 [
                     "2026-05-29 09:11:00.000 [info] ExtensionService#_doActivateExtension "
-                    "google.antigravity /Users/me/Workspace/Project/timelog-extract"
+                    "google.antigravity /Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(len(self._collect(home, noise_profile="lenient")), 1)
@@ -141,7 +147,7 @@ class AntigravityCollectorTests(unittest.TestCase):
                 [
                     "2026-05-29 09:12:00.000 [error] upload sync failed "
                     "/Users/me/.gittan-task/x/timelog_projects.json decisions-2026-05-29.json "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(self._collect(home), [])
@@ -169,12 +175,15 @@ class AntigravityCollectorTests(unittest.TestCase):
         # must default it to local_tz instead of raising on the window check.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "7" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main.log",
                 [
                     "[2026-05-29T09:00:00] saved "
-                    "/Users/me/Workspace/Project/timelog-extract/x.py"
+                    "/Users/me/Workspace/Project/project-alpha/x.py"
                 ],
             )
             out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
@@ -189,7 +198,7 @@ class AntigravityCollectorTests(unittest.TestCase):
                 "main.log",
                 [
                     "2026-05-28 09:00:00.000 [info] saved "
-                    "/Users/me/Workspace/Project/timelog-extract/x.py"
+                    "/Users/me/Workspace/Project/project-alpha/x.py"
                 ],
             )
             self.assertEqual(self._collect(home), [])

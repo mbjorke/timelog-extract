@@ -45,12 +45,15 @@ class WindsurfCollectorTests(unittest.TestCase):
     def test_keeps_user_editing_activity(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "1" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main.log",
                 [
                     "2026-05-28 09:00:00.000 [info] editing src/api.ts "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
@@ -58,17 +61,20 @@ class WindsurfCollectorTests(unittest.TestCase):
             self.assertEqual(out[0]["source"], "Devin Desktop")
             self.assertEqual(out[0]["project"], "Gittan CLI")
             # Working-directory leaf is preserved (privacy-safe, no /Users/ prefix).
-            self.assertEqual(out[0]["anchors"]["dir"], "timelog-extract")
+            self.assertEqual(out[0]["anchors"]["dir"], "project-alpha")
 
     def test_scans_legacy_windsurf_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "3" * 32, "/Users/me/Workspace/Project/project-alpha", app="Windsurf")
             self._write_log(
                 home,
                 "main.log",
                 [
                     "2026-05-28 09:00:00.000 [info] editing src/api.ts "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
                 app="Windsurf",
             )
@@ -80,7 +86,7 @@ class WindsurfCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "a" * 32
-            self._write_workspace(home, wid, "/Users/me/Workspace/Project/timelog-extract")
+            self._write_workspace(home, wid, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "window1/renderer.log",
@@ -98,7 +104,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                 "window1/exthost/exthost.log",
                 [
                     "2026-05-28 09:10:00.000 [info] acp feature flags (after context update): acp "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(self._collect(home), [])
@@ -124,7 +130,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                 "window1/exthost/vscode.git/Git.log",
                 [
                     "2026-05-28 09:12:00.000 [warning] [Git][revParse] Unable to read file: "
-                    "ENOENT /Users/me/Workspace/Project/timelog-extract/.git/refs/heads/main"
+                    "ENOENT /Users/me/Workspace/Project/project-alpha/.git/refs/heads/main"
                 ],
             )
             self.assertEqual(self._collect(home), [])
@@ -160,12 +166,15 @@ class WindsurfCollectorTests(unittest.TestCase):
         # must default them to local_tz instead of raising on the window check.
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "2" * 32, "/Users/me/Workspace/Project/project-alpha")
             self._write_log(
                 home,
                 "main.log",
                 [
                     "[2026-05-28T09:15:00] editing src/api.ts "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             out = self._collect(home, classify=lambda _h, _p: "Gittan CLI")
@@ -175,12 +184,15 @@ class WindsurfCollectorTests(unittest.TestCase):
     def test_scans_windsurf_next_base_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
+            # The folder is open in the IDE, so workspaceStorage vouches for
+            # the path the log line mentions (GH-529).
+            self._write_workspace(home, "4" * 32, "/Users/me/Workspace/Project/project-beta", app="Windsurf - Next")
             self._write_log(
                 home,
                 "main.log",
                 [
                     "2026-05-28 09:14:00.000 [info] editing src/api.ts "
-                    "/Users/me/Workspace/Project/blueberry"
+                    "/Users/me/Workspace/Project/project-beta"
                 ],
                 app="Windsurf - Next",
             )
@@ -198,7 +210,7 @@ class WindsurfCollectorTests(unittest.TestCase):
                 "window1/exthost/exthost.log",
                 [
                     "2026-05-28 09:10:00.000 [info] acp feature flags (after context update): acp "
-                    "/Users/me/Workspace/Project/timelog-extract"
+                    "/Users/me/Workspace/Project/project-alpha"
                 ],
             )
             self.assertEqual(self._collect(home, noise_profile="lenient"), [])

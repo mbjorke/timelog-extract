@@ -7,7 +7,7 @@ from pathlib import Path
 
 from collectors.cursor_agent_turns import collect_cursor_agent_turns
 from collectors.cursor_composer import collect_cursor_composer_sessions, load_cursor_workspaces
-from core.repo_slug import path_attribution_anchor
+from core.repo_slug import path_attribution_anchor, workspace_root_for, workspace_roots
 from core.triage_noise import is_uncategorized_noise_detail
 
 # Frequent Cursor diagnostics that are operational noise, not user work intent.
@@ -177,6 +177,8 @@ def _is_ide_metadata_workspace(path: str) -> bool:
 
 def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, make_event, noise_profile: str = "strict"):
     workspace_map = load_cursor_workspaces(home)
+    # Only folders the user actually opened can vouch for a scraped path.
+    known_roots = workspace_roots(workspace_map.values())
     logs_dir = cursor_base_dir(home) / "logs"
 
     results = []
@@ -228,7 +230,6 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if _is_cursor_diagnostic_noise(line, noise_profile=noise_profile):
                             continue
                         workspace_path = None
-                        from_line_path = False
                         m_id = workspace_id_pattern.search(line)
                         if m_id and workspace_map:
                             workspace_id = m_id.group(1) or m_id.group(2)
@@ -236,15 +237,21 @@ def collect_cursor(profiles, dt_from, dt_to, home, local_tz, classify_project, m
                         if not workspace_path:
                             m_path = workspace_path_pattern.search(line)
                             if m_path:
-                                workspace_path = m_path.group(1)
-                                from_line_path = True
+                                raw_path = m_path.group(1)
+                                # Guard the raw path before resolving it to a root:
+                                # `<project>/.cursor/state.json` is IDE metadata even
+                                # though it sits inside a real workspace, and the root
+                                # alone can no longer tell you that.
+                                if _is_cursor_internal_path(
+                                    raw_path, line, home
+                                ) or _is_ide_metadata_workspace(raw_path):
+                                    continue
+                                # A path in a log line is not a workspace unless an
+                                # opened workspace vouches for it (GH-529).
+                                workspace_path = workspace_root_for(
+                                    raw_path, known_roots
+                                )
                         if not workspace_path:
-                            continue
-                        # Line-extracted paths need the Application Support guard;
-                        # mapped workspace folders are already the project root.
-                        if from_line_path and _is_cursor_internal_path(
-                            workspace_path, line, home
-                        ):
                             continue
                         if _is_ide_metadata_workspace(workspace_path):
                             continue

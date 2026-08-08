@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence
 from urllib.parse import unquote, urlparse
 
-from core.repo_slug import path_attribution_anchor
+from core.repo_slug import path_attribution_anchor, workspace_root_for, workspace_roots
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +269,8 @@ def collect_fork_logs(
         if not logs_dir.exists():
             continue
         workspace_map = load_fork_workspaces(base_dir)
+        # Only folders the user actually opened can vouch for a scraped path.
+        known_roots = workspace_roots(workspace_map.values())
         for log_file in logs_dir.glob("**/*.log"):
             if log_file.name.lower() in _SKIP_LOG_BASENAMES:
                 continue
@@ -289,7 +291,11 @@ def collect_fork_logs(
                                 continue
                             m_path = _WORKSPACE_PATH_PATTERN.search(line)
                             if m_path and not _is_internal(m_path.group(1)):
-                                workspace_path = m_path.group(1)
+                                # A path in a log line is not a workspace unless an
+                                # opened workspace vouches for it (GH-529).
+                                workspace_path = workspace_root_for(
+                                    m_path.group(1), known_roots
+                                )
                         if not workspace_path or _is_internal(workspace_path):
                             continue
                         project = classify_project(f"{workspace_path} {line}", profiles)

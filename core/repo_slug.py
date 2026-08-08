@@ -11,6 +11,7 @@ No network calls: the slug comes from the local git config only.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -75,6 +76,77 @@ _JUNK_DIR_LEAVES = frozenset(
         "home",
     }
 )
+
+
+def _multi_root_folders(config_path: str) -> list[str]:
+    """Folder paths declared inside a ``.code-workspace`` multi-root config.
+
+    VS Code records a multi-root workspace as the path of the ``.code-workspace``
+    file, not as the folders it contains. Without expanding it, every folder in
+    a multi-root setup fails containment and its activity is silently dropped.
+    Relative ``path`` entries resolve against the config file's own directory.
+    """
+    import json
+
+    try:
+        data = json.loads(Path(config_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    base = Path(config_path).parent
+    folders = []
+    for entry in data.get("folders") or ():
+        raw = (entry or {}).get("path") if isinstance(entry, dict) else None
+        if not raw:
+            continue
+        candidate = Path(str(raw)).expanduser()
+        if not candidate.is_absolute():
+            candidate = base / candidate
+        # Resolve ".." segments without requiring the path to exist on disk.
+        folders.append(str(Path(os.path.normpath(str(candidate)))))
+    return folders
+
+
+def workspace_roots(paths) -> tuple[str, ...]:
+    """Normalize opened-workspace folder paths into a lookup for `workspace_root_for`.
+
+    A ``.code-workspace`` entry is replaced by the folders it declares: the file
+    itself is not a directory, so containment against it never matches.
+    """
+    roots: set[str] = set()
+    for raw in paths or ():
+        text = str(raw or "").rstrip("/")
+        if not text:
+            continue
+        if text.endswith(".code-workspace"):
+            roots.update(f.rstrip("/") for f in _multi_root_folders(text) if f)
+            continue
+        roots.add(text)
+    return tuple(sorted(r for r in roots if r))
+
+
+def workspace_root_for(path, roots: tuple[str, ...]) -> str | None:
+    """The opened workspace a scraped log-line path belongs to, or ``None``.
+
+    IDE logs mention paths for many reasons: a file a watcher touched, an
+    extension's storage, a crash dump, a directory some harness writes session
+    data into. Mentioning a path is not evidence that work happened in it, so a
+    scraped path only counts when an opened workspace independently vouches for
+    it — it is a workspace root, or sits inside one (GH-529).
+
+    Returns the **root**, not the scraped path, so a nested file attributes to
+    the project rather than to whatever directory it happens to sit in. The
+    longest matching root wins, which keeps a workspace nested inside another
+    attributed to itself.
+    """
+    norm = str(path or "").rstrip("/")
+    if not norm:
+        return None
+    best = None
+    for root in roots:
+        if norm == root or norm.startswith(root + "/"):
+            if best is None or len(root) > len(best):
+                best = root
+    return best
 
 
 def path_attribution_anchor(path) -> dict[str, str] | None:

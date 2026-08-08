@@ -300,9 +300,9 @@ def print_project_hour_review_section(
     profiles: List[Dict[str, Any]],
     timelog_project_totals: Optional[Dict[str, float]],
     git_project_totals: Optional[Dict[str, float]],
-    lifetime_window: Optional[tuple] = None,
     session_duration_hours_fn: Any,
     billable_total_hours_fn: Any,
+    lifetime_window: Optional[tuple] = None,
 ) -> None:
     """Print customer/project hour breakdown."""
     additive_summary = bool(getattr(args, "additive_summary", False))

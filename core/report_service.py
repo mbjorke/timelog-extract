@@ -223,6 +223,7 @@ def _print_report(
     presence_bracketing: Optional[BracketingResult] = None,
     billable_raw_by_project: Optional[Dict[str, float]] = None,
     reported_billing: bool = False,
+    lifetime_window: Optional[Tuple[str, str]] = None,
 ) -> None:
     terminal_output.print_report(
         overall_days=overall_days,
@@ -243,6 +244,7 @@ def _print_report(
         presence_bracketing=presence_bracketing,
         billable_raw_by_project=billable_raw_by_project,
         reported_billing=reported_billing,
+        lifetime_window=lifetime_window,
     )
 
 

@@ -1,0 +1,204 @@
+# Total time per project: the gate is already met, and the storage is not config
+
+A product-owner pass on bringing back per-project lifetime totals. It corrects
+two premises, finds the blocking gate satisfied, and separates the withdrawn
+column from the larger feature it is usually confused with.
+
+No code in this pass.
+
+## Traceability
+
+- story_id: `GH-536` · all-source slice = `GH-537`
+- spec_status: approved
+- implementation_status: not built (planning artifact — no code)
+- created_at: 2026-08-08
+- last_updated_at: 2026-08-08
+- implementation.pr: pending
+- implementation.branch: `task/project-lifetime-totals`
+- implementation.commits: []
+- validation.evidence:
+  - `core/sanity_bounds.py` + `tests/test_sanity_bounds.py` present (11 tests)
+  - `scripts/run_golden_eval.py --check` runs 4 datasets including
+    `tests/fixtures/golden_cursor_composer_dataset.json`, whose invariants pin
+    the day-collapse class; executed by `tests/test_golden_eval.py`, which runs
+    in `scripts/run_autotests.sh` and therefore in CI
+  - `core/timelog_totals.py` intact; `core/report_service.py:359` holds the
+    withdrawal stub
+- validation.decision: GO
+- changelog:
+  - 2026-08-08: Initial pass.
+
+Labels are the priority source of truth
+(`docs/decisions/backlog-priority-surfaces.md`).
+
+---
+
+## Two premises worth correcting first
+
+**The column was not removed for being slow.** It was removed for trust. The
+product-owner decision recorded in `docs/task-prompts/repo-time-totals-task.md`
+is explicit: beta testing exposed a catastrophic accuracy regression where whole
+days collapsed into single ~24h sessions, and the withdrawn column — which is
+**worklog-only** — then read *lower* than the inflated period `Hours` column.
+Two contradictory numbers side by side erode trust, so the least-corrupted
+column was the one withdrawn. Performance is not mentioned anywhere in that
+decision, and the aggregation code was deliberately left in place "for easy
+re-introduction".
+
+That matters, because a fix aimed at speed would not address why it was pulled.
+
+**The gate has already been met.** Re-introduction was gated on two items:
+
+| Gate | State |
+| --- | --- |
+| Sanity-bound guardrails | **done** — `core/sanity_bounds.py`, 11 tests |
+| Golden eval catches the day-collapse class | **done** — `golden_cursor_composer_dataset.json` runs in CI with `max_hours_any_day`, `max_day_total_hours`, `max_period_total_hours` invariants |
+
+Both were satisfied, and the column stayed withdrawn because nobody rechecked
+the gate. That is the same shape as the other findings this week: a condition is
+met, nothing announces it, and the state persists by default. Worth a habit, not
+just a fix — when a decision is gated, the gate needs an owner.
+
+## Why the total does not belong in the project config
+
+The proposal on the table is that each project's config entry tracks that
+project's lifetime total, so the column can be cheap. It should not, for four
+reasons that compound:
+
+1. **Config is a declaration a human made.** #406 exists specifically to stop
+   automated writes to `timelog_projects.json`, and `GH-526` builds on the same
+   line: a report derives, it does not write config. A running total written by
+   the reporting path makes config derived state and breaks that boundary at its
+   most load-bearing point.
+2. **A stored number is a number you have to trust.** The product's claim is that
+   every figure traces to inspectable evidence. A cached total that drifts from
+   the events is exactly the failure the withdrawn column was pulled for: two
+   numbers that disagree, and no way to tell which is right.
+3. **It merges badly.** Two devices each holding a running total cannot be
+   reconciled by git, and device portability is already an open question with
+   unresolved merge semantics.
+4. **The derived store already exists.** `observed/*.jsonl` has keep-max
+   semantics, is versioned, and is where derived aggregates belong. Adding a
+   second, weaker cache in config would leave two sources of truth.
+
+If a cache turns out to be needed, its home is the evidence store, and it must
+be reconstructible from events by deleting it.
+
+## What is actually two different features
+
+The withdrawn column and "total time for a project" are usually spoken of as one
+thing. They are not, and conflating them is why the ask keeps stalling.
+
+| | Withdrawn column | Lifetime totals |
+| --- | --- | --- |
+| Sources | worklog only (`TIMELOG.md`) | all sources |
+| Span | all time | all time |
+| Cost | cheap — one file parse | scales with retained evidence |
+| Blocked by | nothing, as of the gate check above | a storage decision |
+
+The first can come back now. The second is the one where performance is a real
+question, and where the storage decision has to be made honestly rather than by
+reaching for config because it is nearby.
+
+---
+
+## Backlog
+
+### Bring back the worklog lifetime column, with an honest label
+
+- priority: **now**
+- problem: the column was withdrawn under a condition that no longer holds, and
+  the aggregation was deliberately kept intact for this moment.
+- user value: the sanity check the beta tester originally asked for — "does this
+  project really only have ten hours on it?"
+- non-goals: all-source totals, invoiced totals, any new storage.
+- behavior: the column returns, and it says what it is. The original trust
+  failure was not the number, it was a label that invited comparison with a
+  differently-sourced column. A worklog-derived lifetime figure next to an
+  all-source period figure is only confusing while it pretends to be comparable.
+
+```gherkin
+Feature: Lifetime worklog hours are visible again
+
+  Scenario: The column states its source
+    Given a project with worklog history outside the report period
+    When the operator runs `gittan status`
+    Then a lifetime column shows the worklog-derived total
+    And its label identifies it as worklog-derived, not all-source
+    And it is not presented as comparable to the period Hours column
+
+  Scenario: A project with no worklog history
+    Given a project that has never appeared in a worklog
+    When the report renders
+    Then the lifetime cell is empty rather than zero
+    And no warning is raised
+
+  Scenario: The guardrails still apply
+    Given a lifetime total exceeds the sanity bounds
+    When the report renders
+    Then the existing sanity warning fires for it
+    And the column does not silently show an implausible figure
+```
+
+- acceptance: the column renders from `core.timelog_totals`; the label makes the
+  source unambiguous; empty is distinct from zero; sanity bounds cover it.
+- validation: a golden dataset with worklog history spanning outside the report
+  window, asserting the lifetime figure and the period figure independently.
+- dependencies: none. The code is in place and the gate is met.
+
+### Decide where an all-source lifetime aggregate lives
+
+- priority: **next**
+- problem: the broader ask is total time per project across all sources and all
+  time. That is the figure with a real cost, and it has no storage answer.
+- non-goals: writing it to `timelog_projects.json`, for the reasons above.
+- behavior: a decision, then a slice. The candidates are recomputing from the
+  evidence store on demand, or an aggregate maintained alongside it that is
+  reconstructible by deletion.
+- acceptance: a measurement of what recomputation actually costs on a realistic
+  evidence store, before any cache is designed. "Too slow" has been asserted but
+  never measured, and a cache built on an unmeasured assumption is a permanent
+  correctness liability for a saved millisecond.
+- validation: benchmark against a synthetic evidence store of several sizes, so
+  the answer is a curve rather than one machine's impression.
+- dependencies: the measurement is the first task and blocks the rest.
+
+### Give gated decisions an owner
+
+- priority: **later**
+- problem: this pass exists because a two-item gate was satisfied and the thing
+  it gated stayed off. The same shape appeared twice more this week.
+- behavior: when a decision is recorded as gated, the gate's conditions are
+  written where they can be checked mechanically, and something reports when they
+  are met.
+- acceptance: at least the existing gated decisions are expressed as a check that
+  fails, or notifies, once its conditions hold.
+- dependencies: none, but it is a process change and should not jump work.
+
+---
+
+## Ordering
+
+`now` gains one small item, and it displaces nothing: the withdrawn column is
+mostly un-withdrawing code that was left in place for this purpose, and it clears
+a request that has been waiting since June.
+
+The all-source aggregate goes to `next` behind a measurement, not a design. The
+storage question cannot be answered honestly until the cost is known.
+
+## Open decisions
+
+1. **What is the column called?** The original label invited a comparison it
+   could not support. The name is the fix, so it is a product decision rather
+   than an implementation detail.
+2. **Does the lifetime figure respect the report's source filters?** A lifetime
+   total that changes when `--screen-time off` is passed would be surprising;
+   one that ignores filters entirely might also be. Decide before building.
+3. **Retention.** An all-time figure over an evidence store that prunes is not
+   all-time. Whatever the aggregate ends up being, it has to state the window it
+   actually covers.
+
+## Non-goals for this pass
+
+No code. No new storage. No invoiced totals — that needs billing-log storage and
+is its own story.

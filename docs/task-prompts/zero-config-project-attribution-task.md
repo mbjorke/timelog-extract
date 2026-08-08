@@ -23,6 +23,9 @@ No code in this pass.
   - priority labels applied per the ordering below
 - validation.decision: GO
 - changelog:
+  - 2026-08-07: Second review pass. Restated the setup-friction consequence as a
+    structural one and dropped the last observational metrics, so no argument
+    here rests on one machine's configuration.
   - 2026-08-07: Review pass. Restricted slice 1 to git-remote anchors (the dir
     leaf is not a durable identity), defined the `--format json` row shape for
     derived projects, required an explicit temporary config path in the no-write
@@ -46,8 +49,10 @@ Two complaints came out of the session, and they are the same complaint:
    operator wanted it to default to **No**. Project setup should not be a
    necessary step.
 2. Wiring project → customer is too laborious to be worth doing up front, so it
-   does not get done. The consequence showed up in the same run: many profiles
-   configured, and the strongest evidence source left unwired (#524).
+   does not get done. The consequence is structural rather than anecdotal: a
+   profile can exist and still leave the strongest evidence source unwired,
+   because the wiring is a separate manual step nobody has a reason to finish
+   (#524).
 
 The underlying design fault is that **Gittan currently requires configuration
 before it can attribute anything**. That conflates two different things:
@@ -167,10 +172,10 @@ Feature: Project mapping is offered, not imposed
 - problem: `collectors/vscode_fork.py:290` and `collectors/cursor.py:237` fall back
   to scraping the first `/Users/...` substring out of a log line and treating it
   as the workspace. A path mentioned in a log line is not a workspace, and the
-  only guards are denylists, so anything nobody thought to exclude passes. In the
-  first-run session this put an unrecognisable container directory at the top of
-  the anchor list, ahead of every real repository, because the count is of log
-  lines mentioning a path rather than of work.
+  only guards are denylists, so anything nobody thought to exclude passes. A
+  directory some harness writes session data into can therefore reach the top of
+  the anchor list, ahead of real repositories, because the count is of log lines
+  mentioning a path rather than of work.
 - user value: the first report stops leading with something the user cannot place.
 - non-goals: the workspace-id path (step 1) is correct and stays.
 - acceptance: a scraped path is used only when it independently looks like a

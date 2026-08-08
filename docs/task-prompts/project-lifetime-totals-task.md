@@ -26,6 +26,10 @@ No code in this pass.
     withdrawal stub
 - validation.decision: GO
 - changelog:
+  - 2026-08-08: Third correction. The speed complaint was about the *Git-only*
+    column, not the withdrawn one: one `git log` over all history per profile,
+    about 6.7s at 82 profiles, dormant only because `git_repo` is unset.
+    Recorded here and on #524, which would activate it.
   - 2026-08-08: Second correction. Reframed the store as durability rather than
     performance (logs rotate; the answer must survive), withdrew the
     `--screen-time off` question as mis-posed since Screen Time contributes no
@@ -127,10 +131,36 @@ rather than with the totals feature: 8.2× the profiles costs 4.6× the time at
 identical event volume.
 
 So the objections above stop being load-bearing and become moot: there is nothing
-worth caching. And if lifetime totals ever feel slow, the cost is **collection**,
-not computation — re-reading every log and SQLite store for all time. That points
-at aggregating from the `observed/` store, which is already on disk and already
-keep-max, rather than from a fresh collection run.
+worth caching.
+
+**And speed was never the real reason to read from the store.** Source logs
+rotate and disappear; the shadow-log spec exists because evidence for work that
+genuinely happened is otherwise lost. A slow all-time query is acceptable — nobody
+asks for a year of history often. Finding the answer *gone* because an IDE pruned
+its logs is not. Aggregating from `observed/` is therefore correct even if
+recomputation were free, and the measurement merely removes the last thing left
+to argue about. It also sets the feature's honest ceiling: the figure covers what
+the store retained, which is why it must state its window instead of claiming
+all-time.
+
+**The Git-only column, by contrast, really is slow**, and that is the one the
+speed complaint was about. `core/git_totals.py::compute_git_project_totals` runs
+one `git log` subprocess per profile with a `git_repo`, over all history —
+`dt_from`/`dt_to` default to 1970–2099 — and `git_repo` accepts a list, so the
+invocation count can exceed the profile count.
+
+| | |
+| --- | --- |
+| One repository, full history | 533 commits in **0.081s** |
+| × 82 profiles, serial | **~6.7s** |
+
+Two unrelated costs, then, and only one of them was ever measured. Aggregation
+scales with **events** and is cheap. The `--git` column scales with **profile
+count** and is serial subprocess work. It is dormant today only because no
+profile has `git_repo` set, which means #524 — the issue that wires it up —
+activates it. Flagged there; the fixes are ordinary when someone wants them,
+since the loop is embarrassingly parallel and re-reads immutable history on every
+run.
 
 ## What is actually two different features
 

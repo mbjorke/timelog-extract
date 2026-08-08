@@ -1,6 +1,6 @@
 ---
 name: rabbit-loop
-description: Run a CodeRabbit "kanin" loop-engineering pass on the current branch — generate → coderabbit review --agent (independent critic) → fix within the review contract → autotests → repeat until CodeRabbit is clean and tests are green, then hand back to the human. Use when iterating on a diff against CodeRabbit review, "run the kanin loop", "loop on the review", or converging a task branch before PR.
+description: Run a "kanin" loop-engineering pass on the current branch — generate → CLI review by an independent critic (Greptile by default, CodeRabbit as alternate) → fix within the review contract → autotests → repeat until the review is clean and tests are green, then hand back to the human. Use when iterating on a diff against bot review, "run the kanin loop", "loop on the review", or converging a task branch before PR.
 ---
 
 # rabbit-loop
@@ -9,12 +9,21 @@ Thin wrapper. Read and follow the canonical workflow:
 **`docs/skills/rabbit-loop.md`**.
 
 Loop-engineering pass (Addy Osmani): design a loop, don't hand-prompt. The
-**independent critic** is CodeRabbit via `scripts/rabbit_loop.sh` (which also
-runs autotests); you are the **generator**. After converging, the loop pushes +
+**independent critic** runs via `scripts/rabbit_loop.sh` (which also runs
+autotests); you are the **generator**. The script picks **Greptile** when the CLI
+is signed in, else **CodeRabbit** — override with `RABBIT_LOOP_REVIEWER`. Greptile
+leads because CodeRabbit often reports `pass / Review rate limited`, a green check
+for a review that never ran; check the detail column, never the status alone. After converging, the loop pushes +
 opens a PR and auto-merges the SAFE class; it pauses only for human-judgment
 changes (see Ship gate).
 
-**Critic fallback (CodeRabbit rate-limited / down):** use `/gittan-review` as the
+**Reviewer override:** `RABBIT_LOOP_REVIEWER=auto|greptile|coderabbit`. Clean-review
+evidence differs by reviewer (Greptile: `confidence` + empty `comments`, and on a
+PR a `greptile-apps` check run that succeeded on the head SHA; CodeRabbit: its
+`complete` event, and on a PR its summary comment). Both fail closed. Full table:
+`docs/skills/rabbit-loop.md`.
+
+**Critic fallback (both CLIs unavailable):** use `/gittan-review` as the
 independent critic instead (Claude Code's own model, no third-party rate limit),
 or `/code-review ultra` for high-risk PRs. Run it from a **fresh session, subagent,
 or separate process** — a session grading its own diff is self-grading and misses

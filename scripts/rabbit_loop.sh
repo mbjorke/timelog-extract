@@ -3,7 +3,11 @@
 #
 # Loop-engineering harness: runs the two independent critics on the current
 # local diff and reports whether the work has CONVERGED.
-#   1. CodeRabbit  — `coderabbit review --agent` (structured findings)
+#   1. Reviewer    — Greptile (`greptile review --json`) when signed in, else
+#                    CodeRabbit (`coderabbit review --agent`). Override with
+#                    RABBIT_LOOP_REVIEWER=greptile|coderabbit. Greptile is the
+#                    default because CodeRabbit often reports "pass / Review rate
+#                    limited" — a green check for a review that never ran.
 #   2. Autotests   — `scripts/run_autotests.sh` (file-length report + unit tests)
 #
 # It does NOT edit code, commit, push, or merge. The agent/human reads the
@@ -171,6 +175,26 @@ _pr_review_signals() {
   comments="$(gh api "repos/$owner/$repo/issues/$pr/comments?per_page=100" \
     --jq '[.[] | select((.body // "") | test("summarize by coderabbit.ai|Code Review by Qodo"))] | length' 2>/dev/null)" || err=1
   if [[ "${comments:-}" =~ ^[0-9]+$ ]]; then n=$((n + comments)); fi
+  # Greptile posts review threads when it has findings, which the review query
+  # above already counts. A *clean* pass is the gap: when it judges the PR safe to
+  # merge it says so only in the summary it writes into the PR body, submitting no
+  # review and leaving no comment. Without some signal for that case the gate
+  # blocks precisely the PRs a reviewer approved, which matters now that CodeRabbit
+  # frequently answers "pass / Review rate limited" without reviewing at all.
+  #
+  # The signal must be identity-bound. The PR body is author-editable, so matching
+  # a marker in it would let anyone clear this gate by typing a string — a
+  # fail-open in the one check that exists to prevent fail-open (#430). A check run
+  # is written by the GitHub App and cannot be forged from the PR, and pinning it
+  # to the PR's own head SHA also rejects a review of an earlier commit.
+  gate_head="$(gh pr view "$pr" --json headRefOid --jq '.headRefOid' 2>/dev/null || echo '')"
+  if [[ -n "$gate_head" ]]; then
+    greptile_ok="$(gh api "repos/$owner/$repo/commits/$gate_head/check-runs" \
+      --jq '[.check_runs[] | select(.app.slug == "greptile-apps" and .status == "completed" and .conclusion == "success")] | length' 2>/dev/null)" || err=1
+    if [[ "${greptile_ok:-}" =~ ^[0-9]+$ ]] && [[ "$greptile_ok" -gt 0 ]]; then
+      n=$((n + 1))
+    fi
+  fi
   # Tie the local converged.ack to the PR's OWN head commit, not the local
   # checkout — otherwise gating an unrelated --pr would borrow this branch's ack.
   ack="$REPO_ROOT/.rabbit-loop/converged.ack"
@@ -588,21 +612,42 @@ print(suggested_chat_title(d) or '')
       echo "rabbit_loop: workflow BLOCKERS — resolve before CodeRabbit (or --skip-workflow)." >&2
       exit 2
     fi
-    echo "rabbit_loop: workflow acknowledgement required before CodeRabbit." >&2
+    echo "rabbit_loop: workflow acknowledgement required before the review." >&2
     exit 2
   fi
   echo ""
 fi
 
 # --- preflight -------------------------------------------------------------
-if ! command -v coderabbit >/dev/null 2>&1; then
-  echo "rabbit_loop: CodeRabbit CLI not found. Install it, then \`coderabbit auth login\`." >&2
-  exit 2
-fi
-if ! coderabbit auth status >/dev/null 2>&1; then
-  echo "rabbit_loop: CodeRabbit is not authenticated — run \`coderabbit auth login\`." >&2
-  exit 2
-fi
+# Reviewer selection. Greptile is preferred when available: CodeRabbit is free but
+# frequently reports "pass / Review rate limited" without reviewing, which reads as
+# a green signal for a review that never happened. Override with
+# RABBIT_LOOP_REVIEWER=coderabbit|greptile.
+REVIEWER="${RABBIT_LOOP_REVIEWER:-auto}"
+_have_greptile() { command -v greptile >/dev/null 2>&1 && greptile whoami >/dev/null 2>&1; }
+_have_coderabbit() { command -v coderabbit >/dev/null 2>&1 && coderabbit auth status >/dev/null 2>&1; }
+case "$REVIEWER" in
+  auto)
+    if _have_greptile; then REVIEWER=greptile
+    elif _have_coderabbit; then REVIEWER=coderabbit
+    else
+      echo "rabbit_loop: no reviewer available. Install and sign in to either:" >&2
+      echo "  greptile login      (preferred)" >&2
+      echo "  coderabbit auth login" >&2
+      exit 2
+    fi
+    ;;
+  greptile)
+    _have_greptile || { echo "rabbit_loop: greptile CLI missing or not signed in — run \`greptile login\`." >&2; exit 2; }
+    ;;
+  coderabbit)
+    _have_coderabbit || { echo "rabbit_loop: CodeRabbit CLI missing or not authenticated — run \`coderabbit auth login\`." >&2; exit 2; }
+    ;;
+  *)
+    echo "rabbit_loop: unknown RABBIT_LOOP_REVIEWER='$REVIEWER' (use auto|greptile|coderabbit)." >&2
+    exit 2
+    ;;
+esac
 if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
   echo "rabbit_loop: base ref '$BASE' not found. Fetch it (\`git fetch origin\`) or pass --base." >&2
   exit 2
@@ -616,9 +661,14 @@ if [[ "$BASE" != */* ]] && git rev-parse --verify --quiet "origin/$BASE" >/dev/n
   fi
 fi
 
-echo "== kanin-loop: CodeRabbit review (base=$BASE${LIGHT:+, light}) =="
+echo "== kanin-loop: $REVIEWER review (base=$BASE${LIGHT:+, light}) =="
 set +e
-coderabbit review --agent --base "$BASE" --type all $LIGHT >"$FINDINGS_FILE" 2>&1
+if [[ "$REVIEWER" == "greptile" ]]; then
+  # Greptile emits one JSON object, not CodeRabbit's JSONL event stream.
+  greptile review --json -b "$BASE" >"$FINDINGS_FILE" 2>&1
+else
+  coderabbit review --agent --base "$BASE" --type all $LIGHT >"$FINDINGS_FILE" 2>&1
+fi
 CR_EXIT=$?
 set -e
 
@@ -626,8 +676,71 @@ set -e
 # `complete` event: {"type":"complete","status":"review_completed","findings":N}.
 # We fail closed if it is missing or status != review_completed. Python prints
 # the human summary to stderr and "<completed> <count>" to stdout.
-PARSE="$(python3 - "$FINDINGS_FILE" <<'PY'
-import json, sys
+PARSE="$(REVIEWER="$REVIEWER" python3 - "$FINDINGS_FILE" <<'PY'
+import json, os, pathlib, sys
+
+if os.environ.get("REVIEWER") == "greptile":
+    # {"summary":..., "confidence":1-5, "confidenceReasoning":...,
+    #  "securitySummary":null, "instructions":null, "comments":[...]}
+    # Fail closed: no parseable object, or no confidence field, means no review.
+    # The CLI prefixes advisory lines before the JSON ("warning: N uncommitted
+    # files not included in the review"), so the file is not pure JSON, and the
+    # object is not guaranteed to sit on one line. raw_decode finds the first
+    # complete object from any offset, which handles both without assuming a
+    # layout that happens to hold today.
+    obj = None
+    try:
+        text = pathlib.Path(sys.argv[1]).read_text()
+    except OSError:
+        text = ""
+    decoder = json.JSONDecoder()
+    idx = text.find("{")
+    while idx != -1:
+        try:
+            candidate, _end = decoder.raw_decode(text, idx)
+        except ValueError:
+            idx = text.find("{", idx + 1)
+            continue
+        # Keep looking until a review-shaped object turns up: advisory prose can
+        # contain a brace ("use {} for empty"), and stopping at the first dict
+        # would accept that and miss the real payload behind it.
+        if isinstance(candidate, dict) and candidate.get("confidence") is not None:
+            obj = candidate
+            break
+        idx = text.find("{", idx + 1)
+    if obj is None:
+        sys.stderr.write("Greptile: no parseable JSON review\n")
+        print("0 0")
+        raise SystemExit(0)
+    if not isinstance(obj, dict) or obj.get("confidence") is None:
+        sys.stderr.write("Greptile: review object missing confidence — treating as not reviewed\n")
+        print("0 0")
+        raise SystemExit(0)
+    # A review whose findings are not a list is a shape we do not understand;
+    # counting it as reviewed would be guessing at the one number this gates on.
+    # Absent is not empty. A response with no findings field is a shape we do not
+    # understand, and substituting [] would report "reviewed, zero findings" —
+    # converging the loop on an answer nobody read.
+    items = obj.get("comments")
+    if not isinstance(items, list):
+        what = "missing" if items is None else "not a list"
+        sys.stderr.write(f"Greptile: 'comments' is {what} — treating as not reviewed\n")
+        print("0 0")
+        raise SystemExit(0)
+    for c in items:
+        if not isinstance(c, dict):
+            sys.stderr.write(f"  {c}\n")
+            continue
+        # Field names are rendered defensively: only `comments` shape is unverified.
+        sev = c.get("severity") or c.get("type") or "?"
+        loc = c.get("file") or c.get("fileName") or c.get("path") or "?"
+        line = c.get("line") or c.get("startLine")
+        sys.stderr.write(f"  [{sev}] {loc}{':' + str(line) if line else ''}\n")
+    if not items:
+        sys.stderr.write(f"Greptile findings: 0 (confidence {obj.get('confidence')}/5)\n")
+    print(f"1 {len(items)}")
+    raise SystemExit(0)
+
 completed, count, findings = False, None, []
 with open(sys.argv[1]) as f:
     for line in f:

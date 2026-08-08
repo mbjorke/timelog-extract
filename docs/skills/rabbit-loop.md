@@ -24,13 +24,34 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 | Role | Who | Does |
 |------|-----|------|
 | Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
-| Critic 1 | **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
+| Critic 1 | **Greptile CLI** (default when signed in), *or* **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
+
+**Reviewer selection.** `scripts/rabbit_loop.sh` picks **one** critic per run and
+says which in its header line. `RABBIT_LOOP_REVIEWER=auto|greptile|coderabbit`
+overrides; `auto` prefers Greptile when its CLI is signed in and falls back to
+CodeRabbit. Greptile leads because CodeRabbit's check often reports `pass` with
+the detail `Review rate limited`, which is a green signal for a review that never
+ran — read the detail column, never the status alone.
+
+**What counts as reviewed, per reviewer.** Convergence and the merge gate treat
+these as equivalent evidence:
+
+| Reviewer | Clean-review evidence |
+| --- | --- |
+| Greptile | `--json` object with a `confidence` and an empty `comments` list; on a PR, a **`greptile-apps` check run that succeeded on the PR's head SHA** |
+| CodeRabbit | JSONL stream ending in `{"type":"complete","status":"review_completed"}`; on a PR, its review-summary comment |
+
+Both parsers **fail closed**: output that cannot be parsed, or is missing the
+field that proves a review happened, counts as *not reviewed* rather than clean.
+The PR-side signal is deliberately identity-bound — a marker in the PR body would
+be author-editable, and this gate exists to stop exactly that kind of fail-open.
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (file-length report + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 
-**Independent-critic fallback (rate limits / outages).** The lens critic does not
-have to be CodeRabbit. When `coderabbit review` is rate-limited, unauthenticated,
-or you want a stronger pass without spending free-tier budget, use Claude Code's
+**Independent-critic fallback (rate limits / outages).** The loop already falls
+back between CLIs on its own — `auto` prefers Greptile and drops to CodeRabbit —
+so this is the case where **neither** is available: both unauthenticated, offline,
+or you want a stronger pass without spending review budget. Then use Claude Code's
 own review as the independent critic instead:
 
 - **`/gittan-review`** — repo-native multi-lens review on the working diff. Runs
@@ -44,7 +65,7 @@ verifiable condition, you fix within the contract, autotests must pass, repeat t
 CONVERGED.
 
 **The critic must be a genuinely separate process — not the same session.**
-CodeRabbit CLI already is (a separate binary). For the Claude Code fallback this is
+Either review CLI already is (a separate binary). For the Claude Code fallback this is
 *not automatic*: a session grading its own diff is self-grading and reliably misses
 what it just rationalised. So run `/gittan-review` / `/code-review ultra` from a
 **fresh session, a subagent, or a separate process** — never as another turn of the
@@ -66,7 +87,7 @@ converged clean on a diff a separate CodeRabbit CLI pass then found seven issues
               See docs/decisions/gitbutler-multi-editor-workflow.md and GitHub #240.
 1. Generate Implement the task. Commit.
 2. Critic   scripts/rabbit_loop.sh            # base defaults to origin/main
-              → coderabbit review --agent  (structured findings)  + scripts/run_autotests.sh
+              → greptile review --json / coderabbit review --agent  + scripts/run_autotests.sh
 3. Triage   For each CodeRabbit finding, map severity via agent-review-contract.md:
               • in-contract (High/Medium, ≤5 tracked files, safe dirs) → fix + add/adjust tests
               • Critical / out-of-contract / broad refactor          → DO NOT auto-fix; ESCALATE
@@ -96,8 +117,16 @@ Do step 0a once at setup; again only if focus moves to a different issue.
 
 ### Stopping condition (the `/goal`)
 
-**CONVERGED** = CodeRabbit reports no actionable in-contract findings **and**
-`scripts/run_autotests.sh` passes. `scripts/rabbit_loop.sh` prints a machine
+**CONVERGED** = **the selected reviewer** reports no actionable in-contract
+findings **and** `scripts/run_autotests.sh` passes. "No findings" is
+reviewer-specific and both are fail-closed, so an unreadable answer is `ITERATE`,
+never `CONVERGED`:
+
+| Reviewer | No actionable findings means |
+| --- | --- |
+| Greptile | a `--json` object carrying a `confidence`, with an empty `comments` list |
+| CodeRabbit | a `complete` event with `status: review_completed` and zero findings |
+ `scripts/rabbit_loop.sh` prints a machine
 trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 — and exits 2 on a setup problem (e.g. not authenticated).
 

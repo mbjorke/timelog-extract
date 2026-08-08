@@ -274,7 +274,7 @@ class SetupNextStepsTests(unittest.TestCase):
         )
         self.assertIn("Next: run `gittan setup --fast` without `--dry-run`", steps[0])
 
-    def test_setup_mapping_skip_points_to_plain_setup_retry(self):
+    def test_setup_mapping_skip_points_to_map_not_setup_retry(self):
         steps = build_setup_next_steps(
             dry_run=False,
             projects_status="PASS",
@@ -282,7 +282,10 @@ class SetupNextStepsTests(unittest.TestCase):
             doctor_status="PASS",
             smoke_status="PASS",
         )
-        self.assertIn("run `gittan setup` again and complete the project mapping step", "\n".join(steps))
+        joined = "\n".join(steps)
+        self.assertIn("gittan map", joined)
+        self.assertNotIn("run `gittan setup` again", joined)
+        self.assertNotIn("setup` again", joined)
 
 
 class ReviewNextStepsTests(unittest.TestCase):

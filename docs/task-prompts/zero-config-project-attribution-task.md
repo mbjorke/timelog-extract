@@ -116,7 +116,7 @@ explicit user action.
 
 ### Setup's project-mapping prompt defaults to No
 
-- priority: **now**
+- priority: **now** — built, PR #548
 - problem: the mapping step defaults to Yes and reads as required. It is the
   longest, most tedious part of first run, it arrives before the user has seen a
   single report, and backing out of it is currently destructive (#522).

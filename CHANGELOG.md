@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Setup: the project-mapping step in `gittan setup` is an offer, not a
+  requirement. Its prompt now defaults to **No**, says the step is optional, and
+  names `gittan map` as the way to do it later. Declining is a normal
+  completion: the remaining steps run, the summary reports mapping as skipped,
+  and the closing next-steps no longer tell you to re-run `gittan setup`
+  ([GH-526](https://github.com/mbjorke/timelog-extract/issues/526)).
+
 ## 0.4.1 - 2026-08-07
 
 - Install: `https://gittan.sh/install` **cleans PATH shadows by default** (Anaconda /

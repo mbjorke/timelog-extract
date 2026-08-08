@@ -133,7 +133,8 @@ def build_setup_next_steps(
         steps.append("Then: use `gittan projects` to review project names, `match_terms`, and worklog path.")
     if mapping_status in {PROJECT_STATUS_SKIPPED, PROJECT_STATUS_ACTION_REQUIRED}:
         steps.append(
-            "Then: run `gittan setup` again and complete the project mapping step so reports classify work to the right project."
+            "Optional: run `gittan map` when you want work classified to a specific project. "
+            "Reports work without it, and setup does not need to be run again."
         )
     if smoke_status in {PROJECT_STATUS_FAIL, PROJECT_STATUS_ACTION_REQUIRED, PROJECT_STATUS_SKIPPED}:
         steps.append("Then: run `gittan report --today --source-summary` to confirm you get a useful local report.")

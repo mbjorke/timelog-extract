@@ -24,7 +24,7 @@ Fix bounds by severity: **`docs/decisions/agent-review-contract.md`**.
 | Role | Who | Does |
 |------|-----|------|
 | Generator | **your coding agent** (Claude Code, Cursor, Zed, Codex, Conductor, Antigravity, …) | implements the task, commits, applies in-contract fixes |
-| Critic 1 | **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
+| Critic 1 | **Greptile CLI** (default when signed in), *or* **CodeRabbit CLI**, *or* Claude Code `/gittan-review` (fallback) | independent review of the local diff → structured findings |
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (file-length report + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 
@@ -66,7 +66,7 @@ converged clean on a diff a separate CodeRabbit CLI pass then found seven issues
               See docs/decisions/gitbutler-multi-editor-workflow.md and GitHub #240.
 1. Generate Implement the task. Commit.
 2. Critic   scripts/rabbit_loop.sh            # base defaults to origin/main
-              → coderabbit review --agent  (structured findings)  + scripts/run_autotests.sh
+              → greptile review --json / coderabbit review --agent  + scripts/run_autotests.sh
 3. Triage   For each CodeRabbit finding, map severity via agent-review-contract.md:
               • in-contract (High/Medium, ≤5 tracked files, safe dirs) → fix + add/adjust tests
               • Critical / out-of-contract / broad refactor          → DO NOT auto-fix; ESCALATE

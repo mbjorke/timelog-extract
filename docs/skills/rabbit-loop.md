@@ -48,9 +48,10 @@ be author-editable, and this gate exists to stop exactly that kind of fail-open.
 | Critic 2 | **autotests** | `scripts/run_autotests.sh` (file-length report + unit tests) |
 | Gate | **maintainer (human)** | final review; auto-merge only for the safe class (Ship stage) |
 
-**Independent-critic fallback (rate limits / outages).** The lens critic does not
-have to be CodeRabbit. When `coderabbit review` is rate-limited, unauthenticated,
-or you want a stronger pass without spending free-tier budget, use Claude Code's
+**Independent-critic fallback (rate limits / outages).** The loop already falls
+back between CLIs on its own — `auto` prefers Greptile and drops to CodeRabbit —
+so this is the case where **neither** is available: both unauthenticated, offline,
+or you want a stronger pass without spending review budget. Then use Claude Code's
 own review as the independent critic instead:
 
 - **`/gittan-review`** — repo-native multi-lens review on the working diff. Runs
@@ -64,7 +65,7 @@ verifiable condition, you fix within the contract, autotests must pass, repeat t
 CONVERGED.
 
 **The critic must be a genuinely separate process — not the same session.**
-CodeRabbit CLI already is (a separate binary). For the Claude Code fallback this is
+Either review CLI already is (a separate binary). For the Claude Code fallback this is
 *not automatic*: a session grading its own diff is self-grading and reliably misses
 what it just rationalised. So run `/gittan-review` / `/code-review ultra` from a
 **fresh session, a subagent, or a separate process** — never as another turn of the
@@ -116,8 +117,16 @@ Do step 0a once at setup; again only if focus moves to a different issue.
 
 ### Stopping condition (the `/goal`)
 
-**CONVERGED** = CodeRabbit reports no actionable in-contract findings **and**
-`scripts/run_autotests.sh` passes. `scripts/rabbit_loop.sh` prints a machine
+**CONVERGED** = **the selected reviewer** reports no actionable in-contract
+findings **and** `scripts/run_autotests.sh` passes. "No findings" is
+reviewer-specific and both are fail-closed, so an unreadable answer is `ITERATE`,
+never `CONVERGED`:
+
+| Reviewer | No actionable findings means |
+| --- | --- |
+| Greptile | a `--json` object carrying a `confidence`, with an empty `comments` list |
+| CodeRabbit | a `complete` event with `status: review_completed` and zero findings |
+ `scripts/rabbit_loop.sh` prints a machine
 trailer — `RABBIT_LOOP: CONVERGED` (exit 0) or `RABBIT_LOOP: ITERATE` (exit 1)
 — and exits 2 on a setup problem (e.g. not authenticated).
 

@@ -234,10 +234,17 @@ Feature: A report attributes unmapped repositories without configuration
     Then derived rows carry no billable total
     And the report states that billing requires declaring the project
 
-  Scenario: Ephemeral signals stay out
-    Given events carry only a branch name or a session title
+  Scenario: Signals that cannot carry identity stay out
+    Given events carry only a branch name, a session title, or a working directory
     When attribution runs
     Then no derived project row is created from them
+
+  Scenario: Declared mappings are untouched
+    Given a profile already claims a working directory through match_terms
+      or a durable anchor
+    When attribution runs
+    Then that directory attributes to the declared profile exactly as before
+    And no derived row is created for it
 ```
 
 - acceptance: a day of work in three git repositories produces three attributed

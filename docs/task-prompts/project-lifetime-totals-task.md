@@ -26,12 +26,34 @@ No code in this pass.
     withdrawal stub
 - validation.decision: GO
 - changelog:
+  - 2026-08-08: Corrected after learning the requester's setup — 82 profiles and
+    no worklog. Swapped the priorities: the worklog-only column cannot serve him
+    and drops to `later`; all-source totals become the `now` item. Measured the
+    aggregation cost (about a second for a year at 82 profiles), which removes
+    the caching question entirely.
   - 2026-08-08: Initial pass.
 
 Labels are the priority source of truth
 (`docs/decisions/backlog-priority-surfaces.md`).
 
 ---
+
+## Who asked, and what they actually need
+
+The requirement came from the beta tester: total time per project, quickly, on an
+installation with **82 project profiles**. He keeps using Gittan only if it gives
+immediate value, which makes "quickly" part of the requirement rather than a
+nicety.
+
+That reframes everything below, and it invalidated this pass's first draft. The
+withdrawn column is **worklog-only**, and his installation has no worklog at all —
+`doctor` reports it as not found. A worklog-only lifetime column would have shown
+him 82 empty cells under a heading promising lifetime hours, which is worse than
+shipping nothing: it spends the one thing he is short of, patience with a tool
+that has not paid off yet.
+
+The error was reaching for the cheapest unblocked thing once the accuracy gate
+turned out to be satisfied, instead of the thing that was asked for.
 
 ## Two premises worth correcting first
 
@@ -84,6 +106,27 @@ reasons that compound:
 If a cache turns out to be needed, its home is the evidence store, and it must
 be reconstructible from events by deleting it.
 
+**It turns out none is needed.** Measured at the tester's profile count, with
+synthetic events in collector shape:
+
+| Profiles | Days | Events | Classify | Session math | Total |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 82 | 30 | 6,000 | 0.08s | 0.00s | **0.09s** |
+| 82 | 180 | 36,000 | 0.53s | 0.02s | **0.55s** |
+| 82 | 365 | 73,000 | 1.16s | 0.04s | **1.20s** |
+| 10 | 365 | 73,000 | 0.25s | 0.04s | 0.29s |
+
+A full year at 82 profiles aggregates in about a second. Summing is free — 0.04s
+at 73,000 events. The cost is **classification**, which scales with profile count
+rather than with the totals feature: 8.2× the profiles costs 4.6× the time at
+identical event volume.
+
+So the objections above stop being load-bearing and become moot: there is nothing
+worth caching. And if lifetime totals ever feel slow, the cost is **collection**,
+not computation — re-reading every log and SQLite store for all time. That points
+at aggregating from the `observed/` store, which is already on disk and already
+keep-max, rather than from a fresh collection run.
+
 ## What is actually two different features
 
 The withdrawn column and "total time for a project" are usually spoken of as one
@@ -106,7 +149,11 @@ reaching for config because it is nearby.
 
 ### Bring back the worklog lifetime column, with an honest label
 
-- priority: **now**
+- priority: **later** — it does not answer the ask. Worklog-only means it is
+  blank for an installation without a worklog, which is the case for the person
+  who requested the feature. If it ships at all it is a partial signal, never
+  labelled as the project's total time, and the empty-versus-zero distinction
+  below becomes its most important property.
 - problem: the column was withdrawn under a condition that no longer holds, and
   the aggregation was deliberately kept intact for this moment.
 - user value: the sanity check the beta tester originally asked for — "does this
@@ -146,22 +193,24 @@ Feature: Lifetime worklog hours are visible again
   window, asserting the lifetime figure and the period figure independently.
 - dependencies: none. The code is in place and the gate is met.
 
-### Decide where an all-source lifetime aggregate lives
+### All-source lifetime totals, aggregated from the observed store
 
-- priority: **next**
+- priority: **now** — this is the requirement. The measurement above removes the
+  cost objection, so what remains is a display and a source decision, both small.
 - problem: the broader ask is total time per project across all sources and all
   time. That is the figure with a real cost, and it has no storage answer.
 - non-goals: writing it to `timelog_projects.json`, for the reasons above.
 - behavior: a decision, then a slice. The candidates are recomputing from the
   evidence store on demand, or an aggregate maintained alongside it that is
   reconstructible by deletion.
-- acceptance: a measurement of what recomputation actually costs on a realistic
-  evidence store, before any cache is designed. "Too slow" has been asserted but
-  never measured, and a cache built on an unmeasured assumption is a permanent
-  correctness liability for a saved millisecond.
-- validation: benchmark against a synthetic evidence store of several sizes, so
-  the answer is a curve rather than one machine's impression.
-- dependencies: the measurement is the first task and blocks the rest.
+- acceptance: totals are derived from the `observed/` store without invoking a
+  collector; no running total is written anywhere; the figure states the window
+  it actually covers; and it renders fast enough to feel immediate at roughly 80
+  profiles.
+- validation: a golden dataset with an observed store spanning outside the report
+  window, asserting the lifetime figures and confirming no collector ran. Re-run
+  after deleting any derived artifact and confirm identical numbers.
+- dependencies: none. The measurement that used to block this is done.
 
 ### Give gated decisions an owner
 
@@ -179,12 +228,13 @@ Feature: Lifetime worklog hours are visible again
 
 ## Ordering
 
-`now` gains one small item, and it displaces nothing: the withdrawn column is
-mostly un-withdrawing code that was left in place for this purpose, and it clears
-a request that has been waiting since June.
+`now` gains the all-source totals, because that is what was asked for and the
+only thing that was blocking it turned out not to exist. It is a display plus a
+source decision, both small.
 
-The all-source aggregate goes to `next` behind a measurement, not a design. The
-storage question cannot be answered honestly until the cost is known.
+The worklog-only column drops to `later`. It was never the ask, and shipping a
+column that is structurally empty for the requester would spend goodwill that is
+already scarce.
 
 ## Open decisions
 

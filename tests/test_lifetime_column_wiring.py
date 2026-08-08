@@ -89,6 +89,24 @@ class LifetimeColumnWiringTests(unittest.TestCase):
         self.assertIn("2026-06-10", out)
         self.assertNotIn("Total observed", out)
 
+    def test_a_project_with_no_period_activity_still_shows_its_lifetime(self):
+        # GH-537: rows used to come only from the selected period, so a project
+        # worked on last month and not today had no row — and its retained total
+        # was unreachable, which is the whole point of the column.
+        out = self._render(
+            totals={"project-alpha": 4.75, "dormant-project": 12.5},
+            window=("2026-05-04", "2026-06-10"),
+        )
+        self.assertIn("dormant-project", out)
+        self.assertIn("12.5", out)
+
+    def test_a_zero_lifetime_project_does_not_invent_a_row(self):
+        out = self._render(
+            totals={"project-alpha": 4.75, "never-worked": 0.0},
+            window=("2026-05-04", "2026-06-10"),
+        )
+        self.assertNotIn("never-worked", out)
+
     def test_no_column_when_there_is_nothing_to_show(self):
         out = self._render(totals=None, window=None)
         self.assertNotIn("Lifetime", out)

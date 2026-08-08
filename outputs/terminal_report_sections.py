@@ -377,6 +377,17 @@ def print_project_hour_review_section(
     project_names = sorted(project_reports)
     if additive_summary:
         project_names = sorted(additive_project_hours)
+    # A project with retained hours but no activity in the selected period would
+    # otherwise have no row at all, so its lifetime figure would be unreachable —
+    # which defeats the column (GH-537). Row count stays bounded by projects ever
+    # recorded, not by profiles configured.
+    if timelog_project_totals:
+        lifetime_only = [
+            name
+            for name, hours in timelog_project_totals.items()
+            if hours and name not in set(project_names)
+        ]
+        project_names = sorted(set(project_names) | set(lifetime_only))
     for project_name in project_names:
         customer = str(profile_by_name.get(project_name, {}).get("customer") or project_name)
         projects_by_customer[customer].append(project_name)
@@ -387,7 +398,7 @@ def print_project_hour_review_section(
             (
                 additive_project_hours[p]
                 if additive_summary
-                else sum(day_payload["hours"] for day_payload in project_reports[p].values())
+                else sum(day_payload["hours"] for day_payload in project_reports.get(p, {}).values())
             )
             for p in customer_projects
         )
@@ -398,7 +409,7 @@ def print_project_hour_review_section(
                 billable_total_hours_fn(
                     additive_project_hours[p]
                     if additive_summary
-                    else sum(day_payload["hours"] for day_payload in project_reports[p].values()),
+                    else sum(day_payload["hours"] for day_payload in project_reports.get(p, {}).values()),
                     args.billable_unit,
                 )
                 for p in customer_projects
@@ -412,21 +423,21 @@ def print_project_hour_review_section(
             cust_attended_h = sum(
                 sum(
                     float(day_payload.get("attended_hours", 0.0)) + float(day_payload.get("mixed_hours", 0.0))
-                    for day_payload in project_reports[p].values()
+                    for day_payload in project_reports.get(p, {}).values()
                 )
                 for p in customer_projects
             )
             cust_agent_h = sum(
                 sum(
                     float(day_payload.get("agent_hours", 0.0))
-                    for day_payload in project_reports[p].values()
+                    for day_payload in project_reports.get(p, {}).values()
                 )
                 for p in customer_projects
             )
             cust_mixed_h = sum(
                 sum(
                     float(day_payload.get("mixed_hours", 0.0))
-                    for day_payload in project_reports[p].values()
+                    for day_payload in project_reports.get(p, {}).values()
                 )
                 for p in customer_projects
             )
@@ -452,12 +463,12 @@ def print_project_hour_review_section(
             hours = (
                 additive_project_hours[project_name]
                 if additive_summary
-                else sum(day_payload["hours"] for day_payload in project_reports[project_name].values())
+                else sum(day_payload["hours"] for day_payload in project_reports.get(project_name, {}).values())
             )
             days = (
                 len(additive_project_days.get(project_name, set()))
                 if additive_summary
-                else len(project_reports[project_name])
+                else len(project_reports.get(project_name, {}))
             )
             proj_b_text = "-"
             if args.billable_unit and args.billable_unit > 0:

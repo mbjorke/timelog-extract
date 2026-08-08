@@ -214,10 +214,9 @@ def run_interactive_mapping_flow(
         )
     if review.change_count() == 0:
         return 0
-    batch_result = run_batch_mapping_review(console, review, profiles, projects_config)
-    if batch_result is None:
-        return 0
-    return batch_result
+    # Cancelling mid-queue stops the prompts and still applies what was completed,
+    # so there is no longer a "discard everything" result to translate away (GH-522).
+    return run_batch_mapping_review(console, review, profiles, projects_config)
 
 
 def prepare_mapping_review_after_report(report, *, fast_post_report: bool = False):

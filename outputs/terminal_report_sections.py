@@ -363,9 +363,16 @@ def print_project_hour_review_section(
         # not support is what got it withdrawn (GH-146). This one is all-source and
         # says what it covers — the cache is what survived retention, so the span
         # is the honest claim, not "all time" (GH-537).
-        lifetime_label = "Lifetime"
+        #
+        # It is also a *ceiling*, not a measurement. The observed cache is keep-max:
+        # a run can raise a day's value, never lower it, so the sum is the most any
+        # run ever detected — including runs of versions that over-counted (GH-543).
+        # Calling it "Lifetime" beside a period column that re-scans and can move
+        # would repeat GH-146's mistake in a new form: two numbers with different
+        # epistemics, presented as if they were the same kind of thing.
+        lifetime_label = "Lifetime max"
         if lifetime_window:
-            lifetime_label = f"Lifetime ({lifetime_window[0]} → {lifetime_window[1]})"
+            lifetime_label = f"Lifetime max ({lifetime_window[0]} → {lifetime_window[1]})"
         header_row.append(f"[{STYLE_META}]{lifetime_label}[/{STYLE_META}]")
     if show_git:
         header_row.append(f"[{STYLE_META}]Git only[/{STYLE_META}]")

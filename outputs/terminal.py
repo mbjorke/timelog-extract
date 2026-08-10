@@ -359,6 +359,16 @@ def print_report(
     # are automatically visible without manual output updates.
     legend = _build_dynamic_legend(source_order)
     console.print(legend)
+    if timelog_project_totals:
+        # The two hour columns answer different questions and a header cannot carry
+        # that. Hours re-scans the sources, so it moves as evidence ages or work is
+        # re-attributed; Lifetime max sums a keep-max cache, so it can only rise.
+        # Saying so is the difference between a figure and a claim (GH-543).
+        console.print(
+            f"[{STYLE_META}]Lifetime max is a ceiling, not a measurement: the highest each day "
+            f"ever read across report runs, over the window shown. Hours re-scans the sources "
+            f"and can differ for the same day.[/{STYLE_META}]"
+        )
     console.print(
         f"[{STYLE_META}]Nothing in this report is billable until explicitly approved.[/{STYLE_META}]"
     )

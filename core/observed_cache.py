@@ -182,7 +182,12 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
 def observed_lifetime_hours(
     home: Optional[Path] = None,
 ) -> Tuple[Dict[str, float], Optional[Tuple[str, str]]]:
-    """Lifetime hours per project, and the day window those hours actually cover.
+    """Per-project **ceiling** on hours, and the day window it covers.
+
+    Not a measurement. The cache is keep-max — a run can raise a day's value and
+    never lower it — so this sum is the most any run ever detected, including runs
+    of versions that over-counted. Callers must not present it as time worked
+    (GH-543).
 
     Sums the per-day rows the cache already holds, so no collector runs and no
     event is re-classified: the expensive part of a report is reading the

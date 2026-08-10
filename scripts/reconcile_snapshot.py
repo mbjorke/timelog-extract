@@ -260,6 +260,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def resolve_window(args: argparse.Namespace, snapshot: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    # Half a range is a mistake, not a hint. Falling through to --period or the
+    # snapshot would reconcile a window the operator did not ask for and report
+    # drift for it successfully — the one failure mode this instrument exists to
+    # rule out.
+    if bool(args.date_from) != bool(args.date_to):
+        raise ValueError("--from and --to must be given together")
     if args.date_from and args.date_to:
         return args.date_from, args.date_to
     if args.period:

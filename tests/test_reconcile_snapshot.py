@@ -328,6 +328,23 @@ class WindowResolutionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve_window(self._Args(), None)
 
+    def test_half_a_range_is_refused_rather_than_silently_replaced(self):
+        # Falling through to --period or the snapshot would reconcile a window the
+        # operator did not ask for and report drift for it successfully, which is
+        # the failure mode this instrument exists to rule out.
+        for kwargs in (
+            {"date_from": "2026-06-10", "period": "2026-01"},
+            {"date_to": "2026-06-12", "period": "2026-01"},
+        ):
+            with self.subTest(**kwargs):
+                with self.assertRaises(ValueError):
+                    resolve_window(self._Args(**kwargs), None)
+
+    def test_half_a_range_is_refused_even_with_a_snapshot_available(self):
+        payload = _snapshot_payload({}, date_from="2026-05-01", date_to="2026-05-31")
+        with self.assertRaises(ValueError):
+            resolve_window(self._Args(date_from="2026-06-10"), payload)
+
 
 class CliTests(unittest.TestCase):
     """End-to-end through ``main``, always with ``--no-rescan`` and a temp home."""

@@ -31,6 +31,11 @@ from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Mapping is an offer, not a requirement: the prompt says so, and names the
+# command that does the same work later without re-entering the wizard.
+MAPPING_PROMPT_TEXT = "Map projects now? This step is optional; you can run `gittan map` later instead"
+MAPPING_SKIPPED_NOTE = "Mapping is optional and was skipped; run `gittan map` when you want it."
+
 
 def _timestamped_backup_path(path: Path) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -289,7 +294,10 @@ def run_setup_wizard(
             summary_rows.append(("Step 3: Project Mapping", "ACTION_REQUIRED", f"Wizard error: {exc}"))
             raise
     elif prompt_project_mapping and not dry_run:
-        should_run_mapping = questionary.confirm("Run project mapping now?", default=True).ask()
+        should_run_mapping = questionary.confirm(
+            MAPPING_PROMPT_TEXT,
+            default=False,
+        ).ask()
         if should_run_mapping:
             try:
                 status, notes = _run_mapping_wizard_with_summary(console, dry_run=dry_run)
@@ -302,7 +310,11 @@ def run_setup_wizard(
                 summary_rows.append(("Step 3: Project Mapping", "ACTION_REQUIRED", f"Wizard error: {exc}"))
                 raise
         else:
-            summary_rows.append(("Step 3: Project Mapping", "SKIPPED", "User skipped optional mapping prompt."))
+            console.print(
+                "[yellow]Skipped project mapping.[/yellow] "
+                "Run `gittan map` whenever you want work attached to a specific project."
+            )
+            summary_rows.append(("Step 3: Project Mapping", "SKIPPED", MAPPING_SKIPPED_NOTE))
     else:
         summary_rows.append(("Step 3: Project Mapping", "SKIPPED", "Skipped in non-interactive (--yes) mode."))
     doctor_status = _run_doctor_check(console, dry_run=dry_run)

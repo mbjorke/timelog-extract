@@ -184,6 +184,25 @@ class SnapshotParsingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_snapshot(path)
 
+    def test_a_list_valued_projects_field_is_rejected_at_load(self):
+        # Deferring this to snapshot_hours turns a malformed file into an uncaught
+        # AttributeError, which reads as the tool crashing rather than as the file
+        # being wrong.
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "list-projects.json"
+            path.write_text(json.dumps({"projects": ["project-alpha"]}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_snapshot(path)
+
+    def test_non_numeric_hours_are_rejected_at_load(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bad-hours.json"
+            path.write_text(
+                json.dumps({"projects": {"project-alpha": "not-a-number"}}), encoding="utf-8"
+            )
+            with self.assertRaises(ValueError):
+                load_snapshot(path)
+
     def test_a_payload_without_a_range_cannot_supply_a_window(self):
         with self.assertRaises(ValueError):
             snapshot_window({"projects": {}})
@@ -340,6 +359,23 @@ class WindowResolutionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     resolve_window(self._Args(**kwargs), None)
 
+    def test_a_reversed_window_is_refused_rather_than_reported_as_drift(self):
+        # A reversed range selects no rows, so every project reads as having lost
+        # all its hours. That renders as a finding when it is a usage error.
+        with self.assertRaises(ValueError):
+            resolve_window(self._Args(date_from="2026-06-30", date_to="2026-06-01"), None)
+
+    def test_a_malformed_date_is_refused(self):
+        with self.assertRaises(ValueError):
+            resolve_window(self._Args(date_from="2026-06-32", date_to="2026-06-30"), None)
+
+    def test_a_snapshot_window_is_validated_too(self):
+        # A hand-edited or truncated payload can carry a reversed range as easily
+        # as a command line can.
+        payload = _snapshot_payload({}, date_from="2026-05-31", date_to="2026-05-01")
+        with self.assertRaises(ValueError):
+            resolve_window(self._Args(), payload)
+
     def test_half_a_range_is_refused_even_with_a_snapshot_available(self):
         payload = _snapshot_payload({}, date_from="2026-05-01", date_to="2026-05-31")
         with self.assertRaises(ValueError):
@@ -384,12 +420,12 @@ class CliTests(unittest.TestCase):
         self.assertIn(RE_ATTRIBUTION, out)
 
     def test_redact_hides_project_names_but_keeps_the_hours(self):
-        self._write_cache([("Acme Industries", "2026-06-10", 12.0)])
+        self._write_cache([("customer-a project", "2026-06-10", 12.0)])
         code, out = self._run(
             ["--period", "2026-06", "--home", str(self.home), "--no-rescan", "--redact"]
         )
         self.assertEqual(code, 0)
-        self.assertNotIn("Acme Industries", out)
+        self.assertNotIn("customer-a project", out)
         self.assertIn("project-01", out)
         self.assertIn("12.00", out)
 

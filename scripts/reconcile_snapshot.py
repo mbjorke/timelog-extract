@@ -56,6 +56,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -90,6 +91,22 @@ def load_snapshot(path: Path) -> Dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or "projects" not in payload:
         raise ValueError(f"{path.name} is not a truth payload (no 'projects' key)")
+    # Validate the shape here, where the caller already handles the error and can
+    # exit cleanly. Deferring it to snapshot_hours turns a malformed file into an
+    # uncaught AttributeError, which for a tool whose output is meant to be trusted
+    # is indistinguishable from a crash of its own making.
+    projects = payload.get("projects")
+    if not isinstance(projects, dict):
+        raise ValueError(
+            f"{path.name}: 'projects' must be an object, got {type(projects).__name__}"
+        )
+    for name, hours in projects.items():
+        try:
+            float(hours if not isinstance(hours, dict) else hours.get("hours_estimated"))
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"{path.name}: project {name!r} has non-numeric hours"
+            ) from None
     return payload
 
 
@@ -207,8 +224,21 @@ def rescan_hours(
 # --------------------------------------------------------------------------
 
 
+class _UsageExitParser(argparse.ArgumentParser):
+    """Argument errors exit 1, not 2.
+
+    This module reserves status 2 for --fail-on-drift finding an unstable pair.
+    argparse's default of 2 for a typo would make a misinvocation indistinguishable
+    from a real finding to anything scripting this tool.
+    """
+
+    def error(self, message: str):  # noqa: D102 - argparse contract
+        self.print_usage(sys.stderr)
+        self.exit(1, f"{self.prog}: error: {message}\n")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _UsageExitParser(
         prog="reconcile_snapshot.py",
         description="Compare a captured truth payload, the observed cache, and a fresh rescan.",
     )
@@ -259,6 +289,23 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validated_window(date_from: str, date_to: str) -> Tuple[str, str]:
+    """Both endpoints must be real dates, in order.
+
+    A reversed range selects no rows, which reads as "everything drifted" rather
+    than as the usage error it is. An instrument that reports a finding for an
+    impossible question is worse than one that refuses to answer.
+    """
+    try:
+        start = date.fromisoformat(date_from)
+        end = date.fromisoformat(date_to)
+    except ValueError as exc:
+        raise ValueError(f"invalid date in window {date_from}..{date_to}: {exc}") from None
+    if start > end:
+        raise ValueError(f"window starts after it ends: {date_from}..{date_to}")
+    return date_from, date_to
+
+
 def resolve_window(args: argparse.Namespace, snapshot: Optional[Dict[str, Any]]) -> Tuple[str, str]:
     # Half a range is a mistake, not a hint. Falling through to --period or the
     # snapshot would reconcile a window the operator did not ask for and report
@@ -267,11 +314,13 @@ def resolve_window(args: argparse.Namespace, snapshot: Optional[Dict[str, Any]])
     if bool(args.date_from) != bool(args.date_to):
         raise ValueError("--from and --to must be given together")
     if args.date_from and args.date_to:
-        return args.date_from, args.date_to
+        return _validated_window(args.date_from, args.date_to)
     if args.period:
-        return month_bounds(args.period)
+        return _validated_window(*month_bounds(args.period))
     if snapshot is not None:
-        return snapshot_window(snapshot)
+        # A snapshot's own range is not exempt: a hand-edited or truncated payload
+        # can carry a reversed or malformed one just as easily.
+        return _validated_window(*snapshot_window(snapshot))
     raise ValueError("need one of --snapshot, --period, or both --from and --to")
 
 

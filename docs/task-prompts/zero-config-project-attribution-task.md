@@ -153,7 +153,7 @@ Feature: Project mapping is offered, not imposed
 
 ### #522 — cancelling one mapping prompt discards every completed mapping
 
-- priority: **now**
+- priority: **now** — fixed, PR #545
 - problem: verified at `core/mapping_review_flow.py:202`. Completed answers
   accumulate in a local list; both cancel branches return `None` and drop it.
   `questionary` also returns `None` on Ctrl-C, so an interrupt has the same

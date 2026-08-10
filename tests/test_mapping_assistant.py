@@ -172,26 +172,26 @@ class MappingAssistantTests(unittest.TestCase):
                 console,
                 [
                     (
-                        "landsbanken-faq-helper",
+                        "faq-helper",
                         "match_terms",
-                        "mbjorke/landsbanken-faq-helper",
-                        "Ålandsbanken Contact Center",
-                        "Ålandsbanken Chatbot",
+                        "mbjorke/faq-helper",
+                        "Customer A Contact Center",
+                        "Customer A Chatbot",
                     ),
-                    ("landsbanken-faq-helper", "match_terms", "landsbanken-faq-helper"),
+                    ("faq-helper", "match_terms", "faq-helper"),
                 ],
                 [],
                 str(cfg),
             )
             self.assertEqual(count, 2)
             project = json.loads(cfg.read_text(encoding="utf-8"))["projects"][0]
-            self.assertEqual(project["name"], "landsbanken-faq-helper")
-            self.assertEqual(project["customer"], "Ålandsbanken Contact Center")
-            self.assertEqual(project["invoice_title"], "Ålandsbanken Chatbot")
+            self.assertEqual(project["name"], "faq-helper")
+            self.assertEqual(project["customer"], "Customer A Contact Center")
+            self.assertEqual(project["invoice_title"], "Customer A Chatbot")
             console.print.assert_any_call(
                 "[green]Wrote 2 mapping change(s) to projects config: "
-                "mbjorke/landsbanken-faq-helper→landsbanken-faq-helper, "
-                "landsbanken-faq-helper→landsbanken-faq-helper[/green]"
+                "mbjorke/faq-helper→faq-helper, "
+                "faq-helper→faq-helper[/green]"
             )
 
     @patch("core.mapping_review.run_batch_mapping_review", return_value=0)

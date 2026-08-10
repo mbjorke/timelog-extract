@@ -37,7 +37,7 @@ class GhRepoDiscoveryTests(unittest.TestCase):
         dt_to = datetime(2026, 6, 12, tzinfo=timezone.utc)
         payload = [
             {
-                "nameWithOwner": "mbjorke/landsbanken-faq-helper",
+                "nameWithOwner": "mbjorke/faq-helper",
                 "createdAt": "2026-06-11T10:15:00Z",
                 "pushedAt": "2026-06-11T12:00:00Z",
             },
@@ -59,8 +59,8 @@ class GhRepoDiscoveryTests(unittest.TestCase):
         ), patch("core.gh_repo_discovery.subprocess.run", side_effect=fake_run):
             found = collect_gh_repos_created_in_window(dt_from, dt_to, profiles=profiles)
 
-        self.assertEqual(list(found), ["mbjorke/landsbanken-faq-helper"])
-        self.assertTrue(found["mbjorke/landsbanken-faq-helper"].startswith("2026-06-11"))
+        self.assertEqual(list(found), ["mbjorke/faq-helper"])
+        self.assertTrue(found["mbjorke/faq-helper"].startswith("2026-06-11"))
 
     def test_collect_list_data_includes_pushed_epochs(self):
         profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]
@@ -68,7 +68,7 @@ class GhRepoDiscoveryTests(unittest.TestCase):
         dt_to = datetime(2026, 6, 12, tzinfo=timezone.utc)
         payload = [
             {
-                "nameWithOwner": "mbjorke/landsbanken-faq-helper",
+                "nameWithOwner": "mbjorke/faq-helper",
                 "createdAt": "2026-06-11T10:15:00Z",
                 "pushedAt": "2026-06-11T12:00:00Z",
             },
@@ -83,8 +83,8 @@ class GhRepoDiscoveryTests(unittest.TestCase):
         ), patch("core.gh_repo_discovery.subprocess.run", side_effect=fake_run):
             created, pushed = collect_gh_repo_list_data(dt_from, dt_to, profiles=profiles)
 
-        self.assertIn("mbjorke/landsbanken-faq-helper", created)
-        self.assertGreater(pushed["mbjorke/landsbanken-faq-helper"], 0)
+        self.assertIn("mbjorke/faq-helper", created)
+        self.assertGreater(pushed["mbjorke/faq-helper"], 0)
 
     def test_skips_when_gh_not_authenticated(self):
         profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]

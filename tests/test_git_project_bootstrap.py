@@ -66,7 +66,7 @@ class GitProjectBootstrapTests(unittest.TestCase):
             },
             {
                 "name": "remote-only",
-                "match_terms": ["mbjorke/landsbanken-faq-helper"],
+                "match_terms": ["mbjorke/faq-helper"],
             },
         ]
         with mock.patch(
@@ -76,7 +76,7 @@ class GitProjectBootstrapTests(unittest.TestCase):
             coverage = assess_config_git_coverage(profiles)
         self.assertEqual(coverage.status, "warn")
         self.assertIn("1/2", coverage.detail)
-        self.assertIn("mbjorke/landsbanken-faq-helper", coverage.suggested_terms)
+        self.assertIn("mbjorke/faq-helper", coverage.suggested_terms)
 
     def test_config_git_coverage_all_cloned_is_ok(self):
         profiles = [{"name": "demo", "match_terms": ["mbjorke/demo"]}]

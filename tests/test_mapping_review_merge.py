@@ -96,18 +96,18 @@ class MappingReviewMergeTests(unittest.TestCase):
             },
             {
                 "source": "GitHub",
-                "detail": "created repository in mbjorke/landsbanken-faq-helper",
+                "detail": "created repository in mbjorke/faq-helper",
                 "project": "Uncategorized",
             },
             {
                 "source": "GitHub",
-                "detail": "PR #1 merged (mbjorke/landsbanken-faq-helper)",
+                "detail": "PR #1 merged (mbjorke/faq-helper)",
                 "project": "Uncategorized",
             },
         ]
         review = build_mapping_review(events, profiles, slug_bindings={})
         self.assertEqual(len(review.new_projects), 1)
-        self.assertEqual(review.new_projects[0].slug, "mbjorke/landsbanken-faq-helper")
+        self.assertEqual(review.new_projects[0].slug, "mbjorke/faq-helper")
 
     def test_does_not_group_tracked_url_repo_as_duplicate(self):
         profiles = [

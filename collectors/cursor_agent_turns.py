@@ -27,14 +27,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from collectors.ai_logs import _anchors, _meaningful_label
+from collectors.ai_logs import _meaningful_label
 from collectors.cursor_composer import (
+    _attribution_anchors,
     _branch_reflected_in_label,
-    _composer_classification_haystack,
     _composer_git_context,
     _composer_workspace_path,
     _path_dir_leaf,
     _read_composer_headers,
+    classify_composer_conversation,
     cursor_state_db_path,
     load_cursor_workspaces,
 )
@@ -449,13 +450,20 @@ def collect_cursor_agent_turns(
         label = _meaningful_label(name) or dir_leaf
         if not label:
             continue
-        haystack = (
-            _composer_classification_haystack(composer, title=name)
-            if composer
-            else " ".join(part for part in (label, workspace, branch) if part)
+        attribution = classify_composer_conversation(
+            composer,
+            title=name or label,
+            profiles=profiles,
+            classify_project=classify_project,
+            workspace_path=workspace,
         )
-        project = classify_project(haystack, profiles)
-        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        project = attribution.project
+        anchors = _attribution_anchors(
+            label=label,
+            dir_leaf=dir_leaf,
+            branch=branch,
+            attribution=attribution,
+        )
         prompts = prompts_by_cid.get(conversation_id, [])
 
         emitted = False

@@ -5,12 +5,16 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 from urllib.parse import unquote, urlparse
 
 from collectors.ai_logs import _GENERIC_BRANCHES, _anchors, _meaningful_label
+
+# Default fallback when a conversation matches no profile (matches report pipeline).
+_UNCATEGORIZED = "Uncategorized"
 
 SOURCE_NAME = "Cursor"
 
@@ -272,13 +276,22 @@ def _uri_fs_path(block: dict | None) -> str:
 
 
 def _composer_workspace_path(composer: dict) -> str:
-    for key in ("workspaceIdentifier", "agentLocation"):
-        path = _uri_fs_path(composer.get(key))
-        if path:
-            return path
+    """Resolve workspace path with stable identifiers preferred over mutable history.
+
+    Order: ``workspaceIdentifier`` (stable) → ``agentLocation`` → earliest
+    ``agentLocationHistory`` entry. The latest history entry drifts when a
+    conversation continues in another window (#544); prefer the first recorded
+    location when falling back to history.
+    """
+    path = _uri_fs_path(composer.get("workspaceIdentifier"))
+    if path:
+        return path
+    path = _uri_fs_path(composer.get("agentLocation"))
+    if path:
+        return path
     history = composer.get("agentLocationHistory")
     if isinstance(history, list):
-        for entry in reversed(history):
+        for entry in history:
             if not isinstance(entry, dict):
                 continue
             location = entry.get("location")
@@ -326,9 +339,86 @@ def _path_dir_leaf(path: str) -> str | None:
 
 
 def _composer_classification_haystack(composer: dict, *, title: str) -> str:
+    """Legacy combined haystack (title + workspace + git). Prefer
+    :func:`classify_composer_conversation` for attribution (#544).
+    """
     workspace = _composer_workspace_path(composer)
     git_text, _branch = _composer_git_context(composer)
     return " ".join(part for part in (title, workspace, git_text) if part)
+
+
+@dataclass(frozen=True)
+class ComposerAttribution:
+    """Title-preferring project decision for one Cursor conversation (#544)."""
+
+    project: str
+    project_from: str  # "title" | "workspace"
+    project_workspace: str | None = None
+
+
+def classify_composer_conversation(
+    composer: dict | None,
+    *,
+    title: str,
+    profiles,
+    classify_project: Callable,
+    workspace_path: str = "",
+    fallback: str = _UNCATEGORIZED,
+) -> ComposerAttribution:
+    """Classify a conversation from title first, workspace only as fallback.
+
+    Title and workspace+git are scored as independent passes. When the title
+    matches a real project, that project wins even if the focused window's
+    path matches another profile — so continuing a thread elsewhere does not
+    silently move hours across customers (#544).
+    """
+    composer = composer if isinstance(composer, dict) else {}
+    title_text = str(title or "").strip()
+    workspace = _composer_workspace_path(composer) or str(workspace_path or "").strip()
+    git_text, _branch = _composer_git_context(composer)
+    workspace_haystack = " ".join(part for part in (workspace, git_text) if part)
+
+    title_project = (
+        classify_project(title_text, profiles) if title_text else fallback
+    )
+    workspace_project = (
+        classify_project(workspace_haystack, profiles) if workspace_haystack else fallback
+    )
+    if not title_project:
+        title_project = fallback
+    if not workspace_project:
+        workspace_project = fallback
+
+    if title_project != fallback:
+        competing = (
+            workspace_project
+            if workspace_project not in (fallback, title_project)
+            else None
+        )
+        return ComposerAttribution(
+            project=title_project,
+            project_from="title",
+            project_workspace=competing,
+        )
+    return ComposerAttribution(
+        project=workspace_project,
+        project_from="workspace",
+        project_workspace=None,
+    )
+
+
+def _attribution_anchors(
+    *,
+    label: str | None,
+    dir_leaf: str | None,
+    branch: str | None,
+    attribution: ComposerAttribution,
+) -> dict:
+    """Build event anchors including title/workspace provenance (#544)."""
+    extra: dict[str, str] = {"project_from": attribution.project_from}
+    if attribution.project_workspace:
+        extra["project_workspace"] = attribution.project_workspace
+    return _anchors(label=label, dir=dir_leaf, branch=branch, **extra)
 
 
 def _read_composer_headers(db_path: Path) -> list[dict]:
@@ -393,13 +483,23 @@ def collect_cursor_composer_sessions(
         label = _meaningful_label(name) or dir_leaf
         if not label:
             continue
-        haystack = _composer_classification_haystack(composer, title=name)
-        project = classify_project(haystack, profiles)
+        attribution = classify_composer_conversation(
+            composer,
+            title=name,
+            profiles=profiles,
+            classify_project=classify_project,
+        )
+        project = attribution.project
         context_bits: list[str] = []
         if branch and not _branch_reflected_in_label(branch, name or label or ""):
             context_bits.append(f"@{branch}")
         detail = " · ".join(context_bits)[:100]
-        anchors = _anchors(label=label, dir=dir_leaf, branch=branch)
+        anchors = _attribution_anchors(
+            label=label,
+            dir_leaf=dir_leaf,
+            branch=branch,
+            attribution=attribution,
+        )
         touches = _composer_in_window_touch_ms(composer, from_ms, to_ms)
         if not touches:
             # Predate/spill threads with no in-window metadata touch: credit the

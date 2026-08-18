@@ -14,6 +14,8 @@ UNCATEGORIZED_NUDGE_THRESHOLD_RATIO = 0.35
 UNCATEGORIZED_NOISE_SUPPRESSION_RATIO = 0.8
 # Nudge about an unmapped activity anchor once it accounts for real activity.
 UNANCHORED_ANCHOR_NUDGE_MIN_HITS = 20
+# Title vs workspace conflict: surface once a conversation has enough events.
+TITLE_WORKSPACE_CONFLICT_MIN_HITS = 5
 _TRIAGE_NOISE_DOMAINS = {"cursor.com", "cursor.sh"}
 _TRIAGE_NOISE_TITLE_MARKERS = (
     "canvas sdk mirror failed",
@@ -220,3 +222,71 @@ def build_unanchored_anchors_nudge(
         # host-only or unknown kinds — keep a safe generic pointer
         lines.append("Review with `gittan map` or `gittan review` for the matching signal kind.")
     return " ".join(lines)
+
+
+def title_workspace_conflicts_for_report(
+    report,
+    *,
+    min_hits: int = TITLE_WORKSPACE_CONFLICT_MIN_HITS,
+) -> list[dict]:
+    """Conversations where title and workspace classified to different projects (#544).
+
+    Groups by (label, chosen project, workspace project) and returns rows above
+    ``min_hits``. Only events with ``anchors.project_from == "title"`` and a
+    competing ``anchors.project_workspace`` are considered.
+    """
+    events = list(getattr(report, "all_events", None) or getattr(report, "included_events", []) or [])
+    tallies: dict[tuple[str, str, str], int] = {}
+    for event in events:
+        anchors = event.get("anchors") if isinstance(event, dict) else None
+        if not isinstance(anchors, dict):
+            continue
+        if str(anchors.get("project_from") or "") != "title":
+            continue
+        workspace_project = str(anchors.get("project_workspace") or "").strip()
+        if not workspace_project:
+            continue
+        chosen = str(event.get("project") or "").strip()
+        if not chosen or chosen == workspace_project:
+            continue
+        label = str(anchors.get("label") or "").strip() or "(untitled)"
+        key = (label, chosen, workspace_project)
+        tallies[key] = tallies.get(key, 0) + 1
+    rows = [
+        {
+            "label": label,
+            "project": project,
+            "project_workspace": workspace_project,
+            "hits": hits,
+        }
+        for (label, project, workspace_project), hits in tallies.items()
+        if hits >= int(min_hits)
+    ]
+    rows.sort(key=lambda row: (-int(row["hits"]), str(row["label"])))
+    return rows
+
+
+def build_title_workspace_conflict_nudge(
+    report,
+    *,
+    min_hits: int = TITLE_WORKSPACE_CONFLICT_MIN_HITS,
+    conflicts: list[dict] | None = None,
+) -> str | None:
+    """Non-blocking nudge when a conversation title and workspace disagree (#544)."""
+    if conflicts is None:
+        conflicts = title_workspace_conflicts_for_report(report, min_hits=min_hits)
+    if not conflicts:
+        return None
+    listed = "; ".join(
+        f"\"{row['label']}\" → {row['project']} (workspace suggested {row['project_workspace']}, "
+        f"{row['hits']} events)"
+        for row in conflicts[:3]
+    )
+    extra = ""
+    if len(conflicts) > 3:
+        extra = f" (+{len(conflicts) - 3} more)"
+    return (
+        f"Nudge: title/workspace attribution conflict{'' if len(conflicts) == 1 else 's'}: "
+        f"{listed}{extra}. Title was preferred so hours stay with the conversation intent; "
+        "review if the window project was actually correct."
+    )

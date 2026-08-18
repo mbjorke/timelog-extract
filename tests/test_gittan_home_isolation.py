@@ -25,7 +25,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from core.config import canonical_gittan_home, gittan_data_dir
+from core.config import GittanHomeError, canonical_gittan_home, gittan_data_dir
 from core.evidence_store import evidence_base_dir, spool_dir
 from core.global_timelog_hook_script import HOOK_BODY
 from core.global_timelog_machine_setup import (
@@ -87,14 +87,32 @@ class DataDirResolverTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"GITTAN_HOME": "~/sandbox-dir"}):
             self.assertEqual(gittan_data_dir(), Path.home() / "sandbox-dir")
 
-    def test_an_unresolvable_user_is_left_alone_rather_than_raising(self):
-        """A typo in one env var must not crash every command that reads a store.
+    def test_an_unresolvable_user_is_refused_not_a_pathlib_crash(self):
+        """``Path.expanduser()`` raises RuntimeError here — an opaque failure.
 
-        ``Path.expanduser()`` raises ``RuntimeError`` here; ``os.path.expanduser``
-        returns the value untouched, which is also what the hook does.
+        ``os.path.expanduser`` leaves the value alone, so it reaches the
+        absolute-path check and fails with a message naming the variable.
         """
         with mock.patch.dict(os.environ, {"GITTAN_HOME": "~nosuchuser42/x"}):
-            self.assertEqual(gittan_data_dir(), Path("~nosuchuser42/x"))
+            with self.assertRaises(GittanHomeError) as ctx:
+                gittan_data_dir()
+        self.assertIn("GITTAN_HOME", str(ctx.exception))
+
+    def test_a_relative_value_is_refused_with_an_actionable_message(self):
+        with mock.patch.dict(os.environ, {"GITTAN_HOME": "data"}):
+            with self.assertRaises(GittanHomeError) as ctx:
+                gittan_data_dir()
+        message = str(ctx.exception)
+        self.assertIn("absolute path", message)
+        self.assertIn("data", message)
+
+    def test_an_explicit_relative_home_is_still_allowed(self):
+        """The ``home`` argument is a caller's deliberate choice, not ambient env.
+
+        Tests and callers pass it directly, so there is no second process to
+        disagree with; only the env var carries the cwd hazard.
+        """
+        self.assertEqual(gittan_data_dir(Path("rel")), Path("rel") / ".gittan")
 
     def test_blank_env_value_is_ignored(self):
         with mock.patch.dict(os.environ, {"GITTAN_HOME": "   "}):
@@ -271,7 +289,15 @@ class ShellAndPythonNormalizeGittanHomeAlikeTests(unittest.TestCase):
         "/tmp/with space",          # must survive without word-splitting
         "/tmp/with*star",           # must not glob
         "~root/x",                  # ~user, when the user resolves
-        "~nosuchuser42/x",          # ~user that does not: left untouched, no abort
+    ]
+
+    #: Values that are not a usable data directory. Both halves must refuse them
+    #: rather than each picking a different directory.
+    REJECTED = [
+        "data",                     # relative: cwd-dependent, so cwd-divergent
+        "./data/nested",
+        "../sibling",
+        "~nosuchuser42/x",          # ~user that does not resolve: stays relative
     ]
 
     @classmethod
@@ -287,15 +313,20 @@ class ShellAndPythonNormalizeGittanHomeAlikeTests(unittest.TestCase):
         end = HOOK_BODY.index('gittan_data_canon=')
         cls.block = textwrap.dedent(HOOK_BODY[start:end])
 
-    def _shell_value(self, gittan_home: str) -> str:
+    def _run_shell(self, gittan_home: str):
         snippet = "set -euo pipefail\n" + self.block + '\nprint -r -- "$GITTAN_DATA_DIR"\n'
-        proc = subprocess.run(
+        return subprocess.run(
             [self.zsh, "-c", snippet],
             capture_output=True,
             text=True,
             env={**os.environ, "GITTAN_HOME": gittan_home},
         )
+
+    def _shell_value(self, gittan_home: str, *, expect_refusal: bool = False) -> str:
+        proc = self._run_shell(gittan_home)
         self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+        if expect_refusal:
+            return proc.stderr.rstrip("\n")
         return proc.stdout.rstrip("\n")
 
     def test_shell_matches_gittan_data_dir_for_every_case(self):
@@ -314,13 +345,75 @@ class ShellAndPythonNormalizeGittanHomeAlikeTests(unittest.TestCase):
                 self.assertEqual(expected, Path.home() / ".gittan")
                 self.assertEqual(self._shell_value(value), str(expected))
 
-    def test_an_unresolvable_user_does_not_abort_the_hook(self):
-        """A commit hook must not die over its own config.
+    def test_both_halves_refuse_a_relative_value(self):
+        """Neither side may guess. Python raises; the hook warns and stops.
 
-        zsh aborts on ``${~x}`` for an unknown user; Python leaves it untouched.
-        The hook follows Python, so the commit still succeeds.
+        Anchoring a relative value to some base would keep the two halves in a
+        parity race forever (``./x``, ``a/./b``, ``..`` all normalize differently
+        in zsh than in PurePath). Refusing collapses the shell's whole obligation
+        to one ``== /*`` test, which cannot drift.
         """
-        self.assertEqual(self._shell_value("~nosuchuser42/x"), "~nosuchuser42/x")
+        for value in self.REJECTED:
+            with self.subTest(gittan_home=value):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": value}):
+                    with self.assertRaises(GittanHomeError):
+                        gittan_data_dir()
+                out = self._shell_value(value, expect_refusal=True)
+                self.assertIn("must be an absolute path", out)
+
+    def test_the_hook_exits_cleanly_when_it_refuses(self):
+        """A commit must not fail because the data dir is misconfigured.
+
+        The hook is post-commit: the commit already happened. Exiting non-zero
+        would print a git error for something the commit had nothing to do with.
+        """
+        proc = self._run_shell("data")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+    def test_an_unresolvable_user_is_refused_rather_than_aborting_zsh(self):
+        """zsh aborts on ``${~x}`` for an unknown user; the hook must not.
+
+        It falls through with the value untouched, which is then caught by the
+        absolute-path check — a clean refusal instead of a dead shell.
+        """
+        proc = self._run_shell("~nosuchuser42/x")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertIn("must be an absolute path", proc.stderr)
+
+
+class CliRefusesAMalformedGittanHomeTests(unittest.TestCase):
+    """The refusal must read as a message, not a traceback.
+
+    Typer builds option defaults at *import* time, so the first version of this
+    raised before ``main()`` existed and printed a stack trace for a mistyped
+    env var. The default is tolerant now and ``main()`` validates explicitly.
+    """
+
+    def _run(self, gittan_home: str, *args: str):
+        return subprocess.run(
+            [sys.executable, "timelog_extract.py", *args],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).resolve().parent.parent),
+            env={**os.environ, "GITTAN_HOME": gittan_home},
+        )
+
+    def test_relative_value_exits_two_with_a_readable_error(self):
+        proc = self._run("data", "report", "--today", "--screen-time", "off")
+        self.assertEqual(proc.returncode, 2, msg=proc.stderr)
+        self.assertIn("must be an absolute path", proc.stderr)
+        self.assertNotIn("Traceback", proc.stderr)
+
+    def test_the_error_names_the_variable_and_the_offending_value(self):
+        proc = self._run("data", "report", "--today")
+        self.assertIn("GITTAN_HOME", proc.stderr)
+        self.assertIn("data", proc.stderr)
+
+    def test_version_still_works_so_the_user_can_check_their_build(self):
+        """``-V`` must not need a valid data dir — it reads nothing."""
+        proc = self._run("data", "-V")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertIn("timelog-extract", proc.stdout)
 
 
 class SetupWritesWhereTheHookReadsTests(unittest.TestCase):

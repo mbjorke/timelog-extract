@@ -26,6 +26,15 @@ def canonical_gittan_home() -> Path:
     return Path.home() / ".gittan"
 
 
+class GittanHomeError(ValueError):
+    """``$GITTAN_HOME`` names something that cannot be a single data directory.
+
+    Raised rather than guessed. Falling back to ``~/.gittan`` would hand the
+    operator's real data to someone who asked for a sandbox, and the observed
+    cache merges keep-max — there is no undo for that write.
+    """
+
+
 def gittan_data_dir(home: Optional[Path] = None) -> Path:
     """The one directory every Gittan store reads and writes (GH-549).
 
@@ -36,7 +45,8 @@ def gittan_data_dir(home: Optional[Path] = None) -> Path:
        environment.
     2. ``$GITTAN_HOME`` — that directory **is** the data dir (no ``.gittan``
        segment appended), matching how the config resolver and the commit hook
-       already read it.
+       already read it. Whitespace is stripped and a leading ``~`` expanded; a
+       value that is still not absolute raises :class:`GittanHomeError`.
     3. neither — :func:`canonical_gittan_home`.
 
     Every store (observed cache, evidence, spool, reported, intent) resolves
@@ -53,7 +63,16 @@ def gittan_data_dir(home: Optional[Path] = None) -> Path:
         # into a crash in every command that touches a store. This leaves an
         # unresolvable value untouched, matching both the hook's embedded
         # resolver and its shell half.
-        return Path(os.path.expanduser(env_home))
+        expanded = Path(os.path.expanduser(env_home))
+        if not expanded.is_absolute():
+            raise GittanHomeError(
+                f"{ENV_GITTAN_HOME} must be an absolute path, got {env_home!r}. "
+                "A relative value cannot name one data directory: this command "
+                "would resolve it against its own working directory and the git "
+                "commit hook against the repository, so they would write to "
+                "different places."
+            )
+        return expanded
     return canonical_gittan_home()
 
 
@@ -82,7 +101,9 @@ def resolve_projects_config_path_and_source(cwd: Optional[Path] = None) -> tuple
         return Path(configured).expanduser(), ENV_PROJECTS_CONFIG
     gittan_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
     if gittan_home:
-        return Path(gittan_home).expanduser() / PROJECTS_CONFIG_FILENAME, ENV_GITTAN_HOME
+        # Through the one resolver, so the config cannot land in a different
+        # directory than the stores when the value is relative or uses ``~``.
+        return gittan_data_dir() / PROJECTS_CONFIG_FILENAME, ENV_GITTAN_HOME
     canonical = canonical_projects_config_path()
     if canonical.is_file():
         return canonical, SOURCE_GITTAN_HOME
@@ -179,7 +200,14 @@ def default_projects_config_option() -> str:
     imported, so commands using this helper capture the environment from import
     time unless they call it explicitly at runtime.
     """
-    return str(resolve_projects_config_path())
+    try:
+        return str(resolve_projects_config_path())
+    except GittanHomeError:
+        # Import-time work must not raise: this runs while Typer is building the
+        # command table, long before main() can turn the error into a message,
+        # and the result would be a traceback for a mistyped env var. main()
+        # validates $GITTAN_HOME explicitly and refuses there instead.
+        return str(canonical_projects_config_path())
 
 
 def as_list(value):

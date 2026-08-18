@@ -187,6 +187,16 @@ HOOK_BODY = dedent(
     # Whitespace-only is empty after the trim, which is why this replaces the
     # ${VAR:-default} that used to sit on the assignment above.
     [[ -n "${GITTAN_DATA_DIR:-}" ]] || GITTAN_DATA_DIR="$HOME/.gittan"
+    # Must be absolute, matching core/config.py::gittan_data_dir(), which raises
+    # on anything else. A relative value resolves against the *repo* here and
+    # against the CLI's cwd there, so the two would never meet. Warn and stop
+    # rather than append this commit to a path nobody will look in — and note
+    # this is the only check the shell needs, so it cannot drift from Python the
+    # way whitespace and ~ handling did.
+    if [[ "$GITTAN_DATA_DIR" != /* ]]; then
+      echo "gittan-hook: GITTAN_HOME must be an absolute path, got '$GITTAN_DATA_DIR'; skipping" >&2
+      exit 0
+    fi
     gittan_data_canon="${GITTAN_DATA_DIR:A}"
     root_dir_canon="${ROOT_DIR:A}"
     if [[ "$root_dir_canon" == "$gittan_data_canon" || "$root_dir_canon" == "$gittan_data_canon"/* ]]; then

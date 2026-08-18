@@ -109,6 +109,8 @@ GITTAN_HOME="$(mktemp -d)" gittan report --today --projects-config ~/.gittan/tim
 
 This matters most for the observed cache, whose merge is keep-max: a run can only raise a stored value, so there is no undo for a run that wrote where it should not have.
 
+`GITTAN_HOME` must be an **absolute** path (a leading `~` is expanded, surrounding whitespace ignored). A relative value is refused with an error rather than guessed: your shell and the git commit hook run from different working directories, so a relative path would name two different places. Gittan will not fall back to `~/.gittan` in that case either, because silently using your real data when you asked for a sandbox is the one mistake this variable exists to prevent.
+
 **Worklog model (locked standard):**
 
 - Primary: per-project files in `~/.gittan/worklogs/<project-id>.md`.

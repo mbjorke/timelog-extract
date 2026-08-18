@@ -77,10 +77,11 @@ Feature: Tracked web visits keep sustained-block temporal spread
 - implementation_status: built
 - created_at: 2026-08-18
 - last_updated_at: 2026-08-18
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/560
 - implementation.branch: task/chrome-evaporation-414
-- implementation.commits: []
-- validation.evidence: tests/test_chrome_web_collapse.py; docs/evals/gh-414-chrome-dashboard-measurement.md
+- implementation.commits: [0e91109]
+- validation.evidence: tests/test_chrome_web_collapse.py; docs/evals/gh-414-chrome-dashboard-measurement.md; bash scripts/run_autotests.sh
 - validation.decision: conditional GO
 - changelog:
   - 2026-08-18: Initial slice — tracked-URL per-window heartbeat; GH-410 owns infra/uncategorized.
+  - 2026-08-18: PR #560 opened; autotests green.

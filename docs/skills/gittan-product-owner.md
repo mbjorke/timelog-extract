@@ -76,10 +76,30 @@ the PRs, and tooling can see it:
 A `story_id: GH-N` is a real GitHub issue — the tracker for the spec. Keep it
 disciplined so the issue list stays a trustworthy view of active work:
 
-- **Create the issue when an item is prioritized to `now`/`next`** — not for raw
-  suggestions, and not for `later` / `do not build yet` items (those live only in
-  the task-prompt until promoted). The product-owner pass is the prioritization
-  gate; agents (CodeRabbit/Cursor) should not auto-open issues ahead of it.
+- **Create the issue when work starts — not when an item is prioritized.**
+  Prioritization belongs in the spec and in labels; an issue is a *work record*,
+  opened by whoever picks the item up. Agents (CodeRabbit/Cursor) should not
+  auto-open issues either.
+
+  This reverses the earlier rule ("create the issue when prioritized to
+  `now`/`next`"), which was measured on 2026-08-18 and found to manufacture
+  backlog rather than track it:
+
+  | Measure | Value |
+  | --- | --- |
+  | Open issues that were planning/meta artifacts | 14 of 55 (25%) |
+  | Median age of an open issue | 41 days (35 of 55 older than 30d) |
+  | Median time-to-close | **0 days** — 49 of 80 closed the same day |
+
+  The distribution is bimodal: an issue either closes the same day, because it
+  was opened by someone already doing the work, or it sits for six weeks. There
+  is almost nothing in between. Issues opened at *prioritization* time land in
+  the second group, and a bulk import from specs put 8 of them there in one
+  batch. Nothing was lost by parking them, because every one had a spec.
+
+  The spec is the durable artifact and carries the acceptance criteria, the
+  evidence and the priority. An issue adds a queue entry, and a queue nobody
+  drains is a cost, not a record.
 - **The implementing PR closes the issue** with `Closes #N`, so shipped work never
   leaves a straggler open (the failure seen in #145/#146).
 - One issue per task-prompt; if a review spins off a follow-up, file it through the
@@ -104,7 +124,10 @@ of what a task-prompt is: **a `docs/task-prompts/*.md` file is a promoted (`now`
 So "one issue per task-prompt" and "only `now`/`next` items get issues" are the
 same rule, not two — the generator only ever sees already-promoted specs.
 
-- **Create issues from specs with the generator**, not by hand: `/docs-to-issues`
+- **Do not open an issue as part of this pass.** Priority lives in the spec and
+  (for issues that already exist) in labels. When someone starts the work, they
+  open the issue then — one issue, opened by the person doing the thing.
+- *(Legacy, for an explicit backfill only)* **Create issues from specs with the generator**, not by hand: `/docs-to-issues`
   ([`docs-to-issues.md`](docs-to-issues.md)) turns each `docs/task-prompts/*.md`
   spec (already `now`/`next` by the rule above) into an issue idempotently (title +
   Traceability + Gherkin acceptance criteria). It skips specs whose
@@ -128,8 +151,12 @@ same rule, not two — the generator only ever sees already-promoted specs.
   parking label. Re-run the prioritization when scope shifts — labels and board
   fields are cheap to move.
 
-Flow: **fuzzy ask → promote to spec (task-prompt) → issue (`/docs-to-issues`) →
-prioritized on the board (this skill).**
+Flow: **fuzzy ask → promote to spec (task-prompt) → prioritized via labels on
+the spec (this skill) → issue opened when someone starts the work.**
+
+`/docs-to-issues` therefore stops being part of the planning pass. It remains
+useful for a deliberate, reviewed backfill, but running it to "sync" specs into
+issues recreates exactly the pattern measured above.
 
 ## Backlog item shape
 
@@ -170,6 +197,8 @@ existing behavior contract.
       block — not left only in a local plan-mode file.
 - [ ] Implementing PRs link back to the spec and keep `implementation_status`
       current.
+- [ ] **No issue was opened by this pass.** An issue is opened when work starts,
+      by whoever starts it — see *Issue lifecycle*.
 
 ## Behavior Contract
 
@@ -183,6 +212,13 @@ Feature: Product-owner planning skill
     Then the agent should produce ordered backlog items
     And user-visible or trust-sensitive items should include Gherkin scenarios
     And implementation should remain out of scope until priorities are clear
+
+  Scenario: A planning pass does not manufacture issues
+    Given a product-owner planning pass has ordered a backlog
+    When the pass finishes
+    Then the priorities are recorded in the committed spec
+    And no new issue is opened for an item that nobody has started
+    And an issue is opened only when someone begins the work
 
   Scenario: The backlog lands as a committed, traceable spec
     Given a product-owner planning pass has produced a backlog

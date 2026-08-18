@@ -141,14 +141,13 @@ def detect_reattribution(
         comparison = current_by_day[day]
         if not baseline or not comparison:
             continue
-        # Filtered / narrower reports omit projects that are still in the sidecar.
-        # Restrict to the current project set so omitted projects are not treated
-        # as losers that "moved" into the filtered subset.
-        current_projects = set(comparison)
-        stored_projects = set(baseline)
-        if current_projects and current_projects < stored_projects:
-            baseline = {name: baseline[name] for name in current_projects}
-            comparison = {name: comparison[name] for name in current_projects}
+        # Only shared projects: coverage changes (filtered runs, sideways
+        # profile sets) must not look like hours moving between projects.
+        shared = set(baseline) & set(comparison)
+        if not shared:
+            continue
+        baseline = {name: baseline[name] for name in shared}
+        comparison = {name: comparison[name] for name in shared}
         pair = compare_hours(
             baseline,
             comparison,
@@ -261,11 +260,11 @@ def write_last_report_split(
 ) -> None:
     """Update the coherent split for every day present in ``totals``.
 
-    Days not in ``totals`` are left unchanged. When this report's projects for a
-    day are a strict subset of the sidecar's projects for that day, skip the
-    day entirely so a filtered run does not become the next full-report
-    baseline. Otherwise replace the day wholesale (one coherent report).
-    Failures are logged and ignored — this file is advisory for the nudge only.
+    Days not in ``totals`` are left unchanged. A day is replaced only when this
+    report's project set equals or supersedes the sidecar's set for that day.
+    Strict subsets and sideways overlaps (e.g. ``{A,B}`` → ``{A,C}``) leave the
+    prior coherent baseline in place so coverage changes do not become the next
+    comparison target. Failures are logged and ignored — advisory only.
     """
     if not totals:
         return
@@ -304,9 +303,7 @@ def write_last_report_split(
     skip_days = {
         day
         for day, projects in new_by_day.items()
-        if projects
-        and day in existing_by_day
-        and set(projects) < set(existing_by_day[day])
+        if day in existing_by_day and not set(projects) >= set(existing_by_day[day])
     }
     replace_days = set(new_by_day) - skip_days
     kept: List[dict] = [row for row in existing_rows if row["date"] not in replace_days]
@@ -350,8 +347,8 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     ``report.reattribution_vs_observed`` (GH-544 scenario 3). Detection is
     read-only against that sidecar; keep-max behaviour is unchanged. After a
     successful keep-max write, the sidecar is updated for days this report
-    covered (subset/filtered days are left unchanged so they do not become the
-    next full-report baseline).
+    covered (days whose project set does not equal or supersede the prior
+    sidecar set — filtered or sideways coverage — are left unchanged).
     """
     # Detect before keep-max / sidecar write: after those writes the baseline
     # would already match this run and the gainer side of a shuffle would hide.

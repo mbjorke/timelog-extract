@@ -207,6 +207,25 @@ class ReattributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+    def test_sideways_coverage_does_not_replace_or_nudge(self):
+        write_last_report_split(
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+            home=self.home,
+        )
+        write_last_report_split(
+            {("Alpha", self.day): 2.0, ("Gamma", self.day): 2.0},
+            home=self.home,
+        )
+        self.assertEqual(
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        findings = detect_reattribution(
+            {("Alpha", self.day): 2.0, ("Gamma", self.day): 2.0},
+            read_last_report_split(self.home),
+        )
+        self.assertEqual(findings, [])
+
     def test_filtered_write_preserves_full_sidecar_day(self):
         write_last_report_split(
             {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},

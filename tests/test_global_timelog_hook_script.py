@@ -46,7 +46,7 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         # Regression: an [[ -f ]] guard here made commits fall back to the
         # deprecated repo-local TIMELOG.md, silently starving central worklogs.
         self.assertNotIn('if [[ -f "$PROJECT_WORKLOG" ]]', HOOK_BODY)
-        fallback_idx = HOOK_BODY.index('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_BASENAME}.md"')
+        fallback_idx = HOOK_BODY.index('PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"')
         assign_idx = HOOK_BODY.index('TIMELOG_FILE="$PROJECT_WORKLOG"')
         self.assertLess(fallback_idx, assign_idx)
 
@@ -100,7 +100,7 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         if not zsh:
             self.skipTest("zsh not found")
         start = HOOK_BODY.index("# Gittan's own data directory is not a project")
-        end = HOOK_BODY.index('GITTAN_CFG_DIR="$HOME/.gittan"')
+        end = HOOK_BODY.index('GITTAN_CFG_DIR="$GITTAN_DATA_DIR"')
         guard = textwrap.dedent(HOOK_BODY[start:end])
         snippet = 'set -euo pipefail\nROOT_DIR="${1:?}"\n' + guard + '\nprint -r -- REACHED\n'
         return subprocess.run(
@@ -481,7 +481,7 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         self.assertIn('GITTAN_HOOK_REPO_PATH="$ROOT_DIR"', HOOK_BODY)
         self.assertIn('GITTAN_HOOK_REPO_PATH', _RESOLVER_PY)
         # Identity still comes from the basename via timelog_projects.json.
-        self.assertIn('PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_BASENAME}.md"', HOOK_BODY)
+        self.assertIn('PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"', HOOK_BODY)
 
     def test_respooling_the_same_commit_stays_idempotent(self):
         """The hash in the name is load-bearing — a pid suffix would break this.

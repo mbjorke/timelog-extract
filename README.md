@@ -101,6 +101,22 @@ Resolution does **not** depend on the current working directory. A stray home-di
 
 You usually do not need to set any env vars; check the active path with `gittan config path`.
 
+**`GITTAN_HOME` is the whole data directory**, not just the config lookup. When it is set, *every* local store moves with it: the observed cache, the evidence store and its spool, reported time, intent bindings, and the paths the global commit hook reads and writes. Nothing is left behind in `~/.gittan`. That makes it a real sandbox — point it at a temp directory and a run cannot touch your live data:
+
+```bash
+export GITTAN_HOME="$(mktemp -d)"
+cat > "$GITTAN_HOME/timelog_projects.json" <<'EOF'
+{"projects": [{"name": "project-alpha", "match_terms": ["alpha"]}], "worklog": "TIMELOG.md"}
+EOF
+gittan report --today --screen-time off
+```
+
+Default config resolution already looks under `$GITTAN_HOME`, so there is no `--projects-config` and no path back to your live directory. Copy a real config into the sandbox only if you need your own project list for the experiment.
+
+This matters most for the observed cache, whose merge is keep-max: a run can only raise a stored value, so there is no undo for a run that wrote where it should not have.
+
+`GITTAN_HOME` must be an **absolute** path (a leading `~` is expanded, surrounding whitespace ignored). A relative value is refused with an error rather than guessed: your shell and the git commit hook run from different working directories, so a relative path would name two different places. Gittan will not fall back to `~/.gittan` in that case either, because silently using your real data when you asked for a sandbox is the one mistake this variable exists to prevent.
+
 **Worklog model (locked standard):**
 
 - Primary: per-project files in `~/.gittan/worklogs/<project-id>.md`.

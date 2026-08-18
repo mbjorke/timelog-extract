@@ -36,6 +36,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
+from core.config import gittan_data_dir
+
 INTENT_SCHEMA_VERSION = 1
 
 #: Anchor kinds an intent record may bind. ``session`` is the one that exists
@@ -44,8 +46,12 @@ SUPPORTED_KEY_KINDS = ("session", "url")
 
 
 def intent_path(home: Optional[Path] = None) -> Path:
-    """Append-only intent log inside the operator's own data dir."""
-    return (home or Path.home()) / ".gittan" / "intent-capture.jsonl"
+    """Append-only intent log inside the operator's own data dir.
+
+    Resolved by :func:`core.config.gittan_data_dir`, so ``$GITTAN_HOME`` applies
+    here too (GH-549).
+    """
+    return gittan_data_dir(home) / "intent-capture.jsonl"
 
 
 def normalize_key(value: Any) -> str:

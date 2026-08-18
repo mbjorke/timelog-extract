@@ -24,14 +24,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from core.config import ENV_GITTAN_HOME, canonical_gittan_home
+from core.config import gittan_data_dir
 from core.evidence_record import (
     compute_content_hash,
     compute_evidence_fingerprint,
@@ -45,17 +44,10 @@ _LOGGER = logging.getLogger(__name__)
 def evidence_base_dir(home: Optional[Path] = None) -> Path:
     """Durable store root: ``~/.gittan/evidence`` (local, never uploaded).
 
-    When ``home`` is omitted, honour ``$GITTAN_HOME`` the same way config and
-    autocommit do — that directory *is* the data dir, so evidence lives at
-    ``$GITTAN_HOME/evidence``. An explicit ``home`` keeps the test/CLI contract
-    ``<home>/.gittan/evidence``.
+    Resolved by :func:`core.config.gittan_data_dir`, so ``$GITTAN_HOME`` moves
+    this store together with every other one (GH-549).
     """
-    if home is not None:
-        return Path(home) / ".gittan" / "evidence"
-    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
-    if env_home:
-        return Path(env_home).expanduser() / "evidence"
-    return canonical_gittan_home() / "evidence"
+    return gittan_data_dir(home) / "evidence"
 
 
 def events_dir(base_dir: Path) -> Path:
@@ -63,12 +55,7 @@ def events_dir(base_dir: Path) -> Path:
 
 
 def spool_dir(home: Optional[Path] = None) -> Path:
-    if home is not None:
-        return Path(home) / ".gittan" / "spool"
-    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
-    if env_home:
-        return Path(env_home).expanduser() / "spool"
-    return canonical_gittan_home() / "spool"
+    return gittan_data_dir(home) / "spool"
 
 
 def spool_dir_for_base(base: Path) -> Path:

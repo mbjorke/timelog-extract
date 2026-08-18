@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -70,9 +71,10 @@ class SetupScopeSelectionTests(unittest.TestCase):
 
                 return _Prompt()
 
-            with patch.object(machine_setup, "GITTAN_CONFIG_DIR", cfg_dir), patch.object(
-                machine_setup, "GITTAN_SCOPE_FILE", scope_file
-            ), patch.object(machine_setup, "GITTAN_FILENAME_FILE", filename_file), patch.object(
+            # Point $GITTAN_HOME at the sandbox rather than patching the paths:
+            # the paths are what must follow the data dir, so patching them away
+            # would hide the very disagreement this exercises (GH-549).
+            with patch.dict(os.environ, {"GITTAN_HOME": str(cfg_dir)}), patch.object(
                 machine_setup, "_discover_git_repos", return_value=[]
             ), patch.object(
                 machine_setup.questionary, "text", side_effect=_fake_text
@@ -119,9 +121,7 @@ class SetupScopeSelectionTests(unittest.TestCase):
 
                 return _Prompt()
 
-            with patch.object(machine_setup, "GITTAN_CONFIG_DIR", cfg_dir), patch.object(
-                machine_setup, "GITTAN_SCOPE_FILE", scope_file
-            ), patch.object(machine_setup, "GITTAN_FILENAME_FILE", filename_file), patch.object(
+            with patch.dict(os.environ, {"GITTAN_HOME": str(cfg_dir)}), patch.object(
                 machine_setup.questionary, "text", side_effect=_fake_text
             ), patch.object(
                 machine_setup.questionary, "select", side_effect=_fake_select
@@ -132,6 +132,9 @@ class SetupScopeSelectionTests(unittest.TestCase):
             self.assertTrue(cfg_dir.is_dir())
             self.assertTrue(filename_file.exists())
             self.assertEqual(filename_file.read_text(encoding="utf-8").strip(), "TIMELOG.md")
+            # "All repositories" means no allowlist on disk: the hook reads a
+            # missing scope file as "do not filter", which is the intended mode.
+            self.assertFalse(scope_file.exists())
 
 
 if __name__ == "__main__":

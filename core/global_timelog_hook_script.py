@@ -161,14 +161,53 @@ HOOK_BODY = dedent(
     #
     # GITTAN_HOME is honoured because the rest of the code already treats it as the
     # data dir; canonical paths so a symlinked home still matches.
-    GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"
+    #
+    # Normalize exactly as core/config.py::gittan_data_dir() does — strip
+    # surrounding whitespace, then expand a leading ~ — because the embedded
+    # Python resolver below already does, and reading the raw value here made one
+    # variable name mean two directories inside a single hook run. A literal
+    # "~/dir" is a *relative* path, so the scope file simply went missing and the
+    # allowlist failed open (logging every repo) instead of failing loudly.
+    GITTAN_DATA_DIR="${GITTAN_HOME:-}"
+    GITTAN_DATA_DIR="${GITTAN_DATA_DIR#"${GITTAN_DATA_DIR%%[![:space:]]*}"}"
+    GITTAN_DATA_DIR="${GITTAN_DATA_DIR%"${GITTAN_DATA_DIR##*[![:space:]]}"}"
+    case "$GITTAN_DATA_DIR" in
+      "~")   GITTAN_DATA_DIR="$HOME" ;;
+      "~/"*) GITTAN_DATA_DIR="$HOME/${GITTAN_DATA_DIR#"~/"}" ;;
+      "~"*)
+        # ~user: expand in a subshell, because zsh aborts on an unknown user and
+        # a commit hook must not die over its own config. expanduser() leaves an
+        # unresolvable user untouched, so falling through matches Python.
+        _gittan_expanded="$(GITTAN_TILDE="$GITTAN_DATA_DIR" zsh -c 'E=${~GITTAN_TILDE}; print -r -- $E' 2>/dev/null || true)"
+        if [[ -n "${_gittan_expanded:-}" ]]; then
+          GITTAN_DATA_DIR="$_gittan_expanded"
+        fi
+        ;;
+    esac
+    # Whitespace-only is empty after the trim, which is why this replaces the
+    # ${VAR:-default} that used to sit on the assignment above.
+    [[ -n "${GITTAN_DATA_DIR:-}" ]] || GITTAN_DATA_DIR="$HOME/.gittan"
+    # Must be absolute, matching core/config.py::gittan_data_dir(), which raises
+    # on anything else. A relative value resolves against the *repo* here and
+    # against the CLI's cwd there, so the two would never meet. Warn and stop
+    # rather than append this commit to a path nobody will look in — and note
+    # this is the only check the shell needs, so it cannot drift from Python the
+    # way whitespace and ~ handling did.
+    if [[ "$GITTAN_DATA_DIR" != /* ]]; then
+      echo "gittan-hook: GITTAN_HOME must be an absolute path, got '$GITTAN_DATA_DIR'; skipping" >&2
+      exit 0
+    fi
     gittan_data_canon="${GITTAN_DATA_DIR:A}"
     root_dir_canon="${ROOT_DIR:A}"
     if [[ "$root_dir_canon" == "$gittan_data_canon" || "$root_dir_canon" == "$gittan_data_canon"/* ]]; then
       exit 0
     fi
 
-    GITTAN_CFG_DIR="$HOME/.gittan"
+    # One data dir for the whole hook: scope file, filename override and the
+    # unknown-repo worklog fallback all live under $GITTAN_DATA_DIR (GH-549).
+    # Splitting them across $HOME/.gittan meant a run with $GITTAN_HOME set read
+    # its scope from one root and wrote the worklog into another.
+    GITTAN_CFG_DIR="$GITTAN_DATA_DIR"
     SCOPE_FILE="$GITTAN_CFG_DIR/timelog_repos.txt"
     FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"
     TIMELOG_NAME="TIMELOG.md"
@@ -216,7 +255,7 @@ HOOK_BODY = dedent(
     if [[ -z "${PROJECT_WORKLOG:-}" ]]; then
       # Unknown repo: still central, still no hash — a plain name a human can
       # recognise and later attach to a profile.
-      PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_BASENAME}.md"
+      PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"
     fi
     if [[ -z "${CONFIGURED_CANDIDATE:-}" || "$CONFIGURED_CANDIDATE" == "TIMELOG.md" ]]; then
       # Note: no [[ -f ]] guard. Requiring the file to pre-exist is what made
@@ -225,8 +264,10 @@ HOOK_BODY = dedent(
       TIMELOG_FILE="$PROJECT_WORKLOG"
     fi
     canon="${TIMELOG_FILE:A}"
-    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* ]]; then
-      echo "gittan-hook: refusing timelog path outside home directory or repo root" >&2
+    # The data dir is a third allowed root: $GITTAN_HOME may point outside $HOME
+    # (a sandbox, an external volume), and the central worklog lives there.
+    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* && "$canon" != "$gittan_data_canon"/* ]]; then
+      echo "gittan-hook: refusing timelog path outside home directory, repo root, or Gittan data directory" >&2
       exit 1
     fi
     mkdir -p "$(dirname "$TIMELOG_FILE")"

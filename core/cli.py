@@ -35,6 +35,7 @@ from core.cli_options import (
     package_version,
     split_comma_separated_list,
 )
+from core.config import GittanHomeError, gittan_data_dir
 
 # Top-level options handled by Typer/the app itself — never redirect these into `report`.
 _TOP_LEVEL_ONLY_OPTIONS = frozenset(
@@ -73,6 +74,15 @@ def main() -> None:
     if len(sys.argv) == 2 and sys.argv[1] in ("--version", "-V", "-v"):
         typer.echo(f"timelog-extract {package_version()}")
         raise SystemExit(0)
+    # Refuse a malformed $GITTAN_HOME once, up front, rather than partway through
+    # a command. Nothing has been read or written yet, so there is no half-done
+    # state to explain — and every command shares the check instead of each store
+    # discovering it separately.
+    try:
+        gittan_data_dir()
+    except GittanHomeError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
     redirected = redirect_legacy_report_argv(sys.argv)
     if redirected != sys.argv:
         # Teach the current contract without dead-ending; command-neutral so it holds
@@ -84,7 +94,13 @@ def main() -> None:
             err=True,
         )
         sys.argv = redirected
-    app()
+    try:
+        app()
+    except GittanHomeError as exc:
+        # A malformed data dir is a config mistake, not a crash. Exit before any
+        # store is touched rather than guessing where the data belongs.
+        typer.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
 
 
 __all__ = [

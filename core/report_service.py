@@ -311,8 +311,11 @@ def run_timelog_report(
         make_event_fn=_make_event,
     )
 
+    # No ``home=``: HOME is where *sources* are read from, while the evidence
+    # store is the Gittan data dir, which ``$GITTAN_HOME`` may move. Pinning it to
+    # HOME made a sandboxed run replay the operator's real evidence (GH-549).
     from core.evidence_store import maybe_replay
-    all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
+    all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, local_tz=LOCAL_TZ)
 
     # Live collectors do not set device; stamp this host so multi-device days
     # (live + replayed phone ledger) can show distinct labels. Capture/import
@@ -326,7 +329,7 @@ def run_timelog_report(
     # the text matched. Applied after replay so restored evidence is bound too.
     from core.intent_store import apply_intents
 
-    all_events, _intent_changed = apply_intents(all_events, home=HOME)
+    all_events, _intent_changed = apply_intents(all_events)  # data dir, not read-home (GH-549)
 
     screen_time_days, timely_memory_spans = collect_presence_comparators(
         args=args,
@@ -371,7 +374,10 @@ def run_timelog_report(
     # sum over data on disk (~2ms over six months) rather than a re-scan. The
     # cache exists because source logs rotate; reading it is what makes a lifetime
     # answer possible at all, not merely faster.
-    timelog_totals, lifetime_window = observed_lifetime_hours(HOME)
+    # No ``home=``: the write side (``core/report_cli.py``) resolves the cache
+    # ambiently, so pinning the read to ``HOME`` made a run with ``$GITTAN_HOME``
+    # set report lifetime hours from a cache it was not writing to (GH-549).
+    timelog_totals, lifetime_window = observed_lifetime_hours()
 
     git_totals: Dict[str, float] = {}
     collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(

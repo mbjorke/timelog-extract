@@ -231,7 +231,12 @@ class ReportAttributionTests(unittest.TestCase):
     def _hours_by_project(self) -> dict:
         from core.report_service import run_timelog_report
 
-        with patch("core.report_service.HOME", self.home):
+        # HOME is the *source* home; the intent store is the Gittan data dir, which
+        # the report now resolves ambiently. Point $GITTAN_HOME at this sandbox so
+        # both halves of the fake operator environment agree (GH-549).
+        with patch("core.report_service.HOME", self.home), patch.dict(
+            os.environ, {"GITTAN_HOME": str(self.home / ".gittan")}
+        ):
             report = run_timelog_report(
                 str(self.config),
                 "2026-07-25",

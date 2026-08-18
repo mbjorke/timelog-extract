@@ -219,6 +219,20 @@ class ReattributionNudgeTests(unittest.TestCase):
         self.assertIn("shift share 85%", text)
         self.assertIn("keep-max", text)
 
+    def test_nudge_keeps_gainers_when_many_losers(self):
+        finding = self._finding()
+        finding["losers"] = [
+            {"project": f"Loser-{i}", "from": 1.0, "to": 0.0} for i in range(1, 5)
+        ]
+        finding["gainers"] = [{"project": "Beta", "from": 4.60, "to": 8.60}]
+        text = build_reattribution_nudge(SimpleNamespace(), findings=[finding])
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertIn("Loser-1", text)
+        self.assertIn("Loser-2", text)
+        self.assertNotIn("Loser-3", text)
+        self.assertIn("Beta 4.60h → 8.60h", text)
+
     def test_nudge_reads_report_attribute(self):
         report = SimpleNamespace(reattribution_vs_observed=[self._finding()])
         text = build_reattribution_nudge(report)

@@ -315,8 +315,11 @@ def build_reattribution_nudge(
     parts: list[str] = []
     for finding in findings[:3]:
         day = str(finding.get("date") or "")
-        movers = list(finding.get("losers") or []) + list(finding.get("gainers") or [])
-        movers_txt = "; ".join(_format_reattribution_mover(row) for row in movers[:4])
+        # Cap across both sides so a day with many losers still names where hours went.
+        losers = list(finding.get("losers") or [])[:2]
+        gainers = list(finding.get("gainers") or [])[:2]
+        movers = losers + gainers
+        movers_txt = "; ".join(_format_reattribution_mover(row) for row in movers)
         share = float(finding.get("shift_share") or 0.0)
         moved = float(finding.get("moved") or 0.0)
         parts.append(f"{day}: {movers_txt} (moved {moved:.2f}h, shift share {share:.0%})")

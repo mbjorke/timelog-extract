@@ -101,6 +101,23 @@ def _hours_by_day(
     return by_day
 
 
+def _is_coverage_swap(losers: List[Any], gainers: List[Any], noise_floor_hours: float) -> bool:
+    """True when movers are only stored-only losers and current-only gainers.
+
+    The observed cache is keep-max per ``(project, day)``, so a day's stored map
+    can be a synthetic union of peaks from different report coverages. Comparing
+    that union to a later run with a different project set looks like
+    re-attribution even though no earlier report held that combined split.
+    Skip the pure coverage-swap shape; keep real shuffles where a gainer already
+    had baseline hours or a loser still has comparison hours (GH-544).
+    """
+    if not losers or not gainers:
+        return False
+    losers_absent = all(float(row.comparison) <= noise_floor_hours for row in losers)
+    gainers_new = all(float(row.baseline) <= noise_floor_hours for row in gainers)
+    return losers_absent and gainers_new
+
+
 def detect_reattribution(
     current: Dict[Tuple[str, str], float],
     stored: Dict[Tuple[str, str], float],
@@ -140,6 +157,8 @@ def detect_reattribution(
         gainers = [row for row in movers if row.delta > 0]
         # Re-attribution requires both a drop and a gain (hours changing hands).
         if not losers or not gainers:
+            continue
+        if _is_coverage_swap(losers, gainers, noise_floor_hours):
             continue
         findings.append(
             {
@@ -202,8 +221,8 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     findings = detect_reattribution_for_report(report, home=home)
     try:
         report.reattribution_vs_observed = findings  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001 - advisory only; never block the cache write
-        pass
+    except Exception as exc:  # noqa: BLE001 - advisory only; never block the cache write
+        _LOGGER.debug("observed cache: could not attach re-attribution findings: %s", exc)
 
     totals = report_project_day_hours(report)
     if not totals:

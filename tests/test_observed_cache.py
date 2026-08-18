@@ -187,6 +187,15 @@ class ReattributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+    def test_detect_skips_coverage_swap_against_keep_max_union(self):
+        # Keep-max can retain Alpha from one run and Beta from another; a later
+        # report that only covers Gamma must not look like re-attribution.
+        findings = detect_reattribution(
+            {("Gamma", self.day): 4.0},
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        self.assertEqual(findings, [])
+
     def test_write_attaches_findings_before_keep_max(self):
         base = observed_base_dir(self.home)
         base.mkdir(parents=True, exist_ok=True)

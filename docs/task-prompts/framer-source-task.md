@@ -8,7 +8,7 @@ locally — and the answer changes the shape of the work.
 
 ## Traceability
 
-- story_id: `pending` (issue not yet created — see Deliverable note)
+- story_id: `GH-561`
 - spec_status: `draft`
 - implementation_status: `not built`
 - created_at: `2026-08-18`

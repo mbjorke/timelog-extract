@@ -27,7 +27,7 @@ from unittest import mock
 
 from core.config import GittanHomeError, canonical_gittan_home, gittan_data_dir
 from core.evidence_store import evidence_base_dir, spool_dir
-from core.global_timelog_hook_script import HOOK_BODY
+from core.global_timelog_hook_script import _RESOLVER_PY, HOOK_BODY
 from core.global_timelog_machine_setup import (
     gittan_config_dir,
     gittan_filename_file,
@@ -228,6 +228,49 @@ class ObservedCacheIsolationTests(unittest.TestCase):
                     )
 
 
+class ReportStoresAreAmbientNotReadHomeTests(unittest.TestCase):
+    """The report must not pin its stores to the OS home.
+
+    ``core/report_service.py`` holds ``HOME = Path.home()`` and threads it into
+    collectors — correct, because that is where *sources* live. It also used to
+    pass it to the evidence replay and the intent store, which are Gittan's own
+    data. Under ``$GITTAN_HOME`` that split the run: observed hours written to
+    the sandbox, evidence and intents read from the operator's real directory.
+
+    Read isolation matters on its own. A sandboxed run that silently replays real
+    evidence reports hours it never collected, which is indistinguishable from a
+    collector bug until someone diffs the stores.
+    """
+
+    def _call_kwargs(self, function_name: str) -> dict:
+        """Keyword arguments the report passes to *function_name*."""
+        import ast
+
+        source = Path("core/report_service.py").read_text(encoding="utf-8")
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if name == function_name:
+                return {kw.arg: ast.unparse(kw.value) for kw in node.keywords if kw.arg}
+        self.fail(f"{function_name} is not called in core/report_service.py")
+
+    def test_evidence_replay_does_not_receive_the_source_home(self):
+        self.assertNotIn("home", self._call_kwargs("maybe_replay"))
+
+    def test_intent_lookup_does_not_receive_the_source_home(self):
+        self.assertNotIn("home", self._call_kwargs("apply_intents"))
+
+    def test_collectors_still_receive_the_source_home(self):
+        """The counterpart: sources genuinely do live under the OS home.
+
+        Making *everything* ambient would break collection, so this pins the
+        distinction rather than just the absence of an argument.
+        """
+        self.assertEqual(self._call_kwargs("collect_runtime_events").get("home"), "HOME")
+
+
 class HookUsesOneDataDirTests(unittest.TestCase):
     """The shell hook body must not split its paths across two roots."""
 
@@ -360,6 +403,40 @@ class ShellAndPythonNormalizeGittanHomeAlikeTests(unittest.TestCase):
                         gittan_data_dir()
                 out = self._shell_value(value, expect_refusal=True)
                 self.assertIn("must be an absolute path", out)
+
+    def test_the_refusal_precedes_the_embedded_python_resolver(self):
+        """Order matters: the guard must run before any Python is spawned.
+
+        The embedded resolver does its own ``$GITTAN_HOME`` handling and has no
+        absoluteness check of its own, so if the shell let a relative value
+        through, the hook would resolve a worklog under a cwd-dependent path.
+        It cannot raise ``GittanHomeError`` (it never imports ``core.config``),
+        but it would happily write to the wrong place.
+        """
+        guard = HOOK_BODY.index("GITTAN_HOME must be an absolute path")
+        spawn = HOOK_BODY.index("python3 -c")
+        self.assertLess(guard, spawn)
+        self.assertNotIn("core.config", _RESOLVER_PY)
+
+    def test_the_whole_hook_refuses_without_a_traceback(self):
+        """End to end against the shipped body, not just the lifted snippet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            hook = Path(tmp) / "post-commit"
+            hook.write_text(HOOK_BODY, encoding="utf-8")
+            hook.chmod(0o755)
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            for cmd in (["init", "-q", "."], ["config", "user.email", "t@e.com"],
+                        ["config", "user.name", "T"],
+                        ["commit", "-q", "--allow-empty", "-m", "probe"]):
+                subprocess.run(["git", *cmd], cwd=repo, capture_output=True)
+            proc = subprocess.run(
+                [str(hook)], cwd=repo, capture_output=True, text=True,
+                env={**os.environ, "GITTAN_HOME": "data"},
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertIn("must be an absolute path", proc.stderr)
+            self.assertNotIn("Traceback", proc.stderr + proc.stdout)
 
     def test_the_hook_exits_cleanly_when_it_refuses(self):
         """A commit must not fail because the data dir is misconfigured.

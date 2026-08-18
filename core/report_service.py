@@ -311,8 +311,11 @@ def run_timelog_report(
         make_event_fn=_make_event,
     )
 
+    # No ``home=``: HOME is where *sources* are read from, while the evidence
+    # store is the Gittan data dir, which ``$GITTAN_HOME`` may move. Pinning it to
+    # HOME made a sandboxed run replay the operator's real evidence (GH-549).
     from core.evidence_store import maybe_replay
-    all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, home=HOME, local_tz=LOCAL_TZ)
+    all_events = maybe_replay(all_events, args=args, dt_from=dt_from, dt_to=dt_to, local_tz=LOCAL_TZ)
 
     # Live collectors do not set device; stamp this host so multi-device days
     # (live + replayed phone ledger) can show distinct labels. Capture/import
@@ -326,7 +329,7 @@ def run_timelog_report(
     # the text matched. Applied after replay so restored evidence is bound too.
     from core.intent_store import apply_intents
 
-    all_events, _intent_changed = apply_intents(all_events, home=HOME)
+    all_events, _intent_changed = apply_intents(all_events)  # data dir, not read-home (GH-549)
 
     screen_time_days, timely_memory_spans = collect_presence_comparators(
         args=args,

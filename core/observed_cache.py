@@ -194,50 +194,81 @@ def detect_reattribution_for_report(
     home: Optional[Path] = None,
     **kwargs: Any,
 ) -> List[Dict[str, Any]]:
-    """Compare this report's per-day split to the last coherent observed split.
+    """Compare this report's per-day split to the last coherent report split.
 
-    Uses the newest ``captured_at`` cohort per day (not the keep-max union across
-    runs), so peaks retained from different report coverages do not form a
-    synthetic baseline for the nudge.
+    Reads ``last_report_split.jsonl`` (overwrite-per-day), not the keep-max
+    monthly cache, so independently retained peaks cannot invent a baseline.
     """
     current = report_project_day_hours(report)
     if not current:
         return []
-    stored = observed_last_coherent_day_hours(home)
+    stored = read_last_report_split(home)
     if not stored:
         return []
     return detect_reattribution(current, stored, **kwargs)
 
 
-def _parse_captured_at(raw: object) -> Optional[datetime]:
-    if not isinstance(raw, str) or not raw.strip():
-        return None
-    try:
-        captured = datetime.fromisoformat(raw.strip())
-    except ValueError:
-        return None
-    if captured.tzinfo is None:
-        return captured.replace(tzinfo=timezone.utc)
-    return captured
+_LAST_REPORT_SPLIT_NAME = "last_report_split.jsonl"
 
 
-def observed_last_coherent_day_hours(
-    home: Optional[Path] = None,
-) -> Dict[Tuple[str, str], float]:
-    """Per-``(project, day)`` hours from the newest same-``captured_at`` cohort.
+def _last_report_split_path(home: Optional[Path] = None) -> Path:
+    return observed_base_dir(home) / _LAST_REPORT_SPLIT_NAME
 
-    Keep-max retains independent project peaks, which can invent a day split no
-    single report produced. Re-attribution detection needs the last coherent
-    write for that day: all rows that share the latest non-empty ``captured_at``.
-    When every row for a day lacks ``captured_at``, fall back to the keep-max
-    union for that day (legacy / hand-edited caches).
+
+def read_last_report_split(home: Optional[Path] = None) -> Dict[Tuple[str, str], float]:
+    """Last coherent per-``(project, day)`` hours written by a report run.
+
+    Unlike the keep-max monthly cache, each day is replaced wholesale by the
+    report that last covered it, so the map is always one real split.
     """
-    base = observed_base_dir(home)
-    if not base.is_dir():
+    path = _last_report_split_path(home)
+    if not path.is_file():
         return {}
-    # day -> project -> (hours, captured_at|None)
-    by_day: Dict[str, Dict[str, Tuple[float, Optional[datetime]]]] = {}
-    for path in sorted(base.glob("*.jsonl")):
+    latest: Dict[Tuple[str, str], float] = {}
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                row = _coerce_row(data)
+                if row is None:
+                    continue
+                latest[(row["project"], row["date"])] = float(row["hours"])
+    except OSError as exc:
+        _LOGGER.warning("Could not read last report split %s: %s", path, exc)
+        return {}
+    return latest
+
+
+def write_last_report_split(
+    totals: Dict[Tuple[str, str], float],
+    home: Optional[Path] = None,
+    *,
+    captured_at: Optional[str] = None,
+) -> None:
+    """Replace the coherent split for every day present in ``totals``.
+
+    Days not in ``totals`` are left unchanged. Failures are logged and ignored —
+    this file is advisory for the re-attribution nudge only.
+    """
+    if not totals:
+        return
+    base = observed_base_dir(home)
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        _LOGGER.warning("observed cache: could not create %s: %s", base, exc)
+        return
+    path = _last_report_split_path(home)
+    stamp = captured_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    touched_days = {day for _project, day in totals}
+    kept: List[dict] = []
+    if path.exists():
         try:
             with path.open(encoding="utf-8") as fh:
                 for line in fh:
@@ -247,30 +278,40 @@ def observed_last_coherent_day_hours(
                     try:
                         data = json.loads(line)
                     except (json.JSONDecodeError, ValueError):
-                        _LOGGER.warning("Skipping unreadable observed line in %s", path.name)
                         continue
                     row = _coerce_row(data)
                     if row is None:
                         continue
-                    captured = _parse_captured_at(row.get("captured_at"))
-                    by_day.setdefault(row["date"], {})[row["project"]] = (
-                        float(row["hours"]),
-                        captured,
-                    )
+                    if row["date"] in touched_days:
+                        continue
+                    kept.append(row)
         except OSError as exc:
-            _LOGGER.warning("Could not read observed file %s: %s", path, exc)
-    latest: Dict[Tuple[str, str], float] = {}
-    for day, projects in by_day.items():
-        stamped = [ts for _hours, ts in projects.values() if ts is not None]
-        if stamped:
-            newest = max(stamped)
-            for project, (hours, ts) in projects.items():
-                if ts == newest:
-                    latest[(project, day)] = hours
-        else:
-            for project, (hours, _ts) in projects.items():
-                latest[(project, day)] = hours
-    return latest
+            _LOGGER.warning("observed cache: could not read last report split: %s", exc)
+            return
+    for (project, day), hours in sorted(totals.items()):
+        kept.append(
+            {
+                "project": project,
+                "date": day,
+                "hours": round(float(hours), 2),
+                "captured_at": stamp,
+            }
+        )
+    fd, temp_path = tempfile.mkstemp(dir=base, prefix=".tmp_split_", suffix=".jsonl")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            for row in sorted(kept, key=lambda r: (r["date"], r["project"])):
+                fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp_path, path)
+    except Exception as exc:  # noqa: BLE001 - advisory sidecar; never block keep-max
+        _LOGGER.debug("observed cache: could not write last report split: %s", exc)
+        if os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
 
 
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
@@ -281,12 +322,15 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     decay on closed months cannot silently degrade the record (see
     ``docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md``).
 
-    Before the keep-max write, compares this run's split to the prior cache and
-    attaches any re-attribution findings on ``report.reattribution_vs_observed``
-    (GH-544 scenario 3). Detection is read-only; keep-max behaviour is unchanged.
+    Before the keep-max write, compares this run's split to the prior coherent
+    ``last_report_split`` and attaches any re-attribution findings on
+    ``report.reattribution_vs_observed`` (GH-544 scenario 3). Detection is
+    read-only against that sidecar; keep-max behaviour is unchanged. After a
+    successful keep-max write, the sidecar is overwritten for the days this
+    report covered.
     """
-    # Detect before keep-max: after the write, raised rows would hide the gainer
-    # side of a shuffle and the signature would look like evidence decay.
+    # Detect before keep-max / sidecar write: after those writes the baseline
+    # would already match this run and the gainer side of a shuffle would hide.
     findings = detect_reattribution_for_report(report, home=home)
     try:
         report.reattribution_vs_observed = findings  # type: ignore[attr-defined]
@@ -363,6 +407,7 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
             raise
+    write_last_report_split(totals, home=home, captured_at=captured_at)
     return written
 
 
@@ -375,7 +420,7 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
     if not base.is_dir():
         return {}
     latest: Dict[Tuple[str, str], float] = {}
-    for path in sorted(base.glob("*.jsonl")):
+    for path in sorted(base.glob("????-??.jsonl")):
         try:
             with path.open(encoding="utf-8") as fh:
                 for line in fh:
@@ -441,7 +486,7 @@ def observed_last_capture_date(home: Optional[Path] = None) -> Optional[str]:
     if not base.is_dir():
         return None
     latest: Optional[datetime] = None
-    for path in sorted(base.glob("*.jsonl")):
+    for path in sorted(base.glob("????-??.jsonl")):
         try:
             with path.open(encoding="utf-8") as fh:
                 for line in fh:

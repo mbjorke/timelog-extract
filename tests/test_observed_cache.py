@@ -17,8 +17,9 @@ from core.observed_cache import (
     observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
-    observed_last_coherent_day_hours,
     observed_lifetime_hours,
+    read_last_report_split,
+    write_last_report_split,
     write_observed_summary,
 )
 
@@ -197,7 +198,13 @@ class ReattributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
-    def test_coherent_day_hours_uses_newest_captured_at_cohort(self):
+    def test_last_report_split_is_coherent_not_keep_max(self):
+        # Keep-max can hold a raised Alpha peak while last_report_split still
+        # stores the coherent day from the previous report.
+        write_last_report_split(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            home=self.home,
+        )
         base = observed_base_dir(self.home)
         base.mkdir(parents=True, exist_ok=True)
         _month_path(base, "2026-08").write_text(
@@ -207,16 +214,16 @@ class ReattributionDetectionTests(unittest.TestCase):
                         {
                             "project": "Alpha",
                             "date": self.day,
-                            "hours": 2.0,
-                            "captured_at": "2026-08-07T09:00:00+00:00",
+                            "hours": 5.0,
+                            "captured_at": "2026-08-07T12:00:00+00:00",
                         }
                     ),
                     json.dumps(
                         {
                             "project": "Beta",
                             "date": self.day,
-                            "hours": 2.0,
-                            "captured_at": "2026-08-07T11:00:00+00:00",
+                            "hours": 4.60,
+                            "captured_at": "2026-08-07T09:00:00+00:00",
                         }
                     ),
                 ]
@@ -224,26 +231,27 @@ class ReattributionDetectionTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
-        # Keep-max union still has both peaks…
         self.assertEqual(
-            observed_hours_by_project_day(self.home),
-            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+            observed_hours_by_project_day(self.home)[("Alpha", self.day)],
+            5.0,
         )
-        # …but detection baseline is only the newest write's projects.
         self.assertEqual(
-            observed_last_coherent_day_hours(self.home),
-            {("Beta", self.day): 2.0},
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
         )
-        # Partial overlap against the synthetic union must not nudge.
+        # Detection follows the sidecar, not the inflated keep-max Alpha peak.
         findings = detect_reattribution(
-            {("Alpha", self.day): 0.5, ("Beta", self.day): 3.5},
-            observed_last_coherent_day_hours(self.home),
+            {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81},
+            read_last_report_split(self.home),
         )
-        self.assertEqual(findings, [])
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["losers"][0]["from"], 1.65)
 
     def test_write_attaches_findings_before_keep_max(self):
         base = observed_base_dir(self.home)
         base.mkdir(parents=True, exist_ok=True)
+        baseline = {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60}
+        write_last_report_split(baseline, home=self.home)
         _month_path(base, "2026-08").write_text(
             "\n".join(
                 [
@@ -284,6 +292,8 @@ class ReattributionDetectionTests(unittest.TestCase):
         # keep-max: Alpha's earlier peak stays; Beta rises to the rescan value.
         self.assertEqual(hours[("Alpha", self.day)], 1.65)
         self.assertEqual(hours[("Beta", self.day)], 5.81)
+        # Sidecar records this run's coherent split (not keep-max).
+        self.assertEqual(read_last_report_split(self.home), current)
 
 
 class ObservedLifetimeHoursTests(unittest.TestCase):

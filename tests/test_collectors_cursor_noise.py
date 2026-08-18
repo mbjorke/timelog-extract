@@ -331,7 +331,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                     ),
                     (
                         "2026-06-22 11:01:10.417 [info] [RepositoryTracker] Stored "
-                        "repository path: github.com/ax-f /Users/me/customer-b workspaceStorage/" + wid
+                        "repository path: github.com/customer-b /Users/me/customer-b workspaceStorage/" + wid
                     ),
                 ],
             )

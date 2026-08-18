@@ -2,12 +2,70 @@
 
 ## Unreleased
 
-- Setup: the project-mapping step in `gittan setup` is an offer, not a
-  requirement. Its prompt now defaults to **No**, says the step is optional, and
-  names `gittan map` as the way to do it later. Declining is a normal
-  completion: the remaining steps run, the summary reports mapping as skipped,
-  and the closing next-steps no longer tell you to re-run `gittan setup`
+## 0.4.2 - 2026-08-10
+
+### Accuracy
+
+- Collectors: a `/Users/...` path scraped out of an IDE log line is **no longer
+  assumed to be a workspace**. Cursor and the VS Code forks now accept one only
+  when a workspace you actually opened vouches for it, and a nested file
+  attributes to that workspace's root rather than to whatever directory it sits
+  in. Previously any path a log line happened to mention became a project, so a
+  directory an agent wrote session data into could outrank every real repository
+  ([#530](https://github.com/mbjorke/timelog-extract/pull/530)).
+
+### Reports
+
+- New **Lifetime max** column: hours per project across the window the observed
+  cache retains, summed from data already on disk — no collector runs. Projects
+  with no activity in the selected period still get a row, so a project you
+  worked on last month is not invisible today
+  ([GH-537](https://github.com/mbjorke/timelog-extract/issues/537)).
+- The column is labelled a **ceiling, not a measurement**, and says so in a
+  footnote. The cache is keep-max: a run can raise a day's value and never lower
+  it, so the figure is the most any run ever detected. `Hours` re-scans the
+  sources and can legitimately differ for the same day
+  ([GH-543](https://github.com/mbjorke/timelog-extract/issues/543)).
+
+### Setup and mapping
+
+- The project-mapping step in `gittan setup` is an offer, not a requirement. Its
+  prompt defaults to **No**, says the step is optional, and names `gittan map`
+  as the way to do it later. Declining completes normally and the closing
+  next-steps no longer send you back to re-run setup
   ([GH-526](https://github.com/mbjorke/timelog-extract/issues/526)).
+- Cancelling a mapping prompt now **stops the queue instead of discarding what
+  you already answered**. Ctrl-C behaves the same
+  ([GH-522](https://github.com/mbjorke/timelog-extract/issues/522)).
+
+### Data safety
+
+- The global commit hook **skips Gittan's own data directory**. Following the
+  autocommit runbook made that directory a git repo, so every auto-commit fired
+  the hook, which wrote an event and a worklog inside it, which the next tick
+  committed — a loop that never settled and fabricated attributed activity each
+  time ([GH-535](https://github.com/mbjorke/timelog-extract/issues/535)).
+  **After upgrading, run `gittan setup`**: the on-disk hook is only refreshed
+  there, so an installed copy stays on the previous version until you do.
+
+### Tooling
+
+- `gittan -v` works as well as `gittan -V`
+  ([GH-525](https://github.com/mbjorke/timelog-extract/issues/525)).
+- New `scripts/reconcile_snapshot.py`: compares a captured truth payload, the
+  observed cache, and a fresh rescan for one period, and names the failure mode —
+  evidence decay, re-attribution, upward drift — so the two are not conflated.
+  Read-only ([#547](https://github.com/mbjorke/timelog-extract/pull/547)).
+- The kanin loop picks its reviewer: Greptile when its CLI is signed in, else
+  CodeRabbit, overridable with `RABBIT_LOOP_REVIEWER`
+  ([#539](https://github.com/mbjorke/timelog-extract/pull/539)).
+
+### Privacy
+
+- Real client, engagement and personal identifiers removed from test fixtures,
+  documentation and example config. Tests ship in the sdist, so these were
+  published as well as committed
+  ([GH-431](https://github.com/mbjorke/timelog-extract/issues/431)).
 
 ## 0.4.1 - 2026-08-07
 

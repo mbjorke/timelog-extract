@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from argparse import Namespace
@@ -12,6 +13,7 @@ from unittest import mock
 
 from core.observed_cache import (
     _month_path,
+    detect_reattribution,
     observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
@@ -145,6 +147,89 @@ class ObservedCacheTests(unittest.TestCase):
         today = datetime.now().date().isoformat()
         self.assertEqual(observed_last_capture_date(self.home), today)
 
+
+class ReattributionDetectionTests(unittest.TestCase):
+    """GH-544 scenario 3: observed→rescan split shuffle is detectable before keep-max."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        self.day = "2026-08-07"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_detect_reattribution_gh544_shape(self):
+        # Same shape as tests/test_reconcile_snapshot.py and the issue instrument:
+        # day total roughly holds while hours move Alpha → Beta.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(len(findings), 1)
+        finding = findings[0]
+        self.assertEqual(finding["date"], self.day)
+        self.assertGreater(finding["shift_share"], 0.75)
+        self.assertEqual([row["project"] for row in finding["losers"]], ["Alpha"])
+        self.assertEqual([row["project"] for row in finding["gainers"]], ["Beta"])
+
+    def test_detect_skips_uniform_growth(self):
+        findings = detect_reattribution(
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 5.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_detect_skips_days_without_overlap(self):
+        findings = detect_reattribution(
+            {("Alpha", "2026-08-08"): 1.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_write_attaches_findings_before_keep_max(self):
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        _month_path(base, "2026-08").write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "project": "Alpha",
+                            "date": self.day,
+                            "hours": 1.65,
+                            "captured_at": "",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "project": "Beta",
+                            "date": self.day,
+                            "hours": 4.60,
+                            "captured_at": "",
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        report = _report(self.day, [_session(self.day, "Alpha")])
+        current = {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81}
+        with mock.patch(
+            "core.observed_cache.report_project_day_hours",
+            return_value=current,
+        ):
+            write_observed_summary(report, home=self.home)
+        findings = getattr(report, "reattribution_vs_observed", None)
+        self.assertIsNotNone(findings)
+        assert findings is not None
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["date"], self.day)
+        hours = observed_hours_by_project_day(self.home)
+        # keep-max: Alpha's earlier peak stays; Beta rises to the rescan value.
+        self.assertEqual(hours[("Alpha", self.day)], 1.65)
+        self.assertEqual(hours[("Beta", self.day)], 5.81)
 
 
 class ObservedLifetimeHoursTests(unittest.TestCase):

@@ -10,6 +10,7 @@ from core.report_postamble import run_post_report_followups, status_anchor_warn_
 
 
 class ReportPostambleTests(unittest.TestCase):
+    @patch("core.report_postamble.build_reattribution_nudge", return_value=None)
     @patch("core.report_postamble.build_title_workspace_conflict_nudge", return_value=None)
     @patch("core.report_postamble.build_unanchored_anchors_nudge", return_value="anchor-nudge")
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
@@ -29,6 +30,7 @@ class ReportPostambleTests(unittest.TestCase):
         _mapping,
         _anchors,
         _conflict,
+        _reattribution,
     ):
         console = MagicMock()
         console.status.return_value.__enter__ = MagicMock()
@@ -40,6 +42,29 @@ class ReportPostambleTests(unittest.TestCase):
             report, anchors=[{"kind": "dir", "value": "timelog-extract", "hits": 30}]
         )
         self.assertEqual(console.print.call_args_list[-1], call("anchor-nudge"))
+
+    @patch("core.report_postamble.build_reattribution_nudge", return_value="reattribution-nudge")
+    @patch("core.report_postamble.build_title_workspace_conflict_nudge", return_value=None)
+    @patch("core.report_postamble.build_unanchored_anchors_nudge", return_value=None)
+    @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
+    @patch("core.report_postamble.prepare_mapping_review_after_report")
+    @patch("core.report_postamble.build_unexplained_gap_nudge", return_value=None)
+    @patch("core.report_postamble._wants_mapping_prompt", return_value=False)
+    def test_prints_reattribution_nudge(
+        self,
+        _wants_mapping,
+        _gap,
+        _prepare,
+        _mapping,
+        _anchors,
+        _conflict,
+        _reattribution,
+    ):
+        console = MagicMock()
+        report = SimpleNamespace(args=SimpleNamespace(quiet=False, output_format="terminal"))
+        with patch("core.report_postamble._wants_status", return_value=False):
+            run_post_report_followups(console, report)
+        self.assertEqual(console.print.call_args_list[0], call("reattribution-nudge"))
 
     @patch("core.report_postamble.build_unanchored_anchors_nudge", return_value="anchor-nudge")
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
@@ -62,6 +87,8 @@ class ReportPostambleTests(unittest.TestCase):
             run_post_report_followups(console, report)
         self.assertEqual(console.status.call_count, 2)
 
+    @patch("core.report_postamble.build_reattribution_nudge", return_value=None)
+    @patch("core.report_postamble.build_title_workspace_conflict_nudge", return_value=None)
     @patch("core.report_postamble.build_unanchored_anchors_nudge")
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=True)
     @patch("core.report_postamble.prepare_mapping_review_after_report")
@@ -74,6 +101,8 @@ class ReportPostambleTests(unittest.TestCase):
         _prepare,
         _mapping,
         anchors_mock,
+        _conflict,
+        _reattribution,
     ):
         console = MagicMock()
         console.status.return_value.__enter__ = MagicMock()

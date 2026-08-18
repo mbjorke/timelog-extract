@@ -290,3 +290,41 @@ def build_title_workspace_conflict_nudge(
         f"{listed}{extra}. Title was preferred so hours stay with the conversation intent; "
         "review if the window project was actually correct."
     )
+
+
+def _format_reattribution_mover(row: dict) -> str:
+    return f"{row['project']} {float(row['from']):.2f}h → {float(row['to']):.2f}h"
+
+
+def build_reattribution_nudge(
+    report,
+    *,
+    findings: list[dict] | None = None,
+) -> str | None:
+    """Non-blocking nudge when this run's daily split contradicts the observed cache (#544).
+
+    Expects ``report.reattribution_vs_observed`` from the pre-keep-max detection in
+    ``core.observed_cache.write_observed_summary``, or an explicit ``findings`` list
+    with the same shape. Does not re-read the cache (post-write keep-max would hide
+    the gainer side of a shuffle).
+    """
+    if findings is None:
+        findings = list(getattr(report, "reattribution_vs_observed", None) or [])
+    if not findings:
+        return None
+    parts: list[str] = []
+    for finding in findings[:3]:
+        day = str(finding.get("date") or "")
+        movers = list(finding.get("losers") or []) + list(finding.get("gainers") or [])
+        movers_txt = "; ".join(_format_reattribution_mover(row) for row in movers[:4])
+        share = float(finding.get("shift_share") or 0.0)
+        moved = float(finding.get("moved") or 0.0)
+        parts.append(f"{day}: {movers_txt} (moved {moved:.2f}h, shift share {share:.0%})")
+    extra = ""
+    if len(findings) > 3:
+        extra = f" (+{len(findings) - 3} more day{'s' if len(findings) > 4 else ''})"
+    return (
+        f"Nudge: observed→rescan re-attribution on {'; '.join(parts)}{extra}. "
+        "Earlier per-project split still in the observed cache (keep-max); "
+        "review before treating this run as the day's attribution."
+    )

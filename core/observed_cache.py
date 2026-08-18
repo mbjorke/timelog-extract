@@ -22,14 +22,24 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from core.config import gittan_data_dir
+from scripts.reconcile_signatures import (
+    DEFAULT_SHIFT_DOMINANCE,
+    RE_ATTRIBUTION,
+    compare_hours,
+)
 
 if TYPE_CHECKING:
     from core.report_service import ReportPayload
 
 _LOGGER = logging.getLogger(__name__)
+
+# Match ``scripts/reconcile_snapshot.py`` CLI defaults so the report nudge and
+# the offline instrument name the same failure mode for the same numbers.
+REATTRIBUTION_TOLERANCE_PCT = 5.0
+REATTRIBUTION_NOISE_FLOOR_HOURS = 0.25
 
 
 def observed_base_dir(home: Optional[Path] = None) -> Path:
@@ -71,6 +81,110 @@ def _coerce_row(data: object) -> Optional[dict]:
     return {"project": project, "date": date, "hours": hours, "captured_at": data.get("captured_at", "")}
 
 
+def report_project_day_hours(report: "ReportPayload") -> Dict[Tuple[str, str], float]:
+    """Per-``(project, day)`` hours for this report (same aggregation as the cache)."""
+    from core.reported_sync import build_reported_proposals
+
+    totals: Dict[Tuple[str, str], float] = {}
+    for proposal in build_reported_proposals(report):
+        key = (proposal.project, proposal.date)
+        totals[key] = totals.get(key, 0.0) + float(proposal.hours)
+    return totals
+
+
+def _hours_by_day(
+    totals: Dict[Tuple[str, str], float],
+) -> Dict[str, Dict[str, float]]:
+    by_day: Dict[str, Dict[str, float]] = {}
+    for (project, day), hours in totals.items():
+        by_day.setdefault(day, {})[project] = float(hours)
+    return by_day
+
+
+def detect_reattribution(
+    current: Dict[Tuple[str, str], float],
+    stored: Dict[Tuple[str, str], float],
+    *,
+    tolerance_pct: float = REATTRIBUTION_TOLERANCE_PCT,
+    noise_floor_hours: float = REATTRIBUTION_NOISE_FLOOR_HOURS,
+    shift_dominance: float = DEFAULT_SHIFT_DOMINANCE,
+) -> List[Dict[str, Any]]:
+    """Find days where the current split re-attributes hours vs the observed cache.
+
+    Uses the same shift-share signature as ``scripts/reconcile_signatures``
+    (GH-544 scenario 3). Read-only: does not write the cache.
+    """
+    if not current or not stored:
+        return []
+    current_by_day = _hours_by_day(current)
+    stored_by_day = _hours_by_day(stored)
+    findings: List[Dict[str, Any]] = []
+    for day in sorted(set(current_by_day) & set(stored_by_day)):
+        baseline = stored_by_day[day]
+        comparison = current_by_day[day]
+        if not baseline or not comparison:
+            continue
+        pair = compare_hours(
+            baseline,
+            comparison,
+            baseline_label="observed",
+            comparison_label="rescan",
+            tolerance_pct=tolerance_pct,
+            noise_floor_hours=noise_floor_hours,
+            shift_dominance=shift_dominance,
+        )
+        if pair.signature != RE_ATTRIBUTION:
+            continue
+        movers = pair.movers()
+        losers = [row for row in movers if row.delta < 0]
+        gainers = [row for row in movers if row.delta > 0]
+        # Re-attribution requires both a drop and a gain (hours changing hands).
+        if not losers or not gainers:
+            continue
+        findings.append(
+            {
+                "date": day,
+                "moved": pair.moved,
+                "shift_share": pair.shift_share,
+                "net": pair.net,
+                "baseline_total": pair.baseline_total,
+                "comparison_total": pair.comparison_total,
+                "losers": [
+                    {
+                        "project": row.project,
+                        "from": row.baseline,
+                        "to": row.comparison,
+                    }
+                    for row in losers
+                ],
+                "gainers": [
+                    {
+                        "project": row.project,
+                        "from": row.baseline,
+                        "to": row.comparison,
+                    }
+                    for row in gainers
+                ],
+            }
+        )
+    return findings
+
+
+def detect_reattribution_for_report(
+    report: "ReportPayload",
+    home: Optional[Path] = None,
+    **kwargs: Any,
+) -> List[Dict[str, Any]]:
+    """Compare this report's per-day split to the stored observed cache (read-only)."""
+    current = report_project_day_hours(report)
+    if not current:
+        return []
+    stored = observed_hours_by_project_day(home)
+    if not stored:
+        return []
+    return detect_reattribution(current, stored, **kwargs)
+
+
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
     """Persist per-``(project, day)`` observed hours from a report.
 
@@ -78,16 +192,22 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     a run can only raise or hold a stored observed value, never lower it, so evidence
     decay on closed months cannot silently degrade the record (see
     ``docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md``).
-    """
-    from core.reported_sync import build_reported_proposals
 
-    proposals = build_reported_proposals(report)  # one per (project, day)
-    if not proposals:
+    Before the keep-max write, compares this run's split to the prior cache and
+    attaches any re-attribution findings on ``report.reattribution_vs_observed``
+    (GH-544 scenario 3). Detection is read-only; keep-max behaviour is unchanged.
+    """
+    # Detect before keep-max: after the write, raised rows would hide the gainer
+    # side of a shuffle and the signature would look like evidence decay.
+    findings = detect_reattribution_for_report(report, home=home)
+    try:
+        report.reattribution_vs_observed = findings  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - advisory only; never block the cache write
+        pass
+
+    totals = report_project_day_hours(report)
+    if not totals:
         return 0
-    totals: Dict[Tuple[str, str], float] = {}
-    for proposal in proposals:
-        key = (proposal.project, proposal.date)
-        totals[key] = totals.get(key, 0.0) + float(proposal.hours)
 
     base = observed_base_dir(home)
     base.mkdir(parents=True, exist_ok=True)

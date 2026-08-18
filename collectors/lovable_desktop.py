@@ -203,7 +203,13 @@ def _format_lovable_event_detail(
     canonical: str,
     *,
     display_title: str = "",
+    allow_map_nudge: bool = True,
 ) -> str:
+    """Build a Lovable (desktop) detail line.
+
+    ``allow_map_nudge=False`` keeps ambient cache-mtime presence rows from
+    inviting ``gittan review`` mapping of possibly-stale UUIDs (GH-448).
+    """
     uuid = _lovable_project_uuid_key(canonical)
     short = f"{uuid[:8]}…" if uuid else ""
     project_name = str(project or "").strip()
@@ -211,14 +217,18 @@ def _format_lovable_event_detail(
     if title:
         if project_name and project_name != "Uncategorized":
             return f"{project_name} — {title}"
-        if short:
+        if short and allow_map_nudge:
             return f"{title} ({short}) — map UUID via gittan review — {canonical}"
+        if short:
+            return f"presence — Lovable ({short}) — {canonical}"
         return f"{title} — {canonical}"
     if project_name and project_name != "Uncategorized":
         lead = f"{project_name} ({short})" if short else project_name
         return f"{lead} — {canonical}"
-    if short:
+    if short and allow_map_nudge:
         return f"unmapped Lovable ({short}) — map UUID via gittan review — {canonical}"
+    if short:
+        return f"presence — Lovable ({short}) — {canonical}"
     return f"storage signal — {canonical}"
 
 

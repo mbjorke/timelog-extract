@@ -28,6 +28,16 @@ from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cach
 _PROJECTS_SEARCH_MARKER = "projects/search"
 _CACHE_MAX_FILE_BYTES = 5 * 1024 * 1024
 _CACHE_MAX_SCAN_BYTES = 50 * 1024 * 1024
+# Stronger than ambient Chromium heat: project workspace / chat / edit / prompt
+# traffic. Bare host or network-state mtimes alone stay presence-only (GH-448).
+_CACHE_STRONG_ACTIVITY_MARKERS = (
+    b"/chat",
+    b"/chats",
+    b"/edit",
+    b"/edits",
+    b"prompt",
+    b"tiba=",
+)
 _TIBA_RE = re.compile(
     r"projects/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[^\"']*tiba=([^&\s\"']+)",
     re.IGNORECASE,
@@ -164,6 +174,31 @@ def _project_uuids_from_cache_activity(
     return ordered
 
 
+def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
+    """True when this cache blob shows chat/edit/project-page traffic, not idle heat."""
+    lowered = raw.lower()
+    if any(marker in lowered for marker in _CACHE_STRONG_ACTIVITY_MARKERS):
+        return True
+    # Project workspace URL for this UUID (projects/search bodies never emit events).
+    needle = f"/projects/{uuid}".encode("ascii")
+    return needle in lowered
+
+
+def _cache_evidence_is_strong(
+    raw: bytes,
+    *,
+    uuid: str,
+    project: str,
+    tiba_titles: dict[str, str],
+) -> bool:
+    """Config-mapped, same-entry tiba title, or chat/edit/project-page markers."""
+    if str(project or "").strip() and str(project).strip() != "Uncategorized":
+        return True
+    if uuid in (tiba_titles or {}):
+        return True
+    return _cache_entry_has_strong_activity(raw, uuid=uuid)
+
+
 def collect_lovable_cache_events(
     profiles,
     dt_from,
@@ -220,9 +255,28 @@ def collect_lovable_cache_events(
             tiba_titles = _tiba_titles_from_bytes(raw)
             for uuid in _project_uuids_from_cache_activity(raw, tiba_titles=tiba_titles):
                 canonical = _synthetic_lovable_project_url(uuid)
-                display_title = titles.get(uuid) or tiba_titles.get(uuid, "")
-                project = classify_project(f"{canonical} {display_title}", profiles)
-                detail = _format_lovable_event_detail(project, canonical, display_title=display_title)
+                # Classify without catalog title first so ambient unmapped rows do not
+                # inherit stale projects/search names as "strong" evidence.
+                project = classify_project(canonical, profiles)
+                strong = _cache_evidence_is_strong(
+                    raw, uuid=uuid, project=project, tiba_titles=tiba_titles
+                )
+                if strong:
+                    display_title = titles.get(uuid) or tiba_titles.get(uuid, "")
+                    if display_title:
+                        project = classify_project(f"{canonical} {display_title}", profiles)
+                    detail = _format_lovable_event_detail(
+                        project, canonical, display_title=display_title
+                    )
+                else:
+                    # Presence-only: keep the row for coverage honesty, but do not
+                    # invite mapping of ambient/stale UUIDs (GH-448).
+                    detail = _format_lovable_event_detail(
+                        project,
+                        canonical,
+                        display_title="",
+                        allow_map_nudge=False,
+                    )
                 results.append(make_event(SOURCE_NAME, ts, detail, project))
     merge_seconds = max(60, int(collapse_minutes or 15) * 60)
     return _merge_storage_events(results, merge_seconds=merge_seconds)

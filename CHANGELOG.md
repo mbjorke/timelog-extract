@@ -2,12 +2,12 @@
 
 ## Unreleased
 
-- Fix ([#448](https://github.com/mbjorke/timelog-extract/issues/448)): Lovable
-  Desktop no longer treats idle open-app Chromium cache/network mtimes as
-  authorship-looking rows — ambient host heat stays presence-only without a
-  map-UUID nudge, while project-page / chat / edit / `tiba=` (or config-mapped)
-  cache traffic keeps titles. Storage fallback already scans WAL `.log` only and
-  skips sticky `editor-store` UUIDs (related presence≠authorship: #327).
+- Fix (GH-448): Lovable Desktop no longer treats idle open-app Chromium
+  cache/network mtimes as authorship-looking rows — ambient host heat stays
+  presence-only without a map-UUID nudge, while project-page / chat / edit /
+  `tiba=` (or config-mapped) cache traffic keeps titles. Storage fallback
+  already scans WAL `.log` only and skips sticky `editor-store` UUIDs (related
+  presence≠authorship: #327).
 
 ## 0.4.2 - 2026-08-10
 

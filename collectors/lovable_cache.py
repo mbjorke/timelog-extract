@@ -174,14 +174,49 @@ def _project_uuids_from_cache_activity(
     return ordered
 
 
-def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
-    """True when this cache blob shows chat/edit/project-page traffic, not idle heat."""
-    lowered = raw.lower()
-    if any(marker in lowered for marker in _CACHE_STRONG_ACTIVITY_MARKERS):
+def _cache_url_belongs_to_uuid(url: str, uuid: str) -> bool:
+    """Whether a Lovable URL is evidence for this project UUID (not a sibling)."""
+    uuid_l = (uuid or "").strip().lower()
+    if not uuid_l:
+        return False
+    trimmed = _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+    url_l = trimmed.lower()
+    if _lovable_project_uuid_key(trimmed) == uuid_l:
         return True
-    # Project workspace URL for this UUID (projects/search bodies never emit events).
-    needle = f"/projects/{uuid}".encode("ascii")
-    return needle in lowered
+    if f"/projects/{uuid_l}" in url_l:
+        return True
+    return f"{uuid_l}.lovableproject.com" in url_l
+
+
+def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
+    """True when *this* UUID shows chat/edit/project-page traffic, not idle heat.
+
+    Markers are bound to URLs that reference the UUID. A sibling UUID's ``/chat``
+    (or prompt/tiba) in the same cache blob must not promote an ambient host
+    refresh to authorship-looking title + map nudge (GH-448).
+    """
+    uuid_l = (uuid or "").strip().lower()
+    if not uuid_l:
+        return False
+    lowered = raw.lower()
+    # Project workspace path for this UUID alone is strong (search bodies never emit).
+    if f"/projects/{uuid_l}".encode("ascii") in lowered:
+        return True
+    urls = _filter_lovable_storage_urls(
+        _extract_lovable_urls(raw),
+        lovable_noise_profile="balanced",
+    )
+    for url in urls:
+        if not _cache_url_belongs_to_uuid(url, uuid_l):
+            continue
+        url_bytes = (
+            _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+            .lower()
+            .encode("utf-8", "ignore")
+        )
+        if any(marker in url_bytes for marker in _CACHE_STRONG_ACTIVITY_MARKERS):
+            return True
+    return False
 
 
 def _cache_evidence_is_strong(

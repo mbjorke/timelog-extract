@@ -346,6 +346,61 @@ class LovableCacheTests(unittest.TestCase):
         self.assertIn("Ghost Title", events[0]["detail"])
         self.assertIn("map UUID via gittan review", events[0]["detail"])
 
+    def test_strong_markers_do_not_promote_sibling_uuid_in_same_blob(self):
+        """One UUID's /chat must not give another ambient UUID title + map nudge."""
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        strong_uuid = "d7afafcd-1b04-4306-93be-b91f00000001"
+        ambient_uuid = "d7afafcd-1b04-4306-93be-b91f00000002"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            search_path = cache_dir / "search_0"
+            search_path.write_bytes(
+                _make_entry(
+                    "1/0/https://api.lovable.dev/workspaces/ws/projects/search",
+                    json.dumps(
+                        {
+                            "projects": [
+                                {"id": strong_uuid, "display_name": "Strong Project"},
+                                {"id": ambient_uuid, "display_name": "Stale Catalog Title"},
+                            ]
+                        }
+                    ).encode("utf-8"),
+                )
+            )
+            mixed_path = cache_dir / "mixed_0"
+            # Same cache blob: authored chat for one UUID + ambient host for another.
+            mixed_path.write_bytes(
+                (
+                    f"https://{strong_uuid}.lovableproject.com/chat/abc "
+                    f"https://{ambient_uuid}.lovableproject.com/favicon.ico"
+                ).encode("utf-8")
+            )
+            os.utime(mixed_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        strong_events = [e for e in events if strong_uuid in e["detail"]]
+        ambient_events = [e for e in events if ambient_uuid in e["detail"]]
+        self.assertEqual(len(strong_events), 1, events)
+        self.assertEqual(len(ambient_events), 1, events)
+        self.assertIn("Strong Project", strong_events[0]["detail"])
+        self.assertIn("map UUID via gittan review", strong_events[0]["detail"])
+        self.assertIn("presence — Lovable", ambient_events[0]["detail"])
+        self.assertNotIn("map UUID via gittan review", ambient_events[0]["detail"])
+        self.assertNotIn("Stale Catalog Title", ambient_events[0]["detail"])
+
     def test_cache_scan_skips_rudderstack_uuid(self):
         ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         with TemporaryDirectory() as tmp:

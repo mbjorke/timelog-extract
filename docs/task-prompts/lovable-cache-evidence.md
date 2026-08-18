@@ -137,7 +137,7 @@ Feature: Lovable Desktop cache evidence for full-day sessions
     And the cache entry shows project-page / chat / edit / tiba activity (not ambient host heat alone)
     And projects/search has no title for that UUID
     When gittan report runs
-    Then the event detail uses the unmapped Lovable (uuid…) — map UUID via gittan map format
+    Then the event detail uses the unmapped Lovable (uuid…) — map UUID via gittan review format
     And the event project is Uncategorized
 
   Scenario: RudderStack analytics UUID never fabricates a project
@@ -207,7 +207,7 @@ under GH-327, with ambient heat gated against map nudges as above).
    - emit one event per (uuid, mtime-burst), merged with the existing
      `_merge_storage_events` collapse logic.
 2. Prefer UUIDs already known from `match_terms`/`tracked_urls`; unknown UUIDs
-   keep the `unmapped Lovable (…) — map UUID via gittan map` detail format.
+   keep the `unmapped Lovable (…) — map UUID via gittan review` detail format.
 3. Performance guard: skip files larger than a few MB; cap total scanned bytes
    per run; never crash on unreadable/binary content.
 4. Resolve UUID → human project title from the cached `projects/search`

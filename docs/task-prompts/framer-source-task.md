@@ -380,10 +380,18 @@ its own design. It is a documented limitation, not a capability.
 | GH-431 | ~22 client-name leaks already committed to a **public** repo — live exposure, not a future risk |
 | GH-515 | The control that stops new client data reaching issues and PRs |
 | GH-544 | Hours silently move to another project — and often another **customer** — when a Cursor conversation continues in a different workspace. Wrong-customer billing is the worst defect class this product has |
-| GH-414 | Chrome dashboard work evaporating: hours that were genuinely worked disappear |
+| GH-550 | Follow-ups from the post-merge review of the data-directory hook guard |
 
 Every one of those is about hours already being wrong, or client data already
-being exposed, for sources people use daily. Framer is a source with **no demand
+being exposed, for sources people use daily.
+
+*Reconciled later the same day:* an agent swarm merged five fixes (GH-448, GH-521,
+GH-549 closed cleanly; GH-544 and GH-414 have merged fixes but stayed open, and
+GH-414 moved to `next`). The `now` band is therefore thinner than when this review
+was written — but the demotion does not rest on the length of that list. It rests
+on Framer's own properties: no demand signal, a zero-hours first slice, and a
+successor blocked on a decision that is not Framer's to make. GH-431 was
+re-verified against the repo's own guard and is genuinely still open work. Framer is a source with **no demand
 signal**: no issue existed for it before this spec, no beta tester has asked, and
 its first slice adds no hours to any report.
 

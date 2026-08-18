@@ -24,6 +24,11 @@ from unittest import mock
 from core.config import canonical_gittan_home, gittan_data_dir
 from core.evidence_store import evidence_base_dir, spool_dir
 from core.global_timelog_hook_script import HOOK_BODY
+from core.global_timelog_machine_setup import (
+    gittan_config_dir,
+    gittan_filename_file,
+    gittan_scope_file,
+)
 from core.intent_store import intent_path
 from core.observed_cache import (
     observed_base_dir,
@@ -224,6 +229,61 @@ class HookUsesOneDataDirTests(unittest.TestCase):
         """
         self.assertIn('"$canon" != "$gittan_data_canon"/*', HOOK_BODY)
         self.assertIn("refusing timelog path outside", HOOK_BODY)
+
+
+class SetupWritesWhereTheHookReadsTests(unittest.TestCase):
+    """``gittan setup`` and the post-commit hook must share one config root.
+
+    These were module-level constants built from ``Path.home()`` at import time,
+    so once the hook started reading ``$GITTAN_HOME`` the two sides pointed at
+    different directories. The failure is not a silent no-op: the hook treats a
+    missing scope file as "no allowlist" and logs **every** repository, so a lost
+    allowlist quietly widens what gets written.
+    """
+
+    #: Filenames the hook body reads, mapped to the setup helper that writes them.
+    SHARED_FILES = {
+        "timelog_repos.txt": gittan_scope_file,
+        "timelog_filename": gittan_filename_file,
+    }
+
+    def test_setup_paths_follow_gittan_home_when_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": tmp}):
+                self.assertEqual(gittan_config_dir(), Path(tmp))
+                for filename, resolver in self.SHARED_FILES.items():
+                    with self.subTest(file=filename):
+                        self.assertEqual(resolver(), Path(tmp) / filename)
+
+    def test_setup_paths_use_the_canonical_home_when_unset(self):
+        with _no_gittan_home():
+            self.assertEqual(gittan_config_dir(), Path.home() / ".gittan")
+            for filename, resolver in self.SHARED_FILES.items():
+                with self.subTest(file=filename):
+                    self.assertEqual(resolver(), Path.home() / ".gittan" / filename)
+
+    def test_setup_paths_are_resolved_per_call_not_frozen_at_import(self):
+        """A constant captured at import cannot follow the environment.
+
+        Two different values from the same process is the whole point — that is
+        what a module-level ``Path.home() / ".gittan"`` could never do.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            first, second = Path(tmp) / "one", Path(tmp) / "two"
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": str(first)}):
+                self.assertEqual(gittan_scope_file(), first / "timelog_repos.txt")
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": str(second)}):
+                self.assertEqual(gittan_scope_file(), second / "timelog_repos.txt")
+
+    def test_the_hook_reads_exactly_the_files_setup_writes(self):
+        """Both sides are pinned to the same basenames under the same root.
+
+        Renaming one half without the other reintroduces the divergence, and a
+        lost allowlist fails open rather than loudly.
+        """
+        for filename in self.SHARED_FILES:
+            with self.subTest(file=filename):
+                self.assertIn(f'"$GITTAN_CFG_DIR/{filename}"', HOOK_BODY)
 
 
 if __name__ == "__main__":

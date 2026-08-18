@@ -13,14 +13,33 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from core.config import gittan_data_dir
 from core.git_project_bootstrap import discover_local_git_repos
 from core.global_timelog_hook_script import HOOK_BODY
 from outputs.cli_heroes import print_command_hero
 from outputs.terminal_theme import STYLE_BORDER, STYLE_LABEL, STYLE_MUTED
 
-GITTAN_CONFIG_DIR = Path.home() / ".gittan"
-GITTAN_SCOPE_FILE = GITTAN_CONFIG_DIR / "timelog_repos.txt"
-GITTAN_FILENAME_FILE = GITTAN_CONFIG_DIR / "timelog_filename"
+
+def gittan_config_dir() -> Path:
+    """Where the hook's own config lives — the Gittan data dir (GH-549).
+
+    Resolved per call, not frozen at import: these were module-level constants
+    built from ``Path.home()``, so ``gittan setup`` wrote the allowlist to
+    ``~/.gittan`` while the hook read it from ``$GITTAN_HOME``. A scope file the
+    hook cannot find is not a no-op — the hook treats a missing file as "no
+    allowlist" and logs *every* repository.
+    """
+    return gittan_data_dir()
+
+
+def gittan_scope_file() -> Path:
+    """Repo allowlist the post-commit hook filters on (``$SCOPE_FILE``)."""
+    return gittan_config_dir() / "timelog_repos.txt"
+
+
+def gittan_filename_file() -> Path:
+    """Configured timelog filename the hook reads (``$FILENAME_FILE``)."""
+    return gittan_config_dir() / "timelog_filename"
 
 
 def _run_git_config(args: list[str], *, dry_run: bool) -> None:
@@ -146,21 +165,21 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
     if dry_run:
         console.print(f"[yellow]Dry run:[/yellow] would set timelog file path to `{timelog_name}`.")
         if selected:
-            console.print(f"[yellow]Dry run:[/yellow] would write {len(selected)} selected repos to {GITTAN_SCOPE_FILE}.")
+            console.print(f"[yellow]Dry run:[/yellow] would write {len(selected)} selected repos to {gittan_scope_file()}.")
         elif scope_mode.startswith("Choose specific"):
-            console.print(f"[yellow]Dry run:[/yellow] would write empty allowlist to {GITTAN_SCOPE_FILE} (no repos selected).")
+            console.print(f"[yellow]Dry run:[/yellow] would write empty allowlist to {gittan_scope_file()} (no repos selected).")
         else:
             console.print("[yellow]Dry run:[/yellow] would configure scope for all git repositories.")
         return
 
-    GITTAN_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    GITTAN_FILENAME_FILE.write_text(timelog_name + "\n", encoding="utf-8")
+    gittan_config_dir().mkdir(parents=True, exist_ok=True)
+    gittan_filename_file().write_text(timelog_name + "\n", encoding="utf-8")
     if selected:
-        GITTAN_SCOPE_FILE.write_text("\n".join(selected) + "\n", encoding="utf-8")
+        gittan_scope_file().write_text("\n".join(selected) + "\n", encoding="utf-8")
     elif scope_mode.startswith("Choose specific"):
-        GITTAN_SCOPE_FILE.write_text("", encoding="utf-8")
-    elif GITTAN_SCOPE_FILE.exists():
-        GITTAN_SCOPE_FILE.unlink()
+        gittan_scope_file().write_text("", encoding="utf-8")
+    elif gittan_scope_file().exists():
+        gittan_scope_file().unlink()
 
 
 def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
@@ -198,8 +217,8 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     table.add_row("core.excludesFile", current_excludes_file or "(not set)")
     table.add_row("Hook file", str(hook_path) if hook_path.exists() else "(missing)")
     table.add_row("Global ignore", str(ignore_path) if ignore_path.exists() else "(missing)")
-    table.add_row("Timelog filename config", str(GITTAN_FILENAME_FILE) if GITTAN_FILENAME_FILE.exists() else "(missing)")
-    table.add_row("Repo scope file", str(GITTAN_SCOPE_FILE) if GITTAN_SCOPE_FILE.exists() else "(missing)")
+    table.add_row("Timelog filename config", str(gittan_filename_file()) if gittan_filename_file().exists() else "(missing)")
+    table.add_row("Repo scope file", str(gittan_scope_file()) if gittan_scope_file().exists() else "(missing)")
     console.print(table)
     if dry_run:
         console.print("[yellow]Dry run mode:[/yellow] no changes will be made.")
@@ -238,7 +257,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
             ignore_path.touch(exist_ok=True)
         _run_git_config(["core.excludesFile", str(ignore_path)], dry_run=dry_run)
         _configure_timelog_scope_and_name(console, yes=yes, dry_run=dry_run)
-        configured_timelog = GITTAN_FILENAME_FILE.read_text(encoding="utf-8").splitlines()[0].strip() if GITTAN_FILENAME_FILE.exists() else "TIMELOG.md"
+        configured_timelog = gittan_filename_file().read_text(encoding="utf-8").splitlines()[0].strip() if gittan_filename_file().exists() else "TIMELOG.md"
         added_ignore = _ensure_timelog_ignored(ignore_path, dry_run=dry_run, timelog_entry=configured_timelog)
     except subprocess.CalledProcessError as exc:
         console.print(f"[red]Git config command failed:[/red] {exc}")
@@ -267,10 +286,10 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     if not dry_run and hook_path.exists():
         is_exec = bool(hook_path.stat().st_mode & stat.S_IXUSR)
         console.print(f"- post-commit executable = {'yes' if is_exec else 'no'}")
-        timelog_name = GITTAN_FILENAME_FILE.read_text(encoding="utf-8").splitlines()[0].strip() if GITTAN_FILENAME_FILE.exists() else "TIMELOG.md"
+        timelog_name = gittan_filename_file().read_text(encoding="utf-8").splitlines()[0].strip() if gittan_filename_file().exists() else "TIMELOG.md"
         console.print(f"- timelog file inside repo = {timelog_name}")
-        if GITTAN_SCOPE_FILE.exists():
-            repo_count = len([line for line in GITTAN_SCOPE_FILE.read_text(encoding="utf-8").splitlines() if line.strip()])
+        if gittan_scope_file().exists():
+            repo_count = len([line for line in gittan_scope_file().read_text(encoding="utf-8").splitlines() if line.strip()])
             console.print(f"- repo scope = selected list ({repo_count} repos)")
         else:
             console.print("- repo scope = all git repositories")

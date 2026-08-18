@@ -34,8 +34,14 @@ install_hook() {
 
 install_hook "pre-push" '#!/bin/sh
 # Auto-installed by scripts/install-hooks.sh
-echo "[pre-push] Running test suite..."
-bash scripts/run_autotests.sh || { echo "[pre-push] Tests failed — push blocked."; exit 1; }
+# Guarded by a repo-file check: this machine may set a *global* core.hooksPath,
+# so the hook also runs for unrelated repositories. Without the guard, a repo
+# with no run_autotests.sh makes bash exit 127 and blocks every push there.
+root="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+if [ -f "$root/scripts/run_autotests.sh" ]; then
+  echo "[pre-push] Running test suite..."
+  bash "$root/scripts/run_autotests.sh" || { echo "[pre-push] Tests failed — push blocked."; exit 1; }
+fi
 '
 
 install_hook "pre-commit" '#!/bin/sh

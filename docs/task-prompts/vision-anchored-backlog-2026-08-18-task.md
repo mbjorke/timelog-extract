@@ -20,6 +20,7 @@ into one kind of work, measured below rather than asserted.
   about unbuilt work
 - changelog:
   - `2026-08-18: Initial pass. Anchored in the vision's three-level metric stack.`
+  - `2026-08-18: Added V-7 (synthetic operator personas) as the vehicle for level-2 measurement, extending the existing golden-home materializer (GH-531). Records the hard boundary that personas may not emit level-3 numbers.`
 
 ---
 
@@ -108,6 +109,82 @@ Feature: Admin-overhead measurement
 - validation: computed values for four periods, checked by hand against one
   known run; `run_autotests.sh` green.
 - dependencies: none blocking. Uses evidence that already exists.
+
+---
+
+### V-7 — Synthetic operator personas as the measurement vehicle
+
+- priority: **now** (this is *how* V-1 and V-4 get built)
+- problem: levels 2 and 3 are unmeasured, and the obvious fix — wait for a human
+  — makes measurement hostage to recruiting a pilot.
+- insight: **most of level 2 is not a property of the human at all.** Time to a
+  review-ready report, correction effort and export readiness measure *how much
+  the system needs a person*, which is a property of the data and the config.
+  That is measurable against fabricated data, deterministically, in CI.
+- existing ground: `tests/golden_home_fixtures.py` already materializes
+  synthetic source data into a throwaway HOME ("no real local data, no
+  network"), and `scripts/run_golden_eval.py` runs four datasets in CI. It
+  covers **2 of ~24 collectors** (GH-531). Personas extend that, they do not
+  replace it.
+- behavior: named operator personas, each a config profile plus a multi-source
+  synthetic HOME, representing the audiences in `gittan-vision.md`:
+  a solo consultant with few clients; an agency operator with many; a
+  repo-heavy developer; and **a designer with no repositories and no IDE
+  traces**. Run the full report path for each and emit the level-2 metrics.
+
+```gherkin
+Feature: Persona-measured admin overhead
+  Reporting cost is measured against fabricated operators, in CI, with no human.
+
+  Scenario: A persona yields level-2 numbers
+    Given a persona with a synthetic HOME and config
+    When the full report path runs for a period
+    Then time to a review-ready output is recorded
+    And the number of manual interventions the output would require is counted
+    And export readiness for that period is decided without a human
+
+  Scenario: A regression in admin overhead fails the build
+    Given personas have an established baseline for correction effort
+    When a change makes a persona's report need more manual intervention
+    Then the gate reports the regression against that baseline
+
+  Scenario: A persona reveals an audience the product serves badly
+    Given the designer persona has no repository and no IDE traces
+    When the report runs
+    Then whatever Gittan can honestly say about that operator's day is recorded
+    And a persona that produces an unusable report is a finding, not a failure
+```
+
+- acceptance:
+  - at least four personas materialize and run end to end in CI;
+  - metrics 2.1, 2.2 and 2.3 produce numbers per persona per period;
+  - baselines are recorded so a later change can be compared against them;
+  - **no persona emits a level-3 number** (see the boundary below).
+- validation: `run_autotests.sh` green with personas wired in; one persona's
+  numbers checked by hand against a manual run.
+- dependencies: extends GH-531's materializer coverage; that issue and this item
+  should be done together rather than twice.
+
+#### The boundary — what personas must never fake
+
+Level 3 measures human judgement and behaviour: pilot activation, pilot-to-active
+conversion, **reporting confidence** (a 1-5 human rating of whether they would
+send the report to a customer), and inbound lift. A fabricated persona cannot
+hold an opinion about a report.
+
+Emitting a synthetic number for any of these would make the scoreboard look
+green while measuring nothing — strictly worse than an empty cell, because an
+empty cell is honest. **Personas serve level 2 and are forbidden from level 3.**
+
+This is the same discipline the source-evidence policy already applies: a source
+can be good evidence for context without being evidence for billable truth.
+
+#### What this changes about V-2
+
+Personas do **not** replace the pilot; they make it worth more. Every friction a
+persona can find is friction the human pilot should not be spent discovering. The
+scarce human is then spent on the only questions they can answer: *is this report
+one I would actually send to my customer, and would I keep using this?*
 
 ---
 
@@ -215,6 +292,7 @@ Feature: First external pilot
 
 | Item | Priority | Level it moves |
 | --- | --- | --- |
+| V-7 Synthetic operator personas (vehicle for V-1/V-4) | **now** | 2 |
 | V-1 Make admin overhead measurable | **now** | 2 |
 | V-2 One real pilot, end to end | **now** | 3 |
 | V-3 Resolve the MCP contradiction | next | enables |
@@ -227,7 +305,8 @@ start measuring the two that are not.**
 
 ## Open decisions
 
-1. **Who is the V-2 pilot?** The only true blocker in this pass.
+1. **Who is the V-2 pilot?** Still the only human-blocked item — but no longer
+   blocking *measurement*, since V-7 carries level 2 without a person.
 2. **Does an MCP surface satisfy filter question 3** (optional, explicit,
    minimal)? Owned by V-3, not assumed here.
 3. **Does the existing level-1 `next` band get demoted?** This pass does not

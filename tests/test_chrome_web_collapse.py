@@ -63,10 +63,10 @@ class WebVisitCollapseTests(unittest.TestCase):
             web_visit_collapse_minutes(12, session_gap_minutes=1),
             1,
         )
-        # Non-positive gap: compute_sessions never joins — disable heartbeat.
-        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=0), 0)
-        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=-1), 0)
-        self.assertEqual(web_visit_collapse_minutes(1, session_gap_minutes=0), 0)
+        # Non-positive gap: no joinable clamp — keep Chrome collapse for noise only.
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=0), 12)
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=-1), 12)
+        self.assertEqual(web_visit_collapse_minutes(1, session_gap_minutes=0), 1)
 
     def test_dedupe_web_visit_rows_respects_zero_collapse_minutes(self):
         ts = datetime(2026, 4, 10, 4, 28, tzinfo=timezone.utc)
@@ -172,35 +172,39 @@ class WebVisitCollapseTests(unittest.TestCase):
             span_minutes = (end - start).total_seconds() / 60
             self.assertGreaterEqual(span_minutes, 3.5)
 
-    def test_zero_gap_disables_heartbeat_passthrough(self):
-        """gap_minutes=0 never joins; do not invent a 30s grid that cannot merge."""
+    def test_zero_gap_still_bounds_dense_tracked_url_noise(self):
+        """gap_minutes=0 never joins; still thin dense tracked-URL runs (no flood)."""
         gap = 0
         collapse = web_visit_collapse_minutes(12, session_gap_minutes=gap)
-        self.assertEqual(collapse, 0)
+        self.assertEqual(collapse, 12)
         base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
-        visits = [base + timedelta(seconds=15 * i) for i in range(5)]
+        # Dense SPA-style revisits every 2 minutes for 3 hours (91 raw).
+        visits = [base + timedelta(minutes=2 * i) for i in range(91)]
         with tempfile.TemporaryDirectory() as tmpdir:
             results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
-            # Collapse disabled → raw visits pass through (no artificial cadence).
-            self.assertEqual(len(results), len(visits))
+            # Bounded noise collapse — not one event per raw visit.
+            self.assertLess(len(results), len(visits))
+            self.assertGreaterEqual(len(results), 14)
+            self.assertLessEqual(len(results), 20)
             entries = [{"local_ts": event["ts"]} for event in results]
             sessions = compute_sessions(entries, gap_minutes=gap)
-            # Matches compute_sessions: each event is its own session.
-            self.assertEqual(len(sessions), len(visits))
+            # Still no session joining under a non-positive gap.
+            self.assertEqual(len(sessions), len(results))
 
-    def test_negative_gap_disables_heartbeat_passthrough(self):
-        """Negative --gap-minutes also disables joinable heartbeat spacing."""
+    def test_negative_gap_still_bounds_dense_tracked_url_noise(self):
+        """Negative --gap-minutes also keeps Chrome collapse for flood control."""
         gap = -3
         collapse = web_visit_collapse_minutes(12, session_gap_minutes=gap)
-        self.assertEqual(collapse, 0)
+        self.assertEqual(collapse, 12)
         base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
-        visits = [base + timedelta(seconds=20 * i) for i in range(4)]
+        visits = [base + timedelta(minutes=2 * i) for i in range(31)]  # ~1h
         with tempfile.TemporaryDirectory() as tmpdir:
             results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
-            self.assertEqual(len(results), len(visits))
+            self.assertLess(len(results), len(visits))
+            self.assertLessEqual(len(results), 8)
             entries = [{"local_ts": event["ts"]} for event in results]
             sessions = compute_sessions(entries, gap_minutes=gap)
-            self.assertEqual(len(sessions), len(visits))
+            self.assertEqual(len(sessions), len(results))
 
 
 if __name__ == "__main__":

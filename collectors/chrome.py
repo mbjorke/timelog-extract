@@ -186,15 +186,15 @@ def web_visit_collapse_minutes(
     whole-minute cadence works, so a 30-second (0.5 minute) heartbeat is used.
 
     When ``session_gap_minutes`` is 0 or negative, ``compute_sessions`` never
-    joins events (threshold is non-positive). Heartbeat spacing would invent a
-    grid that cannot merge — disable collapse and pass visits through.
+    joins events. Still apply the configured Chrome collapse as **noise thinning**
+    (bounded event count) — do not invent a sub-gap joinable heartbeat grid.
     """
     if chrome_collapse_minutes <= 0:
         return 0.0
     gap = int(session_gap_minutes)
-    # Non-positive gap ⇒ no session joining; do not invent a joinable cadence.
+    # Non-positive gap ⇒ no session joining; keep collapse for flood control only.
     if gap <= 0:
-        return 0.0
+        return float(chrome_collapse_minutes)
     # Strictly below the gap; whole minutes when gap >= 2, else sub-minute.
     if gap <= 1:
         return min(float(chrome_collapse_minutes), 0.5)

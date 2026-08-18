@@ -173,7 +173,11 @@ def doctor(
             home=home,
         )
         # Check for shadow log capture errors (GH-408)
-        capture_errors_file = home / ".gittan" / "capture-errors.jsonl"
+        # ``home`` here is the OS home used to *detect sources*; the error log is
+        # Gittan state, so it resolves via the data dir the hook writes to (GH-549).
+        from core.config import gittan_data_dir
+
+        capture_errors_file = gittan_data_dir() / "capture-errors.jsonl"
         if capture_errors_file.exists():
             try:
                 import json

@@ -168,7 +168,11 @@ HOOK_BODY = dedent(
       exit 0
     fi
 
-    GITTAN_CFG_DIR="$HOME/.gittan"
+    # One data dir for the whole hook: scope file, filename override and the
+    # unknown-repo worklog fallback all live under $GITTAN_DATA_DIR (GH-549).
+    # Splitting them across $HOME/.gittan meant a run with $GITTAN_HOME set read
+    # its scope from one root and wrote the worklog into another.
+    GITTAN_CFG_DIR="$GITTAN_DATA_DIR"
     SCOPE_FILE="$GITTAN_CFG_DIR/timelog_repos.txt"
     FILENAME_FILE="$GITTAN_CFG_DIR/timelog_filename"
     TIMELOG_NAME="TIMELOG.md"
@@ -216,7 +220,7 @@ HOOK_BODY = dedent(
     if [[ -z "${PROJECT_WORKLOG:-}" ]]; then
       # Unknown repo: still central, still no hash — a plain name a human can
       # recognise and later attach to a profile.
-      PROJECT_WORKLOG="$HOME/.gittan/worklogs/${REPO_BASENAME}.md"
+      PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"
     fi
     if [[ -z "${CONFIGURED_CANDIDATE:-}" || "$CONFIGURED_CANDIDATE" == "TIMELOG.md" ]]; then
       # Note: no [[ -f ]] guard. Requiring the file to pre-exist is what made
@@ -225,8 +229,10 @@ HOOK_BODY = dedent(
       TIMELOG_FILE="$PROJECT_WORKLOG"
     fi
     canon="${TIMELOG_FILE:A}"
-    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* ]]; then
-      echo "gittan-hook: refusing timelog path outside home directory or repo root" >&2
+    # The data dir is a third allowed root: $GITTAN_HOME may point outside $HOME
+    # (a sandbox, an external volume), and the central worklog lives there.
+    if [[ "$canon" != "$home_canon"/* && "$canon" != "$root_canon"/* && "$canon" != "$gittan_data_canon"/* ]]; then
+      echo "gittan-hook: refusing timelog path outside home directory, repo root, or Gittan data directory" >&2
       exit 1
     fi
     mkdir -p "$(dirname "$TIMELOG_FILE")"

@@ -371,7 +371,10 @@ def run_timelog_report(
     # sum over data on disk (~2ms over six months) rather than a re-scan. The
     # cache exists because source logs rotate; reading it is what makes a lifetime
     # answer possible at all, not merely faster.
-    timelog_totals, lifetime_window = observed_lifetime_hours(HOME)
+    # No ``home=``: the write side (``core/report_cli.py``) resolves the cache
+    # ambiently, so pinning the read to ``HOME`` made a run with ``$GITTAN_HOME``
+    # set report lifetime hours from a cache it was not writing to (GH-549).
+    timelog_totals, lifetime_window = observed_lifetime_hours()
 
     git_totals: Dict[str, float] = {}
     collector_status[GIT_COMMITS_SOURCE] = git_commits_collector_status(

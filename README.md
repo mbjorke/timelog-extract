@@ -101,6 +101,14 @@ Resolution does **not** depend on the current working directory. A stray home-di
 
 You usually do not need to set any env vars; check the active path with `gittan config path`.
 
+**`GITTAN_HOME` is the whole data directory**, not just the config lookup. When it is set, *every* local store moves with it: the observed cache, the evidence store and its spool, reported time, intent bindings, and the paths the global commit hook reads and writes. Nothing is left behind in `~/.gittan`. That makes it a real sandbox — point it at a temp directory and a run cannot touch your live data:
+
+```bash
+GITTAN_HOME="$(mktemp -d)" gittan report --today --projects-config ~/.gittan/timelog_projects.json
+```
+
+This matters most for the observed cache, whose merge is keep-max: a run can only raise a stored value, so there is no undo for a run that wrote where it should not have.
+
 **Worklog model (locked standard):**
 
 - Primary: per-project files in `~/.gittan/worklogs/<project-id>.md`.

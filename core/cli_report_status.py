@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from typing import Annotated, Optional
 
 import click
@@ -434,7 +433,11 @@ def status(
             console.print(f"[{STYLE_MUTED}]{nudge}[/{STYLE_MUTED}]")
         _print_status_anchor_nudge(console, report, anchor_nudge=anchor_nudge)
         # Check for shadow log capture errors (GH-408)
-        capture_errors_file = Path.home() / ".gittan" / "capture-errors.jsonl"
+        # The hook writes these under ``$GITTAN_HOME`` when set, so read the same
+        # data dir rather than an assumed ``~/.gittan`` (GH-549).
+        from core.config import gittan_data_dir
+
+        capture_errors_file = gittan_data_dir() / "capture-errors.jsonl"
         if capture_errors_file.exists():
             try:
                 import json

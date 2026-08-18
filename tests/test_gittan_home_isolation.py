@@ -1,0 +1,230 @@
+"""One data directory for every store, whether ``$GITTAN_HOME`` is set or not (GH-549).
+
+The observed cache used to ignore ``$GITTAN_HOME`` while config, evidence and the
+commit hook honoured it. A sandboxed run therefore merged into the operator's real
+``~/.gittan/observed`` — and that merge is keep-max, so nothing undoes it.
+
+Every case here is asserted **twice**: once with ``$GITTAN_HOME`` pointing at a temp
+dir, and once with it unset. Only testing the relocated case is what let the default
+path regress unnoticed before.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import unittest
+from argparse import Namespace
+from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+from core.config import canonical_gittan_home, gittan_data_dir
+from core.evidence_store import evidence_base_dir, spool_dir
+from core.global_timelog_hook_script import HOOK_BODY
+from core.intent_store import intent_path
+from core.observed_cache import (
+    observed_base_dir,
+    observed_hours_by_project_day,
+    write_observed_summary,
+)
+from core.reported_time import reported_base_dir
+
+#: Every store that must move together, mapped back to the data dir it sits in.
+#: Name -> callable taking ``home`` and returning the resolved data dir.
+STORE_DATA_DIRS = {
+    "observed": lambda home: observed_base_dir(home).parent,
+    "evidence": lambda home: evidence_base_dir(home).parent,
+    "spool": lambda home: spool_dir(home).parent,
+    "reported": lambda home: reported_base_dir(home).parent,
+    "intent": lambda home: intent_path(home).parent,
+}
+
+
+def _no_gittan_home():
+    """Environment with ``$GITTAN_HOME`` explicitly absent."""
+    env = dict(os.environ)
+    env.pop("GITTAN_HOME", None)
+    return mock.patch.dict(os.environ, env, clear=True)
+
+
+class DataDirResolverTests(unittest.TestCase):
+    def test_env_set_makes_that_directory_the_data_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": tmp}):
+                # No ".gittan" segment: $GITTAN_HOME *is* the data dir, matching
+                # how core/config.py resolves the projects config.
+                self.assertEqual(gittan_data_dir(), Path(tmp))
+
+    def test_env_unset_falls_back_to_the_canonical_home(self):
+        with _no_gittan_home():
+            self.assertEqual(gittan_data_dir(), canonical_gittan_home())
+            self.assertEqual(gittan_data_dir(), Path.home() / ".gittan")
+
+    def test_explicit_home_wins_over_the_environment(self):
+        """An explicit ``home`` is a *user* home and is env-independent.
+
+        Tests and CLI callers pass a fake home to build a whole sandbox; letting
+        an ambient variable redirect it would put state where the caller cannot
+        find it.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": "/somewhere/else"}):
+                self.assertEqual(gittan_data_dir(Path(tmp)), Path(tmp) / ".gittan")
+
+    def test_env_value_is_user_expanded(self):
+        with mock.patch.dict(os.environ, {"GITTAN_HOME": "~/sandbox-dir"}):
+            self.assertEqual(gittan_data_dir(), Path.home() / "sandbox-dir")
+
+    def test_blank_env_value_is_ignored(self):
+        with mock.patch.dict(os.environ, {"GITTAN_HOME": "   "}):
+            self.assertEqual(gittan_data_dir(), canonical_gittan_home())
+
+
+class EveryStoreAgreesTests(unittest.TestCase):
+    """Acceptance 1: every store resolves under one root, in both modes."""
+
+    def test_all_stores_live_under_gittan_home_when_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.dict(os.environ, {"GITTAN_HOME": tmp}):
+                for name, data_dir_of in STORE_DATA_DIRS.items():
+                    with self.subTest(store=name):
+                        self.assertEqual(data_dir_of(None), root)
+
+    def test_all_stores_live_under_the_canonical_home_when_unset(self):
+        with _no_gittan_home():
+            for name, data_dir_of in STORE_DATA_DIRS.items():
+                with self.subTest(store=name):
+                    self.assertEqual(data_dir_of(None), Path.home() / ".gittan")
+
+    def test_all_stores_follow_an_explicit_home_in_both_modes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            for env in ({"GITTAN_HOME": str(Path(tmp) / "elsewhere")}, {}):
+                patcher = mock.patch.dict(os.environ, env) if env else _no_gittan_home()
+                with patcher:
+                    for name, data_dir_of in STORE_DATA_DIRS.items():
+                        with self.subTest(store=name, env=bool(env)):
+                            self.assertEqual(data_dir_of(home), home / ".gittan")
+
+
+def _report(day: str, project: str):
+    """Minimal report whose ``overall_days`` drive ``build_reported_proposals``.
+
+    Same shape as ``tests/test_observed_cache.py`` — one 1h session on one day.
+    """
+    start = datetime.fromisoformat(f"{day}T10:00:00")
+    end = datetime.fromisoformat(f"{day}T11:00:00")
+    session = (start, end, [{"project": project, "source": "TIMELOG.md"}])
+    return SimpleNamespace(
+        overall_days={day: {"sessions": [session]}},
+        args=Namespace(min_session=15, min_session_passive=5),
+    )
+
+
+class ObservedCacheIsolationTests(unittest.TestCase):
+    """Acceptance 2: a sandboxed run must not touch the real observed cache."""
+
+    def test_write_lands_in_gittan_home_and_leaves_the_default_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sandbox = Path(tmp) / "sandbox"
+            fake_real_home = Path(tmp) / "real-home"
+            real_observed = fake_real_home / ".gittan" / "observed"
+            real_observed.mkdir(parents=True)
+            existing = real_observed / "2026-06.jsonl"
+            existing.write_text(
+                json.dumps({"project": "kept", "date": "2026-06-01", "hours": 9.0, "captured_at": ""}) + "\n",
+                encoding="utf-8",
+            )
+            before = sorted((p.name, p.read_bytes()) for p in real_observed.glob("*.jsonl"))
+
+            with mock.patch.object(Path, "home", staticmethod(lambda: fake_real_home)):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": str(sandbox)}):
+                    written = write_observed_summary(_report("2026-06-20", "sandboxed"))
+
+            self.assertEqual(written, 1)
+            self.assertTrue((sandbox / "observed" / "2026-06.jsonl").is_file())
+            after = sorted((p.name, p.read_bytes()) for p in real_observed.glob("*.jsonl"))
+            self.assertEqual(before, after, "the real observed cache must be byte-identical")
+
+    def test_write_lands_in_the_canonical_home_when_gittan_home_is_unset(self):
+        """The default path is not a special case — it is the one that regressed.
+
+        GH-550's blind spot was covering only the relocated variable, so a fix
+        that broke the unset default would have shipped green.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_real_home = Path(tmp) / "real-home"
+            fake_real_home.mkdir()
+            with mock.patch.object(Path, "home", staticmethod(lambda: fake_real_home)):
+                with _no_gittan_home():
+                    written = write_observed_summary(_report("2026-06-20", "default-home"))
+                    self.assertEqual(written, 1)
+                    self.assertEqual(
+                        observed_hours_by_project_day().get(("default-home", "2026-06-20")), 1.0
+                    )
+            self.assertTrue((fake_real_home / ".gittan" / "observed" / "2026-06.jsonl").is_file())
+
+    def test_a_sandboxed_run_cannot_read_the_real_cache_either(self):
+        """Read and write must resolve to the same root.
+
+        A split — write to the sandbox, read from the real home — would report
+        the operator's real hours out of a run that never wrote them, which is
+        the disagreement this issue is about.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_real_home = Path(tmp) / "real-home"
+            real_observed = fake_real_home / ".gittan" / "observed"
+            real_observed.mkdir(parents=True)
+            (real_observed / "2026-06.jsonl").write_text(
+                json.dumps({"project": "real", "date": "2026-06-01", "hours": 9.0, "captured_at": ""}) + "\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(Path, "home", staticmethod(lambda: fake_real_home)):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": str(Path(tmp) / "sandbox")}):
+                    self.assertEqual(observed_hours_by_project_day(), {})
+                with _no_gittan_home():
+                    self.assertEqual(
+                        observed_hours_by_project_day().get(("real", "2026-06-01")), 9.0
+                    )
+
+
+class HookUsesOneDataDirTests(unittest.TestCase):
+    """The shell hook body must not split its paths across two roots."""
+
+    def test_shell_paths_route_through_the_data_dir(self):
+        self.assertIn('GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"', HOOK_BODY)
+        self.assertIn('GITTAN_CFG_DIR="$GITTAN_DATA_DIR"', HOOK_BODY)
+        self.assertIn('PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"', HOOK_BODY)
+
+    def test_no_shell_path_hardcodes_the_gittan_directory_under_home(self):
+        """``$HOME/.gittan`` may only appear as the fallback inside GITTAN_DATA_DIR.
+
+        Counting occurrences catches a new hardcoded path being added back, which
+        is how the scope file and the worklog fallback drifted apart to begin
+        with. Comment lines are excluded so prose about the old bug is free.
+        """
+        code_lines = [
+            line for line in HOOK_BODY.splitlines() if not line.lstrip().startswith("#")
+        ]
+        hits = [line for line in code_lines if "$HOME/.gittan" in line]
+        self.assertEqual(
+            hits, ['GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"'], hits
+        )
+
+    def test_the_path_guard_allows_the_relocated_data_dir(self):
+        """Without this, $GITTAN_HOME outside $HOME makes the hook refuse to write.
+
+        The guard exists to stop a crafted timelog_filename escaping to an
+        arbitrary path; the data dir is a legitimate destination, so it is
+        allowed explicitly rather than by widening the check.
+        """
+        self.assertIn('"$canon" != "$gittan_data_canon"/*', HOOK_BODY)
+        self.assertIn("refusing timelog path outside", HOOK_BODY)
+
+
+if __name__ == "__main__":
+    unittest.main()

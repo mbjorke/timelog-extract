@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
+from core.config import gittan_data_dir
+
 if TYPE_CHECKING:
     from core.report_service import ReportPayload
 
@@ -31,8 +33,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def observed_base_dir(home: Optional[Path] = None) -> Path:
-    """Store root: ``~/.gittan/observed`` (local, never uploaded)."""
-    return (home or Path.home()) / ".gittan" / "observed"
+    """Store root: ``~/.gittan/observed`` (local, never uploaded).
+
+    Resolved by :func:`core.config.gittan_data_dir`, so ``$GITTAN_HOME`` relocates
+    this cache like every other store (GH-549). It ignored the variable before,
+    which meant a sandboxed run still merged into the operator's real cache — and
+    that merge is keep-max, so there is no undo.
+    """
+    return gittan_data_dir(home) / "observed"
 
 
 def _month_path(base_dir: Path, month: str) -> Path:

@@ -29,6 +29,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from core.config import gittan_data_dir
+
 _LOGGER = logging.getLogger(__name__)
 
 VALID_STATES = {"proposed", "confirmed", "edited", "dismissed"}
@@ -42,8 +44,12 @@ def _utc_now_iso() -> str:
 
 
 def reported_base_dir(home: Optional[Path] = None) -> Path:
-    """Store root: ``~/.gittan/reported`` (local, never uploaded)."""
-    return (home or Path.home()) / ".gittan" / "reported"
+    """Store root: ``~/.gittan/reported`` (local, never uploaded).
+
+    Resolved by :func:`core.config.gittan_data_dir` so ``$GITTAN_HOME`` moves it
+    together with the observed cache it is subtracted from (GH-549).
+    """
+    return gittan_data_dir(home) / "reported"
 
 
 def _month_path(base_dir: Path, month: str) -> Path:

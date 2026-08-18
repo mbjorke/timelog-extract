@@ -26,6 +26,32 @@ def canonical_gittan_home() -> Path:
     return Path.home() / ".gittan"
 
 
+def gittan_data_dir(home: Optional[Path] = None) -> Path:
+    """The one directory every Gittan store reads and writes (GH-549).
+
+    Three resolution modes, in order:
+
+    1. explicit ``home`` — a *user* home, so the data dir is ``<home>/.gittan``.
+       This is the test/CLI contract and is deliberately independent of the
+       environment.
+    2. ``$GITTAN_HOME`` — that directory **is** the data dir (no ``.gittan``
+       segment appended), matching how the config resolver and the commit hook
+       already read it.
+    3. neither — :func:`canonical_gittan_home`.
+
+    Every store (observed cache, evidence, spool, reported, intent) resolves
+    through here so a sandboxed run cannot write to one root while reading from
+    another. Reading ``$GITTAN_HOME`` per store is what let those roots drift
+    apart in the first place.
+    """
+    if home is not None:
+        return Path(home) / ".gittan"
+    env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
+    if env_home:
+        return Path(env_home).expanduser()
+    return canonical_gittan_home()
+
+
 def canonical_projects_config_path() -> Path:
     """Default projects config file under :func:`canonical_gittan_home`."""
     return canonical_gittan_home() / PROJECTS_CONFIG_FILENAME

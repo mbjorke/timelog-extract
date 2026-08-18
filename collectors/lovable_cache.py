@@ -28,6 +28,16 @@ from core.chromium_cache import CODEC_REINSTALL_HINT, codec_available, iter_cach
 _PROJECTS_SEARCH_MARKER = "projects/search"
 _CACHE_MAX_FILE_BYTES = 5 * 1024 * 1024
 _CACHE_MAX_SCAN_BYTES = 50 * 1024 * 1024
+# Stronger than ambient Chromium heat: project workspace / chat / edit / prompt
+# traffic. Bare host or network-state mtimes alone stay presence-only (GH-448).
+_CACHE_STRONG_ACTIVITY_MARKERS = (
+    b"/chat",
+    b"/chats",
+    b"/edit",
+    b"/edits",
+    b"prompt",
+    b"tiba=",
+)
 _TIBA_RE = re.compile(
     r"projects/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[^\"']*tiba=([^&\s\"']+)",
     re.IGNORECASE,
@@ -164,6 +174,67 @@ def _project_uuids_from_cache_activity(
     return ordered
 
 
+def _cache_url_belongs_to_uuid(url: str, uuid: str) -> bool:
+    """Whether a Lovable URL is evidence for this project UUID (not a sibling)."""
+    uuid_l = (uuid or "").strip().lower()
+    if not uuid_l:
+        return False
+    trimmed = _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+    url_l = trimmed.lower()
+    if _lovable_project_uuid_key(trimmed) == uuid_l:
+        return True
+    if f"/projects/{uuid_l}" in url_l:
+        return True
+    return f"{uuid_l}.lovableproject.com" in url_l
+
+
+def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
+    """True when *this* UUID shows chat/edit/project-page traffic, not idle heat.
+
+    Markers (including ``/projects/<uuid>``) are bound to URLs that reference the
+    UUID. A sibling UUID's ``/chat`` (or prompt/tiba) — or stray ``/projects/<uuid>``
+    text elsewhere in the same blob — must not promote an ambient host refresh to
+    authorship-looking title + map nudge (GH-448).
+    """
+    uuid_l = (uuid or "").strip().lower()
+    if not uuid_l:
+        return False
+    project_path = f"/projects/{uuid_l}".encode("ascii")
+    urls = _filter_lovable_storage_urls(
+        _extract_lovable_urls(raw),
+        lovable_noise_profile="balanced",
+    )
+    for url in urls:
+        if not _cache_url_belongs_to_uuid(url, uuid_l):
+            continue
+        url_bytes = (
+            _canonicalize_lovable_storage_url(_trim_lovable_url_blob_suffix(url))
+            .lower()
+            .encode("utf-8", "ignore")
+        )
+        # Project workspace path is strong only on a URL owned by this UUID.
+        if project_path in url_bytes:
+            return True
+        if any(marker in url_bytes for marker in _CACHE_STRONG_ACTIVITY_MARKERS):
+            return True
+    return False
+
+
+def _cache_evidence_is_strong(
+    raw: bytes,
+    *,
+    uuid: str,
+    project: str,
+    tiba_titles: dict[str, str],
+) -> bool:
+    """Config-mapped, same-entry tiba title, or chat/edit/project-page markers."""
+    if str(project or "").strip() and str(project).strip() != "Uncategorized":
+        return True
+    if uuid in (tiba_titles or {}):
+        return True
+    return _cache_entry_has_strong_activity(raw, uuid=uuid)
+
+
 def collect_lovable_cache_events(
     profiles,
     dt_from,
@@ -220,9 +291,28 @@ def collect_lovable_cache_events(
             tiba_titles = _tiba_titles_from_bytes(raw)
             for uuid in _project_uuids_from_cache_activity(raw, tiba_titles=tiba_titles):
                 canonical = _synthetic_lovable_project_url(uuid)
-                display_title = titles.get(uuid) or tiba_titles.get(uuid, "")
-                project = classify_project(f"{canonical} {display_title}", profiles)
-                detail = _format_lovable_event_detail(project, canonical, display_title=display_title)
+                # Classify without catalog title first so ambient unmapped rows do not
+                # inherit stale projects/search names as "strong" evidence.
+                project = classify_project(canonical, profiles)
+                strong = _cache_evidence_is_strong(
+                    raw, uuid=uuid, project=project, tiba_titles=tiba_titles
+                )
+                if strong:
+                    display_title = titles.get(uuid) or tiba_titles.get(uuid, "")
+                    if display_title:
+                        project = classify_project(f"{canonical} {display_title}", profiles)
+                    detail = _format_lovable_event_detail(
+                        project, canonical, display_title=display_title
+                    )
+                else:
+                    # Presence-only: keep the row for coverage honesty, but do not
+                    # invite mapping of ambient/stale UUIDs (GH-448).
+                    detail = _format_lovable_event_detail(
+                        project,
+                        canonical,
+                        display_title="",
+                        allow_map_nudge=False,
+                    )
                 results.append(make_event(SOURCE_NAME, ts, detail, project))
     merge_seconds = max(60, int(collapse_minutes or 15) * 60)
     return _merge_storage_events(results, merge_seconds=merge_seconds)

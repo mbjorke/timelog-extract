@@ -263,6 +263,200 @@ class LovableCacheTests(unittest.TestCase):
         duplicated = {path: count for path, count in read_counts.items() if count > 1}
         self.assertEqual(duplicated, {}, f"files read from disk more than once: {duplicated}")
 
+    def test_format_lovable_event_detail_ambient_skips_map_nudge(self):
+        detail = _format_lovable_event_detail(
+            "Uncategorized",
+            f"https://{_PROJECT_ALPHA}.lovableproject.com/",
+            display_title="",
+            allow_map_nudge=False,
+        )
+        self.assertIn("presence — Lovable", detail)
+        self.assertNotIn("map UUID via gittan review", detail)
+
+    def test_ambient_cache_host_mtime_is_presence_without_map_nudge(self):
+        """Idle open-app heat: project-host URL alone must not invite mapping."""
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        ambient_uuid = "d7afafcd-1b04-4306-93be-b91f00000002"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            # Catalog title exists, but ambient host refresh must not use it as
+            # authorship / map-nudge evidence (stale closed projects stay listed).
+            search_path = cache_dir / "search_0"
+            search_path.write_bytes(
+                _make_entry(
+                    "1/0/https://api.lovable.dev/workspaces/ws/projects/search",
+                    json.dumps(
+                        {"projects": [{"id": ambient_uuid, "display_name": "Stale Catalog Title"}]}
+                    ).encode("utf-8"),
+                )
+            )
+            ambient_path = cache_dir / "ambient_0"
+            ambient_path.write_bytes(
+                f"https://{ambient_uuid}.lovableproject.com/favicon.ico".encode("utf-8")
+            )
+            os.utime(ambient_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["project"], "Uncategorized")
+        self.assertIn("presence — Lovable", events[0]["detail"])
+        self.assertNotIn("map UUID via gittan review", events[0]["detail"])
+        self.assertNotIn("Stale Catalog Title", events[0]["detail"])
+
+    def test_strong_cache_activity_keeps_title_and_map_nudge(self):
+        """Project-page / tiba traffic retains invoice-readable title + map nudge."""
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        unmapped = "d7afafcd-1b04-4306-93be-b91f00000001"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            activity_path = cache_dir / "activity_0"
+            activity_path.write_bytes(
+                f"https://lovable.dev/projects/{unmapped}&tiba=Ghost+Title".encode("utf-8")
+            )
+            os.utime(activity_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        self.assertEqual(len(events), 1)
+        self.assertIn("Ghost Title", events[0]["detail"])
+        self.assertIn("map UUID via gittan review", events[0]["detail"])
+
+    def test_strong_markers_do_not_promote_sibling_uuid_in_same_blob(self):
+        """One UUID's /chat must not give another ambient UUID title + map nudge."""
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        strong_uuid = "d7afafcd-1b04-4306-93be-b91f00000001"
+        ambient_uuid = "d7afafcd-1b04-4306-93be-b91f00000002"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            search_path = cache_dir / "search_0"
+            search_path.write_bytes(
+                _make_entry(
+                    "1/0/https://api.lovable.dev/workspaces/ws/projects/search",
+                    json.dumps(
+                        {
+                            "projects": [
+                                {"id": strong_uuid, "display_name": "Strong Project"},
+                                {"id": ambient_uuid, "display_name": "Stale Catalog Title"},
+                            ]
+                        }
+                    ).encode("utf-8"),
+                )
+            )
+            mixed_path = cache_dir / "mixed_0"
+            # Same cache blob: authored chat for one UUID + ambient host for another.
+            mixed_path.write_bytes(
+                (
+                    f"https://{strong_uuid}.lovableproject.com/chat/abc "
+                    f"https://{ambient_uuid}.lovableproject.com/favicon.ico"
+                ).encode("utf-8")
+            )
+            os.utime(mixed_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        strong_events = [e for e in events if strong_uuid in e["detail"]]
+        ambient_events = [e for e in events if ambient_uuid in e["detail"]]
+        self.assertEqual(len(strong_events), 1, events)
+        self.assertEqual(len(ambient_events), 1, events)
+        self.assertIn("Strong Project", strong_events[0]["detail"])
+        self.assertIn("map UUID via gittan review", strong_events[0]["detail"])
+        self.assertIn("presence — Lovable", ambient_events[0]["detail"])
+        self.assertNotIn("map UUID via gittan review", ambient_events[0]["detail"])
+        self.assertNotIn("Stale Catalog Title", ambient_events[0]["detail"])
+
+    def test_stray_projects_path_does_not_promote_ambient_uuid(self):
+        """`/projects/<uuid>` elsewhere in the blob must not promote ambient host heat."""
+        ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
+        ambient_uuid = "d7afafcd-1b04-4306-93be-b91f00000002"
+        other_uuid = "d7afafcd-1b04-4306-93be-b91f00000001"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cache_dir = lovable_desktop_root(home) / "Cache" / "Cache_Data"
+            cache_dir.mkdir(parents=True)
+            search_path = cache_dir / "search_0"
+            search_path.write_bytes(
+                _make_entry(
+                    "1/0/https://api.lovable.dev/workspaces/ws/projects/search",
+                    json.dumps(
+                        {
+                            "projects": [
+                                {"id": ambient_uuid, "display_name": "Stale Catalog Title"},
+                                {"id": other_uuid, "display_name": "Other Project"},
+                            ]
+                        }
+                    ).encode("utf-8"),
+                )
+            )
+            mixed_path = cache_dir / "mixed_0"
+            # Ambient host for A + stray /projects/<A> text not on any A-owned URL.
+            mixed_path.write_bytes(
+                (
+                    f"https://{ambient_uuid}.lovableproject.com/favicon.ico "
+                    f"docs mention /projects/{ambient_uuid} for triage "
+                    f"https://{other_uuid}.lovableproject.com/chat/abc"
+                ).encode("utf-8")
+            )
+            os.utime(mixed_path, (ts.timestamp(), ts.timestamp()))
+            events = collect_lovable_cache_events(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        ambient_events = [e for e in events if ambient_uuid in e["detail"]]
+        other_events = [e for e in events if other_uuid in e["detail"]]
+        self.assertEqual(len(ambient_events), 1, events)
+        self.assertEqual(len(other_events), 1, events)
+        self.assertIn("presence — Lovable", ambient_events[0]["detail"])
+        self.assertNotIn("map UUID via gittan review", ambient_events[0]["detail"])
+        self.assertNotIn("Stale Catalog Title", ambient_events[0]["detail"])
+        self.assertIn("Other Project", other_events[0]["detail"])
+        self.assertIn("map UUID via gittan review", other_events[0]["detail"])
+
     def test_cache_scan_skips_rudderstack_uuid(self):
         ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)
         with TemporaryDirectory() as tmp:
@@ -318,6 +512,44 @@ class LovableCacheTests(unittest.TestCase):
                 },
             )
         self.assertEqual(events, [])
+
+    def test_closed_tab_editor_store_does_not_label_storage_flush(self):
+        """Acceptance #448: sticky editor-store UUID must not win a WAL flush."""
+        evening = datetime(2026, 6, 11, 18, 45, tzinfo=timezone.utc)
+        open_uuid = "85f3c1b3-64e9-4296-85f4-10dc31037933"
+        closed_uuid = "93be36fa-0cb1-4113-9d77-af5a6a1625a0"
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            storage_dir = lovable_desktop_root(home) / "Local Storage" / "leveldb"
+            storage_dir.mkdir(parents=True)
+            # Compacted sstable still holds the closed tab's sticky key — ignored.
+            (storage_dir / "001665.ldb").write_bytes(
+                f"editor-store-{closed_uuid}".encode("utf-8")
+            )
+            wal = storage_dir / "001668.log"
+            wal.write_bytes(
+                b"prefix " * 7000
+                + f"https://{open_uuid}.lovableproject.com/ ".encode()
+                + f"editor-store-{closed_uuid}".encode()
+                + b"\x00tail"
+            )
+            os.utime(wal, (evening.timestamp(), evening.timestamp()))
+            events = _collect_lovable_desktop_from_storage(
+                profiles=[],
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=_classify,
+                make_event=lambda source, ts, detail, project: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                },
+            )
+        details = " ".join(event["detail"] for event in events)
+        self.assertIn(open_uuid[:8], details)
+        self.assertNotIn(closed_uuid[:8], details)
 
     def test_cache_scan_skips_oversized_file(self):
         ts = datetime(2026, 6, 11, 10, 0, tzinfo=timezone.utc)

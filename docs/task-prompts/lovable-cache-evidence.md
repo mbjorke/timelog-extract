@@ -134,9 +134,10 @@ Feature: Lovable Desktop cache evidence for full-day sessions
 
   Scenario: Unknown UUID keeps the existing map nudge format
     Given a cache file references a Lovable UUID with no profile mapping
+    And the cache entry shows project-page / chat / edit / tiba activity (not ambient host heat alone)
     And projects/search has no title for that UUID
     When gittan report runs
-    Then the event detail uses the unmapped Lovable (uuid…) — map UUID via gittan map format
+    Then the event detail uses the unmapped Lovable (uuid…) — map UUID via gittan review format
     And the event project is Uncategorized
 
   Scenario: RudderStack analytics UUID never fabricates a project
@@ -157,6 +158,22 @@ Feature: Lovable Desktop cache evidence for full-day sessions
     When the Lovable collector scans cache files
     Then no error is raised
     And other valid cache entries in the same run still produce events
+
+  Scenario: Closed-tab sticky editor-store UUID does not label a storage flush
+    Given Local Storage WAL contains a sticky editor-store UUID for a closed project
+    And compacted .ldb / MANIFEST still hold that closed UUID (key order ≠ write order)
+    And the WAL tail also references a currently open project host
+    When gittan reports the day via storage fallback
+    Then no Lovable (desktop) row attributes that flush to the closed-project UUID
+    And compacted .ldb / MANIFEST are not scanned (WAL .log only)
+
+  Scenario: Idle open-app ambient cache mtime stays presence-only
+    Given Lovable Desktop is open and only ambient Chromium host/network cache mtimes refresh
+    And projects/search still lists titles for catalog UUIDs (including closed ones)
+    When gittan reports the day
+    Then Lovable (desktop) cache rows for ambient host heat are presence-only
+    And those rows do not include a map UUID via gittan review nudge
+    And catalog titles alone do not turn ambient heat into authorship-looking detail
 ```
 
 ### Test mapping
@@ -169,6 +186,15 @@ Feature: Lovable Desktop cache evidence for full-day sessions
 | RudderStack skip | existing + extended `_is_analytics_uuid_context` cache scan test |
 | Missing brotli | mock/import skip; doctor row assertion |
 | Corrupt/oversized skip | fixture junk `_0` entry |
+| Closed-tab editor-store | `tests/test_lovable_desktop.py` + `tests/test_lovable_cache.py` (WAL-only + sticky skip) |
+| Idle ambient cache | `tests/test_lovable_cache.py::test_ambient_cache_host_mtime_is_presence_without_map_nudge` |
+
+**WAL-only tradeoff (GH-448):** storage fallback scans append-ordered LevelDB
+``.log`` segments only. Compacted ``.ldb`` / ``MANIFEST`` sort by key, not write
+time, and were a source of sticky closed-tab UUIDs. Coverage those files once
+provided is intentionally dropped; Chromium cache-mtime evidence is the
+replacement floor for compacted-away morning sessions (still presence-signal
+under GH-327, with ambient heat gated against map nudges as above).
 
 ## Task
 
@@ -181,7 +207,7 @@ Feature: Lovable Desktop cache evidence for full-day sessions
    - emit one event per (uuid, mtime-burst), merged with the existing
      `_merge_storage_events` collapse logic.
 2. Prefer UUIDs already known from `match_terms`/`tracked_urls`; unknown UUIDs
-   keep the `unmapped Lovable (…) — map UUID via gittan map` detail format.
+   keep the `unmapped Lovable (…) — map UUID via gittan review` detail format.
 3. Performance guard: skip files larger than a few MB; cap total scanned bytes
    per run; never crash on unreadable/binary content.
 4. Resolve UUID → human project title from the cached `projects/search`
@@ -210,7 +236,7 @@ Feature: Lovable Desktop cache evidence for full-day sessions
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-06-11
-- last_updated_at: 2026-06-15
+- last_updated_at: 2026-08-18
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/148
 - implementation.branch: task/lovable-cache-evidence
 - implementation.commits: [f3031a8, c1fa8d6, 914a182, 84e6747, 9bd6b5f]
@@ -225,3 +251,6 @@ Feature: Lovable Desktop cache evidence for full-day sessions
     (Gherkin), test mapping table, doctor row task, traceability GH-145;
     clarified reuse of merged `core/chromium_cache.py` (#141).
   - 2026-06-15: Implementation on task/lovable-cache-evidence; PR #148 opened.
+  - 2026-08-18: GH-448 — WAL `.log` only + skip sticky `editor-store` UUIDs;
+    ambient cache-mtime presence rows omit map-UUID nudges / catalog-only titles
+    unless chat/edit/project-page/tiba or config-mapped evidence is present.

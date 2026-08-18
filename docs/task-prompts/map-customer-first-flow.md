@@ -93,7 +93,7 @@ Signal: working directory "customer-Y-faq-helper" (112 events)
 1. Customer: [customer-y.example ▼]  (suggested from nearby profiles / fuzzy match)
 2. Engagement under that customer:
      • customer-Y-faq-helper  (suggested — repo slug match)
-     • customer-faq           (sibling)
+     • customer-Y-site           (sibling)
      • + New engagement…
      • Skip
 3. Preview: add match_term "customer-Y-faq-helper" → customer-Y-faq-helper
@@ -159,7 +159,7 @@ Operator maps `customer-Y-faq-helper` cwd to customer `Customer Y`, engagement
 }
 ```
 
-Not: terms on `customer-faq` while `customer` stays `operator-name`.
+Not: terms on `customer-Y-site` while `customer` stays `operator-name`.
 
 ## Non-goals
 
@@ -177,7 +177,7 @@ Not: terms on `customer-faq` while `customer` stays `operator-name`.
 Feature: Map anchors customer-first
 
   Background:
-    Given profiles "customer-Y-faq-helper" and "customer-faq" both for customer "Customer Y"
+    Given profiles "customer-Y-faq-helper" and "customer-Y-site" both for customer "Customer Y"
     And unmapped anchor "customer-Y-faq-helper" (working directory)
 
   Scenario: Operator selects customer before engagement
@@ -242,7 +242,7 @@ a follow-up PR on `task/map-customer-first-flow`.
 
 1. Fixture config: two engagements under one customer; map anchor → correct
    customer + engagement without flat 39-name list.
-2. Regression: `customer-Y-faq-helper` anchor must not land on `customer-faq` when
+2. Regression: `customer-Y-faq-helper` anchor must not land on `customer-Y-site` when
    `customer` differs unless operator explicitly confirms.
 3. `bash scripts/run_autotests.sh` green.
 4. Manual asciniema / maintainer walkthrough: map three anchors; report shows

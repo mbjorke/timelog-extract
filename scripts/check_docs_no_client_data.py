@@ -30,8 +30,24 @@ import sys
 from pathlib import Path
 
 # Self-references that are expected in docs (the tool + the operator's own org).
-# Extend via GITTAN_PRIVACY_ALLOWLIST (comma-separated), never with client names.
+# Extend via GITTAN_PRIVACY_ALLOWLIST (comma-separated) or the local allowlist
+# file (see _local_allowlist_path), never with client names.
+#
+# Only names that are already public — the tool and the operator's own org —
+# belong in this committed set. An operator's own *project* slugs must go in the
+# local file instead: this module is committed to a public repository, so
+# hardcoding them here would publish exactly what the guard exists to protect.
 DEFAULT_ALLOW = {"timelog-extract", "gittan", "gittan-home", "blueberry", "mbjorke"}
+# One term per line; '#' comments and blank lines ignored. Lives beside the
+# gitignored projects config, so it is never committed.
+#
+# Matched **exactly**, unlike DEFAULT_ALLOW/GITTAN_PRIVACY_ALLOWLIST, which match
+# per word so one entry ("blueberry") can cover "Blueberry Maybe Ab Ltd". Word
+# matching is wrong for this file: allowlisting a project slug would also
+# suppress every *other* term sharing a word with it — including a customer name
+# whose first word happens to match the slug. Exact matching keeps an allowlist
+# entry from ever widening beyond the string the operator actually listed.
+ALLOWLIST_FILENAME = "privacy_allowlist.txt"
 MIN_TERM_LEN = 4  # shorter terms cause too many false positives
 # Paths that legitimately never carry client data and should be scanned.
 SCAN_PREFIXES = ("docs/",)
@@ -57,7 +73,35 @@ def _config_path() -> Path:
         return base / "timelog_projects.json"
 
 
+def _local_allowlist_path() -> Path:
+    """Location of the operator's local allowlist (never committed).
+
+    Sits next to the projects config so both live in the same gitignored home.
+    """
+    return _config_path().parent / ALLOWLIST_FILENAME
+
+
+def _read_local_allowlist() -> set[str]:
+    """Terms from the local allowlist file; missing file is not an error.
+
+    Unreadable is also not an error: the allowlist can only ever *reduce* what
+    is flagged, so losing it fails safe (more flagged, never fewer).
+    """
+    path = _local_allowlist_path()
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    out: set[str] = set()
+    for line in raw.splitlines():
+        term = line.split("#", 1)[0].strip().lower()
+        if term:
+            out.add(term)
+    return out
+
+
 def _allowlist() -> set[str]:
+    """Word-matched allowlist: the tool and the operator's own org."""
     allow = set(DEFAULT_ALLOW)
     extra = os.environ.get("GITTAN_PRIVACY_ALLOWLIST", "")
     allow.update(t.strip().lower() for t in extra.split(",") if t.strip())
@@ -99,6 +143,7 @@ def load_sensitive_terms(config_path: Path) -> set[str]:
             "expected a list at root or under 'projects'"
         )
     allow = _allowlist()
+    exact_allow = _read_local_allowlist()
     terms: set[str] = set()
     for prof in profiles:
         if not isinstance(prof, dict):
@@ -116,7 +161,9 @@ def load_sensitive_terms(config_path: Path) -> set[str]:
     # Drop self-references and too-short/too-generic terms.
     return {
         t for t in terms
-        if len(t) >= MIN_TERM_LEN and not _is_self_reference(t, allow)
+        if len(t) >= MIN_TERM_LEN
+        and not _is_self_reference(t, allow)
+        and t.lower() not in exact_allow
     }
 
 

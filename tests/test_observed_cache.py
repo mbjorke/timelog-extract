@@ -17,6 +17,7 @@ from core.observed_cache import (
     observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
+    observed_last_coherent_day_hours,
     observed_lifetime_hours,
     write_observed_summary,
 )
@@ -193,6 +194,50 @@ class ReattributionDetectionTests(unittest.TestCase):
         findings = detect_reattribution(
             {("Gamma", self.day): 4.0},
             {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        self.assertEqual(findings, [])
+
+    def test_coherent_day_hours_uses_newest_captured_at_cohort(self):
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        _month_path(base, "2026-08").write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "project": "Alpha",
+                            "date": self.day,
+                            "hours": 2.0,
+                            "captured_at": "2026-08-07T09:00:00+00:00",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "project": "Beta",
+                            "date": self.day,
+                            "hours": 2.0,
+                            "captured_at": "2026-08-07T11:00:00+00:00",
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        # Keep-max union still has both peaks…
+        self.assertEqual(
+            observed_hours_by_project_day(self.home),
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        # …but detection baseline is only the newest write's projects.
+        self.assertEqual(
+            observed_last_coherent_day_hours(self.home),
+            {("Beta", self.day): 2.0},
+        )
+        # Partial overlap against the synthetic union must not nudge.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 0.5, ("Beta", self.day): 3.5},
+            observed_last_coherent_day_hours(self.home),
         )
         self.assertEqual(findings, [])
 

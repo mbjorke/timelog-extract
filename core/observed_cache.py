@@ -194,14 +194,83 @@ def detect_reattribution_for_report(
     home: Optional[Path] = None,
     **kwargs: Any,
 ) -> List[Dict[str, Any]]:
-    """Compare this report's per-day split to the stored observed cache (read-only)."""
+    """Compare this report's per-day split to the last coherent observed split.
+
+    Uses the newest ``captured_at`` cohort per day (not the keep-max union across
+    runs), so peaks retained from different report coverages do not form a
+    synthetic baseline for the nudge.
+    """
     current = report_project_day_hours(report)
     if not current:
         return []
-    stored = observed_hours_by_project_day(home)
+    stored = observed_last_coherent_day_hours(home)
     if not stored:
         return []
     return detect_reattribution(current, stored, **kwargs)
+
+
+def _parse_captured_at(raw: object) -> Optional[datetime]:
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    try:
+        captured = datetime.fromisoformat(raw.strip())
+    except ValueError:
+        return None
+    if captured.tzinfo is None:
+        return captured.replace(tzinfo=timezone.utc)
+    return captured
+
+
+def observed_last_coherent_day_hours(
+    home: Optional[Path] = None,
+) -> Dict[Tuple[str, str], float]:
+    """Per-``(project, day)`` hours from the newest same-``captured_at`` cohort.
+
+    Keep-max retains independent project peaks, which can invent a day split no
+    single report produced. Re-attribution detection needs the last coherent
+    write for that day: all rows that share the latest non-empty ``captured_at``.
+    When every row for a day lacks ``captured_at``, fall back to the keep-max
+    union for that day (legacy / hand-edited caches).
+    """
+    base = observed_base_dir(home)
+    if not base.is_dir():
+        return {}
+    # day -> project -> (hours, captured_at|None)
+    by_day: Dict[str, Dict[str, Tuple[float, Optional[datetime]]]] = {}
+    for path in sorted(base.glob("*.jsonl")):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except (json.JSONDecodeError, ValueError):
+                        _LOGGER.warning("Skipping unreadable observed line in %s", path.name)
+                        continue
+                    row = _coerce_row(data)
+                    if row is None:
+                        continue
+                    captured = _parse_captured_at(row.get("captured_at"))
+                    by_day.setdefault(row["date"], {})[row["project"]] = (
+                        float(row["hours"]),
+                        captured,
+                    )
+        except OSError as exc:
+            _LOGGER.warning("Could not read observed file %s: %s", path, exc)
+    latest: Dict[Tuple[str, str], float] = {}
+    for day, projects in by_day.items():
+        stamped = [ts for _hours, ts in projects.values() if ts is not None]
+        if stamped:
+            newest = max(stamped)
+            for project, (hours, ts) in projects.items():
+                if ts == newest:
+                    latest[(project, day)] = hours
+        else:
+            for project, (hours, _ts) in projects.items():
+                latest[(project, day)] = hours
+    return latest
 
 
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:

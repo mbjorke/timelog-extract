@@ -48,7 +48,12 @@ def gittan_data_dir(home: Optional[Path] = None) -> Path:
         return Path(home) / ".gittan"
     env_home = str(os.environ.get(ENV_GITTAN_HOME, "")).strip()
     if env_home:
-        return Path(env_home).expanduser()
+        # os.path.expanduser, not Path.expanduser: the latter *raises* on a
+        # ``~user`` it cannot resolve, which would turn a typo in one env var
+        # into a crash in every command that touches a store. This leaves an
+        # unresolvable value untouched, matching both the hook's embedded
+        # resolver and its shell half.
+        return Path(os.path.expanduser(env_home))
     return canonical_gittan_home()
 
 

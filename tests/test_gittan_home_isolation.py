@@ -13,7 +13,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 from argparse import Namespace
 from datetime import datetime
@@ -82,6 +86,15 @@ class DataDirResolverTests(unittest.TestCase):
     def test_env_value_is_user_expanded(self):
         with mock.patch.dict(os.environ, {"GITTAN_HOME": "~/sandbox-dir"}):
             self.assertEqual(gittan_data_dir(), Path.home() / "sandbox-dir")
+
+    def test_an_unresolvable_user_is_left_alone_rather_than_raising(self):
+        """A typo in one env var must not crash every command that reads a store.
+
+        ``Path.expanduser()`` raises ``RuntimeError`` here; ``os.path.expanduser``
+        returns the value untouched, which is also what the hook does.
+        """
+        with mock.patch.dict(os.environ, {"GITTAN_HOME": "~nosuchuser42/x"}):
+            self.assertEqual(gittan_data_dir(), Path("~nosuchuser42/x"))
 
     def test_blank_env_value_is_ignored(self):
         with mock.patch.dict(os.environ, {"GITTAN_HOME": "   "}):
@@ -201,7 +214,7 @@ class HookUsesOneDataDirTests(unittest.TestCase):
     """The shell hook body must not split its paths across two roots."""
 
     def test_shell_paths_route_through_the_data_dir(self):
-        self.assertIn('GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"', HOOK_BODY)
+        self.assertIn('GITTAN_DATA_DIR="${GITTAN_HOME:-}"', HOOK_BODY)
         self.assertIn('GITTAN_CFG_DIR="$GITTAN_DATA_DIR"', HOOK_BODY)
         self.assertIn('PROJECT_WORKLOG="$GITTAN_DATA_DIR/worklogs/${REPO_BASENAME}.md"', HOOK_BODY)
 
@@ -217,7 +230,9 @@ class HookUsesOneDataDirTests(unittest.TestCase):
         ]
         hits = [line for line in code_lines if "$HOME/.gittan" in line]
         self.assertEqual(
-            hits, ['GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"'], hits
+            hits,
+            ['[[ -n "${GITTAN_DATA_DIR:-}" ]] || GITTAN_DATA_DIR="$HOME/.gittan"'],
+            hits,
         )
 
     def test_the_path_guard_allows_the_relocated_data_dir(self):
@@ -229,6 +244,83 @@ class HookUsesOneDataDirTests(unittest.TestCase):
         """
         self.assertIn('"$canon" != "$gittan_data_canon"/*', HOOK_BODY)
         self.assertIn("refusing timelog path outside", HOOK_BODY)
+
+
+class ShellAndPythonNormalizeGittanHomeAlikeTests(unittest.TestCase):
+    """The hook's shell half must resolve $GITTAN_HOME the way Python does.
+
+    ``gittan_data_dir()`` strips whitespace and expands a leading ``~``; the hook
+    read the raw shell value. The embedded Python resolver *inside the same hook*
+    already normalized, so one variable name meant two directories in a single
+    run: the worklog went to the expanded path, the scope file to a literal one.
+
+    A literal ``~/dir`` is a **relative** path, so the scope file was simply not
+    found — and a missing scope file means "no allowlist", so this failed open
+    and logged every repository rather than erroring.
+
+    Rather than assert the shell reimplementation looks right, each case runs the
+    hook's own normalization under zsh and compares it to ``gittan_data_dir()``.
+    """
+
+    #: Values chosen to cover each normalization rule, not just the happy path.
+    CASES = [
+        "/tmp/plain-abs",
+        "~/gittan-sandbox",         # the case in the review
+        "~",
+        "  /tmp/padded  ",          # strip(), which the shell did not do
+        "/tmp/with space",          # must survive without word-splitting
+        "/tmp/with*star",           # must not glob
+        "~root/x",                  # ~user, when the user resolves
+        "~nosuchuser42/x",          # ~user that does not: left untouched, no abort
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        if sys.platform != "darwin":
+            raise unittest.SkipTest("zsh normalization smoke uses macOS path semantics")
+        cls.zsh = shutil.which("zsh")
+        if not cls.zsh:
+            raise unittest.SkipTest("zsh not found")
+        # The hook's normalization block, lifted verbatim from the shipped body so
+        # the test cannot drift from what actually runs on commit.
+        start = HOOK_BODY.index('GITTAN_DATA_DIR="${GITTAN_HOME:-}"')
+        end = HOOK_BODY.index('gittan_data_canon=')
+        cls.block = textwrap.dedent(HOOK_BODY[start:end])
+
+    def _shell_value(self, gittan_home: str) -> str:
+        snippet = "set -euo pipefail\n" + self.block + '\nprint -r -- "$GITTAN_DATA_DIR"\n'
+        proc = subprocess.run(
+            [self.zsh, "-c", snippet],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GITTAN_HOME": gittan_home},
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr or proc.stdout)
+        return proc.stdout.rstrip("\n")
+
+    def test_shell_matches_gittan_data_dir_for_every_case(self):
+        for value in self.CASES:
+            with self.subTest(gittan_home=value):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": value}):
+                    expected = gittan_data_dir()
+                self.assertEqual(self._shell_value(value), str(expected))
+
+    def test_empty_and_whitespace_only_fall_back_to_the_canonical_home(self):
+        """``strip()`` makes "   " empty, so it must not become a directory named " "."""
+        for value in ("", "   "):
+            with self.subTest(gittan_home=repr(value)):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": value}):
+                    expected = gittan_data_dir()
+                self.assertEqual(expected, Path.home() / ".gittan")
+                self.assertEqual(self._shell_value(value), str(expected))
+
+    def test_an_unresolvable_user_does_not_abort_the_hook(self):
+        """A commit hook must not die over its own config.
+
+        zsh aborts on ``${~x}`` for an unknown user; Python leaves it untouched.
+        The hook follows Python, so the commit still succeeds.
+        """
+        self.assertEqual(self._shell_value("~nosuchuser42/x"), "~nosuchuser42/x")
 
 
 class SetupWritesWhereTheHookReadsTests(unittest.TestCase):

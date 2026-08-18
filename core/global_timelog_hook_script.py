@@ -161,7 +161,32 @@ HOOK_BODY = dedent(
     #
     # GITTAN_HOME is honoured because the rest of the code already treats it as the
     # data dir; canonical paths so a symlinked home still matches.
-    GITTAN_DATA_DIR="${GITTAN_HOME:-$HOME/.gittan}"
+    #
+    # Normalize exactly as core/config.py::gittan_data_dir() does — strip
+    # surrounding whitespace, then expand a leading ~ — because the embedded
+    # Python resolver below already does, and reading the raw value here made one
+    # variable name mean two directories inside a single hook run. A literal
+    # "~/dir" is a *relative* path, so the scope file simply went missing and the
+    # allowlist failed open (logging every repo) instead of failing loudly.
+    GITTAN_DATA_DIR="${GITTAN_HOME:-}"
+    GITTAN_DATA_DIR="${GITTAN_DATA_DIR#"${GITTAN_DATA_DIR%%[![:space:]]*}"}"
+    GITTAN_DATA_DIR="${GITTAN_DATA_DIR%"${GITTAN_DATA_DIR##*[![:space:]]}"}"
+    case "$GITTAN_DATA_DIR" in
+      "~")   GITTAN_DATA_DIR="$HOME" ;;
+      "~/"*) GITTAN_DATA_DIR="$HOME/${GITTAN_DATA_DIR#"~/"}" ;;
+      "~"*)
+        # ~user: expand in a subshell, because zsh aborts on an unknown user and
+        # a commit hook must not die over its own config. expanduser() leaves an
+        # unresolvable user untouched, so falling through matches Python.
+        _gittan_expanded="$(GITTAN_TILDE="$GITTAN_DATA_DIR" zsh -c 'E=${~GITTAN_TILDE}; print -r -- $E' 2>/dev/null || true)"
+        if [[ -n "${_gittan_expanded:-}" ]]; then
+          GITTAN_DATA_DIR="$_gittan_expanded"
+        fi
+        ;;
+    esac
+    # Whitespace-only is empty after the trim, which is why this replaces the
+    # ${VAR:-default} that used to sit on the assignment above.
+    [[ -n "${GITTAN_DATA_DIR:-}" ]] || GITTAN_DATA_DIR="$HOME/.gittan"
     gittan_data_canon="${GITTAN_DATA_DIR:A}"
     root_dir_canon="${ROOT_DIR:A}"
     if [[ "$root_dir_canon" == "$gittan_data_canon" || "$root_dir_canon" == "$gittan_data_canon"/* ]]; then

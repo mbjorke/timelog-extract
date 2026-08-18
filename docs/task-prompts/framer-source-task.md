@@ -106,11 +106,44 @@ Consequences for what Gittan may claim:
 - **Edit-count metrics are not available.** One CRDT flush per multi-minute chunk
   cannot support "N edits" or intensity weighting.
 
-**Known gap — no idle control.** This probe measured an *active* window only. It
-is not yet known whether the high-frequency housekeeping writers keep firing when
-Framer sits open and untouched. If they do, a naive presence heartbeat would bill
-idle app-open time. **Running an idle control (Framer open, untouched, same
-sampling) is a prerequisite for FRAMER-2**, not an optional refinement.
+### Idle control (2026-08-18) — active and idle are separable
+
+The idle control was run: Framer left open and untouched, identical scope, 3s
+cadence, same 210s duration as the active window.
+
+| | Active (editing) | Idle (untouched) | Ratio |
+| --- | --- | --- | --- |
+| Ticks with any write | 34 | 17 | 2× |
+| **Total bytes written** | **15,777,098** | **61,150** | **258×** |
+
+**A naive heartbeat would bill idle time — an allowlisted one would not.** Writes
+never stop while Framer runs, so "any file changed" is not a usable signal. But
+the per-file split is clean:
+
+| Writer | Active | Idle | Use |
+| --- | --- | --- | --- |
+| `Session Storage/…log` | 7× | **0×** | strongest discriminator |
+| `sentry/scope_v3.json` | 10× | **0×** | discriminates, but it is a crash reporter — avoid depending on it |
+| `Local Storage/…log` | 8× | 1× | supporting |
+| `DIPS-wal` | 2× | 0× | supporting |
+| `WebStorage/QuotaManager-journal` | 6× | **7×** | pure noise floor — must be ignored |
+| `Cookies`, `Network Persistent State`, GPU/Dawn caches | 1–3× | 1–3× | pure noise floor — must be ignored |
+
+So the active/idle threshold that FRAMER-2 needed **exists and is measured**:
+write *volume* (two orders of magnitude apart) combined with an allowlist of
+Session Storage / Local Storage activity, and an explicit denylist for the
+housekeeping writers that tick regardless.
+
+Caveats to carry into implementation, not to gloss over:
+
+- One 3.5-minute window per condition. A longer idle run may eventually tick
+  Session Storage on some periodic cadence; validate against a 30-minute idle
+  before shipping a threshold.
+- The `Code Cache/wasm` and `Cache_Data` entries that appear active-only are
+  almost certainly one-time lazy loads from that session, not a repeatable
+  per-edit signal. Do not build on them.
+- The idle window had the app open on screen. Whether a **backgrounded** Framer
+  looks like idle or like nothing is not yet measured.
 
 ### Evidence role
 
@@ -234,9 +267,10 @@ Feature: Framer presence capture
     not startable until the cadence mechanism is decided (launchd timer vs hook
     vs explicit user-run) and the resulting coverage claim is written down. A
     once-a-day capture would produce misleadingly thin Framer coverage.
-  - **Idle-control measurement** (Framer open, untouched, same 3s sampling). Until
-    it exists there is no defensible active/idle threshold, and presence would
-    bill an open window. This is the cheapest unblocking experiment in the story.
+  - ~~Idle-control measurement~~ — **done 2026-08-18** (see *Idle control* above).
+    A defensible active/idle threshold exists: 258× write-volume separation plus
+    a Session Storage allowlist. Remaining validation is a 30-minute idle run and
+    a backgrounded-app run, both cheap and neither blocking design.
   - FRAMER-1 (detection) should land first so `doctor` can report capture health.
 
 ---
@@ -351,11 +385,12 @@ Feature: Framer presence capture
 3. **Role confirmation.** `passive_context` + attended is proposed above. Confirm
    before implementation, since it determines whether Framer spans can ever lead
    a session label.
-4. **Idle vs active threshold.** Blocked on the idle control. If housekeeping
-   writes prove indistinguishable between an idle and an active Framer, the honest
-   options are: ship presence explicitly labelled as *app open* (not worked time),
-   or drop FRAMER-2 and keep only FRAMER-1. Inflating hours with idle app-open
-   time is not an option — it is the failure mode `accuracy-plan.md` guards.
+4. ~~**Idle vs active threshold.**~~ **Resolved 2026-08-18.** Idle and active are
+   separable by two orders of magnitude of write volume, with Session Storage
+   writing 7× when active and 0× when idle. FRAMER-2 no longer risks billing an
+   open-but-untouched window, provided the collector allowlists the discriminating
+   writers and ignores the housekeeping noise floor. The only remaining blocker on
+   FRAMER-2 is the capture-cadence decision (1).
 
 ## Non-goals for the whole story
 

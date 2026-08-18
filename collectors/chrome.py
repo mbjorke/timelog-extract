@@ -184,10 +184,17 @@ def web_visit_collapse_minutes(
     inside one gap-clustered session (``compute_sessions`` joins only when
     spacing is strictly less than the gap). When the gap is 1 minute, no
     whole-minute cadence works, so a 30-second (0.5 minute) heartbeat is used.
+
+    When ``session_gap_minutes`` is 0 or negative, ``compute_sessions`` never
+    joins events (threshold is non-positive). Heartbeat spacing would invent a
+    grid that cannot merge — disable collapse and pass visits through.
     """
     if chrome_collapse_minutes <= 0:
         return 0.0
-    gap = max(1, int(session_gap_minutes))
+    gap = int(session_gap_minutes)
+    # Non-positive gap ⇒ no session joining; do not invent a joinable cadence.
+    if gap <= 0:
+        return 0.0
     # Strictly below the gap; whole minutes when gap >= 2, else sub-minute.
     if gap <= 1:
         return min(float(chrome_collapse_minutes), 0.5)

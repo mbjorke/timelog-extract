@@ -63,6 +63,10 @@ class WebVisitCollapseTests(unittest.TestCase):
             web_visit_collapse_minutes(12, session_gap_minutes=1),
             1,
         )
+        # Non-positive gap: compute_sessions never joins — disable heartbeat.
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=0), 0)
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=-1), 0)
+        self.assertEqual(web_visit_collapse_minutes(1, session_gap_minutes=0), 0)
 
     def test_dedupe_web_visit_rows_respects_zero_collapse_minutes(self):
         ts = datetime(2026, 4, 10, 4, 28, tzinfo=timezone.utc)
@@ -167,6 +171,36 @@ class WebVisitCollapseTests(unittest.TestCase):
             start, end, _events = sessions[0]
             span_minutes = (end - start).total_seconds() / 60
             self.assertGreaterEqual(span_minutes, 3.5)
+
+    def test_zero_gap_disables_heartbeat_passthrough(self):
+        """gap_minutes=0 never joins; do not invent a 30s grid that cannot merge."""
+        gap = 0
+        collapse = web_visit_collapse_minutes(12, session_gap_minutes=gap)
+        self.assertEqual(collapse, 0)
+        base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
+        visits = [base + timedelta(seconds=15 * i) for i in range(5)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
+            # Collapse disabled → raw visits pass through (no artificial cadence).
+            self.assertEqual(len(results), len(visits))
+            entries = [{"local_ts": event["ts"]} for event in results]
+            sessions = compute_sessions(entries, gap_minutes=gap)
+            # Matches compute_sessions: each event is its own session.
+            self.assertEqual(len(sessions), len(visits))
+
+    def test_negative_gap_disables_heartbeat_passthrough(self):
+        """Negative --gap-minutes also disables joinable heartbeat spacing."""
+        gap = -3
+        collapse = web_visit_collapse_minutes(12, session_gap_minutes=gap)
+        self.assertEqual(collapse, 0)
+        base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
+        visits = [base + timedelta(seconds=20 * i) for i in range(4)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
+            self.assertEqual(len(results), len(visits))
+            entries = [{"local_ts": event["ts"]} for event in results]
+            sessions = compute_sessions(entries, gap_minutes=gap)
+            self.assertEqual(len(sessions), len(visits))
 
 
 if __name__ == "__main__":

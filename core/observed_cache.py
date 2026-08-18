@@ -259,14 +259,13 @@ def write_last_report_split(
     *,
     captured_at: Optional[str] = None,
 ) -> None:
-    """Replace the coherent split for every day present in ``totals``.
+    """Update the coherent split for every day present in ``totals``.
 
-    Days not in ``totals`` are left unchanged. Each touched day is replaced
-    wholesale with this report's projects so the sidecar stays one real split
-    (filtered reports included). Detection already restricts to the current
-    project set when this run is a strict subset of the stored day, so omitted
-    projects are not treated as movers. Failures are logged and ignored — this
-    file is advisory for the nudge only.
+    Days not in ``totals`` are left unchanged. When this report's projects for a
+    day are a strict subset of the sidecar's projects for that day, skip the
+    day entirely so a filtered run does not become the next full-report
+    baseline. Otherwise replace the day wholesale (one coherent report).
+    Failures are logged and ignored — this file is advisory for the nudge only.
     """
     if not totals:
         return
@@ -278,8 +277,9 @@ def write_last_report_split(
         return
     path = _last_report_split_path(home)
     stamp = captured_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
-    touched_days = {day for _project, day in totals}
-    kept: List[dict] = []
+    new_by_day = _hours_by_day(totals)
+    existing_rows: List[dict] = []
+    existing_by_day: Dict[str, Dict[str, float]] = {}
     if path.exists():
         try:
             with path.open(encoding="utf-8") as fh:
@@ -294,21 +294,32 @@ def write_last_report_split(
                     row = _coerce_row(data)
                     if row is None:
                         continue
-                    if row["date"] in touched_days:
-                        continue
-                    kept.append(row)
+                    existing_rows.append(row)
+                    existing_by_day.setdefault(row["date"], {})[row["project"]] = float(
+                        row["hours"]
+                    )
         except OSError as exc:
             _LOGGER.warning("observed cache: could not read last report split: %s", exc)
             return
-    for (project, day), hours in sorted(totals.items()):
-        kept.append(
-            {
-                "project": project,
-                "date": day,
-                "hours": round(float(hours), 2),
-                "captured_at": stamp,
-            }
-        )
+    skip_days = {
+        day
+        for day, projects in new_by_day.items()
+        if projects
+        and day in existing_by_day
+        and set(projects) < set(existing_by_day[day])
+    }
+    replace_days = set(new_by_day) - skip_days
+    kept: List[dict] = [row for row in existing_rows if row["date"] not in replace_days]
+    for day in sorted(replace_days):
+        for project, hours in sorted(new_by_day[day].items()):
+            kept.append(
+                {
+                    "project": project,
+                    "date": day,
+                    "hours": round(float(hours), 2),
+                    "captured_at": stamp,
+                }
+            )
     fd, temp_path = tempfile.mkstemp(dir=base, prefix=".tmp_split_", suffix=".jsonl")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -338,8 +349,9 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     ``last_report_split`` and attaches any re-attribution findings on
     ``report.reattribution_vs_observed`` (GH-544 scenario 3). Detection is
     read-only against that sidecar; keep-max behaviour is unchanged. After a
-    successful keep-max write, the sidecar is overwritten for the days this
-    report covered.
+    successful keep-max write, the sidecar is updated for days this report
+    covered (subset/filtered days are left unchanged so they do not become the
+    next full-report baseline).
     """
     # Detect before keep-max / sidecar write: after those writes the baseline
     # would already match this run and the gainer side of a shuffle would hide.

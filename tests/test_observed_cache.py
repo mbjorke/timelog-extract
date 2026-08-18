@@ -207,7 +207,7 @@ class ReattributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
-    def test_filtered_write_replaces_sidecar_day(self):
+    def test_filtered_write_preserves_full_sidecar_day(self):
         write_last_report_split(
             {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
             home=self.home,
@@ -216,11 +216,16 @@ class ReattributionDetectionTests(unittest.TestCase):
             {("Alpha", self.day): 2.0},
             home=self.home,
         )
-        # Last report wins wholesale for the day (even when filtered).
+        # Filtered subset must not become the next full-report baseline.
         self.assertEqual(
             read_last_report_split(self.home),
-            {("Alpha", self.day): 2.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
         )
+        findings = detect_reattribution(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            read_last_report_split(self.home),
+        )
+        self.assertEqual(findings, [])
 
     def test_last_report_split_is_coherent_not_keep_max(self):
         # Keep-max can hold a raised Alpha peak while last_report_split still

@@ -167,14 +167,38 @@ def chrome_ts(visit_time_cu, epoch_delta_us):
     )
 
 
-# Tracked web collectors dedupe by UTC calendar day when collapse is enabled.
-WEB_VISIT_COLLAPSE_MINUTES = 24 * 60
+# Tracked-web heartbeat cadence (minutes). Reuses Chrome's default collapse so
+# sustained same-URL blocks keep temporal spread under the 15-minute session gap
+# without a separate CLI flag (GH-164 non-goal). Must stay strictly below that gap.
+WEB_VISIT_COLLAPSE_MINUTES = 12
+DEFAULT_SESSION_GAP_MINUTES = 15
 
 
-def web_visit_collapse_minutes(chrome_collapse_minutes: int) -> int:
-    """Tracked web URL collectors always use calendar-day dedupe (non-zero sentinel)."""
-    _ = chrome_collapse_minutes
-    return WEB_VISIT_COLLAPSE_MINUTES
+def web_visit_collapse_minutes(
+    chrome_collapse_minutes: int,
+    session_gap_minutes: int = DEFAULT_SESSION_GAP_MINUTES,
+) -> float:
+    """Derive tracked-web heartbeat from Chrome collapse (0 disables collapse).
+
+    Cadence is clamped strictly below ``session_gap_minutes`` so heartbeats stay
+    inside one gap-clustered session (``compute_sessions`` joins only when
+    spacing is strictly less than the gap). When the gap is 1 minute, no
+    whole-minute cadence works, so a 30-second (0.5 minute) heartbeat is used.
+
+    When ``session_gap_minutes`` is 0 or negative, ``compute_sessions`` never
+    joins events. Still apply the configured Chrome collapse as **noise thinning**
+    (bounded event count) — do not invent a sub-gap joinable heartbeat grid.
+    """
+    if chrome_collapse_minutes <= 0:
+        return 0.0
+    gap = int(session_gap_minutes)
+    # Non-positive gap ⇒ no session joining; keep collapse for flood control only.
+    if gap <= 0:
+        return float(chrome_collapse_minutes)
+    # Strictly below the gap; whole minutes when gap >= 2, else sub-minute.
+    if gap <= 1:
+        return min(float(chrome_collapse_minutes), 0.5)
+    return float(min(int(chrome_collapse_minutes), gap - 1))
 
 
 def normalize_chrome_url(url):
@@ -210,31 +234,39 @@ def thin_chrome_visit_rows(rows, collapse_minutes, epoch_delta_us):
     return out
 
 
-def thin_chrome_visit_rows_by_day(rows, epoch_delta_us):
-    """Keep the first visit per normalized URL per UTC calendar day."""
-    if not rows:
+def thin_chrome_visit_rows_by_day(rows, epoch_delta_us, collapse_minutes=WEB_VISIT_COLLAPSE_MINUTES):
+    """Keep one sample per normalized URL per cadence window; reset at UTC midnight.
+
+    Unlike ``thin_chrome_visit_rows``, the rolling window does not span calendar
+    days — visits ten minutes apart across UTC midnight stay as two events.
+    """
+    if collapse_minutes <= 0 or not rows:
         return rows
+    window_s = collapse_minutes * 60
     out = []
-    seen = set()
+    last_emit_by_norm = {}
     for visit_time_cu, url, title in rows:
+        ts = chrome_ts(visit_time_cu, epoch_delta_us)
         norm = normalize_chrome_url(url)
         if not norm:
             out.append((visit_time_cu, url, title))
             continue
-        day_key = chrome_ts(visit_time_cu, epoch_delta_us).date()
-        key = (norm, day_key)
-        if key in seen:
-            continue
-        seen.add(key)
+        day_key = ts.date()
+        prev = last_emit_by_norm.get(norm)
+        if prev is not None:
+            prev_ts, prev_day = prev
+            if prev_day == day_key and (ts - prev_ts).total_seconds() < window_s:
+                continue
+        last_emit_by_norm[norm] = (ts, day_key)
         out.append((visit_time_cu, url, title))
     return out
 
 
 def dedupe_web_visit_rows(rows, collapse_minutes, epoch_delta_us):
-    """Collapse tracked web visits to one event per normalized URL per UTC calendar day."""
+    """Collapse tracked web visits to a bounded per-window heartbeat (UTC day reset)."""
     if collapse_minutes <= 0 or not rows:
         return rows
-    return thin_chrome_visit_rows_by_day(rows, epoch_delta_us)
+    return thin_chrome_visit_rows_by_day(rows, epoch_delta_us, collapse_minutes)
 
 
 def collect_claude_ai_urls(

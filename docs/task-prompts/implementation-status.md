@@ -1,7 +1,7 @@
 # Task prompts implementation status
 
 Status: active tracker  
-Last updated: 2026-05-02
+Last updated: 2026-08-18
 
 ## Purpose
 
@@ -27,6 +27,7 @@ Track prompt execution reality, not only intended state in old prompt metadata.
 | `docs/task-prompts/dev-main-alignment-handoff.md`          | `not built`    | Operational handoff doc; execution is runbook-driven and out-of-band.                                                                               |
 | `docs/task-prompts/task-traceability-template.md`          | `not built`    | Template file, not an implementation task; excluded from execution tracking decisions.                                                              |
 | `docs/task-prompts/projects-config-trimming-task.md`       | `built`        | `gittan projects-audit` / `projects-trim`, `core/projects_audit.py`, `tests/test_projects_audit.py`.                                                |
+| `docs/task-prompts/chrome-tracked-url-heartbeat-414-task.md` | `built`      | Tracked-URL per-window heartbeat in `collectors/chrome.py`; fixtures in `tests/test_chrome_web_collapse.py`; infra/uncategorized drop deferred to GH-410. |
 
 
 ## Update routine

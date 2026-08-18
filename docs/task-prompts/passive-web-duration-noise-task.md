@@ -16,6 +16,9 @@ hours YTD from tab noise alone.
   from `AI_SOURCES`.
 - Apply calendar-day dedupe (`thin_chrome_visit_rows_by_day`: one visit per
   normalized URL per UTC day) to Claude.ai (web) and Gemini (web) collectors.
+  **Superseded for duration span by GH-414:** tracked-URL collectors now use a
+  per-window heartbeat (see `docs/task-prompts/chrome-tracked-url-heartbeat-414-task.md`)
+  while keeping UTC midnight reset and the passive-only zero floor.
 - Sessions where **all** sources are `passive_context`: duration floor **0**
   (still visible for classification/review).
 
@@ -39,6 +42,8 @@ Feature: Passive web visits do not inflate observed hours
     Given two Claude.ai visits to the same normalized URL on the same calendar day
     When Claude.ai (web) is collected with default collapse
     Then only one event should be emitted for that URL that day
+    # Note (GH-414): with the per-window heartbeat, two visits far apart in the
+    # same day may emit more than one event; same-window revisits still collapse.
 
   Scenario: Same chat URL revisits on different UTC days stay separate
     Given two Claude.ai visits to the same normalized URL ten minutes apart across UTC midnight
@@ -57,7 +62,7 @@ Feature: Passive web visits do not inflate observed hours
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-06-23
-- last_updated_at: 2026-06-23
+- last_updated_at: 2026-08-18
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/174
 - implementation.branch: task/passive-web-duration-noise
 - implementation.commits: [6a65f20]
@@ -67,3 +72,6 @@ Feature: Passive web visits do not inflate observed hours
   - 2026-06-23: Split from #166; PR #174 on task/passive-web-duration-noise.
   - 2026-06-23: Calendar-day web dedupe (CodeRabbit #166); midnight boundary test.
   - 2026-06-23: Slice 1 implemented after YTD Chrome noise analysis in maintainer session.
+  - 2026-08-18: Scope note — calendar-day first-visit collapse superseded for duration
+    span by GH-414 per-window heartbeat (`chrome-tracked-url-heartbeat-414-task.md`);
+    UTC midnight reset and passive-only zero floor retained.

@@ -9,6 +9,15 @@
   already scans WAL `.log` only and skips sticky `editor-store` UUIDs (related
   presence≠authorship: #327).
 
+### Accuracy
+
+- Fix: Claude.ai / Gemini (web) tracked-URL collectors emit a bounded per-window
+  heartbeat (reusing `chrome_collapse_minutes`, UTC day reset) instead of one
+  first-visit per calendar day, so sustained same-URL work keeps session span
+  without reopening the passive-web noise floodgate
+  ([#414](https://github.com/mbjorke/timelog-extract/issues/414)).
+
+
 ## 0.4.2 - 2026-08-10
 
 ### Accuracy

@@ -20,6 +20,7 @@ locally — and the answer changes the shape of the work.
 - validation.decision: `NO-GO`
 - changelog:
   - `2026-08-18: Initial product-owner backlog created from a live evidence probe.`
+  - `2026-08-18: Added canvas-edit probe; corrected the over-claimed "no retention" finding; made an idle control a prerequisite for FRAMER-2.`
 
 ## Why this matters
 
@@ -44,7 +45,7 @@ data), on a day the app was actively used. Findings drive every priority below.
 | Candidate signal | Location | Verdict |
 | --- | --- | --- |
 | Chromium `History` DB | Framer partition | **Absent.** The Lovable-desktop primary path (navigation history) does not exist for Framer. |
-| AI agent chat state | `IndexedDB/…framer.com…leveldb`, `keyval` store: `activeChatAgentId`, `scopeId`, `title`, `lastMessageTimestamp` | **Live state only.** 579 decoded `lastMessageTimestamp` values spanned **4 minutes of a single day** — a continuously rewritten CRDT/agent store, not an append-only history. |
+| AI agent chat state | `IndexedDB/…framer.com…leveldb`, `keyval` store: `activeChatAgentId`, `scopeId`, `title`, `lastMessageTimestamp` | 579 decoded `lastMessageTimestamp` values spanned **4 minutes of a single day**. Note the confound: the probe user had not opened Framer in months, so a single-day span is equally consistent with an append-only store holding one short session. Treat "no history" as **unproven** for this store. |
 | Design-document state | Local Storage `crdt-tree-version:<projectId>`, `framer-recent-spaces` (workspace UUIDs), `VekterUserDefaults` | **Version counters and id lists, no timestamps.** Tells you the document changed since the last sample; never when or how much. |
 | OPFS / CRDT files | `Partitions/framer/File System/…` | 13 files, **all mtimes on the probe day**. Coarse "the app wrote something" signal, not retroactive. |
 | Framer's own telemetry | Local Storage `framer-tracking-client-queue` | **Drain-on-send buffer.** Observed vocabulary: `app_foreground`, `app_background`, `ui_long_frame`, `error_toast`, `code_generation`, `agent_update_project_tool`. The only retained entries were **stuck events from ~7 months earlier** that failed to send. Not a log. |
@@ -53,16 +54,63 @@ data), on a day the app was actively used. Findings drive every priority below.
 
 ### The two conclusions that shape this backlog
 
-1. **Framer evidence is not backfillable.** Every local signal is live state that
-   Framer rewrites or drains. `gittan report --last-month` can never recover
-   Framer time that was not captured while it happened. This is precisely the
-   retention gap `docs/specs/local-evidence-shadow-log.md` was written for, and
-   Framer is the first source where the shadow log is not an improvement but a
+1. **Framer evidence is not backfillable — but for a narrower reason than
+   "it rewrites everything".** The Framer profile persists for *years*: Local
+   Storage values span `2024-11-30 → 2025-11-11` inside a file last written in
+   January. What does not exist is any component that stores a **work log**.
+   Version counters, id lists and live agent state persist happily; elapsed
+   working time is never recorded, so it cannot be reconstructed after the fact.
+   `gittan report --last-month` can never recover Framer time that was not
+   captured while it happened. This is the retention gap
+   `docs/specs/local-evidence-shadow-log.md` was written for, and Framer is the
+   first source where the shadow log is not an improvement but a
    **precondition**.
 2. **Publishing is not locally observable.** Publish state lives server-side.
    Detecting it means a network call to the Framer API with account auth — a
    different class of source (opt-in, `delivery_evidence`, like GitHub), not a
    variation on the collector below.
+
+### Canvas-edit probe (2026-08-18, live experiment)
+
+The question "can Gittan see *regular* design work — moving layers, resizing
+frames — rather than only AI chat?" was tested directly: the Framer partition was
+sampled every 3 seconds for 3.4 minutes while the user performed real canvas
+edits in the running app.
+
+**Result: edits are visible, but not as edits.**
+
+| Writer | Frequency during editing | What it actually is |
+| --- | --- | --- |
+| `sentry/scope_v3.json` | 10× (9 B total) | crash-reporter scope |
+| Local Storage `…/000783.log` | 8× (1.4 KB) | tracking queue / prefs |
+| Session Storage `…/010383.log` | 7× (518 B) | session housekeeping |
+| `WebStorage/QuotaManager-journal` | 6× (60 KB) | storage bookkeeping |
+| Cookies, Network state, DIPS | 2–3× each | network housekeeping |
+| **OPFS CRDT document** `File System/000/t/00/…` | **1×** (+13.4 MB) | **the design document itself** |
+| IndexedDB `…/000164.log` | **1×** (+2.8 KB) | doc/agent state flush |
+
+The inversion is the finding: **the files that change often are not design work,
+and the file that is design work changes rarely.** The high-frequency writers are
+app-lifecycle and telemetry housekeeping — they say "Framer is open and running",
+not "a layer moved". The one genuinely edit-correlated artifact, the OPFS CRDT
+document, flushed **once in 3.4 minutes of continuous editing** on a
+save/checkpoint cadence, and it flushes identically for AI-generated changes.
+
+Consequences for what Gittan may claim:
+
+- **Presence is measurable at good resolution.** A dense heartbeat of writes
+  exists whenever the app is running.
+- **"Design work" is not separable.** Nothing on disk distinguishes dragging
+  layers from the AI agent generating, from the app merely sitting open. Gittan
+  can honestly report *time in Framer*, never *time designing in Framer*.
+- **Edit-count metrics are not available.** One CRDT flush per multi-minute chunk
+  cannot support "N edits" or intensity weighting.
+
+**Known gap — no idle control.** This probe measured an *active* window only. It
+is not yet known whether the high-frequency housekeeping writers keep firing when
+Framer sits open and untouched. If they do, a naive presence heartbeat would bill
+idle app-open time. **Running an idle control (Framer open, untouched, same
+sampling) is a prerequisite for FRAMER-2**, not an optional refinement.
 
 ### Evidence role
 
@@ -128,7 +176,10 @@ Feature: Framer source visibility
 - user value: Framer afternoons stop vanishing. Time captured today remains
   reportable next month, because it lands in the append-only ledger.
 - non-goals: No parsing of design content. No chat titles. No project names from
-  Framer. No claim of billable direct work evidence.
+  Framer. No claim of billable direct work evidence. **No claim that the span is
+  "design work"** — the canvas-edit probe showed on-disk signals cannot separate
+  dragging layers from AI generation or from an idle open app. The user-facing
+  wording is *time in Framer*.
 - behavior: A capture-side Framer reader — a new key in
   `CAPTURE_SOURCES` (`core/session_capture.py`) — samples mtimes across the
   Framer partition (OPFS, Local Storage, IndexedDB) and writes presence spans
@@ -169,8 +220,13 @@ Feature: Framer presence capture
   - Framer spans never raise billable totals on their own.
   - Gaps between samples are represented honestly as gaps, not interpolated into
     one continuous session.
+  - **Idle does not bill.** With Framer open and untouched, the collector must not
+    produce a growing presence span. The idle-control measurement defines the
+    threshold that makes this true; if no on-disk signal separates idle from
+    active, the item is re-scoped rather than shipped with idle counted as work.
 - validation: fixture tests covering capture → mutate source → replay from
-  ledger; idempotency test; a billable-total assertion. `run_autotests.sh` green.
+  ledger; idempotency test; a billable-total assertion; a fixture derived from the
+  **idle control** proving an untouched app yields no span. `run_autotests.sh` green.
 - dependencies:
   - **Open decision — capture cadence.** `gittan capture` is invoked manually or
     by a timer/hook (`--if-enabled` exists for exactly this). There is no daemon.
@@ -178,6 +234,9 @@ Feature: Framer presence capture
     not startable until the cadence mechanism is decided (launchd timer vs hook
     vs explicit user-run) and the resulting coverage claim is written down. A
     once-a-day capture would produce misleadingly thin Framer coverage.
+  - **Idle-control measurement** (Framer open, untouched, same 3s sampling). Until
+    it exists there is no defensible active/idle threshold, and presence would
+    bill an open window. This is the cheapest unblocking experiment in the story.
   - FRAMER-1 (detection) should land first so `doctor` can report capture health.
 
 ---
@@ -292,6 +351,11 @@ Feature: Framer presence capture
 3. **Role confirmation.** `passive_context` + attended is proposed above. Confirm
    before implementation, since it determines whether Framer spans can ever lead
    a session label.
+4. **Idle vs active threshold.** Blocked on the idle control. If housekeeping
+   writes prove indistinguishable between an idle and an active Framer, the honest
+   options are: ship presence explicitly labelled as *app open* (not worked time),
+   or drop FRAMER-2 and keep only FRAMER-1. Inflating hours with idle app-open
+   time is not an option — it is the failure mode `accuracy-plan.md` guards.
 
 ## Non-goals for the whole story
 

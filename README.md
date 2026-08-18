@@ -12,6 +12,8 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![PyPI package](https://img.shields.io/badge/pypi-timelog--extract-006DAD?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/timelog-extract/)
 
+[![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
+
 </div>
 
 Your day leaves traces—IDE, browser, mail, commits, worklog. **Gittan** turns those signals into **project hours** and optional **invoice PDFs**, without sending your raw activity to our servers by default. Everything runs **local-first**; you stay in control.

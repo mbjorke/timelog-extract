@@ -181,7 +181,7 @@ Feature: Review surfaces new remotes like setup
 ### 6. Suggest-name normalize (hyphen vs space)
 
 - priority: next
-- problem: Existing profile `lunch-connect` is not auto-suggested as “Lunch Connect”
+- problem: Existing profile `example-connect` is not auto-suggested as “Example Connect”
   (hyphen vs space; empty `tracked_urls`) when remotes/create propose a name.
 - user value: Map-to-existing / Add prefill hits the real profile instead of a near-dupe.
 - non-goals: Full fuzzy customer search UI.

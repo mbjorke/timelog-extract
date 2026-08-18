@@ -37,6 +37,49 @@ class PrivacyGuardTests(unittest.TestCase):
         self.assertNotIn("timelog-extract", lowered)
         self.assertNotIn("blueberry maybe", lowered)
 
+    def test_local_allowlist_file_suppresses_an_operator_project_slug(self):
+        """A slug in the local allowlist is not flagged, and stays uncommitted.
+
+        The operator's own project slugs must not be hardcoded in DEFAULT_ALLOW
+        (this module is public); the local file beside the config carries them.
+        """
+        with TemporaryDirectory() as tmp:
+            cfg = self._cfg(tmp)
+            (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text(
+                "# operator's own projects\nacme-portal\n\n", encoding="utf-8"
+            )
+            with mock.patch.object(guard, "_config_path", return_value=cfg):
+                terms = guard.load_sensitive_terms(cfg)
+        lowered = {t.lower() for t in terms}
+        self.assertNotIn("acme-portal", lowered)
+        # The customer name is a different field and must still be flagged.
+        self.assertIn("acme corp", lowered)
+
+    def test_local_allowlist_is_exact_and_does_not_suppress_a_sharing_customer(self):
+        """Allowlisting a slug must not disable a customer name sharing a word.
+
+        Regression for the hole found in GH-431: the word-matched allowlist made
+        an entry for the project slug "acme-portal" also suppress the customer
+        "Acme Corp", because both contain the word "acme". The local file is
+        matched exactly, so it can never widen past the listed string.
+        """
+        with TemporaryDirectory() as tmp:
+            cfg = self._cfg(tmp)
+            (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text("acme-portal\n", encoding="utf-8")
+            with mock.patch.object(guard, "_config_path", return_value=cfg):
+                terms = guard.load_sensitive_terms(cfg)
+        lowered = {t.lower() for t in terms}
+        self.assertNotIn("acme-portal", lowered)   # the listed slug is allowed
+        self.assertIn("acme corp", lowered)        # the customer is still flagged
+        self.assertIn("acmecorp", lowered)         # and so is its alias
+
+    def test_missing_local_allowlist_is_not_an_error(self):
+        with TemporaryDirectory() as tmp:
+            cfg = self._cfg(tmp)  # no allowlist file written
+            with mock.patch.object(guard, "_config_path", return_value=cfg):
+                terms = guard.load_sensitive_terms(cfg)
+        self.assertIn("acme-portal", {t.lower() for t in terms})
+
     def test_flags_a_doc_containing_a_client_name(self):
         with TemporaryDirectory() as tmp:
             terms = guard.load_sensitive_terms(self._cfg(tmp))

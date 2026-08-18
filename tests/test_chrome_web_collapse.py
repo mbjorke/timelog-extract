@@ -21,7 +21,9 @@ _NEUTRAL_TITLE = "project-alpha chat"
 _CHAT_URL = "https://claude.ai/chat/abc123"
 
 
-def _claude_results(home: Path, visits: list[datetime], collapse_minutes: int = WEB_VISIT_COLLAPSE_MINUTES):
+def _claude_results(
+    home: Path, visits: list[datetime], collapse_minutes: float = WEB_VISIT_COLLAPSE_MINUTES
+):
     chrome_dir = home / "Library/Application Support/Google/Chrome/Default"
     chrome_dir.mkdir(parents=True)
     db_path = chrome_dir / "History"
@@ -54,6 +56,13 @@ class WebVisitCollapseTests(unittest.TestCase):
         self.assertEqual(web_visit_collapse_minutes(30, session_gap_minutes=15), 14)
         self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=10), 9)
         self.assertEqual(web_visit_collapse_minutes(0, session_gap_minutes=15), 0)
+        # gap==1: no whole-minute cadence is strictly below the gap.
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=1), 0.5)
+        self.assertEqual(web_visit_collapse_minutes(1, session_gap_minutes=1), 0.5)
+        self.assertLess(
+            web_visit_collapse_minutes(12, session_gap_minutes=1),
+            1,
+        )
 
     def test_dedupe_web_visit_rows_respects_zero_collapse_minutes(self):
         ts = datetime(2026, 4, 10, 4, 28, tzinfo=timezone.utc)
@@ -140,6 +149,24 @@ class WebVisitCollapseTests(unittest.TestCase):
             start, end, _events = sessions[0]
             span_hours = (end - start).total_seconds() / 3600
             self.assertGreaterEqual(span_hours, 1.9)
+
+    def test_one_minute_gap_still_forms_one_session(self):
+        """gap_minutes=1 needs sub-minute heartbeats so spacing stays < gap."""
+        gap = 1
+        collapse = web_visit_collapse_minutes(12, session_gap_minutes=gap)
+        self.assertLess(collapse, gap)
+        base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
+        # Dense revisits every 15s for ~4 minutes; 30s cadence stays under gap.
+        visits = [base + timedelta(seconds=15 * i) for i in range(17)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
+            self.assertGreaterEqual(len(results), 2)
+            entries = [{"local_ts": event["ts"]} for event in results]
+            sessions = compute_sessions(entries, gap_minutes=gap)
+            self.assertEqual(len(sessions), 1)
+            start, end, _events = sessions[0]
+            span_minutes = (end - start).total_seconds() / 60
+            self.assertGreaterEqual(span_minutes, 3.5)
 
 
 if __name__ == "__main__":

@@ -177,19 +177,21 @@ DEFAULT_SESSION_GAP_MINUTES = 15
 def web_visit_collapse_minutes(
     chrome_collapse_minutes: int,
     session_gap_minutes: int = DEFAULT_SESSION_GAP_MINUTES,
-) -> int:
+) -> float:
     """Derive tracked-web heartbeat from Chrome collapse (0 disables collapse).
 
-    Cadence is clamped to ``session_gap_minutes - 1`` so heartbeats stay inside
-    one gap-clustered session even when ``--chrome-collapse-minutes`` is set at
-    or above the active session gap.
+    Cadence is clamped strictly below ``session_gap_minutes`` so heartbeats stay
+    inside one gap-clustered session (``compute_sessions`` joins only when
+    spacing is strictly less than the gap). When the gap is 1 minute, no
+    whole-minute cadence works, so a 30-second (0.5 minute) heartbeat is used.
     """
     if chrome_collapse_minutes <= 0:
-        return 0
+        return 0.0
     gap = max(1, int(session_gap_minutes))
-    # Strictly below the gap; for gap==1 the best positive cadence is 1.
-    max_heartbeat = max(1, gap - 1)
-    return min(int(chrome_collapse_minutes), max_heartbeat)
+    # Strictly below the gap; whole minutes when gap >= 2, else sub-minute.
+    if gap <= 1:
+        return min(float(chrome_collapse_minutes), 0.5)
+    return float(min(int(chrome_collapse_minutes), gap - 1))
 
 
 def normalize_chrome_url(url):

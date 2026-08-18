@@ -79,7 +79,7 @@ class RuntimeCollectors:
             profiles, dt_from, dt_to, self.home, self.classify_project, self.make_event
         )
 
-    def _web_visit_collapse_minutes(self) -> int:
+    def _web_visit_collapse_minutes(self) -> float:
         collapse = 12
         gap = 15
         if self.cli_args is not None:

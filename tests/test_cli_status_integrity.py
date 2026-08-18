@@ -7,6 +7,29 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from core.cli import app
+from tests.cli_output_helpers import strip_ansi
+
+
+def _plain(output: str) -> str:
+    return strip_ansi(output)
+
+
+def _assert_status_stdout_not_mute(testcase: unittest.TestCase, output: str) -> None:
+    """GH-521: status must never end after only the hero/title header."""
+    plain = _plain(output)
+    testcase.assertTrue(plain.strip(), msg="status stdout was empty")
+    attributable = (
+        "Hours Summary",
+        "No activity tracked for this period",
+        "Error fetching status:",
+        "Status cancelled.",
+        "Status stopped unexpectedly:",
+        "Review complete:",
+    )
+    testcase.assertTrue(
+        any(marker in plain for marker in attributable),
+        msg=f"status exited without attributable body:\n{plain}",
+    )
 
 
 class _FakeReport:
@@ -114,6 +137,7 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertIn("gittan doctor", r.output)
         self.assertIn("gittan report --today", r.output)
         self.assertIn("--source-summary", r.output)
+        _assert_status_stdout_not_mute(self, r.output)
 
     def test_status_forwards_lovable_noise_profile(self):
         report = _FakeReport(
@@ -208,6 +232,44 @@ class StatusIntegrityTests(unittest.TestCase):
         self.assertNotIn("Error fetching status", r.output)
         self.assertIn("timelog-extract", r.output)
         self.assertIn("2.0h", r.output)
+        _assert_status_stdout_not_mute(self, r.output)
+
+    def test_status_error_path_prints_message_and_exits_1(self):
+        with patch(
+            "core.report_service.run_timelog_report",
+            side_effect=RuntimeError("collector boom"),
+        ):
+            r = self.runner.invoke(app, ["status", "--yesterday"])
+        self.assertEqual(r.exit_code, 1, msg=r.output)
+        plain = _plain(r.output)
+        self.assertIn("Error fetching status:", plain)
+        self.assertIn("collector boom", plain)
+        self.assertIn("gittan doctor", plain)
+        _assert_status_stdout_not_mute(self, r.output)
+
+    def test_status_keyboard_interrupt_prints_cancelled_and_exits_130(self):
+        with patch(
+            "core.report_service.run_timelog_report",
+            side_effect=KeyboardInterrupt(),
+        ):
+            r = self.runner.invoke(app, ["status", "--yesterday"])
+        self.assertEqual(r.exit_code, 130, msg=r.output)
+        plain = _plain(r.output)
+        self.assertIn("Status cancelled.", plain)
+        _assert_status_stdout_not_mute(self, r.output)
+
+    def test_status_system_exit_prints_unexpected_stop_message(self):
+        with patch(
+            "core.report_service.run_timelog_report",
+            side_effect=SystemExit(2),
+        ):
+            r = self.runner.invoke(app, ["status", "--yesterday"])
+        plain = _plain(r.output)
+        self.assertIn("Status stopped unexpectedly:", plain)
+        self.assertIn("gittan doctor", plain)
+        _assert_status_stdout_not_mute(self, r.output)
+        # Preserve the injected exit code (CliRunner maps SystemExit to exit_code).
+        self.assertEqual(r.exit_code, 2, msg=r.output)
 
 
 if __name__ == "__main__":

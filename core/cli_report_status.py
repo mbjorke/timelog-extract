@@ -466,7 +466,22 @@ def status(
         if shadow_line:
             console.print(f"[{STYLE_MUTED}]{shadow_line}[/{STYLE_MUTED}]")
         console.print(f"{OK_ICON} [{CLR_GREEN}]Review complete: nothing is billable until you approve it.[/{CLR_GREEN}]")
+    except KeyboardInterrupt:
+        # Print after spinner teardown in run_status_timelog_report so the
+        # live region cannot wipe this line (GH-521).
+        console.print(f"[{CLR_VALUE_ORANGE}]Status cancelled.[/{CLR_VALUE_ORANGE}]")
+        raise typer.Exit(code=130)
+    except typer.Exit:
+        # Preserve intentional exit codes set inside the try block.
+        raise
     except Exception as e:
         console.print(f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Error fetching status: {e}[/{CLR_VALUE_ORANGE}]")
         console.print(f"[{STYLE_MUTED}]Next: try `gittan doctor` or check your configuration.[/{STYLE_MUTED}]")
         raise typer.Exit(code=1) from e
+    except BaseException as e:
+        # SystemExit and other non-Exception exits must still be attributable.
+        console.print(
+            f"{FAIL_ICON} [{CLR_VALUE_ORANGE}]Status stopped unexpectedly: {e}[/{CLR_VALUE_ORANGE}]"
+        )
+        console.print(f"[{STYLE_MUTED}]Next: try `gittan doctor` or check your configuration.[/{STYLE_MUTED}]")
+        raise

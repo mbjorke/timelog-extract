@@ -198,6 +198,29 @@ class ReattributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+    def test_detect_skips_filtered_report_scope(self):
+        # Sidecar has A+B from a full report; a later filtered A-only run must not
+        # treat B as a loser that moved into A.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 6.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_filtered_write_merges_sidecar_day(self):
+        write_last_report_split(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            home=self.home,
+        )
+        write_last_report_split(
+            {("Alpha", self.day): 2.0},
+            home=self.home,
+        )
+        self.assertEqual(
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 4.60},
+        )
+
     def test_last_report_split_is_coherent_not_keep_max(self):
         # Keep-max can hold a raised Alpha peak while last_report_split still
         # stores the coherent day from the previous report.

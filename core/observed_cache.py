@@ -141,6 +141,14 @@ def detect_reattribution(
         comparison = current_by_day[day]
         if not baseline or not comparison:
             continue
+        # Filtered / narrower reports omit projects that are still in the sidecar.
+        # Restrict to the current project set so omitted projects are not treated
+        # as losers that "moved" into the filtered subset.
+        current_projects = set(comparison)
+        stored_projects = set(baseline)
+        if current_projects and current_projects < stored_projects:
+            baseline = {name: baseline[name] for name in current_projects}
+            comparison = {name: comparison[name] for name in current_projects}
         pair = compare_hours(
             baseline,
             comparison,
@@ -251,10 +259,12 @@ def write_last_report_split(
     *,
     captured_at: Optional[str] = None,
 ) -> None:
-    """Replace the coherent split for every day present in ``totals``.
+    """Update the coherent split for every day present in ``totals``.
 
-    Days not in ``totals`` are left unchanged. Failures are logged and ignored —
-    this file is advisory for the re-attribution nudge only.
+    Days not in ``totals`` are left unchanged. When ``totals`` for a day is a
+    strict subset of the projects already stored for that day, merge those
+    projects in place (filtered report) instead of wiping the omitted ones.
+    Failures are logged and ignored — this file is advisory for the nudge only.
     """
     if not totals:
         return
@@ -266,8 +276,8 @@ def write_last_report_split(
         return
     path = _last_report_split_path(home)
     stamp = captured_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
-    touched_days = {day for _project, day in totals}
-    kept: List[dict] = []
+    new_by_day = _hours_by_day(totals)
+    existing: Dict[Tuple[str, str], dict] = {}
     if path.exists():
         try:
             with path.open(encoding="utf-8") as fh:
@@ -282,25 +292,43 @@ def write_last_report_split(
                     row = _coerce_row(data)
                     if row is None:
                         continue
-                    if row["date"] in touched_days:
-                        continue
-                    kept.append(row)
+                    existing[(row["project"], row["date"])] = row
         except OSError as exc:
             _LOGGER.warning("observed cache: could not read last report split: %s", exc)
             return
-    for (project, day), hours in sorted(totals.items()):
-        kept.append(
-            {
-                "project": project,
-                "date": day,
-                "hours": round(float(hours), 2),
-                "captured_at": stamp,
-            }
-        )
+    existing_by_day = _hours_by_day(
+        {(project, day): float(row["hours"]) for (project, day), row in existing.items()}
+    )
+    kept: Dict[Tuple[str, str], dict] = {
+        key: row for key, row in existing.items() if key[1] not in new_by_day
+    }
+    for day, projects in new_by_day.items():
+        prior = existing_by_day.get(day) or {}
+        if projects and set(projects) < set(prior):
+            # Filtered report: refresh named projects, keep the rest of the day.
+            for project, hours in prior.items():
+                if project in projects:
+                    hours = float(projects[project])
+                kept[(project, day)] = {
+                    "project": project,
+                    "date": day,
+                    "hours": round(float(hours), 2),
+                    "captured_at": stamp if project in projects else existing[(project, day)].get(
+                        "captured_at", stamp
+                    ),
+                }
+        else:
+            for project, hours in projects.items():
+                kept[(project, day)] = {
+                    "project": project,
+                    "date": day,
+                    "hours": round(float(hours), 2),
+                    "captured_at": stamp,
+                }
     fd, temp_path = tempfile.mkstemp(dir=base, prefix=".tmp_split_", suffix=".jsonl")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            for row in sorted(kept, key=lambda r: (r["date"], r["project"])):
+            for row in sorted(kept.values(), key=lambda r: (r["date"], r["project"])):
                 fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
             fh.flush()
             os.fsync(fh.fileno())

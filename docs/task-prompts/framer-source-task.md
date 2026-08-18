@@ -9,6 +9,7 @@ locally — and the answer changes the shape of the work.
 ## Traceability
 
 - story_id: `GH-561`
+- priority: `later` (demoted from `now` on 2026-08-18 — see *Priority review*)
 - spec_status: `draft`
 - implementation_status: `not built`
 - created_at: `2026-08-18`
@@ -363,12 +364,72 @@ Feature: Framer presence capture
 
 ---
 
+## Priority review (2026-08-18) — demoted `now` → `later`
+
+The first pass set FRAMER-1 to `now` on the strength of the evidence work being
+done. That conflated *"we understand this source"* with *"this source should be
+built next"*. Re-read against the open backlog, it should not be.
+
+**What FRAMER-1 actually delivers:** a `doctor` row, and zero reported hours by
+its own design. It is a documented limitation, not a capability.
+
+**What it is competing with,** all currently `now`:
+
+| Issue | Why it outranks a new source |
+| --- | --- |
+| GH-431 | ~22 client-name leaks already committed to a **public** repo — live exposure, not a future risk |
+| GH-515 | The control that stops new client data reaching issues and PRs |
+| GH-544 | Hours silently move to another project — and often another **customer** — when a Cursor conversation continues in a different workspace. Wrong-customer billing is the worst defect class this product has |
+| GH-414 | Chrome dashboard work evaporating: hours that were genuinely worked disappear |
+
+Every one of those is about hours already being wrong, or client data already
+being exposed, for sources people use daily. Framer is a source with **no demand
+signal**: no issue existed for it before this spec, no beta tester has asked, and
+its first slice adds no hours to any report.
+
+**Demand evidence is weak in the probe itself.** The install that motivated this
+work had not been opened in months before the probe day, and Chrome history shows
+23 Framer visits across 2 days in ~7 weeks. That is an experiment, not a workflow.
+
+**The second slice is blocked anyway.** FRAMER-2 cannot start until the
+capture-cadence question is answered, and that question is bigger than Framer —
+it decides how *any* sampled source works. Building FRAMER-1 now would park a
+zero-hours `doctor` row in the tree while its only useful successor waits.
+
+### What today's work is genuinely worth
+
+The measurements do not go stale with the demotion, and their value is mostly
+**not** Framer-specific. The idle control established a reusable technique for
+*any* Electron-based tool: a write-volume separation of two orders of magnitude
+plus an allowlist of discriminating writers, with the housekeeping noise floor
+named explicitly. That is direct evidence for **GH-327** (attendance taxonomy:
+presence ≠ active authorship for cache-mtime sources), which is already `next` and
+which governs Lovable (desktop) — a source that ships today and is used more than
+Framer.
+
+So the durable output of this pass is a measurement banked against GH-327, not a
+collector. Framer becomes the worked example that proves the technique.
+
+### Promotion trigger
+
+Promote FRAMER-1/FRAMER-2 back to `next` when **either**:
+
+1. a real user (beta tester or the maintainer's own sustained use) actually works
+   in Framer across multiple weeks, so the source has a workflow behind it; **or**
+2. the capture-cadence decision lands for other reasons, making FRAMER-2 a small
+   increment on infrastructure that already exists rather than its justification.
+
+Nothing in this spec needs re-derivation when that happens — the evidence,
+thresholds and traps are recorded above.
+
+---
+
 ## Summary of priorities
 
 | Item | Priority | Blocked by |
 | --- | --- | --- |
-| FRAMER-1 Detection + honest `doctor` row | **now** | — |
-| FRAMER-2 Presence spans via `capture` | **next** | capture-cadence decision; FRAMER-1 |
+| FRAMER-1 Detection + honest `doctor` row | ~~now~~ → **later** | demand signal (see *Priority review*) |
+| FRAMER-2 Presence spans via `capture` | ~~next~~ → **later** | capture-cadence decision; FRAMER-1 |
 | FRAMER-3 Attribution from stable ids | later | GH-354 |
 | FRAMER-4 Framer (web) from Chrome | later | demand (measured ceiling is low) |
 | FRAMER-5 Publish detection | do not build yet | needs a network delivery-source spec |

@@ -169,15 +169,27 @@ def chrome_ts(visit_time_cu, epoch_delta_us):
 
 # Tracked-web heartbeat cadence (minutes). Reuses Chrome's default collapse so
 # sustained same-URL blocks keep temporal spread under the 15-minute session gap
-# without a separate CLI flag (GH-164 non-goal). Must stay below that gap.
+# without a separate CLI flag (GH-164 non-goal). Must stay strictly below that gap.
 WEB_VISIT_COLLAPSE_MINUTES = 12
+DEFAULT_SESSION_GAP_MINUTES = 15
 
 
-def web_visit_collapse_minutes(chrome_collapse_minutes: int) -> int:
-    """Derive tracked-web heartbeat from Chrome collapse (0 disables collapse)."""
+def web_visit_collapse_minutes(
+    chrome_collapse_minutes: int,
+    session_gap_minutes: int = DEFAULT_SESSION_GAP_MINUTES,
+) -> int:
+    """Derive tracked-web heartbeat from Chrome collapse (0 disables collapse).
+
+    Cadence is clamped to ``session_gap_minutes - 1`` so heartbeats stay inside
+    one gap-clustered session even when ``--chrome-collapse-minutes`` is set at
+    or above the active session gap.
+    """
     if chrome_collapse_minutes <= 0:
         return 0
-    return int(chrome_collapse_minutes)
+    gap = max(1, int(session_gap_minutes))
+    # Strictly below the gap; for gap==1 the best positive cadence is 1.
+    max_heartbeat = max(1, gap - 1)
+    return min(int(chrome_collapse_minutes), max_heartbeat)
 
 
 def normalize_chrome_url(url):

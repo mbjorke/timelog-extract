@@ -48,6 +48,13 @@ class WebVisitCollapseTests(unittest.TestCase):
         self.assertEqual(web_visit_collapse_minutes(0), 0)
         self.assertEqual(web_visit_collapse_minutes(8), 8)
 
+    def test_web_visit_collapse_minutes_clamps_below_session_gap(self):
+        """High --chrome-collapse-minutes must not meet or exceed the session gap."""
+        self.assertEqual(web_visit_collapse_minutes(15, session_gap_minutes=15), 14)
+        self.assertEqual(web_visit_collapse_minutes(30, session_gap_minutes=15), 14)
+        self.assertEqual(web_visit_collapse_minutes(12, session_gap_minutes=10), 9)
+        self.assertEqual(web_visit_collapse_minutes(0, session_gap_minutes=15), 0)
+
     def test_dedupe_web_visit_rows_respects_zero_collapse_minutes(self):
         ts = datetime(2026, 4, 10, 4, 28, tzinfo=timezone.utc)
         ts_cu = int(ts.timestamp() * 1_000_000) + EPOCH_DELTA_US
@@ -111,6 +118,24 @@ class WebVisitCollapseTests(unittest.TestCase):
             self.assertGreaterEqual(len(results), 10)
             entries = [{"local_ts": event["ts"]} for event in results]
             sessions = compute_sessions(entries, gap_minutes=15)
+            self.assertEqual(len(sessions), 1)
+            start, end, _events = sessions[0]
+            span_hours = (end - start).total_seconds() / 3600
+            self.assertGreaterEqual(span_hours, 1.9)
+
+    def test_high_collapse_minutes_still_forms_one_session(self):
+        """Collapse >= gap still clamps heartbeats so one session forms."""
+        gap = 15
+        collapse = web_visit_collapse_minutes(30, session_gap_minutes=gap)
+        self.assertLess(collapse, gap)
+        base = datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc)
+        # Dense revisits over ~2.5h; clamped cadence (~14 min) stays under gap.
+        visits = [base + timedelta(minutes=2 * i) for i in range(76)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = _claude_results(Path(tmpdir), visits, collapse_minutes=collapse)
+            self.assertGreaterEqual(len(results), 8)
+            entries = [{"local_ts": event["ts"]} for event in results]
+            sessions = compute_sessions(entries, gap_minutes=gap)
             self.assertEqual(len(sessions), 1)
             start, end, _events = sessions[0]
             span_hours = (end - start).total_seconds() / 3600

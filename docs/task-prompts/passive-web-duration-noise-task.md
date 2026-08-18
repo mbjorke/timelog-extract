@@ -62,7 +62,7 @@ Feature: Passive web visits do not inflate observed hours
 - spec_status: approved
 - implementation_status: built
 - created_at: 2026-06-23
-- last_updated_at: 2026-06-23
+- last_updated_at: 2026-08-18
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/174
 - implementation.branch: task/passive-web-duration-noise
 - implementation.commits: [6a65f20]
@@ -72,3 +72,6 @@ Feature: Passive web visits do not inflate observed hours
   - 2026-06-23: Split from #166; PR #174 on task/passive-web-duration-noise.
   - 2026-06-23: Calendar-day web dedupe (CodeRabbit #166); midnight boundary test.
   - 2026-06-23: Slice 1 implemented after YTD Chrome noise analysis in maintainer session.
+  - 2026-08-18: Scope note — calendar-day first-visit collapse superseded for duration
+    span by GH-414 per-window heartbeat (`chrome-tracked-url-heartbeat-414-task.md`);
+    UTC midnight reset and passive-only zero floor retained.

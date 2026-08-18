@@ -81,11 +81,15 @@ class RuntimeCollectors:
 
     def _web_visit_collapse_minutes(self) -> int:
         collapse = 12
+        gap = 15
         if self.cli_args is not None:
             value = getattr(self.cli_args, "chrome_collapse_minutes", None)
             if value is not None:
                 collapse = int(value)
-        return self.chrome.web_visit_collapse_minutes(collapse)
+            gap_value = getattr(self.cli_args, "gap_minutes", None)
+            if gap_value is not None:
+                gap = int(gap_value)
+        return self.chrome.web_visit_collapse_minutes(collapse, session_gap_minutes=gap)
 
     def collect_claude_ai_urls(self, profiles, dt_from, dt_to):
         return self.chrome.collect_claude_ai_urls(

@@ -10,6 +10,8 @@ from pathlib import Path
 from collectors.cursor_composer import (
     _branch_reflected_in_label,
     _composer_activity_span_ms,
+    _composer_workspace_path,
+    classify_composer_conversation,
     collect_cursor_composer_sessions,
 )
 from core.domain import classify_project
@@ -482,6 +484,134 @@ class CursorComposerTests(unittest.TestCase):
             )
         self.assertEqual(events[0]["project"], "timelog-extract")
         self.assertEqual(events[0]["anchors"].get("dir"), "timelog-extract")
+        self.assertEqual(events[0]["anchors"].get("project_from"), "workspace")
+
+    def test_workspace_path_prefers_identifier_over_latest_history(self):
+        composer = {
+            "workspaceIdentifier": {
+                "uri": {"fsPath": "/Users/example/Workspace/Project/project-alpha"},
+            },
+            "agentLocationHistory": [
+                {
+                    "location": {
+                        "uri": {"fsPath": "/Users/example/Workspace/Project/project-alpha"},
+                    }
+                },
+                {
+                    "location": {
+                        "uri": {"fsPath": "/Users/example/Workspace/Project/project-beta"},
+                    }
+                },
+            ],
+        }
+        self.assertEqual(
+            _composer_workspace_path(composer),
+            "/Users/example/Workspace/Project/project-alpha",
+        )
+
+    def test_workspace_path_uses_earliest_history_when_identifier_missing(self):
+        composer = {
+            "agentLocationHistory": [
+                {
+                    "location": {
+                        "uri": {"fsPath": "/Users/example/Workspace/Project/project-alpha"},
+                    }
+                },
+                {
+                    "location": {
+                        "uri": {"fsPath": "/Users/example/Workspace/Project/project-beta"},
+                    }
+                },
+            ],
+        }
+        self.assertEqual(
+            _composer_workspace_path(composer),
+            "/Users/example/Workspace/Project/project-alpha",
+        )
+
+    def test_title_match_wins_over_conflicting_workspace(self):
+        ts_ms = int(datetime(2026, 6, 11, 11, 58, tzinfo=timezone.utc).timestamp() * 1000)
+        payload = {
+            "allComposers": [
+                {
+                    "composerId": "conflict-1",
+                    "name": "project-alpha project update",
+                    "lastUpdatedAt": ts_ms,
+                    "workspaceIdentifier": {
+                        "uri": {
+                            "fsPath": "/Users/example/Workspace/Project/project-beta",
+                        }
+                    },
+                    "trackedGitRepos": [
+                        {
+                            "repoPath": "/Users/example/Workspace/Project/project-beta",
+                            "branches": [
+                                {
+                                    "branchName": "task/elsewhere",
+                                    "lastInteractionAt": ts_ms,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        profiles = [
+            {"name": "project-alpha", "match_terms": ["project-alpha"]},
+            {"name": "project-beta", "match_terms": ["project-beta"]},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "state.vscdb"
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                ("composer.composerHeaders", json.dumps(payload)),
+            )
+            conn.commit()
+            conn.close()
+            home = Path(tmp)
+            cursor_dir = home / "Library/Application Support/Cursor/User/globalStorage"
+            cursor_dir.mkdir(parents=True)
+            (cursor_dir / "state.vscdb").write_bytes(db_path.read_bytes())
+
+            events = collect_cursor_composer_sessions(
+                profiles=profiles,
+                dt_from=datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                dt_to=datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home=home,
+                classify_project=lambda text, p: classify_project(text, p, "Uncategorized"),
+                make_event=lambda source, ts, detail, project, anchors=None: {
+                    "source": source,
+                    "timestamp": ts,
+                    "detail": detail,
+                    "project": project,
+                    "anchors": anchors or {},
+                },
+            )
+        self.assertGreaterEqual(len(events), 1)
+        self.assertEqual(events[0]["project"], "project-alpha")
+        self.assertEqual(events[0]["anchors"].get("project_from"), "title")
+        self.assertEqual(events[0]["anchors"].get("project_workspace"), "project-beta")
+        self.assertEqual(events[0]["anchors"].get("dir"), "project-beta")
+
+    def test_classify_composer_conversation_falls_back_to_workspace(self):
+        attribution = classify_composer_conversation(
+            {
+                "workspaceIdentifier": {
+                    "uri": {"fsPath": "/Users/example/Workspace/Project/project-beta"},
+                }
+            },
+            title="Generic refactor notes",
+            profiles=[
+                {"name": "project-alpha", "match_terms": ["project-alpha"]},
+                {"name": "project-beta", "match_terms": ["project-beta"]},
+            ],
+            classify_project=lambda text, p: classify_project(text, p, "Uncategorized"),
+        )
+        self.assertEqual(attribution.project, "project-beta")
+        self.assertEqual(attribution.project_from, "workspace")
+        self.assertIsNone(attribution.project_workspace)
 
 
 if __name__ == "__main__":

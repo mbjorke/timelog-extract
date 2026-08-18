@@ -10,6 +10,7 @@ from core.report_postamble import run_post_report_followups, status_anchor_warn_
 
 
 class ReportPostambleTests(unittest.TestCase):
+    @patch("core.report_postamble.build_title_workspace_conflict_nudge", return_value=None)
     @patch("core.report_postamble.build_unanchored_anchors_nudge", return_value="anchor-nudge")
     @patch("core.report_postamble.maybe_run_mapping_assistant_after_report", return_value=False)
     @patch("core.report_postamble.prepare_mapping_review_after_report")
@@ -27,6 +28,7 @@ class ReportPostambleTests(unittest.TestCase):
         _prepare,
         _mapping,
         _anchors,
+        _conflict,
     ):
         console = MagicMock()
         console.status.return_value.__enter__ = MagicMock()

@@ -13,6 +13,7 @@ from core.mapping_assistant import (
     prepare_mapping_review_after_report,
 )
 from core.report_nudges import (
+    build_title_workspace_conflict_nudge,
     build_unanchored_anchors_nudge,
     build_unexplained_gap_nudge,
     unanchored_anchors_for_report,
@@ -62,6 +63,10 @@ def run_post_report_followups(console: Console, report: ReportPayload) -> None:
     gap_nudge = build_unexplained_gap_nudge(report)
     if gap_nudge:
         console.print(gap_nudge)
+
+    conflict_nudge = build_title_workspace_conflict_nudge(report)
+    if conflict_nudge:
+        console.print(conflict_nudge)
 
     mapped_interactively = False
     if _wants_mapping_prompt(report):

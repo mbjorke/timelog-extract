@@ -5,8 +5,10 @@ from types import SimpleNamespace
 
 from core.presence_estimated import PresenceEstimatedResult
 from core.report_nudges import (
+    build_title_workspace_conflict_nudge,
     build_unanchored_anchors_nudge,
     build_unexplained_gap_nudge,
+    title_workspace_conflicts_for_report,
     unanchored_anchors_for_report,
 )
 
@@ -136,6 +138,62 @@ class UnanchoredAnchorsNudgeTests(unittest.TestCase):
         events = [{"anchors": {"dir": "timelog-extract"}} for _ in range(5)]
         report = self._report(events, [{"name": "other", "match_terms": ["other"]}])
         self.assertEqual(unanchored_anchors_for_report(report, min_hits=20), [])
+
+
+class TitleWorkspaceConflictNudgeTests(unittest.TestCase):
+    def test_conflict_nudge_above_min_hits(self):
+        events = [
+            {
+                "project": "project-alpha",
+                "anchors": {
+                    "label": "project-alpha project update",
+                    "project_from": "title",
+                    "project_workspace": "project-beta",
+                },
+            }
+            for _ in range(8)
+        ]
+        report = SimpleNamespace(all_events=events)
+        conflicts = title_workspace_conflicts_for_report(report, min_hits=5)
+        self.assertEqual(len(conflicts), 1)
+        self.assertEqual(conflicts[0]["project"], "project-alpha")
+        self.assertEqual(conflicts[0]["project_workspace"], "project-beta")
+        text = build_title_workspace_conflict_nudge(report, min_hits=5)
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertIn("project-alpha", text)
+        self.assertIn("project-beta", text)
+        self.assertIn("Title was preferred", text)
+
+    def test_conflict_nudge_hidden_below_min_hits(self):
+        events = [
+            {
+                "project": "project-alpha",
+                "anchors": {
+                    "label": "project-alpha project update",
+                    "project_from": "title",
+                    "project_workspace": "project-beta",
+                },
+            }
+            for _ in range(3)
+        ]
+        report = SimpleNamespace(all_events=events)
+        self.assertEqual(title_workspace_conflicts_for_report(report, min_hits=5), [])
+        self.assertIsNone(build_title_workspace_conflict_nudge(report, min_hits=5))
+
+    def test_workspace_only_attribution_is_not_a_conflict(self):
+        events = [
+            {
+                "project": "project-beta",
+                "anchors": {
+                    "label": "Generic refactor",
+                    "project_from": "workspace",
+                },
+            }
+            for _ in range(10)
+        ]
+        report = SimpleNamespace(all_events=events)
+        self.assertIsNone(build_title_workspace_conflict_nudge(report, min_hits=5))
 
 
 if __name__ == "__main__":

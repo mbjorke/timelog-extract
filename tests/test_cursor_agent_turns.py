@@ -145,6 +145,53 @@ class CursorAgentTurnsTests(unittest.TestCase):
             )
             self.assertEqual(composer_events, [])
 
+    def test_agent_turns_title_match_wins_over_workspace(self):
+        from core.domain import classify_project
+
+        cid = "a1b2c3d4-1111-2222-3333-444455556666"
+        ws = "1807d04adc753be7ca72d645c0863c27"
+        composers = [
+            {
+                "composerId": cid,
+                "name": "project-alpha project update",
+                "createdAt": 1781158944337,
+                "lastUpdatedAt": 1781158944337,
+                "workspaceIdentifier": {
+                    "uri": {"fsPath": "/Users/example/Workspace/Project/project-beta"},
+                },
+            }
+        ]
+        log_lines = [
+            (
+                '2026-06-11 09:10:00.000 [info] {"level":"info","key":"composer",'
+                '"message":"agent.turn.start","metadata":{"conversation_id":"'
+                + cid
+                + '","request_id":"r1"}}'
+            ),
+        ]
+        profiles = [
+            {"name": "project-alpha", "match_terms": ["project-alpha"]},
+            {"name": "project-beta", "match_terms": ["project-beta"]},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self._write_composer_db(home, composers)
+            self._write_structured_log(home, ws, log_lines)
+            events, covered = collect_cursor_agent_turns(
+                profiles,
+                datetime(2026, 6, 11, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 6, 11, 23, 59, tzinfo=timezone.utc),
+                home,
+                timezone.utc,
+                lambda text, p: classify_project(text, p, "Uncategorized"),
+                self._make_event,
+            )
+        self.assertEqual(covered, {cid})
+        self.assertGreaterEqual(len(events), 1)
+        self.assertEqual(events[0]["project"], "project-alpha")
+        self.assertEqual(events[0]["anchors"].get("project_from"), "title")
+        self.assertEqual(events[0]["anchors"].get("project_workspace"), "project-beta")
+
     def test_hooks_before_submit_prompt_emits_turns_on_cursor_310(self):
         """Cursor 3.10+ moved turn starts into cursor.hooks (GH-345)."""
         cid = "f87253ed-0619-4e9d-ba0f-3005d58c9310"

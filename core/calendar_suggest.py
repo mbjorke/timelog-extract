@@ -1,8 +1,8 @@
 """Suggest project profiles from calendar event titles (onboarding, P7).
 
 People who track time in a calendar encode the project as a *code* in the event
-title — e.g. ``HÅ-DAA standup``, ``EASE-DAA review``, ``KidneySign proteomics
-data``, ``AXOR – OneFlow``. This module extracts those codes heuristically and
+title — e.g. ``TÖ-ABC standup``, ``WIDE-ABC review``, ``DataForge proteomics
+data``, ``ACME – FlowKit``. This module extracts those codes heuristically and
 proposes project profiles for the ones not already covered by an existing
 profile's ``match_terms``.
 
@@ -10,8 +10,8 @@ It is **suggestion-only**: it never writes config. The output is meant for human
 review (the heuristic is ranked by frequency).
 
 Known limitation: only *distinctive* codes are detected — hyphenated
-(``HÅ-DAA``), CamelCase (``KidneySign``), ALL-CAPS (``AXOR``), or dotted
-(``immuniverse.bio``). A bare single-word project name like ``Strike`` is
+(``TÖ-ABC``), CamelCase (``DataForge``), ALL-CAPS (``ACME``), or dotted
+(``examplelab.test``). A bare single-word project name like ``Strike`` is
 indistinguishable from an ordinary word, so it is intentionally not proposed
 (better a missed suggestion than proposing every capitalized word). Such projects
 can still be added by hand.
@@ -26,10 +26,10 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 # Tokens that look like a project code:
-#   - hyphenated with an uppercase letter:  HÅ-DAA, EASE-DAA
-#   - CamelCase (lower then upper):         KidneySign, OneFlow
-#   - ALL-CAPS, length >= 3:                AXOR, STRIKE
-#   - dotted domain-ish:                    immuniverse.bio
+#   - hyphenated with an uppercase letter:  TÖ-ABC, WIDE-ABC
+#   - CamelCase (lower then upper):         DataForge, FlowKit
+#   - ALL-CAPS, length >= 3:                ACME, ORBIT
+#   - dotted domain-ish:                    examplelab.test
 _HYPHEN_CODE = re.compile(r"^[^\W\d_]*[A-ZÅÄÖ][^\W_]*-[^\W_]+$", re.UNICODE)
 _CAMEL_CODE = re.compile(r"^[^\W\d_]*[a-zåäö][A-ZÅÄÖ][^\W_]*$", re.UNICODE)
 _ALLCAPS_CODE = re.compile(r"^[A-ZÅÄÖ][A-ZÅÄÖ0-9]{2,}$", re.UNICODE)

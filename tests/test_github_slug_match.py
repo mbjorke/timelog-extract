@@ -33,14 +33,14 @@ class GithubSlugMatchTests(unittest.TestCase):
             {
                 "name": "financing-portal",
                 "match_terms": [
-                    "ax-finans/financing-portal-dev",
+                    "customer-b/financing-portal-dev",
                     "financing-portal",
-                    "ax-or.com",
+                    "customer-b.test",
                 ],
             }
         ]
         self.assertEqual(
-            profile_for_github_slug("ax-finans/financing-portal-dev-31e799cf", profiles),
+            profile_for_github_slug("customer-b/financing-portal-dev-31e799cf", profiles),
             "financing-portal",
         )
 
@@ -48,25 +48,25 @@ class GithubSlugMatchTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "match_terms": ["ax-finans/financing-portal-dev", "financing-portal"],
+                "match_terms": ["customer-b/financing-portal-dev", "financing-portal"],
             }
         ]
         events = [
             {
                 "source": "Chrome",
-                "detail": "Pull requests · ax-finans/financing-portal-dev-31e799cf",
+                "detail": "Pull requests · customer-b/financing-portal-dev-31e799cf",
                 "project": "Uncategorized",
             },
             {
                 "source": "GitHub",
-                "detail": "push to ax-finans/financing-portal-dev-31e799cf (2 commits, ref main)",
+                "detail": "push to customer-b/financing-portal-dev-31e799cf (2 commits, ref main)",
                 "project": "Uncategorized",
             },
         ]
         activity = collect_slug_activity_from_events(events)
         signals = discover_active_repo_shift_signals(profiles, activity, min_activity=2)
         self.assertEqual(len(signals), 1)
-        self.assertEqual(signals[0]["value"], "ax-finans/financing-portal-dev-31e799cf")
+        self.assertEqual(signals[0]["value"], "customer-b/financing-portal-dev-31e799cf")
         self.assertEqual(signals[0]["suggested_project"], "financing-portal")
         self.assertIn("was financing-portal-dev", signals[0]["display"])
 
@@ -74,24 +74,24 @@ class GithubSlugMatchTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal-dev",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "match_terms": ["customer-b/financing-portal-dev"],
             }
         ]
-        activity = Counter({"ax-finans/financing-portal-dev-31e799cf": 7})
+        activity = Counter({"customer-b/financing-portal-dev-31e799cf": 7})
         signals = discover_active_repo_shift_signals(profiles, activity)
-        self.assertEqual(signals[0]["value"], "ax-finans/financing-portal-dev-31e799cf")
+        self.assertEqual(signals[0]["value"], "customer-b/financing-portal-dev-31e799cf")
         self.assertEqual(signals[0]["suggested_project"], "financing-portal-dev")
 
     def test_shorter_sibling_repo_is_not_a_successor(self):
         self.assertFalse(
-            is_successor_repo_slug("ax-finans/financing-portal", "ax-finans/financing-portal-dev")
+            is_successor_repo_slug("customer-b/financing-portal", "customer-b/financing-portal-dev")
         )
 
     def test_hash_fork_is_successor_of_dev_repo(self):
         self.assertTrue(
             is_successor_repo_slug(
-                "ax-finans/financing-portal-dev-31e799cf",
-                "ax-finans/financing-portal-dev",
+                "customer-b/financing-portal-dev-31e799cf",
+                "customer-b/financing-portal-dev",
             )
         )
 
@@ -99,15 +99,15 @@ class GithubSlugMatchTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal-dev",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "match_terms": ["customer-b/financing-portal-dev"],
             }
         ]
-        self.assertIsNone(profile_for_github_slug("ax-finans/financing-portal", profiles))
+        self.assertIsNone(profile_for_github_slug("customer-b/financing-portal", profiles))
 
     def test_prefer_billing_project_over_dev_alias(self):
         profiles = [
-            {"name": "financing-portal", "customer": "ax-or.com", "match_terms": []},
-            {"name": "financing-portal-dev", "customer": "ax-or.com", "match_terms": []},
+            {"name": "financing-portal", "customer": "customer-b.test", "match_terms": []},
+            {"name": "financing-portal-dev", "customer": "customer-b.test", "match_terms": []},
         ]
         self.assertEqual(
             prefer_billing_project_name("financing-portal-dev", profiles),
@@ -118,30 +118,30 @@ class GithubSlugMatchTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal", "ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal", "customer-b/financing-portal-dev"],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal-dev"],
             },
             {"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]},
         ]
         events = [
             {
                 "source": "GitHub",
-                "detail": "PR #12 merged: feature (ax-finans/financing-portal)",
+                "detail": "PR #12 merged: feature (customer-b/financing-portal)",
                 "project": "financing-portal",
             },
             {
                 "source": "GitHub",
-                "detail": "PR #3 merged: fix (ax-finans/financing-portal)",
+                "detail": "PR #3 merged: fix (customer-b/financing-portal)",
                 "project": "financing-portal",
             },
             {
                 "source": "GitHub",
-                "detail": "push to ax-finans/financing-portal-dev-31e799cf (1 commits, ref main)",
+                "detail": "push to customer-b/financing-portal-dev-31e799cf (1 commits, ref main)",
                 "project": "Uncategorized",
             },
             {
@@ -151,7 +151,7 @@ class GithubSlugMatchTests(unittest.TestCase):
             },
             {
                 "source": "Chrome",
-                "detail": "Pull requests · ax-finans/financing-portal",
+                "detail": "Pull requests · customer-b/financing-portal",
                 "project": "financing-portal",
             },
         ]
@@ -167,25 +167,25 @@ class GithubSlugMatchTests(unittest.TestCase):
             {
                 "name": "financing-portal",
                 "match_terms": [
-                    "ax-finans/financing-portal",
-                    "ax-finans/financing-portal-dev",
+                    "customer-b/financing-portal",
+                    "customer-b/financing-portal-dev",
                 ],
             },
             {
                 "name": "financing-portal-dev",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "match_terms": ["customer-b/financing-portal-dev"],
             },
         ]
         activity = Counter(
             {
-                "ax-finans/financing-portal-dev-31e799cf": 9,
-                "ax-finans/financing-portal": 4,
-                "ax-finans/financing-portal-dev": 0,
+                "customer-b/financing-portal-dev-31e799cf": 9,
+                "customer-b/financing-portal": 4,
+                "customer-b/financing-portal-dev": 0,
             }
         )
         signals = discover_active_repo_shift_signals(profiles, activity)
         self.assertEqual(len(signals), 1)
-        self.assertEqual(signals[0]["value"], "ax-finans/financing-portal-dev-31e799cf")
+        self.assertEqual(signals[0]["value"], "customer-b/financing-portal-dev-31e799cf")
         self.assertIn("financing-portal-dev", signals[0]["display"])
         self.assertNotIn("31e799cf", signals[0]["display"])
         self.assertEqual(signals[0]["suggested_project"], "financing-portal")
@@ -196,11 +196,11 @@ class GithubSlugMatchTests(unittest.TestCase):
         self.assertFalse(is_plausible_github_slug("europe/mariehamn"))
 
     def test_same_repo_family_groups_financing_portal_variants(self):
-        anchors = {"ax-finans/financing-portal"}
+        anchors = {"customer-b/financing-portal"}
         pool = {
-            "ax-finans/financing-portal",
-            "ax-finans/financing-portal-dev",
-            "ax-finans/financing-portal-dev-31e799cf",
+            "customer-b/financing-portal",
+            "customer-b/financing-portal-dev",
+            "customer-b/financing-portal-dev-31e799cf",
             "mbjorke/timelog-extract",
             "sponsors/blueberry-maybe",
         }
@@ -208,9 +208,9 @@ class GithubSlugMatchTests(unittest.TestCase):
         self.assertEqual(
             family,
             {
-                "ax-finans/financing-portal",
-                "ax-finans/financing-portal-dev",
-                "ax-finans/financing-portal-dev-31e799cf",
+                "customer-b/financing-portal",
+                "customer-b/financing-portal-dev",
+                "customer-b/financing-portal-dev-31e799cf",
             },
         )
         self.assertFalse(same_repo_family("mbjorke/timelog-extract", "mbjorke/time-log-genius"))
@@ -260,13 +260,13 @@ class GithubSlugMatchTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal-dev",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "match_terms": ["customer-b/financing-portal-dev"],
             }
         ]
         activity = Counter(
             {
-                "ax-finans/financing-portal": 8,
-                "ax-finans/financing-portal-dev": 0,
+                "customer-b/financing-portal": 8,
+                "customer-b/financing-portal-dev": 0,
             }
         )
         signals = discover_active_repo_shift_signals(profiles, activity)

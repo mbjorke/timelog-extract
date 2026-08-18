@@ -1,7 +1,7 @@
 """Typer command: suggest project profiles from calendar event titles (P7).
 
 Onboarding helper — scans a calendar's event titles and proposes project
-profiles for distinctive codes (e.g. ``HÅ-DAA``, ``KidneySign``) that are not yet
+profiles for distinctive codes (e.g. ``TÖ-ABC``, ``DataForge``) that are not yet
 covered by an existing profile's ``match_terms``. Suggestion-only: it never
 writes config.
 """

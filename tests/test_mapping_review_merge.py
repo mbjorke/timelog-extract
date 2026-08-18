@@ -19,15 +19,15 @@ class MappingReviewMergeTests(unittest.TestCase):
     def test_merge_adds_all_slug_variants_including_inactive(self):
         change = ProjectChangeProposal(
             target_project="financing-portal",
-            customer="ax-or.com",
-            canonical_slug="ax-finans/financing-portal",
-            canonical_remote_url=slug_to_github_url("ax-finans/financing-portal"),
+            customer="customer-b.test",
+            canonical_slug="customer-b/financing-portal",
+            canonical_remote_url=slug_to_github_url("customer-b/financing-portal"),
             canonical_local_path="~/Workspace/financing-portal",
             canonical_activity_dot="[green]●[/green]",
             lines=[
                 RepoDuplicateLine(
-                    slug="ax-finans/financing-portal-dev-31e799cf",
-                    remote_url=slug_to_github_url("ax-finans/financing-portal-dev-31e799cf"),
+                    slug="customer-b/financing-portal-dev-31e799cf",
+                    remote_url=slug_to_github_url("customer-b/financing-portal-dev-31e799cf"),
                     local_path="~/Workspace/financing-portal-dev-31e799cf",
                     activity_dot="[green]●[/green]",
                     status="Primary — remote activity in window",
@@ -36,22 +36,22 @@ class MappingReviewMergeTests(unittest.TestCase):
         )
         additions = _merge_additions_for_change(change)
         values = [value for _project, _rtype, value in additions]
-        self.assertIn("ax-finans/financing-portal", values)
-        self.assertIn("ax-finans/financing-portal-dev-31e799cf", values)
+        self.assertIn("customer-b/financing-portal", values)
+        self.assertIn("customer-b/financing-portal-dev-31e799cf", values)
         self.assertIn("financing-portal-dev", values)
 
     def test_merge_removes_duplicate_github_slugs_from_sibling_profiles(self):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal"],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "match_terms": [
-                    "ax-finans/financing-portal-dev",
+                    "customer-b/financing-portal-dev",
                     "financing-portal-dev",
                     "offer-craft-local-path",
                 ],
@@ -59,22 +59,22 @@ class MappingReviewMergeTests(unittest.TestCase):
         ]
         change = ProjectChangeProposal(
             target_project="financing-portal",
-            customer="ax-or.com",
-            canonical_slug="ax-finans/financing-portal",
-            canonical_remote_url=slug_to_github_url("ax-finans/financing-portal"),
-            canonical_local_path="~/ax-finans",
+            customer="customer-b.test",
+            canonical_slug="customer-b/financing-portal",
+            canonical_remote_url=slug_to_github_url("customer-b/financing-portal"),
+            canonical_local_path="~/customer-b",
             canonical_activity_dot="[green]●[/green]",
             lines=[
                 RepoDuplicateLine(
-                    slug="ax-finans/financing-portal-dev",
-                    remote_url=slug_to_github_url("ax-finans/financing-portal-dev"),
+                    slug="customer-b/financing-portal-dev",
+                    remote_url=slug_to_github_url("customer-b/financing-portal-dev"),
                     local_path="~/financing-portal-dev",
                     activity_dot="[yellow]●[/yellow]",
                     status="Duplicate — remote only",
                 ),
                 RepoDuplicateLine(
-                    slug="ax-finans/financing-portal-dev-31e799cf",
-                    remote_url=slug_to_github_url("ax-finans/financing-portal-dev-31e799cf"),
+                    slug="customer-b/financing-portal-dev-31e799cf",
+                    remote_url=slug_to_github_url("customer-b/financing-portal-dev-31e799cf"),
                     local_path="(not found on disk)",
                     activity_dot="[red]●[/red]",
                     status="Duplicate — remote only",
@@ -83,7 +83,7 @@ class MappingReviewMergeTests(unittest.TestCase):
         )
         removals = _merge_removals_for_change(change, profiles)
         removed_values = {value for _project, _rtype, value in removals}
-        self.assertIn("ax-finans/financing-portal-dev", removed_values)
+        self.assertIn("customer-b/financing-portal-dev", removed_values)
         self.assertNotIn("offer-craft-local-path", removed_values)
 
     def test_ignores_path_noise_for_new_projects(self):
@@ -234,22 +234,22 @@ class MappingReviewMergeTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "financing-portal",
-                "match_terms": ["ax-finans/financing-portal"],
+                "match_terms": ["customer-b/financing-portal"],
             },
             {
                 "name": "offer-craft-34",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "offer-craft-34",
                 "match_terms": ["joakimlennartisaksson-byte/offer-craft-34"],
             },
         ]
         bindings = {
-            "ax-finans/financing-portal": SlugGitBinding(
-                slug="ax-finans/financing-portal",
-                remote_url=slug_to_github_url("ax-finans/financing-portal"),
-                local_path="~/ax-finans",
+            "customer-b/financing-portal": SlugGitBinding(
+                slug="customer-b/financing-portal",
+                remote_url=slug_to_github_url("customer-b/financing-portal"),
+                local_path="~/customer-b",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=2,
             ),
@@ -269,30 +269,30 @@ class MappingReviewMergeTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "financing-portal",
                 "match_terms": [
-                    "ax-finans/financing-portal",
-                    "ax-finans/financing-portal-dev",
-                    "ax-finans/financing-portal-dev-31e799cf",
+                    "customer-b/financing-portal",
+                    "customer-b/financing-portal-dev",
+                    "customer-b/financing-portal-dev-31e799cf",
                     "financing-portal-dev",
                 ],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "financing-portal-dev",
                 "match_terms": [
                     "financing-portal-dev",
-                    "portal-lovable.ax-finans.workers.dev",
+                    "portal-lovable.customer-b.workers.dev",
                 ],
             },
         ]
         bindings = {
-            "ax-finans/financing-portal": SlugGitBinding(
-                slug="ax-finans/financing-portal",
-                remote_url=slug_to_github_url("ax-finans/financing-portal"),
-                local_path="~/ax-finans",
+            "customer-b/financing-portal": SlugGitBinding(
+                slug="customer-b/financing-portal",
+                remote_url=slug_to_github_url("customer-b/financing-portal"),
+                local_path="~/customer-b",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=2,
             ),
@@ -300,7 +300,7 @@ class MappingReviewMergeTests(unittest.TestCase):
         events = [
             {
                 "source": "GitHub",
-                "detail": "PR merged in ax-finans/financing-portal-dev-31e799cf",
+                "detail": "PR merged in customer-b/financing-portal-dev-31e799cf",
                 "project": "Uncategorized",
             },
         ]
@@ -311,25 +311,25 @@ class MappingReviewMergeTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "financing-portal",
-                "match_terms": ["ax-finans/financing-portal"],
+                "match_terms": ["customer-b/financing-portal"],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "canonical_project": "financing-portal-dev",
                 "match_terms": [
-                    "ax-finans/financing-portal-dev",
+                    "customer-b/financing-portal-dev",
                     "financing-portal-dev",
                 ],
             },
         ]
         bindings = {
-            "ax-finans/financing-portal": SlugGitBinding(
-                slug="ax-finans/financing-portal",
-                remote_url=slug_to_github_url("ax-finans/financing-portal"),
-                local_path="~/ax-finans",
+            "customer-b/financing-portal": SlugGitBinding(
+                slug="customer-b/financing-portal",
+                remote_url=slug_to_github_url("customer-b/financing-portal"),
+                local_path="~/customer-b",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=2,
             ),
@@ -337,7 +337,7 @@ class MappingReviewMergeTests(unittest.TestCase):
         events = [
             {
                 "source": "GitHub",
-                "detail": "PR merged in ax-finans/financing-portal-dev-31e799cf",
+                "detail": "PR merged in customer-b/financing-portal-dev-31e799cf",
                 "project": "Uncategorized",
             },
         ]
@@ -346,7 +346,7 @@ class MappingReviewMergeTests(unittest.TestCase):
         self.assertEqual(review.changes[0].target_project, "financing-portal")
 
     def test_host_signals_are_ignored(self):
-        profiles = [{"name": "financing-portal", "match_terms": ["ax-finans/financing-portal"]}]
+        profiles = [{"name": "financing-portal", "match_terms": ["customer-b/financing-portal"]}]
         signals = [
             {
                 "kind": "host",

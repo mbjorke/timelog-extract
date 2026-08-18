@@ -94,7 +94,7 @@ def _fmt_hours(value: float) -> str:
 
 
 def print_weekly_pivot(pivot) -> None:
-    """Render an ISO week × project hours pivot (Pierre-parity view)."""
+    """Render an ISO week × project hours pivot (Robin-parity view)."""
     if pivot.is_empty:
         console.print(
             f"[{STYLE_META}]No hours to summarize by week for this range.[/{STYLE_META}]"

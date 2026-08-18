@@ -1,17 +1,17 @@
-# Backlog: beat the calendar parser (Pierre)
+# Backlog: beat the calendar parser (Robin)
 
 Status: product-owner backlog  
 Last updated: 2026-06-01  
 Role: product owner (planning only — no code in this doc)
 
 Produced by the `gittan-product-owner` skill against the calendar scope. The
-benchmark is [`persona-pierre-calendar-timereport.md`](persona-pierre-calendar-timereport.md);
+benchmark is [`persona-robin-calendar-timereport.md`](persona-robin-calendar-timereport.md);
 the shared time target is
 [`../specs/scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md).
 
 ## Definition of Done
 
-Pierre says *"Gittan is better than my Calendar Event Parser & Time Tracker."*
+Robin says *"Gittan is better than my Calendar Event Parser & Time Tracker."*
 That is reached when Tier 1–2 ship (he switches) and Tier 3 gives him something
 his tool can't (he stays). Items below are ordered to reach a switchable product
 fast, then leapfrog.
@@ -27,7 +27,7 @@ P5–P8 are the leapfrog wins that secure the DoD.
 ### P1 — Multi-calendar collector with role per calendar
 - status: **built** — `collectors/calendar.py`, opt-in `--calendar-source on` + `--calendar-names "Name:role,…"`, fixtures in `tests/test_collectors_calendar.py`. How its hours are counted is still deferred to the bridge phase (P3+).
 - priority: now (after bridge spec merges)
-- problem: the prototype hardcodes one calendar ("Work"); Pierre's time lives in a
+- problem: the prototype hardcodes one calendar ("Work"); Robin's time lives in a
   dedicated `TimeReport` calendar plus others across Google/iCloud/org accounts.
 - user value: Gittan reads the calendars he actually uses, with the right meaning.
 - non-goals: per-provider API auth (read the local `Calendar.sqlitedb`); all-day
@@ -52,7 +52,7 @@ Scenario: User selects calendars and assigns a role to each
 
 ### P2 — Week × project pivot report view
 - priority: now
-- problem: Pierre trusts a `WeekNumber × project → TOTAL` pivot + weekly stacked
+- problem: Robin trusts a `WeekNumber × project → TOTAL` pivot + weekly stacked
   chart; an unfamiliar report won't feel "better".
 - user value: day-one familiarity; his existing mental model, no export step.
 - behavior:
@@ -77,8 +77,8 @@ Scenario: Report shows hours by week and project
   regression tests (`tests/test_calendar_code_classification.py`) and a how-to
   ([`../sources/calendar-title-code-mapping.md`](../sources/calendar-title-code-mapping.md)).
 - priority: next
-- problem: titles encode projects as prefixes/codes (`HÅ-DAA`, `EASE-DAA`,
-  `KidneySign`, …); must map even when sloppy.
+- problem: titles encode projects as prefixes/codes (`TÖ-ABC`, `WIDE-ABC`,
+  `DataForge`, …); must map even when sloppy.
 - acceptance: titles run through `classify_project`; a documented way to map his
   codes via `match_terms`; unknown titles fall back without crashing.
 - validation: unit tests over a sample of his code prefixes.
@@ -98,7 +98,7 @@ Scenario: Report shows hours by week and project
 ### P5 — Corroboration (trust layer) — leapfrog
 - priority: later
 - problem: his timesheet is self-reported; Gittan can verify it.
-- user value: "KidneySign 3h ✓ corroborated by 2.4h Cursor + 1 commit".
+- user value: "DataForge 3h ✓ corroborated by 2.4h Cursor + 1 commit".
 - behavior:
 
 ```gherkin

@@ -19,13 +19,13 @@ class MappingReviewTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal", "ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal", "customer-b/financing-portal-dev"],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal-dev"],
             },
         ]
         recent = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
@@ -33,21 +33,21 @@ class MappingReviewTests(unittest.TestCase):
             {
                 "source": "GitHub",
                 "timestamp": recent,
-                "detail": "push to ax-finans/financing-portal-dev-31e799cf (2 commits, ref main)",
+                "detail": "push to customer-b/financing-portal-dev-31e799cf (2 commits, ref main)",
                 "project": "Uncategorized",
             },
         ]
         bindings = {
-            "ax-finans/financing-portal": SlugGitBinding(
-                slug="ax-finans/financing-portal",
-                remote_url=slug_to_github_url("ax-finans/financing-portal"),
-                local_path="~/ax-finans",
+            "customer-b/financing-portal": SlugGitBinding(
+                slug="customer-b/financing-portal",
+                remote_url=slug_to_github_url("customer-b/financing-portal"),
+                local_path="~/customer-b",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=0,
             ),
-            "ax-finans/financing-portal-dev": SlugGitBinding(
-                slug="ax-finans/financing-portal-dev",
-                remote_url=slug_to_github_url("ax-finans/financing-portal-dev"),
+            "customer-b/financing-portal-dev": SlugGitBinding(
+                slug="customer-b/financing-portal-dev",
+                remote_url=slug_to_github_url("customer-b/financing-portal-dev"),
                 local_path="~/financing-portal-dev",
                 last_commit_epoch=1_700_000_100,
                 git_cmd_hits=1,
@@ -57,17 +57,17 @@ class MappingReviewTests(unittest.TestCase):
         change = review.changes[0]
         statuses = {line.remote_url: line.status for line in change.lines}
         self.assertEqual(
-            statuses[slug_to_github_url("ax-finans/financing-portal-dev")],
+            statuses[slug_to_github_url("customer-b/financing-portal-dev")],
             "Primary — local working copy",
         )
         self.assertEqual(
-            statuses[slug_to_github_url("ax-finans/financing-portal-dev-31e799cf")],
+            statuses[slug_to_github_url("customer-b/financing-portal-dev-31e799cf")],
             "Duplicate — remote only",
         )
         inactive_line = next(
             line
             for line in change.lines
-            if line.slug == "ax-finans/financing-portal-dev-31e799cf"
+            if line.slug == "customer-b/financing-portal-dev-31e799cf"
         )
         self.assertIn("dim", inactive_line.activity_dot)
 
@@ -75,48 +75,48 @@ class MappingReviewTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
+                "customer": "customer-b.test",
                 "match_terms": [
-                    "ax-finans/financing-portal",
-                    "ax-finans/financing-portal-dev",
+                    "customer-b/financing-portal",
+                    "customer-b/financing-portal-dev",
                 ],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal-dev"],
             },
         ]
         events = [
             {
                 "source": "GitHub",
-                "detail": "PR #9 merged (ax-finans/financing-portal)",
+                "detail": "PR #9 merged (customer-b/financing-portal)",
                 "project": "financing-portal",
             },
             {
                 "source": "GitHub",
-                "detail": "push to ax-finans/financing-portal-dev-31e799cf (2 commits, ref main)",
+                "detail": "push to customer-b/financing-portal-dev-31e799cf (2 commits, ref main)",
                 "project": "Uncategorized",
             },
         ]
         bindings = {
-            "ax-finans/financing-portal": SlugGitBinding(
-                slug="ax-finans/financing-portal",
-                remote_url=slug_to_github_url("ax-finans/financing-portal"),
+            "customer-b/financing-portal": SlugGitBinding(
+                slug="customer-b/financing-portal",
+                remote_url=slug_to_github_url("customer-b/financing-portal"),
                 local_path="~/Workspace/financing-portal",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=0,
             ),
-            "ax-finans/financing-portal-dev": SlugGitBinding(
-                slug="ax-finans/financing-portal-dev",
-                remote_url=slug_to_github_url("ax-finans/financing-portal-dev"),
+            "customer-b/financing-portal-dev": SlugGitBinding(
+                slug="customer-b/financing-portal-dev",
+                remote_url=slug_to_github_url("customer-b/financing-portal-dev"),
                 local_path="~/Workspace/financing-portal-dev",
                 last_commit_epoch=1_700_000_100,
                 git_cmd_hits=1,
             ),
-            "ax-finans/financing-portal-dev-31e799cf": SlugGitBinding(
-                slug="ax-finans/financing-portal-dev-31e799cf",
-                remote_url=slug_to_github_url("ax-finans/financing-portal-dev-31e799cf"),
+            "customer-b/financing-portal-dev-31e799cf": SlugGitBinding(
+                slug="customer-b/financing-portal-dev-31e799cf",
+                remote_url=slug_to_github_url("customer-b/financing-portal-dev-31e799cf"),
                 local_path="~/Workspace/financing-portal-dev-31e799cf",
                 last_commit_epoch=1_700_000_200,
                 git_cmd_hits=8,
@@ -125,21 +125,21 @@ class MappingReviewTests(unittest.TestCase):
         review = build_mapping_review(events, profiles, slug_bindings=bindings)
         self.assertEqual(review.change_count(), 1)
         change = review.changes[0]
-        self.assertEqual(change.customer, "ax-or.com")
+        self.assertEqual(change.customer, "customer-b.test")
         self.assertEqual(change.target_project, "financing-portal")
         self.assertEqual(
-            merge_target_for_customer("ax-or.com", profiles),
+            merge_target_for_customer("customer-b.test", profiles),
             "financing-portal",
         )
-        self.assertEqual(change.canonical_remote_url, slug_to_github_url("ax-finans/financing-portal"))
+        self.assertEqual(change.canonical_remote_url, slug_to_github_url("customer-b/financing-portal"))
         self.assertEqual(change.canonical_local_path, "~/Workspace/financing-portal")
         statuses = {line.remote_url: line.status for line in change.lines}
         self.assertEqual(
-            statuses[slug_to_github_url("ax-finans/financing-portal-dev-31e799cf")],
+            statuses[slug_to_github_url("customer-b/financing-portal-dev-31e799cf")],
             "Primary — local working copy",
         )
         self.assertEqual(
-            statuses[slug_to_github_url("ax-finans/financing-portal-dev")],
+            statuses[slug_to_github_url("customer-b/financing-portal-dev")],
             "Duplicate variant",
         )
 

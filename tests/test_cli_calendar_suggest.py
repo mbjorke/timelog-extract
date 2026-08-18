@@ -18,21 +18,21 @@ class CliCalendarSuggestTests(unittest.TestCase):
     @patch("core.cli_calendar_suggest.read_calendar_titles")
     def test_calendar_suggest_with_suggestions_and_valid_config(self, mock_read_titles):
         mock_read_titles.return_value = [
-            ("Work", "HÅ-DAA standup"),
-            ("Work", "HÅ-DAA deep work"),
-            ("Work", "EASE-DAA review"),
+            ("Work", "TÖ-ABC standup"),
+            ("Work", "TÖ-ABC deep work"),
+            ("Work", "WIDE-ABC review"),
             ("Work", "Unrelated meeting"),
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "timelog_projects.json"
-            # Valid config containing an existing profile covering HÅ-DAA
+            # Valid config containing an existing profile covering TÖ-ABC
             config_file.write_text(
                 json.dumps({
                     "projects": [
                         {
-                            "name": "DAA Project",
-                            "match_terms": ["hå-daa"],
+                            "name": "ABC Project",
+                            "match_terms": ["tö-abc"],
                             "enabled": True,
                         }
                     ]
@@ -40,22 +40,22 @@ class CliCalendarSuggestTests(unittest.TestCase):
                 encoding="utf-8"
             )
 
-            # We should only get suggestions for codes not covered, so EASE-DAA should be suggested,
-            # but HÅ-DAA should be excluded!
+            # We should only get suggestions for codes not covered, so WIDE-ABC should be suggested,
+            # but TÖ-ABC should be excluded!
             result = self.runner.invoke(app, [
                 "calendar-suggest",
                 "--projects-config", str(config_file),
                 "--min-count", "1",
             ])
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("EASE-DAA", result.output)
-            self.assertNotIn("HÅ-DAA", result.output)
+            self.assertIn("WIDE-ABC", result.output)
+            self.assertNotIn("TÖ-ABC", result.output)
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
     def test_calendar_suggest_unparseable_json_config_fallback(self, mock_read_titles):
         mock_read_titles.return_value = [
-            ("Work", "HÅ-DAA standup"),
-            ("Work", "EASE-DAA review"),
+            ("Work", "TÖ-ABC standup"),
+            ("Work", "WIDE-ABC review"),
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -70,13 +70,13 @@ class CliCalendarSuggestTests(unittest.TestCase):
             ])
             self.assertEqual(result.exit_code, 0, msg=result.output)
             # Since the config is unparseable, it should fallback to empty list and suggest both codes!
-            self.assertIn("HÅ-DAA", result.output)
-            self.assertIn("EASE-DAA", result.output)
+            self.assertIn("TÖ-ABC", result.output)
+            self.assertIn("WIDE-ABC", result.output)
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
     def test_calendar_suggest_unparseable_json_config_json_format(self, mock_read_titles):
         mock_read_titles.return_value = [
-            ("Work", "HÅ-DAA standup"),
+            ("Work", "TÖ-ABC standup"),
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -93,7 +93,7 @@ class CliCalendarSuggestTests(unittest.TestCase):
             # Output should be valid parseable JSON list
             data = json.loads(result.output)
             self.assertEqual(len(data), 1)
-            self.assertEqual(data[0]["code"], "HÅ-DAA")
+            self.assertEqual(data[0]["code"], "TÖ-ABC")
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
     @patch("core.cli_calendar_suggest._configured_profiles")
@@ -101,8 +101,8 @@ class CliCalendarSuggestTests(unittest.TestCase):
         mock_configured.return_value = []
         # Title contains bracket sequences and valid codes
         mock_read_titles.return_value = [
-            ("Work", "[bold] AXOR-CODE standup"),
-            ("Work", "[bold] AXOR-CODE coding"),
+            ("Work", "[bold] ACME-CODE standup"),
+            ("Work", "[bold] ACME-CODE coding"),
             ("Work", "[/] BOLD-CODE retro"),
             ("Work", "[/] BOLD-CODE retro2"),
         ]
@@ -112,7 +112,7 @@ class CliCalendarSuggestTests(unittest.TestCase):
         # Should render correctly with literally escaped markup inside the console output
         self.assertIn("[bold]", result.output)
         self.assertIn("[/]", result.output)
-        self.assertIn("AXOR-CODE", result.output)
+        self.assertIn("ACME-CODE", result.output)
         self.assertIn("BOLD-CODE", result.output)
 
     @patch("core.cli_calendar_suggest.read_calendar_titles")
@@ -167,9 +167,9 @@ class ConfiguredProfilesTests(unittest.TestCase):
         from core.cli_calendar_suggest import _configured_profiles
 
         with tempfile.TemporaryDirectory() as tmp:
-            path = self._write(tmp, {"projects": [{"name": "HÅ-DAA"}]})
+            path = self._write(tmp, {"projects": [{"name": "TÖ-ABC"}]})
             profiles = _configured_profiles(str(path))
-        self.assertIn("hå-daa", profiles[0]["match_terms"])
+        self.assertIn("tö-abc", profiles[0]["match_terms"])
 
     def test_disabled_profile_does_not_suppress_its_code(self):
         with tempfile.TemporaryDirectory() as tmp:

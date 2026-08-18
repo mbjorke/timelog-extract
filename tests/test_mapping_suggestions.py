@@ -70,13 +70,13 @@ class MappingSuggestionsTests(unittest.TestCase):
         profiles = [
             {
                 "name": "financing-portal",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal", "ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal", "customer-b/financing-portal-dev"],
             },
             {
                 "name": "financing-portal-dev",
-                "customer": "ax-or.com",
-                "match_terms": ["ax-finans/financing-portal-dev"],
+                "customer": "customer-b.test",
+                "match_terms": ["customer-b/financing-portal-dev"],
             },
         ]
         events = [
@@ -89,13 +89,13 @@ class MappingSuggestionsTests(unittest.TestCase):
             {
                 "source": "GitHub",
                 "local_ts": base.replace(minute=10),
-                "detail": "PR #9 merged (ax-finans/financing-portal)",
+                "detail": "PR #9 merged (customer-b/financing-portal)",
                 "project": "financing-portal",
             },
             {
                 "source": "Chrome",
                 "local_ts": base.replace(minute=12),
-                "detail": "Pull requests · ax-finans/financing-portal-dev-31e799cf",
+                "detail": "Pull requests · customer-b/financing-portal-dev-31e799cf",
                 "project": "Uncategorized",
             },
         ]

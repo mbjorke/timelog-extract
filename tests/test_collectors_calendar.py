@@ -89,14 +89,14 @@ class CalendarCollectorTests(unittest.TestCase):
             home = Path(tmp)
             _write_calendar_db(home, [{
                 "calendar": "Work",
-                "summary": "AXOR OneFlow",
+                "summary": "ACME FlowKit",
                 "start": datetime(2026, 4, 1, 8, 0, tzinfo=timezone.utc),
                 "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc),
             }])
             out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT})
             self.assertEqual(len(out), 1)
             self.assertEqual(out[0]["source"], "Calendar")
-            self.assertEqual(out[0]["anchors"]["label"], "AXOR OneFlow")
+            self.assertEqual(out[0]["anchors"]["label"], "ACME FlowKit")
             self.assertEqual(out[0]["detail"], "[Work] 2.00h")
             self.assertEqual(out[0]["calendar_role"], ROLE_SCHEDULED_CONTEXT)
             self.assertEqual(out[0]["timestamp"], datetime(2026, 4, 1, 8, 0, tzinfo=timezone.utc))
@@ -145,7 +145,7 @@ class CalendarCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             _write_calendar_db(home, [
-                {"calendar": "TimeReport", "summary": "KidneySign",
+                {"calendar": "TimeReport", "summary": "DataForge",
                  "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
                  "end": datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)},
             ])
@@ -166,7 +166,7 @@ class CalendarCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             _write_calendar_db(home, [{
-                "calendar": "Work", "summary": "AXOR sync",
+                "calendar": "Work", "summary": "ACME sync",
                 "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
                 "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc),
             }])
@@ -178,7 +178,7 @@ class CalendarCollectorTests(unittest.TestCase):
 
             out = self._collect(home, {"work": ROLE_SCHEDULED_CONTEXT}, classify=classify)
             self.assertEqual(out[0]["project"], "financing-portal")
-            self.assertIn("AXOR sync", seen["hay"])
+            self.assertIn("ACME sync", seen["hay"])
 
     def test_exact_duplicate_events_collapse(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -231,7 +231,7 @@ class CalendarCollectorTests(unittest.TestCase):
 class ReadCalendarTitlesTests(unittest.TestCase):
     def _rows(self):
         return [
-            {"calendar": "TimeReport", "summary": "HÅ-DAA standup",
+            {"calendar": "TimeReport", "summary": "TÖ-ABC standup",
              "start": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
              "end": datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc)},
             {"calendar": "Work", "summary": "Lunch",
@@ -254,7 +254,7 @@ class ReadCalendarTitlesTests(unittest.TestCase):
             f, t = self._window()
             out = read_calendar_titles(home, f, t)
             # All-day excluded → 2 timed events remain.
-            self.assertEqual(sorted(s for _c, s in out), ["HÅ-DAA standup", "Lunch"])
+            self.assertEqual(sorted(s for _c, s in out), ["Lunch", "TÖ-ABC standup"])
 
     def test_filters_by_calendar_name(self):
         from collectors.calendar import read_calendar_titles
@@ -263,7 +263,7 @@ class ReadCalendarTitlesTests(unittest.TestCase):
             _write_calendar_db(home, self._rows())
             f, t = self._window()
             out = read_calendar_titles(home, f, t, ["TimeReport"])
-            self.assertEqual([s for _c, s in out], ["HÅ-DAA standup"])
+            self.assertEqual([s for _c, s in out], ["TÖ-ABC standup"])
 
     def test_missing_db_raises(self):
         from collectors.calendar import read_calendar_titles

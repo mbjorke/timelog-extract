@@ -48,7 +48,7 @@ class ReportEmptyStateUxTests(unittest.TestCase):
         self.assertIn("gittan report --today --source-summary", flat)
 
     def test_report_ambiguous_project_message_unchanged(self):
-        report = _FakeReport(only_project="Ax", ambiguous=["AX Finans", "Axon"])
+        report = _FakeReport(only_project="Ax", ambiguous=["Customer B", "Axon"])
         with patch("core.report_cli.run_timelog_report", return_value=report):
             result = self.runner.invoke(app, ["report", "--today", "--only-project", "Ax"])
         self.assertEqual(result.exit_code, 0, msg=result.output)

@@ -14,7 +14,7 @@ def package_version() -> str:
     try:
         return importlib.metadata.version("timelog-extract")
     except importlib.metadata.PackageNotFoundError:
-        return "0.4.1-dev"
+        return "0.4.2-dev"
 
 
 @dataclass

@@ -70,22 +70,16 @@ report payload" — and it is invisible unless the host also happens to be a
 
 ## What this means for the fix
 
-The evaporation in `#414` is most consistent with a **config-shape coverage
-hole**, not with thinning being too aggressive. That matters because the issue's
-stated next step — "characterize each mechanism separately before changing
-thinning behavior" — would have led to tuning a thinner that is not the cause.
-Retuning the window would trade accuracy for nothing here.
+Two separate problems, two homes (maintainer re-scope on `#414`):
 
-Open for the maintainer, and why this pass stops short of a fix:
-
-1. **Confirm the real config shape.** Was the 2026-07-13 registrar host in
-   `tracked_urls` only? That decides whether H3 is the whole explanation or one
-   of two.
-2. **Product decision (`tracked_urls` semantics).** Should `tracked_urls` feed
-   the Chrome keyword query, get its own generic collector, or stay
-   claude.ai/gemini-specific with `doctor` warning about hosts no collector will
-   ever read? These differ in scope and in what starts counting as billable —
-   not an implementer's call.
+1. **Tracked-URL daily collapse (Claude.ai / Gemini)** — mechanism 1 for hosts
+   those collectors actually read. Fixed in `#414` by replacing first-visit-per-day
+   with a bounded per-window heartbeat (`docs/task-prompts/chrome-tracked-url-heartbeat-414-task.md`).
+   This does **not** recover keyword-invisible infra hosts.
+2. **Config-shape / keyword gate (H3) + Uncategorized drop** — dominant for the
+   registrar/DNS case and for generic `tracked_urls` hosts. Deferred to **GH-410**
+   (block/anchor inheritance). The tracked-only golden tripwire below still
+   records zero hours until that product decision lands.
 
 ## Tripwire
 

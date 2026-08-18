@@ -191,17 +191,15 @@ def _cache_url_belongs_to_uuid(url: str, uuid: str) -> bool:
 def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
     """True when *this* UUID shows chat/edit/project-page traffic, not idle heat.
 
-    Markers are bound to URLs that reference the UUID. A sibling UUID's ``/chat``
-    (or prompt/tiba) in the same cache blob must not promote an ambient host
-    refresh to authorship-looking title + map nudge (GH-448).
+    Markers (including ``/projects/<uuid>``) are bound to URLs that reference the
+    UUID. A sibling UUID's ``/chat`` (or prompt/tiba) — or stray ``/projects/<uuid>``
+    text elsewhere in the same blob — must not promote an ambient host refresh to
+    authorship-looking title + map nudge (GH-448).
     """
     uuid_l = (uuid or "").strip().lower()
     if not uuid_l:
         return False
-    lowered = raw.lower()
-    # Project workspace path for this UUID alone is strong (search bodies never emit).
-    if f"/projects/{uuid_l}".encode("ascii") in lowered:
-        return True
+    project_path = f"/projects/{uuid_l}".encode("ascii")
     urls = _filter_lovable_storage_urls(
         _extract_lovable_urls(raw),
         lovable_noise_profile="balanced",
@@ -214,6 +212,9 @@ def _cache_entry_has_strong_activity(raw: bytes, *, uuid: str) -> bool:
             .lower()
             .encode("utf-8", "ignore")
         )
+        # Project workspace path is strong only on a URL owned by this UUID.
+        if project_path in url_bytes:
+            return True
         if any(marker in url_bytes for marker in _CACHE_STRONG_ACTIVITY_MARKERS):
             return True
     return False

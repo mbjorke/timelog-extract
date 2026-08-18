@@ -15,18 +15,18 @@ class MappingRepoStatusTests(unittest.TestCase):
             {
                 "source": "GitHub",
                 "timestamp": ts,
-                "detail": "push to ax-finans/financing-portal-dev-31e799cf (2 commits, ref main)",
+                "detail": "push to customer-b/financing-portal-dev-31e799cf (2 commits, ref main)",
                 "project": "Uncategorized",
             },
         ]
         enriched = enrich_bindings_with_remote_activity(
             {},
             events,
-            activity={"ax-finans/financing-portal-dev-31e799cf": 4},
+            activity={"customer-b/financing-portal-dev-31e799cf": 4},
             dt_from=datetime(2026, 6, 1, tzinfo=timezone.utc),
             dt_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
         )
-        binding = enriched["ax-finans/financing-portal-dev-31e799cf"]
+        binding = enriched["customer-b/financing-portal-dev-31e799cf"]
         self.assertEqual(binding.local_path, "(not found on disk)")
         self.assertEqual(binding.in_window_epoch, int(ts.timestamp()))
         self.assertEqual(binding.remote_hits, 4)

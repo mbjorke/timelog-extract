@@ -138,7 +138,7 @@ exit criteria per milestone.
 The structural gap: no concrete launch date exists anywhere in the docs. The checklist
 (`CLI_FIRST_V1_RELEASE_CHECKLIST.md`) has a status snapshot but no target date. The
 v1 finish plan has a "two-week execution sequence" but no start date anchored to it.
-Without a date, "awaiting feedback from Andreas/Pierre" can drift indefinitely.
+Without a date, "awaiting feedback from Andreas/Robin" can drift indefinitely.
 
 **Action:** Set a launch date. Write it in `CLI_FIRST_V1_RELEASE_CHECKLIST.md` as a
 committed line: `Target v1 tag: [date]`. This is the most important single thing to do
@@ -201,12 +201,12 @@ want to support the project.
 
 The product is ready. The docs are ready. The technology is not the risk.
 
-The risk is that "awaiting feedback from Andreas/Pierre" becomes the permanent state. One
+The risk is that "awaiting feedback from Andreas/Robin" becomes the permanent state. One
 week becomes two. The launch date never gets set. The Patreon never goes live. The
 Show HN post never gets written.
 
 This risk is familiar to solo founders. The mitigation is boring but effective: set a
-public date and tell one person about it. The feedback from Andreas or Pierre is useful
+public date and tell one person about it. The feedback from Andreas or Robin is useful
 but not required to ship. Use their feedback to improve the Show HN post, not as a gate
 to publishing the Patreon.
 

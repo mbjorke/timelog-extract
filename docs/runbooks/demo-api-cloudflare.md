@@ -75,14 +75,14 @@ const DEMO_API_BASE = "https://api.gittan.sh";
 ### Account safety gate
 
 Deploy this Worker only to the maintainer's **private Cloudflare account**.
-Do **not** deploy it to AX Finans or any customer/work account.
+Do **not** deploy it to any customer or work account.
 
 Before running deploy:
 
 1. Run `npx wrangler whoami`.
 2. Confirm the active account is the private account that owns `gittan.sh`.
 3. Confirm the target zone/domain is `gittan.sh`.
-4. If the account name, account ID, or zone looks like AX Finans, stop.
+4. If the account name, account ID, or zone belongs to a customer or work account, stop.
 
 From a machine authenticated to the correct private Cloudflare account:
 

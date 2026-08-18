@@ -1,11 +1,11 @@
-# Persona: Pierre — the calendar time-reporter
+# Persona: Robin — the calendar time-reporter
 
 Status: product persona + competitive DoD  
 Last updated: 2026-06-01
 
 ## Why this persona exists
 
-Pierre already solved his own time tracking with Google Calendar plus a custom
+Robin already solved his own time tracking with Google Calendar plus a custom
 Streamlit "Calendar Event Parser & Time Tracker". He is a realistic, demanding
 first external user for Gittan's calendar work: he has a working tool, so Gittan
 has to be **clearly better**, not merely present.
@@ -13,15 +13,15 @@ has to be **clearly better**, not merely present.
 This doc is the **benchmark** the calendar/bridge work is measured against. The
 collector contract and the
 [`scheduled-reported-time-bridge.md`](../specs/scheduled-reported-time-bridge.md)
-implement *how*; this doc defines *what would make Pierre switch*.
+implement *how*; this doc defines *what would make Robin switch*.
 
-## How Pierre works today
+## How Robin works today
 
 - He keeps a **dedicated calendar named `TimeReport`** (one of many calendars
   across Google, iCloud, and several org accounts). Each event in it is a
   **deliberate time entry**, not a meeting he attended.
-- Event titles encode the project as a prefix/code: `KidneySign`, `HÅ-DAA`,
-  `HÅ-EASE`, `HÅ-EuCo`, `EASE-DAA`, `Strike`, `immuniverse.bio`, …
+- Event titles encode the project as a prefix/code: `DataForge`, `TÖ-ABC`,
+  `HÅ-EASE`, `TÖ-MiCo`, `WIDE-ABC`, `Strike`, `examplelab.test`, …
 - His loop: select events → export to `calendar_events.txt` → upload to a
   Streamlit app → see a **week × project pivot** (`WeekNumber × project →
   TOTAL`), a stacked weekly bar chart, and a few views (detailed events, weekly
@@ -39,7 +39,7 @@ source must support **role per calendar**, not one global role:
 | Meetings / `Work` | `scheduled_context` | `proposed` — needs confirmation, never silent |
 | Personal / family / holidays | ignored | not collected |
 
-Implication: the source can't hardcode `"Work"`. Pierre needs to **select which
+Implication: the source can't hardcode `"Work"`. Robin needs to **select which
 calendars to read and assign a role to each**, across multiple accounts.
 
 Likely technical win to verify: subscribed Google/iCloud calendars sync into the
@@ -48,7 +48,7 @@ read **all** his accounts without per-provider API auth.
 
 ## What "better than his parser" means (DoD)
 
-Pierre's verdict — *"Gittan is better than my Calendar Event Parser & Time
+Robin's verdict — *"Gittan is better than my Calendar Event Parser & Time
 Tracker"* — breaks down into layered, checkable wins:
 
 ### Tier 1 — Remove his current friction (table stakes)
@@ -60,14 +60,14 @@ Tracker"* — breaks down into layered, checkable wins:
 
 ### Tier 2 — Parity on what he trusts
 - [ ] Multi-calendar / multi-account selection with role per calendar.
-- [ ] His title codes (`HÅ-DAA`, `EASE-DAA`, `KidneySign`, …) classify to Gittan
+- [ ] His title codes (`TÖ-ABC`, `WIDE-ABC`, `DataForge`, …) classify to Gittan
       projects via `match_terms` / `tracked_urls`, even when titles are sloppy.
 - [ ] Weekly stacked distribution comparable to his chart (or a clearly better
       equivalent).
 
 ### Tier 3 — Leapfrog (this is where Gittan wins, not ties)
 - [ ] **Corroboration / trust.** Cross-check a `TimeReport` claim against real
-      work evidence: *"KidneySign 3h logged ✓ corroborated by 2.4h Cursor + 1
+      work evidence: *"DataForge 3h logged ✓ corroborated by 2.4h Cursor + 1
       commit."* Turns a self-reported timesheet into a **verified** one.
       **His entered hours stay authoritative** — corroboration is a confidence
       annotation, never an override.
@@ -83,7 +83,7 @@ Tracker"* — breaks down into layered, checkable wins:
       the TimeReport event or post to Toggl/Jira. The calendar stays his source of
       truth; Gittan fills the gaps.
 
-## Anti-goals (how we lose Pierre)
+## Anti-goals (how we lose Robin)
 
 - "Correcting" his entered hours against observed evidence without consent — he
   loses trust and goes back to his own tool.

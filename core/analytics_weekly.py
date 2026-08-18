@@ -5,7 +5,7 @@ recompute sessions. Input is the ``project_reports`` mapping
 (``{project: {day_iso: {"hours": float, ...}}}``); output is a pivot suitable
 for a WeekNumber × project table with row/column/grand totals.
 
-Motivated by the Pierre persona (docs/product/persona-pierre-calendar-timereport.md):
+Motivated by the Robin persona (docs/product/persona-robin-calendar-timereport.md):
 his existing tool's core view is a WeekNumber × project pivot, so a familiar
 weekly view is a parity win.
 """

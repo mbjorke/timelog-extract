@@ -1,7 +1,7 @@
 # Scheduled → Reported time bridge
 
 Status: draft spec  
-Last updated: 2026-06-01 (role-per-calendar + Pierre persona)
+Last updated: 2026-06-01 (role-per-calendar + Robin persona)
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Today:
 - `jira-sync` already turns derived session time into Jira worklogs with a
   confirm/dry-run loop.
 
-Motivating user: [`../product/persona-pierre-calendar-timereport.md`](../product/persona-pierre-calendar-timereport.md)
+Motivating user: [`../product/persona-robin-calendar-timereport.md`](../product/persona-robin-calendar-timereport.md)
 keeps a dedicated `TimeReport` calendar where every event is a deliberate time
 entry — proof that a calendar source cannot assume a single role.
 
@@ -144,7 +144,7 @@ Feature: Scheduled to reported time bridge
 
   Scenario: A dedicated time-report calendar maps in as a primary claim
     Given a calendar the user marked as a time-report calendar
-    And it has an event "KidneySign" from 09:00 to 12:00
+    And it has an event "DataForge" from 09:00 to 12:00
     When the events are read
     Then a reported_time record should be created with state "confirmed"
     And hours should be 3.0
@@ -165,7 +165,7 @@ Feature: Scheduled to reported time bridge
     And Toggl/Jira sync should read the same record without source-specific logic
 
   Scenario: Corroboration annotates a primary claim without overriding it
-    Given a time-report entry of 3.0 hours for "KidneySign"
+    Given a time-report entry of 3.0 hours for "DataForge"
     And work evidence shows 2.4 hours of activity in the same window
     When the report is produced
     Then the reported hours should stay 3.0

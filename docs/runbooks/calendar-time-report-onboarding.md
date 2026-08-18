@@ -5,8 +5,8 @@ Last updated: 2026-06-02
 
 For someone who already tracks time in a calendar — a dedicated calendar (e.g.
 `TimeReport`) whose events *are* the time entries, with the project encoded in
-the title (`HÅ-DAA standup`, `KidneySign proteomics data`, `AXOR – OneFlow`).
-See [`../product/persona-pierre-calendar-timereport.md`](../product/persona-pierre-calendar-timereport.md).
+the title (`TÖ-ABC standup`, `DataForge proteomics data`, `ACME – FlowKit`).
+See [`../product/persona-robin-calendar-timereport.md`](../product/persona-robin-calendar-timereport.md).
 
 The goal of this runbook is the **zero-export** flow: Gittan reads the calendar
 **live** and produces a week × project report, with **no export/upload step**.

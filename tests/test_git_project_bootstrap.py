@@ -93,16 +93,16 @@ class GitProjectBootstrapTests(unittest.TestCase):
             home_path = Path(home)
             workspace = home_path / "Workspace"
             workspace.mkdir()
-            repo = home_path / "ax-finans"
+            repo = home_path / "customer-b"
             repo.mkdir()
-            self._init_repo(str(repo), "https://github.com/ax-finans/financing-portal.git")
+            self._init_repo(str(repo), "https://github.com/customer-b/financing-portal.git")
             with mock.patch("core.git_project_bootstrap.Path.home", return_value=home_path):
                 with mock.patch(
                     "core.git_project_bootstrap._workspace_scan_roots",
                     return_value=[workspace],
                 ):
                     slugs = collect_local_github_slugs_from_workspace()
-            self.assertIn("ax-finans/financing-portal", slugs)
+            self.assertIn("customer-b/financing-portal", slugs)
 
 
 if __name__ == "__main__":

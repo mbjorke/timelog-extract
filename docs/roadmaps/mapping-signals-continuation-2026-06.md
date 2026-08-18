@@ -15,7 +15,7 @@ The old **Freelance Bridge** hosted-dashboard idea is retired
 (`docs/ideas/conversational-ui-stack.md`). The replacement is **private-first**:
 stronger local classification signals, audit-driven config suggestions, and
 light modal-wall nudges in the CLI — then intent capture and triage UX once weak
-web/chat signals can be tagged at source. Calendar onboarding (Pierre) and IDE/terminal
+web/chat signals can be tagged at source. Calendar onboarding (Robin) and IDE/terminal
 mapping (Marcus-style power users) are **parallel tracks** on the same engine.
 
 ---
@@ -90,7 +90,7 @@ Pick **one row = one PR** (`task/<scope>` from `main`). Re-sync `main` before ea
 | B2 | `classify_project` consumes intent by `url_hash` | Scenario 3 + provenance field |
 | B3 | Restart triage UX design (5-prompt session) | Preconditions in `triage-design-session-learnings.md` met |
 
-### Track C — Calendar leapfrog (Pierre P5–P8)
+### Track C — Calendar leapfrog (Robin P5–P8)
 
 Depends on `scheduled-reported-time-bridge` reconcile loop. Sequence: **P5 corroboration
 → P6 gap nudges → P8 invoice**. Do not mix with Track A unless touching shared
@@ -106,7 +106,7 @@ React Ink overlay for anchor mapping; SQLite for triage/intent index; web view f
 ## How to choose the next PR
 
 ```
-Need Pierre/calendar trust layer?     → Track C (after bridge spec work)
+Need Robin/calendar trust layer?     → Track C (after bridge spec work)
 IDE/terminal mapping still painful?   → Track A (A1 haystack first)
 claude.ai / opaque URLs the blocker?  → Track B (intent capture)
 Want prettier mapping UX?             → Track D (after A1–A3 stabilize contracts)
@@ -140,7 +140,7 @@ Playbook: `docs/ideas/fast-project-mapping-playbook.md`.
 ## Related
 
 - `../ideas/freelance-bridge-planning-arc.md` — #140 branch execution log
-- `../product/calendar-beat-the-parser-backlog.md` — Pierre P1–P8
+- `../product/calendar-beat-the-parser-backlog.md` — Robin P1–P8
 - `../ideas/fast-project-mapping-playbook.md` — ~10 min config tuning loop
 - `../specs/working-directory-anchor-signal.md` — anchor + audit contract
 - `../specs/intent-capture.md` — next root fix for triage pain

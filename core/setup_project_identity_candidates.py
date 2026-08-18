@@ -28,7 +28,7 @@ def customer_identity_key(value: str) -> str:
     Best-effort identity key for deduping common customer variants.
 
     Minimal-risk goal: collapse obvious duplicates users enter/see in onboarding:
-    - casing differences: "AX Finans" vs "ax-finans"
+    - casing differences: "Customer B" vs "customer-b"
     - domain vs bare root: "blueberry.ax" vs "Blueberry"
     """
     s = str(value or "").strip().lower()

@@ -260,17 +260,17 @@ class CursorNoiseFilterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             wid = "9" * 32
-            self._write_workspace(home, wid, "/Users/me/ax-finans")
+            self._write_workspace(home, wid, "/Users/me/customer-b")
             self._write_log(
                 home,
                 "main/window.log",
                 [
                     (
-                        "2026-04-22 07:08:18 [info] Project config path (ax-finans): "
-                        "/Users/me/ax-finans/.cursor/hooks.json workspaceStorage/" + wid
+                        "2026-04-22 07:08:18 [info] Project config path (customer-b): "
+                        "/Users/me/customer-b/.cursor/hooks.json workspaceStorage/" + wid
                     ),
                     (
-                        "2026-04-22 07:08:22 [info] > git --git-dir /Users/me/ax-finans/.git status "
+                        "2026-04-22 07:08:22 [info] > git --git-dir /Users/me/customer-b/.git status "
                         "workspaceStorage/" + wid
                     ),
                 ],
@@ -331,7 +331,7 @@ class CursorNoiseFilterTests(unittest.TestCase):
                     ),
                     (
                         "2026-06-22 11:01:10.417 [info] [RepositoryTracker] Stored "
-                        "repository path: github.com/ax-f /Users/me/ax-finans workspaceStorage/" + wid
+                        "repository path: github.com/customer-b /Users/me/customer-b workspaceStorage/" + wid
                     ),
                 ],
             )

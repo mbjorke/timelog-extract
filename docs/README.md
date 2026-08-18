@@ -73,9 +73,9 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Fast project mapping (~10 min retrospective window)** → [`ideas/fast-project-mapping-playbook.md`](ideas/fast-project-mapping-playbook.md)
 - **Separate `dev` vs `main` (forks / second integration branch — safe alignment, tags, handoff)** → [`runbooks/dev-main-alignment.md`](runbooks/dev-main-alignment.md) + prompt [`task-prompts/dev-main-alignment-handoff.md`](task-prompts/dev-main-alignment-handoff.md) — default upstream flow is `task/* → main` ([`BRANCH.md`](../BRANCH.md))
 - **What Gittan is and should ship** → `product/` — start with [`product/vision-documents.md`](product/vision-documents.md) for hierarchy
-- **Calendar time-reporter persona + "beat the parser" DoD (Pierre)** → [`product/persona-pierre-calendar-timereport.md`](product/persona-pierre-calendar-timereport.md)
+- **Calendar time-reporter persona + "beat the parser" DoD (Robin)** → [`product/persona-robin-calendar-timereport.md`](product/persona-robin-calendar-timereport.md)
 - **Calendar "beat the parser" ordered backlog (P1–P8)** → [`product/calendar-beat-the-parser-backlog.md`](product/calendar-beat-the-parser-backlog.md)
-- **Mapping calendar title codes to projects (HÅ-DAA, KidneySign, …)** → [`sources/calendar-title-code-mapping.md`](sources/calendar-title-code-mapping.md)
+- **Mapping calendar title codes to projects (TÖ-ABC, DataForge, …)** → [`sources/calendar-title-code-mapping.md`](sources/calendar-title-code-mapping.md)
 - **Calendar time-reporting onboarding (zero-export, end-to-end)** → [`runbooks/calendar-time-report-onboarding.md`](runbooks/calendar-time-report-onboarding.md)
 - **Canonical CLI language vs demo subset** → [`product/cli-command-map.md`](product/cli-command-map.md)
 - **Values, culture, what we won’t do (public / contributors)** → [`brand/values.md`](brand/values.md)

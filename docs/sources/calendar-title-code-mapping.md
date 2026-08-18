@@ -6,9 +6,9 @@ Last updated: 2026-06-01
 ## Who this is for
 
 People who already encode the project in the calendar **event title** as a
-prefix or code — for example `HÅ-DAA standup`, `EASE-DAA review`, or
-`KidneySign proteomics data` (see the
-[Pierre persona](../product/persona-pierre-calendar-timereport.md)). Gittan can
+prefix or code — for example `TÖ-ABC standup`, `WIDE-ABC review`, or
+`DataForge proteomics data` (see the
+[Robin persona](../product/persona-robin-calendar-timereport.md)). Gittan can
 turn those titles into project hours automatically, with no change to how you
 keep your calendar.
 
@@ -23,11 +23,11 @@ config.
 Matching is:
 
 - **case-insensitive** — `match_terms` and titles are both lowercased, so a code
-  configured as `HÅ-DAA` matches `hå-daa` in a title and vice versa;
+  configured as `TÖ-ABC` matches `tö-abc` in a title and vice versa;
 - **substring, anywhere in the title** — the code does not have to be a prefix;
-  `Quick sync about HÅ-DAA` still classifies;
+  `Quick sync about TÖ-ABC` still classifies;
 - **multi-code per project** — list several codes under one project when you use
-  more than one (e.g. `HÅ-DAA` and `EASE-DAA` both → one project).
+  more than one (e.g. `TÖ-ABC` and `WIDE-ABC` both → one project).
 
 Unrecognized titles are **not** force-fit to a project; they fall back to
 `Uncategorized` rather than guessing.
@@ -38,16 +38,16 @@ Unrecognized titles are **not** force-fit to a project; they fall back to
 {
   "projects": [
     {
-      "name": "DAA",
-      "match_terms": ["HÅ-DAA", "EASE-DAA"]
+      "name": "ABC",
+      "match_terms": ["TÖ-ABC", "WIDE-ABC"]
     },
     {
-      "name": "EuCo",
-      "match_terms": ["HÅ-EuCo"]
+      "name": "MiCo",
+      "match_terms": ["TÖ-MiCo"]
     },
     {
-      "name": "KidneySign",
-      "match_terms": ["KidneySign"]
+      "name": "DataForge",
+      "match_terms": ["DataForge"]
     }
   ]
 }
@@ -57,10 +57,10 @@ With this config:
 
 | Calendar title | Classified project |
 | --- | --- |
-| `HÅ-DAA standup` | DAA |
-| `EASE-DAA review` | DAA |
-| `HÅ-EuCo planning` | EuCo |
-| `KidneySign proteomics data` | KidneySign |
+| `TÖ-ABC standup` | ABC |
+| `WIDE-ABC review` | ABC |
+| `TÖ-MiCo planning` | MiCo |
+| `DataForge proteomics data` | DataForge |
 | `Dentist appointment` | Uncategorized |
 
 Then review by week with `gittan report --weekly` (ISO week × project pivot).
@@ -81,8 +81,8 @@ gittan calendar-suggest --calendar-names "TimeReport"
 ```
 
 It reads the named calendar(s) read-only, finds distinctive codes
-(hyphenated like `HÅ-DAA`, CamelCase like `KidneySign`, ALL-CAPS like `AXOR`,
-dotted like `immuniverse.bio`), skips codes already in your config, ranks them by
+(hyphenated like `TÖ-ABC`, CamelCase like `DataForge`, ALL-CAPS like `ACME`,
+dotted like `examplelab.test`), skips codes already in your config, ranks them by
 how often they appear, and prints ready-to-paste profile stubs. It **never writes
 config** — review and paste the ones you want. Use `--format json` for scripting,
 `--days N` to widen the lookback, and `--min-count N` to filter rare codes.
@@ -97,14 +97,14 @@ Feature: Calendar title-code classification
   Calendar event titles that encode a project code map to that project.
 
   Scenario: A title code classifies to its project
-    Given a project profile lists "HÅ-DAA" in its match_terms
+    Given a project profile lists "TÖ-ABC" in its match_terms
     And the Calendar source is enabled
-    When an event titled "HÅ-DAA standup" is collected
+    When an event titled "TÖ-ABC standup" is collected
     Then the event should be classified to that project
 
   Scenario: Matching ignores letter case
-    Given a project profile lists "HÅ-DAA" in its match_terms
-    When an event titled "hå-daa lowercase title" is collected
+    Given a project profile lists "TÖ-ABC" in its match_terms
+    When an event titled "tö-abc lowercase title" is collected
     Then the event should still classify to that project
 
   Scenario: An unrecognized title is not force-fit

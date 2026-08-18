@@ -48,11 +48,11 @@ class AddCommandTests(unittest.TestCase):
         tmp, store = _temp_store()
         with tmp, store:
             result = CliRunner().invoke(app, [
-                "reported", "add", "--project", "ax-finans", "--date", "2026-06-18",
+                "reported", "add", "--project", "customer-b", "--date", "2026-06-18",
                 "--hours", "3", "--note", "SFTP + server work",
             ])
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            recs = rt.query(project="ax-finans", date="2026-06-18", states={"confirmed"})
+            recs = rt.query(project="customer-b", date="2026-06-18", states={"confirmed"})
             self.assertEqual(len(recs), 1)
             self.assertEqual(recs[0].source, "manual")
             self.assertEqual(recs[0].hours, 3.0)

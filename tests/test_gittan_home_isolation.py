@@ -20,20 +20,20 @@ import tempfile
 import textwrap
 import unittest
 from argparse import Namespace
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from core.config import GittanHomeError, canonical_gittan_home, gittan_data_dir
-from core.evidence_store import evidence_base_dir, spool_dir
+from core.evidence_store import capture_events, evidence_base_dir, maybe_replay, spool_dir
 from core.global_timelog_hook_script import _RESOLVER_PY, HOOK_BODY
 from core.global_timelog_machine_setup import (
     gittan_config_dir,
     gittan_filename_file,
     gittan_scope_file,
 )
-from core.intent_store import intent_path
+from core.intent_store import apply_intents, intent_path, record_intent
 from core.observed_cache import (
     observed_base_dir,
     observed_hours_by_project_day,
@@ -269,6 +269,135 @@ class ReportStoresAreAmbientNotReadHomeTests(unittest.TestCase):
         distinction rather than just the absence of an argument.
         """
         self.assertEqual(self._call_kwargs("collect_runtime_events").get("home"), "HOME")
+
+    def test_sandboxed_replay_and_intents_ignore_real_store_paths(self):
+        """With GITTAN_HOME set, report-time stores must not read ~/.gittan.
+
+        Seeds sentinel evidence and intents under a fake OS home, then calls
+        ``maybe_replay`` / ``apply_intents`` the way ``run_timelog_report`` does
+        (no ``home=``). Under ``$GITTAN_HOME``, neither store may touch the real
+        paths — byte-identical afterwards, and no restored/rebound events.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_real_home = Path(tmp) / "real-home"
+            sandbox = Path(tmp) / "sandbox"
+            sandbox.mkdir()
+            real_evidence = fake_real_home / ".gittan" / "evidence"
+            real_intent = fake_real_home / ".gittan" / "intent-capture.jsonl"
+            win_from = datetime(2026, 3, 1, tzinfo=timezone.utc)
+            win_to = datetime(2026, 3, 31, 23, 59, tzinfo=timezone.utc)
+            # Closed window relative to "now" is required for maybe_replay.
+            self.assertLess(win_to.date(), datetime.now(timezone.utc).date())
+
+            with mock.patch.object(Path, "home", staticmethod(lambda: fake_real_home)):
+                with _no_gittan_home():
+                    capture_events(
+                        [
+                            {
+                                "source": "Cursor",
+                                "timestamp": datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc),
+                                "detail": "real-evidence-sentinel",
+                                "project": "project-alpha",
+                            }
+                        ],
+                        captured_at="2026-03-10T10:00:00+00:00",
+                    )
+                    record_intent("real-session", "project-from-real-intent")
+                evidence_before = sorted(
+                    (p.relative_to(real_evidence), p.read_bytes())
+                    for p in real_evidence.rglob("*")
+                    if p.is_file()
+                )
+                intent_before = real_intent.read_bytes()
+
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": str(sandbox)}):
+                    args = SimpleNamespace(shadow_replay="on")
+                    events = maybe_replay(
+                        [],
+                        args=args,
+                        dt_from=win_from,
+                        dt_to=win_to,
+                        local_tz=timezone.utc,
+                    )
+                    rebound, changed = apply_intents(
+                        [
+                            {
+                                "source": "Claude Desktop (Code)",
+                                "timestamp": datetime(2026, 3, 10, 11, 0, tzinfo=timezone.utc),
+                                "detail": "3 turns",
+                                "project": "Uncategorized",
+                                "anchors": {"session": "real-session"},
+                            }
+                        ]
+                    )
+
+            self.assertEqual(args.shadow_replay_restored, 0)
+            self.assertEqual(events, [])
+            self.assertEqual(changed, 0)
+            self.assertEqual(rebound[0]["project"], "Uncategorized")
+            evidence_after = sorted(
+                (p.relative_to(real_evidence), p.read_bytes())
+                for p in real_evidence.rglob("*")
+                if p.is_file()
+            )
+            self.assertEqual(evidence_before, evidence_after)
+            self.assertEqual(intent_before, real_intent.read_bytes())
+            # Sandbox must not have silently grown evidence/intent either from
+            # reading the wrong root — empty sandbox stays empty of those stores.
+            self.assertFalse((sandbox / "evidence").exists())
+            self.assertFalse((sandbox / "intent-capture.jsonl").exists())
+
+    def test_sandboxed_replay_and_intents_use_gittan_home_stores(self):
+        """Positive counterpart: ambient resolution does find sandbox stores."""
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_real_home = Path(tmp) / "real-home"
+            sandbox = Path(tmp) / "sandbox"
+            fake_real_home.mkdir()
+            win_from = datetime(2026, 3, 1, tzinfo=timezone.utc)
+            win_to = datetime(2026, 3, 31, 23, 59, tzinfo=timezone.utc)
+
+            with mock.patch.object(Path, "home", staticmethod(lambda: fake_real_home)):
+                with mock.patch.dict(os.environ, {"GITTAN_HOME": str(sandbox)}):
+                    capture_events(
+                        [
+                            {
+                                "source": "Cursor",
+                                "timestamp": datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc),
+                                "detail": "sandbox-evidence",
+                                "project": "project-alpha",
+                            }
+                        ],
+                        captured_at="2026-03-10T10:00:00+00:00",
+                    )
+                    record_intent("sandbox-session", "project-beta")
+                    args = SimpleNamespace(shadow_replay="on")
+                    events = maybe_replay(
+                        [],
+                        args=args,
+                        dt_from=win_from,
+                        dt_to=win_to,
+                        local_tz=timezone.utc,
+                    )
+                    rebound, changed = apply_intents(
+                        [
+                            {
+                                "source": "Claude Desktop (Code)",
+                                "timestamp": datetime(2026, 3, 10, 11, 0, tzinfo=timezone.utc),
+                                "detail": "3 turns",
+                                "project": "Uncategorized",
+                                "anchors": {"session": "sandbox-session"},
+                            }
+                        ]
+                    )
+
+            self.assertEqual(args.shadow_replay_restored, 1)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["detail"], "sandbox-evidence")
+            self.assertEqual(changed, 1)
+            self.assertEqual(rebound[0]["project"], "project-beta")
+            self.assertTrue((sandbox / "evidence").is_dir())
+            self.assertTrue((sandbox / "intent-capture.jsonl").is_file())
+            self.assertFalse((fake_real_home / ".gittan").exists())
 
 
 class HookUsesOneDataDirTests(unittest.TestCase):

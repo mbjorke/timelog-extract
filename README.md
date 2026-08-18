@@ -105,11 +105,13 @@ You usually do not need to set any env vars; check the active path with `gittan 
 
 ```bash
 export GITTAN_HOME="$(mktemp -d)"
-cp ~/.gittan/timelog_projects.json "$GITTAN_HOME/"   # optional: reuse your projects
-gittan report --today
+cat > "$GITTAN_HOME/timelog_projects.json" <<'EOF'
+{"projects": [{"name": "project-alpha", "match_terms": ["alpha"]}], "worklog": "TIMELOG.md"}
+EOF
+gittan report --today --screen-time off
 ```
 
-Copy the config *before* the run rather than pointing `--projects-config` at your live file, so nothing in the sandboxed run refers back to your real directory. (Reading the live config would be harmless — config is never written — but a self-contained sandbox is easier to reason about.) Note the copy has to happen after `GITTAN_HOME` is exported, since that is what makes `$GITTAN_HOME/timelog_projects.json` the active config.
+Default config resolution already looks under `$GITTAN_HOME`, so there is no `--projects-config` and no path back to your live directory. Copy a real config into the sandbox only if you need your own project list for the experiment.
 
 This matters most for the observed cache, whose merge is keep-max: a run can only raise a stored value, so there is no undo for a run that wrote where it should not have.
 

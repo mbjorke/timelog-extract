@@ -148,12 +148,12 @@ class MappingReviewTests(unittest.TestCase):
         events = [
             {
                 "source": "Chrome",
-                "detail": "https://github.com/mbjorke/landsbanken-faq-helper",
+                "detail": "https://github.com/mbjorke/faq-helper",
                 "project": "Uncategorized",
             },
             {
                 "source": "Chrome",
-                "detail": "Pull requests · mbjorke/landsbanken-faq-helper",
+                "detail": "Pull requests · mbjorke/faq-helper",
                 "project": "Uncategorized",
             },
         ]
@@ -164,7 +164,7 @@ class MappingReviewTests(unittest.TestCase):
         profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]
         dt_from = datetime(2026, 6, 10, tzinfo=timezone.utc)
         dt_to = datetime(2026, 6, 12, tzinfo=timezone.utc)
-        gh_times = {"mbjorke/landsbanken-faq-helper": "2026-06-11 10:15"}
+        gh_times = {"mbjorke/faq-helper": "2026-06-11 10:15"}
         with patch("core.mapping_review.collect_gh_repo_list_data", return_value=(gh_times, {})):
             review = build_mapping_review(
                 [],
@@ -174,23 +174,23 @@ class MappingReviewTests(unittest.TestCase):
                 dt_to=dt_to,
             )
         self.assertEqual(len(review.new_projects), 1)
-        self.assertEqual(review.new_projects[0].slug, "mbjorke/landsbanken-faq-helper")
+        self.assertEqual(review.new_projects[0].slug, "mbjorke/faq-helper")
         self.assertEqual(review.new_projects[0].created_at, "2026-06-11 10:15")
 
     def test_new_project_from_local_clone(self):
         profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]
         bindings = {
-            "mbjorke/landsbanken-faq-helper": SlugGitBinding(
-                slug="mbjorke/landsbanken-faq-helper",
-                remote_url=slug_to_github_url("mbjorke/landsbanken-faq-helper"),
-                local_path="~/Workspace/landsbanken-faq-helper",
+            "mbjorke/faq-helper": SlugGitBinding(
+                slug="mbjorke/faq-helper",
+                remote_url=slug_to_github_url("mbjorke/faq-helper"),
+                local_path="~/Workspace/faq-helper",
                 last_commit_epoch=1_700_000_000,
                 git_cmd_hits=1,
             ),
         }
         review = build_mapping_review([], profiles, slug_bindings=bindings)
         self.assertEqual(len(review.new_projects), 1)
-        self.assertEqual(review.new_projects[0].slug, "mbjorke/landsbanken-faq-helper")
+        self.assertEqual(review.new_projects[0].slug, "mbjorke/faq-helper")
 
     def test_rejects_chrome_noise_as_new_project(self):
         profiles = [{"name": "timelog-extract", "match_terms": ["mbjorke/timelog-extract"]}]
@@ -211,19 +211,19 @@ class MappingReviewTests(unittest.TestCase):
             {
                 "source": "GitHub",
                 "timestamp": ts,
-                "detail": "created repository in mbjorke/landsbanken-faq-helper",
+                "detail": "created repository in mbjorke/faq-helper",
                 "project": "Uncategorized",
             },
             {
                 "source": "GitHub",
                 "timestamp": ts,
-                "detail": "PR #1 merged (mbjorke/landsbanken-faq-helper)",
+                "detail": "PR #1 merged (mbjorke/faq-helper)",
                 "project": "Uncategorized",
             },
         ]
         review = build_mapping_review(events, profiles, slug_bindings={})
         self.assertEqual(len(review.new_projects), 1)
-        self.assertEqual(review.new_projects[0].slug, "mbjorke/landsbanken-faq-helper")
+        self.assertEqual(review.new_projects[0].slug, "mbjorke/faq-helper")
         self.assertTrue(review.new_projects[0].created_at.startswith("2026-06-11"))
 
     def test_rejects_glass_multitask_parenthetical_as_new_project(self):

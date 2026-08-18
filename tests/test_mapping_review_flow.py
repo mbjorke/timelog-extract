@@ -25,17 +25,17 @@ class PromptNewProjectFieldsTests(unittest.TestCase):
 
         with patch("questionary.text") as text_mock:
             text_mock.return_value.ask.side_effect = [
-                "Ålandsbanken Contact Center",
-                "Ålandsbanken Maud Johans",
+                "Customer A Contact Center",
+                "Customer A Support Desk",
             ]
             fields = prompt_new_project_fields(
                 Console(),
-                default_profile_name="landsbanken-faq-helper",
+                default_profile_name="faq-helper",
                 existing_names={"timelog-extract"},
             )
         self.assertEqual(
             fields,
-            ("landsbanken-faq-helper", "Ålandsbanken Contact Center", "Ålandsbanken Maud Johans"),
+            ("faq-helper", "Customer A Contact Center", "Customer A Support Desk"),
         )
         self.assertEqual(text_mock.call_args_list[0].kwargs.get("default"), "")
         self.assertEqual(text_mock.call_args_list[1].kwargs.get("default"), "")
@@ -46,8 +46,8 @@ class PromptNewProjectFieldsTests(unittest.TestCase):
         with patch("questionary.text") as text_mock:
             fields = prompt_new_project_fields(
                 Console(),
-                default_profile_name="landsbanken-faq-helper",
-                existing_names={"landsbanken-faq-helper"},
+                default_profile_name="faq-helper",
+                existing_names={"faq-helper"},
             )
         self.assertIsNone(fields)
         text_mock.assert_not_called()

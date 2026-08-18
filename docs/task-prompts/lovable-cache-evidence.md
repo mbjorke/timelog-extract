@@ -214,7 +214,7 @@ Feature: Lovable Desktop cache evidence for full-day sessions
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/148
 - implementation.branch: task/lovable-cache-evidence
 - implementation.commits: [f3031a8, c1fa8d6, 914a182, 84e6747, 9bd6b5f]
-- validation.evidence: PR #148; autotests 793 green; live 2026-06-11 Lovable title + landsbanken mapping; composer span bounded vs Screen Time
+- validation.evidence: PR #148; autotests 793 green; live 2026-06-11 Lovable title + customer-a mapping; composer span bounded vs Screen Time
 - validation.decision: conditional GO
 - changelog:
   - 2026-06-11: Initial draft created from live validation-day investigation.

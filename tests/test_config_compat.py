@@ -272,31 +272,31 @@ class TagsFieldTests(unittest.TestCase):
         payload = {"projects": []}
         apply_rule_to_project(
             payload,
-            project_name="landsbanken-faq-helper",
+            project_name="faq-helper",
             rule_type="match_terms",
-            rule_value="mbjorke/landsbanken-faq-helper",
-            customer="Ålandsbanken",
+            rule_value="mbjorke/faq-helper",
+            customer="Customer A",
         )
         project = payload["projects"][0]
-        self.assertEqual(project["name"], "landsbanken-faq-helper")
-        self.assertEqual(project["customer"], "Ålandsbanken")
-        self.assertEqual(project["default_client"], "Ålandsbanken")
-        self.assertEqual(project["project_id"], "landsbanken-faq-helper")
+        self.assertEqual(project["name"], "faq-helper")
+        self.assertEqual(project["customer"], "Customer A")
+        self.assertEqual(project["default_client"], "Customer A")
+        self.assertEqual(project["project_id"], "faq-helper")
 
     def test_apply_rule_new_project_sets_invoice_title_and_alias(self):
         payload = {"projects": []}
         apply_rule_to_project(
             payload,
-            project_name="landsbanken-faq-helper",
+            project_name="faq-helper",
             rule_type="match_terms",
-            rule_value="mbjorke/landsbanken-faq-helper",
-            customer="Ålandsbanken Contact Center",
-            invoice_title="Ålandsbanken Chatbot",
+            rule_value="mbjorke/faq-helper",
+            customer="Customer A Contact Center",
+            invoice_title="Customer A Chatbot",
         )
         project = payload["projects"][0]
-        self.assertEqual(project["invoice_title"], "Ålandsbanken Chatbot")
-        self.assertIn("Ålandsbanken Chatbot", project["aliases"])
-        self.assertNotIn("ålandsbanken chatbot", project["match_terms"])
+        self.assertEqual(project["invoice_title"], "Customer A Chatbot")
+        self.assertIn("Customer A Chatbot", project["aliases"])
+        self.assertNotIn("customer a chatbot", project["match_terms"])
 
     def test_apply_rule_preserves_multiple_tags(self):
         """Multiple existing tags are all preserved after applying a rule."""

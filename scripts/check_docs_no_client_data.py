@@ -38,8 +38,11 @@ from pathlib import Path
 # local file instead: this module is committed to a public repository, so
 # hardcoding them here would publish exactly what the guard exists to protect.
 DEFAULT_ALLOW = {"timelog-extract", "gittan", "gittan-home", "blueberry", "mbjorke"}
-# One term per line; '#' comments and blank lines ignored. Lives beside the
-# gitignored projects config, so it is never committed.
+# One term per line. A line whose first non-space character is '#' is a comment;
+# blank lines are ignored. '#' is otherwise part of the term — splitting on it
+# would turn a slug like "acme#portal" into "acme" and suppress a different
+# identifier. Lives beside the gitignored projects config, so it is never
+# committed.
 #
 # Matched **exactly**, unlike DEFAULT_ALLOW/GITTAN_PRIVACY_ALLOWLIST, which match
 # per word so one entry ("blueberry") can cover "Blueberry Maybe Ab Ltd". Word
@@ -73,30 +76,33 @@ def _config_path() -> Path:
         return base / "timelog_projects.json"
 
 
-def _local_allowlist_path() -> Path:
+def _local_allowlist_path(config_path: Path | None = None) -> Path:
     """Location of the operator's local allowlist (never committed).
 
-    Sits next to the projects config so both live in the same gitignored home.
+    Sits next to the given projects config (or the process-resolved one) so
+    both live in the same gitignored home.
     """
-    return _config_path().parent / ALLOWLIST_FILENAME
+    base = config_path if config_path is not None else _config_path()
+    return base.parent / ALLOWLIST_FILENAME
 
 
-def _read_local_allowlist() -> set[str]:
+def _read_local_allowlist(config_path: Path | None = None) -> set[str]:
     """Terms from the local allowlist file; missing file is not an error.
 
     Unreadable is also not an error: the allowlist can only ever *reduce* what
     is flagged, so losing it fails safe (more flagged, never fewer).
     """
-    path = _local_allowlist_path()
+    path = _local_allowlist_path(config_path)
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError:
         return set()
     out: set[str] = set()
     for line in raw.splitlines():
-        term = line.split("#", 1)[0].strip().lower()
-        if term:
-            out.add(term)
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        out.add(stripped.lower())
     return out
 
 
@@ -143,7 +149,7 @@ def load_sensitive_terms(config_path: Path) -> set[str]:
             "expected a list at root or under 'projects'"
         )
     allow = _allowlist()
-    exact_allow = _read_local_allowlist()
+    exact_allow = _read_local_allowlist(config_path)
     terms: set[str] = set()
     for prof in profiles:
         if not isinstance(prof, dict):

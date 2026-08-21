@@ -48,8 +48,7 @@ class PrivacyGuardTests(unittest.TestCase):
             (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text(
                 "# operator's own projects\nacme-portal\n\n", encoding="utf-8"
             )
-            with mock.patch.object(guard, "_config_path", return_value=cfg):
-                terms = guard.load_sensitive_terms(cfg)
+            terms = guard.load_sensitive_terms(cfg)
         lowered = {t.lower() for t in terms}
         self.assertNotIn("acme-portal", lowered)
         # The customer name is a different field and must still be flagged.
@@ -66,18 +65,61 @@ class PrivacyGuardTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             cfg = self._cfg(tmp)
             (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text("acme-portal\n", encoding="utf-8")
-            with mock.patch.object(guard, "_config_path", return_value=cfg):
-                terms = guard.load_sensitive_terms(cfg)
+            terms = guard.load_sensitive_terms(cfg)
         lowered = {t.lower() for t in terms}
         self.assertNotIn("acme-portal", lowered)   # the listed slug is allowed
         self.assertIn("acme corp", lowered)        # the customer is still flagged
         self.assertIn("acmecorp", lowered)         # and so is its alias
 
+    def test_local_allowlist_hash_in_slug_does_not_suppress_the_prefix(self):
+        """A '#' inside a listed slug must not cut the term at the hash.
+
+        Regression: splitting on '#' turned 'acme#portal' into 'acme', which
+        would exact-allow a different identifier equal to the prefix.
+        """
+        with TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.json"
+            cfg.write_text(
+                json.dumps({
+                    "projects": [
+                        {
+                            "name": "acme#portal",
+                            "customer": "acme",
+                            "project_id": "acme#portal",
+                        }
+                    ]
+                }),
+                encoding="utf-8",
+            )
+            (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text("acme#portal\n", encoding="utf-8")
+            terms = guard.load_sensitive_terms(cfg)
+        lowered = {t.lower() for t in terms}
+        self.assertNotIn("acme#portal", lowered)
+        self.assertIn("acme", lowered)
+
+    def test_local_allowlist_follows_supplied_config_not_process_global(self):
+        """Allowlist is the file beside the config argument, not _config_path().
+
+        Direct callers and synthetic-config tests must not pick up whatever
+        allowlist sits next to the process-resolved live config.
+        """
+        with TemporaryDirectory() as tmp:
+            cfg = self._cfg(tmp)
+            (Path(tmp) / guard.ALLOWLIST_FILENAME).write_text("acme-portal\n", encoding="utf-8")
+            other = Path(tmp) / "other"
+            other.mkdir()
+            (other / "config.json").write_text("{}", encoding="utf-8")
+            (other / guard.ALLOWLIST_FILENAME).write_text("should-not-apply\n", encoding="utf-8")
+            with mock.patch.object(guard, "_config_path", return_value=other / "config.json"):
+                terms = guard.load_sensitive_terms(cfg)
+        lowered = {t.lower() for t in terms}
+        self.assertNotIn("acme-portal", lowered)
+        self.assertIn("acme corp", lowered)
+
     def test_missing_local_allowlist_is_not_an_error(self):
         with TemporaryDirectory() as tmp:
             cfg = self._cfg(tmp)  # no allowlist file written
-            with mock.patch.object(guard, "_config_path", return_value=cfg):
-                terms = guard.load_sensitive_terms(cfg)
+            terms = guard.load_sensitive_terms(cfg)
         self.assertIn("acme-portal", {t.lower() for t in terms})
 
     def test_flags_a_doc_containing_a_client_name(self):

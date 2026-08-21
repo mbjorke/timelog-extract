@@ -13,7 +13,7 @@
 #   GITTAN_COMPARE_NEW          Candidate (default: .venv/bin/python timelog_extract.py if present)
 #   GITTAN_COMPARE_SCREEN_TIME  off|on (default: off — fairer cross-version compare)
 #   GITTAN_COMPARE_PROJECTS     Space-separated project keys to highlight
-#                               (default: timelog-extract financing-portal)
+#                               (default: timelog-extract)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -30,7 +30,7 @@ else
   fi
 fi
 SCREEN_TIME="${GITTAN_COMPARE_SCREEN_TIME:-off}"
-HIGHLIGHT="${GITTAN_COMPARE_PROJECTS:-timelog-extract financing-portal}"
+HIGHLIGHT="${GITTAN_COMPARE_PROJECTS:-timelog-extract}"
 
 PERIODS=()
 ANY_OBSERVED_DELTA=0

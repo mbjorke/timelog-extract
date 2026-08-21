@@ -17,7 +17,7 @@ direction lives under work-unit v2).
 - spec_status: approved
 - implementation_status: in progress
 - created_at: 2026-07-23
-- last_updated_at: 2026-07-23
+- last_updated_at: 2026-08-21
 - implementation.pr: >-
     https://github.com/mbjorke/timelog-extract/pull/449 (Part of #448),
     https://github.com/mbjorke/timelog-extract/pull/450 (create + decidability),
@@ -31,6 +31,7 @@ direction lives under work-unit v2).
     residual Park-only check for bare `unmapped Lovable (uuid…)` hosts
 - validation.decision: conditional GO
 - changelog:
+  - 2026-08-21: Anonymized the hyphen-vs-space suggestion example (privacy; no requirement change).
   - 2026-07-23: PO pass — ordered 1–2 week backlog from live review/setup pain;
     ships vs gaps for PRs #449–#452; Park-only Lovable stance; customer-first = next.
 
@@ -181,7 +182,7 @@ Feature: Review surfaces new remotes like setup
 ### 6. Suggest-name normalize (hyphen vs space)
 
 - priority: next
-- problem: Existing profile `lunch-connect` is not auto-suggested as “Lunch Connect”
+- problem: Existing profile `example-connect` is not auto-suggested as “Example Connect”
   (hyphen vs space; empty `tracked_urls`) when remotes/create propose a name.
 - user value: Map-to-existing / Add prefill hits the real profile instead of a near-dupe.
 - non-goals: Full fuzzy customer search UI.

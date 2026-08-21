@@ -152,12 +152,14 @@ delivery phases. This is what the generator's `--check` would have demanded.
   hard only under `--strict`, which CI does not pass
 - created_at: 2026-06-25
 - last_updated_at: 2026-08-21
-- implementation.pr: this PR (Phase 1)
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/188 (Phase 1)
 - implementation.branch: task/feature-inventory-generator
 - implementation.commits: []
 - validation.evidence: `scripts/generate_feature_inventory.py`,
-  `tests/test_feature_inventory.py`, `docs/generated/feature-inventory.md`
-- validation.decision: GO for Phase 1; Phases 2-3 pending
+  `tests/test_feature_inventory.py`, `docs/generated/feature-inventory.md`,
+  `scripts/run_autotests.sh` (runs the `--check` gate), `core/cli_app.py`,
+  `core/collector_registry.py`, `core/sources.py` (the introspected surfaces)
+- validation.decision: GO for Phases 1-2; Phase 3 ships advisory only
 - related:
   - model: the sibling `client-b` project's generated `docs/generated/feature-inventory.md`
   - policy: `AGENTS.md` §223 (task spec traceability); `docs/task-prompts/task-traceability-template.md`

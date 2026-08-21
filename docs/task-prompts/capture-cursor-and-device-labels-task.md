@@ -21,13 +21,17 @@ This task is the visible half of "a phone is a machine too."
 - implementation_status: built
 - created_at: 2026-07-26
 - last_updated_at: 2026-08-21
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/477
 - implementation.branch: task/capture-cursor-and-device-labels
 - implementation.commits: []
-- validation.evidence: pending
-- validation.decision: NO-GO
+- validation.evidence: `core/device_labels.py` present; GH-474 closed COMPLETED
+- validation.decision: conditional GO — code and issue verified, no operator run recorded
 - changelog:
-  - 2026-08-21: Status corrected `in progress` -> `built`: GH-474 closed and the named evidence file is present. Spec was never updated after the work landed.
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-474 closed
+    COMPLETED and `core/device_labels.py` is present. The rest of the record was
+    left behind by the same omission, so `implementation.pr` (#477),
+    `validation.evidence` and `validation.decision` are filled in with what was
+    actually verified rather than left contradicting the status.
   - 2026-07-26: Drafted from the earlier maintainer walkthrough — capture today is
     Claude-shaped; device is stored but not shown; Cursor asked for next.
     Issued with `priority:next`.

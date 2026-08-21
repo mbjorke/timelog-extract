@@ -6,6 +6,7 @@ into one kind of work, measured below rather than asserted.
 ## Traceability
 
 - story_id: `pending`
+- promote: no
 - story_id.note: no issue exists by design — the `gittan-product-owner`
   issue-lifecycle rule changed 2026-08-18, so an issue is opened when someone
   starts the work, not when a pass prioritises it
@@ -18,8 +19,9 @@ into one kind of work, measured below rather than asserted.
 - implementation.commits: `[]`
 - validation.evidence: measurements in *The gap*, taken from the live tracker
   and `docs/product/gittan-northstar-metrics.md`
-- validation.decision: `GO for the planning claims only` — it asserts nothing
-  about unbuilt work
+- validation.decision: `conditional GO`
+- validation.decision.scope: the planning claims only — the measurements and the
+  ordering. It asserts nothing about unbuilt work.
 - changelog:
   - `2026-08-18: Initial pass. Anchored in the vision's three-level metric stack.`
   - `2026-08-18: Added V-7 (synthetic operator personas) as the vehicle for level-2 measurement, extending the existing golden-home materializer (GH-531). Records the hard boundary that personas may not emit level-3 numbers.`
@@ -62,7 +64,7 @@ Two consequences worth stating plainly:
 
 ### Applying the vision's own decision filter
 
-`gittan-vision.md` ships five questions to ask before adding a source, output or
+`docs/product/gittan-vision.md` ships five questions to ask before adding a source, output or
 workflow step. Question 2 is *"does this reduce or increase user admin burden?"*
 and question 5 is *"is this in-scope for v1/v1.1, or just technically possible?"*.
 Neither question can currently be answered with evidence, for any item. That is
@@ -109,7 +111,7 @@ Feature: Admin-overhead measurement
   - the numbers appear in a form the weekly review ritual can read;
   - nothing is transmitted; the measurement is local and inspectable.
 - validation: computed values for four periods, checked by hand against one
-  known run; `run_autotests.sh` green.
+  known run; `bash scripts/run_autotests.sh` green.
 - dependencies: none blocking. Uses evidence that already exists.
 
 ---
@@ -129,7 +131,7 @@ Feature: Admin-overhead measurement
   covers **2 of ~24 collectors** (GH-531). Personas extend that, they do not
   replace it.
 - behavior: named operator personas, each a config profile plus a multi-source
-  synthetic HOME, representing the audiences in `gittan-vision.md`:
+  synthetic HOME, representing the audiences in `docs/product/gittan-vision.md`:
   a solo consultant with few clients; an agency operator with many; a
   repo-heavy developer; and **a designer with no repositories and no IDE
   traces**. Run the full report path for each and emit the level-2 metrics.
@@ -162,7 +164,7 @@ Feature: Persona-measured admin overhead
   - metrics 2.1, 2.2 and 2.3 produce numbers per persona per period;
   - baselines are recorded so a later change can be compared against them;
   - **no persona emits a level-3 number** (see the boundary below).
-- validation: `run_autotests.sh` green with personas wired in; one persona's
+- validation: `bash scripts/run_autotests.sh` green with personas wired in; one persona's
   numbers checked by hand against a manual run.
 - dependencies: extends GH-531's materializer coverage; that issue and this item
   should be done together rather than twice.
@@ -260,7 +262,7 @@ Feature: First external pilot
 
 - priority: **next**
 - problem: metric 2.3 (export readiness) is defined and unmeasured, while
-  customer-facing output is a *core promise* in `gittan-vision.md`.
+  customer-facing output is a *core promise* in `docs/product/gittan-vision.md`.
 - behavior: define what "ready to send" means concretely, then measure the share
   of periods that reach it without manual intervention.
 - acceptance: metric 2.3 produces a number for four past periods.
@@ -283,7 +285,7 @@ Feature: First external pilot
 
 - priority: **do not build yet**
 - why: sources improve level 1, the only instrumented and best-served level.
-  Framer (`framer-source-task.md`) is already demoted on its own merits; this
+  Framer (`docs/task-prompts/framer-source-task.md`) is already demoted on its own merits; this
   entry generalizes the rule. A new source should wait until a pilot asks for it
   by name, which is exactly the demand signal the Framer pass found missing.
 - promotion trigger: a pilot names the missing source in the V-2 friction log.

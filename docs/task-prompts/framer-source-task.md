@@ -161,7 +161,7 @@ sampled mtime. See `docs/specs/source-evidence-policy.md`.
 
 ### FRAMER-1 — Detect Framer and tell the truth in `doctor`
 
-- priority: **now**
+- priority: **later** (was `now`; demoted 2026-08-18 — see *Priority review*)
 - problem: Framer users get an empty report with no explanation. Gittan cannot
   say whether it looked, found nothing, or cannot look.
 - user value: An honest answer to "does Gittan support Framer?" — including the
@@ -204,7 +204,7 @@ Feature: Framer source visibility
 
 ### FRAMER-2 — Framer presence spans via `gittan capture`
 
-- priority: **next**
+- priority: **later** (was `next`; demoted 2026-08-18 — see *Priority review*)
 - problem: The only way to ever have Framer time is to record it while Framer is
   open. Nothing does that today.
 - user value: Framer afternoons stop vanishing. Time captured today remains
@@ -215,8 +215,9 @@ Feature: Framer source visibility
   dragging layers from AI generation or from an idle open app. The user-facing
   wording is *time in Framer*.
 - behavior: A capture-side Framer reader — a new key in
-  `CAPTURE_SOURCES` (`core/session_capture.py`) — samples mtimes across the
-  Framer partition (OPFS, Local Storage, IndexedDB) and writes presence spans
+  `CAPTURE_SOURCES` (`core/session_capture.py`) — samples mtimes across an
+  **allowlist** of the writers the idle control showed actually discriminate
+  (Session Storage, and the Local Storage log), and writes presence spans
   through `core.evidence_store.capture_events`, tagged with the device, using
   the existing hash-chained, idempotent append path. Same technique already used
   for `Lovable (desktop)` ("Chromium cache-mtime on the operator's machine",
@@ -268,10 +269,11 @@ Feature: Framer presence capture
     not startable until the cadence mechanism is decided (launchd timer vs hook
     vs explicit user-run) and the resulting coverage claim is written down. A
     once-a-day capture would produce misleadingly thin Framer coverage.
-  - ~~Idle-control measurement~~ — **done 2026-08-18** (see *Idle control* above).
-    A defensible active/idle threshold exists: 258× write-volume separation plus
-    a Session Storage allowlist. Remaining validation is a 30-minute idle run and
-    a backgrounded-app run, both cheap and neither blocking design.
+  - **Idle-control measurement** — first run done 2026-08-18 (see *Idle control*
+    above): 258× write-volume separation plus a Session Storage allowlist. Two
+    runs remain before the threshold can be shipped against — a 30-minute idle
+    and a backgrounded app — and until they pass, *Idle does not bill* cannot be
+    accepted.
   - FRAMER-1 (detection) should land first so `doctor` can report capture health.
 
 ---
@@ -454,12 +456,14 @@ thresholds and traps are recorded above.
 3. **Role confirmation.** `passive_context` + attended is proposed above. Confirm
    before implementation, since it determines whether Framer spans can ever lead
    a session label.
-4. ~~**Idle vs active threshold.**~~ **Resolved 2026-08-18.** Idle and active are
-   separable by two orders of magnitude of write volume, with Session Storage
-   writing 7× when active and 0× when idle. FRAMER-2 no longer risks billing an
-   open-but-untouched window, provided the collector allowlists the discriminating
-   writers and ignores the housekeeping noise floor. The only remaining blocker on
-   FRAMER-2 is the capture-cadence decision (1).
+4. **Idle vs active threshold — measured, not yet validated.** One 3.5-minute
+   control showed idle and active separable by two orders of magnitude of write
+   volume, with Session Storage writing 7× when active and 0× when idle. That is
+   enough to design against, and not enough to ship on: a 30-minute idle run may
+   still expose a periodic writer, and a backgrounded Framer is unmeasured. Both
+   runs are prerequisites of FRAMER-2's *Idle does not bill* acceptance, so this
+   decision stays open until they pass. FRAMER-2 therefore has two blockers, not
+   one: this, and the capture-cadence decision (1).
 
 ## Non-goals for the whole story
 

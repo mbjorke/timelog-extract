@@ -17,9 +17,9 @@ lives in the committed spec, and in `priority:*` labels on issues that already
 exist. An issue is a work record: it is opened when someone starts the work, by
 whoever starts it. Flow: fuzzy ask → spec → prioritized → issue at work start.
 
-Measured 2026-08-18: opening issues at prioritization time made 25% of the open
-backlog planning artifacts with a 41-day median age, while 49 of 80 closed
-issues closed the same day they were opened. See the *Issue lifecycle* section
-of the canonical doc.
+Measured 2026-08-18: 14 of 55 open issues (25%) were planning artifacts, the
+median age across all open issues was 41 days, and 49 of 80 closed issues closed
+the same day they were opened. See the *Issue lifecycle* section of the
+canonical doc.
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from argparse import Namespace
@@ -12,10 +13,13 @@ from unittest import mock
 
 from core.observed_cache import (
     _month_path,
+    detect_reattribution,
     observed_base_dir,
     observed_hours_by_project_day,
     observed_last_capture_date,
     observed_lifetime_hours,
+    read_last_report_split,
+    write_last_report_split,
     write_observed_summary,
 )
 
@@ -145,6 +149,199 @@ class ObservedCacheTests(unittest.TestCase):
         today = datetime.now().date().isoformat()
         self.assertEqual(observed_last_capture_date(self.home), today)
 
+
+class ReattributionDetectionTests(unittest.TestCase):
+    """GH-544 scenario 3: observed→rescan split shuffle is detectable before keep-max."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name)
+        self.day = "2026-08-07"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_detect_reattribution_gh544_shape(self):
+        # Same shape as tests/test_reconcile_snapshot.py and the issue instrument:
+        # day total roughly holds while hours move Alpha → Beta.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(len(findings), 1)
+        finding = findings[0]
+        self.assertEqual(finding["date"], self.day)
+        self.assertGreater(finding["shift_share"], 0.75)
+        self.assertEqual([row["project"] for row in finding["losers"]], ["Alpha"])
+        self.assertEqual([row["project"] for row in finding["gainers"]], ["Beta"])
+
+    def test_detect_skips_uniform_growth(self):
+        findings = detect_reattribution(
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 5.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_detect_skips_days_without_overlap(self):
+        findings = detect_reattribution(
+            {("Alpha", "2026-08-08"): 1.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_detect_skips_coverage_swap_against_keep_max_union(self):
+        # Keep-max can retain Alpha from one run and Beta from another; a later
+        # report that only covers Gamma must not look like re-attribution.
+        findings = detect_reattribution(
+            {("Gamma", self.day): 4.0},
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        self.assertEqual(findings, [])
+
+    def test_detect_skips_filtered_report_scope(self):
+        # Sidecar has A+B from a full report; a later filtered A-only run must not
+        # treat B as a loser that moved into A.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 6.0},
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        self.assertEqual(findings, [])
+
+    def test_sideways_coverage_does_not_replace_or_nudge(self):
+        write_last_report_split(
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+            home=self.home,
+        )
+        write_last_report_split(
+            {("Alpha", self.day): 2.0, ("Gamma", self.day): 2.0},
+            home=self.home,
+        )
+        self.assertEqual(
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 2.0, ("Beta", self.day): 2.0},
+        )
+        findings = detect_reattribution(
+            {("Alpha", self.day): 2.0, ("Gamma", self.day): 2.0},
+            read_last_report_split(self.home),
+        )
+        self.assertEqual(findings, [])
+
+    def test_filtered_write_preserves_full_sidecar_day(self):
+        write_last_report_split(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            home=self.home,
+        )
+        write_last_report_split(
+            {("Alpha", self.day): 2.0},
+            home=self.home,
+        )
+        # Filtered subset must not become the next full-report baseline.
+        self.assertEqual(
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        findings = detect_reattribution(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            read_last_report_split(self.home),
+        )
+        self.assertEqual(findings, [])
+
+    def test_last_report_split_is_coherent_not_keep_max(self):
+        # Keep-max can hold a raised Alpha peak while last_report_split still
+        # stores the coherent day from the previous report.
+        write_last_report_split(
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+            home=self.home,
+        )
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        _month_path(base, "2026-08").write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "project": "Alpha",
+                            "date": self.day,
+                            "hours": 5.0,
+                            "captured_at": "2026-08-07T12:00:00+00:00",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "project": "Beta",
+                            "date": self.day,
+                            "hours": 4.60,
+                            "captured_at": "2026-08-07T09:00:00+00:00",
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            observed_hours_by_project_day(self.home)[("Alpha", self.day)],
+            5.0,
+        )
+        self.assertEqual(
+            read_last_report_split(self.home),
+            {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60},
+        )
+        # Detection follows the sidecar, not the inflated keep-max Alpha peak.
+        findings = detect_reattribution(
+            {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81},
+            read_last_report_split(self.home),
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["losers"][0]["from"], 1.65)
+
+    def test_write_attaches_findings_before_keep_max(self):
+        base = observed_base_dir(self.home)
+        base.mkdir(parents=True, exist_ok=True)
+        baseline = {("Alpha", self.day): 1.65, ("Beta", self.day): 4.60}
+        write_last_report_split(baseline, home=self.home)
+        _month_path(base, "2026-08").write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "project": "Alpha",
+                            "date": self.day,
+                            "hours": 1.65,
+                            "captured_at": "",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "project": "Beta",
+                            "date": self.day,
+                            "hours": 4.60,
+                            "captured_at": "",
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        report = _report(self.day, [_session(self.day, "Alpha")])
+        current = {("Alpha", self.day): 0.02, ("Beta", self.day): 5.81}
+        with mock.patch(
+            "core.observed_cache.report_project_day_hours",
+            return_value=current,
+        ):
+            write_observed_summary(report, home=self.home)
+        findings = getattr(report, "reattribution_vs_observed", None)
+        self.assertIsNotNone(findings)
+        assert findings is not None
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["date"], self.day)
+        hours = observed_hours_by_project_day(self.home)
+        # keep-max: Alpha's earlier peak stays; Beta rises to the rescan value.
+        self.assertEqual(hours[("Alpha", self.day)], 1.65)
+        self.assertEqual(hours[("Beta", self.day)], 5.81)
+        # Sidecar records this run's coherent split (not keep-max).
+        self.assertEqual(read_last_report_split(self.home), current)
 
 
 class ObservedLifetimeHoursTests(unittest.TestCase):

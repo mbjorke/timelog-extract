@@ -22,14 +22,24 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from core.config import gittan_data_dir
+from scripts.reconcile_signatures import (
+    DEFAULT_SHIFT_DOMINANCE,
+    RE_ATTRIBUTION,
+    compare_hours,
+)
 
 if TYPE_CHECKING:
     from core.report_service import ReportPayload
 
 _LOGGER = logging.getLogger(__name__)
+
+# Match ``scripts/reconcile_snapshot.py`` CLI defaults so the report nudge and
+# the offline instrument name the same failure mode for the same numbers.
+REATTRIBUTION_TOLERANCE_PCT = 5.0
+REATTRIBUTION_NOISE_FLOOR_HOURS = 0.25
 
 
 def observed_base_dir(home: Optional[Path] = None) -> Path:
@@ -71,6 +81,259 @@ def _coerce_row(data: object) -> Optional[dict]:
     return {"project": project, "date": date, "hours": hours, "captured_at": data.get("captured_at", "")}
 
 
+def report_project_day_hours(report: "ReportPayload") -> Dict[Tuple[str, str], float]:
+    """Per-``(project, day)`` hours for this report (same aggregation as the cache)."""
+    from core.reported_sync import build_reported_proposals
+
+    totals: Dict[Tuple[str, str], float] = {}
+    for proposal in build_reported_proposals(report):
+        key = (proposal.project, proposal.date)
+        totals[key] = totals.get(key, 0.0) + float(proposal.hours)
+    return totals
+
+
+def _hours_by_day(
+    totals: Dict[Tuple[str, str], float],
+) -> Dict[str, Dict[str, float]]:
+    by_day: Dict[str, Dict[str, float]] = {}
+    for (project, day), hours in totals.items():
+        by_day.setdefault(day, {})[project] = float(hours)
+    return by_day
+
+
+def _is_coverage_swap(losers: List[Any], gainers: List[Any], noise_floor_hours: float) -> bool:
+    """True when movers are only stored-only losers and current-only gainers.
+
+    The observed cache is keep-max per ``(project, day)``, so a day's stored map
+    can be a synthetic union of peaks from different report coverages. Comparing
+    that union to a later run with a different project set looks like
+    re-attribution even though no earlier report held that combined split.
+    Skip the pure coverage-swap shape; keep real shuffles where a gainer already
+    had baseline hours or a loser still has comparison hours (GH-544).
+    """
+    if not losers or not gainers:
+        return False
+    losers_absent = all(float(row.comparison) <= noise_floor_hours for row in losers)
+    gainers_new = all(float(row.baseline) <= noise_floor_hours for row in gainers)
+    return losers_absent and gainers_new
+
+
+def detect_reattribution(
+    current: Dict[Tuple[str, str], float],
+    stored: Dict[Tuple[str, str], float],
+    *,
+    tolerance_pct: float = REATTRIBUTION_TOLERANCE_PCT,
+    noise_floor_hours: float = REATTRIBUTION_NOISE_FLOOR_HOURS,
+    shift_dominance: float = DEFAULT_SHIFT_DOMINANCE,
+) -> List[Dict[str, Any]]:
+    """Find days where the current split re-attributes hours vs the observed cache.
+
+    Uses the same shift-share signature as ``scripts/reconcile_signatures``
+    (GH-544 scenario 3). Read-only: does not write the cache.
+    """
+    if not current or not stored:
+        return []
+    current_by_day = _hours_by_day(current)
+    stored_by_day = _hours_by_day(stored)
+    findings: List[Dict[str, Any]] = []
+    for day in sorted(set(current_by_day) & set(stored_by_day)):
+        baseline = stored_by_day[day]
+        comparison = current_by_day[day]
+        if not baseline or not comparison:
+            continue
+        # Only shared projects: coverage changes (filtered runs, sideways
+        # profile sets) must not look like hours moving between projects.
+        shared = set(baseline) & set(comparison)
+        if not shared:
+            continue
+        baseline = {name: baseline[name] for name in shared}
+        comparison = {name: comparison[name] for name in shared}
+        pair = compare_hours(
+            baseline,
+            comparison,
+            baseline_label="observed",
+            comparison_label="rescan",
+            tolerance_pct=tolerance_pct,
+            noise_floor_hours=noise_floor_hours,
+            shift_dominance=shift_dominance,
+        )
+        if pair.signature != RE_ATTRIBUTION:
+            continue
+        movers = pair.movers()
+        losers = [row for row in movers if row.delta < 0]
+        gainers = [row for row in movers if row.delta > 0]
+        # Re-attribution requires both a drop and a gain (hours changing hands).
+        if not losers or not gainers:
+            continue
+        if _is_coverage_swap(losers, gainers, noise_floor_hours):
+            continue
+        findings.append(
+            {
+                "date": day,
+                "moved": pair.moved,
+                "shift_share": pair.shift_share,
+                "net": pair.net,
+                "baseline_total": pair.baseline_total,
+                "comparison_total": pair.comparison_total,
+                "losers": [
+                    {
+                        "project": row.project,
+                        "from": row.baseline,
+                        "to": row.comparison,
+                    }
+                    for row in losers
+                ],
+                "gainers": [
+                    {
+                        "project": row.project,
+                        "from": row.baseline,
+                        "to": row.comparison,
+                    }
+                    for row in gainers
+                ],
+            }
+        )
+    return findings
+
+
+def detect_reattribution_for_report(
+    report: "ReportPayload",
+    home: Optional[Path] = None,
+    **kwargs: Any,
+) -> List[Dict[str, Any]]:
+    """Compare this report's per-day split to the last coherent report split.
+
+    Reads ``last_report_split.jsonl`` (overwrite-per-day), not the keep-max
+    monthly cache, so independently retained peaks cannot invent a baseline.
+    """
+    current = report_project_day_hours(report)
+    if not current:
+        return []
+    stored = read_last_report_split(home)
+    if not stored:
+        return []
+    return detect_reattribution(current, stored, **kwargs)
+
+
+_LAST_REPORT_SPLIT_NAME = "last_report_split.jsonl"
+
+
+def _last_report_split_path(home: Optional[Path] = None) -> Path:
+    return observed_base_dir(home) / _LAST_REPORT_SPLIT_NAME
+
+
+def read_last_report_split(home: Optional[Path] = None) -> Dict[Tuple[str, str], float]:
+    """Last coherent per-``(project, day)`` hours written by a report run.
+
+    Unlike the keep-max monthly cache, each day is replaced wholesale by the
+    report that last covered it, so the map is always one real split.
+    """
+    path = _last_report_split_path(home)
+    if not path.is_file():
+        return {}
+    latest: Dict[Tuple[str, str], float] = {}
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                row = _coerce_row(data)
+                if row is None:
+                    continue
+                latest[(row["project"], row["date"])] = float(row["hours"])
+    except OSError as exc:
+        _LOGGER.warning("Could not read last report split %s: %s", path, exc)
+        return {}
+    return latest
+
+
+def write_last_report_split(
+    totals: Dict[Tuple[str, str], float],
+    home: Optional[Path] = None,
+    *,
+    captured_at: Optional[str] = None,
+) -> None:
+    """Update the coherent split for every day present in ``totals``.
+
+    Days not in ``totals`` are left unchanged. A day is replaced only when this
+    report's project set equals or supersedes the sidecar's set for that day.
+    Strict subsets and sideways overlaps (e.g. ``{A,B}`` → ``{A,C}``) leave the
+    prior coherent baseline in place so coverage changes do not become the next
+    comparison target. Failures are logged and ignored — advisory only.
+    """
+    if not totals:
+        return
+    base = observed_base_dir(home)
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        _LOGGER.warning("observed cache: could not create %s: %s", base, exc)
+        return
+    path = _last_report_split_path(home)
+    stamp = captured_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    new_by_day = _hours_by_day(totals)
+    existing_rows: List[dict] = []
+    existing_by_day: Dict[str, Dict[str, float]] = {}
+    if path.exists():
+        try:
+            with path.open(encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+                    row = _coerce_row(data)
+                    if row is None:
+                        continue
+                    existing_rows.append(row)
+                    existing_by_day.setdefault(row["date"], {})[row["project"]] = float(
+                        row["hours"]
+                    )
+        except OSError as exc:
+            _LOGGER.warning("observed cache: could not read last report split: %s", exc)
+            return
+    skip_days = {
+        day
+        for day, projects in new_by_day.items()
+        if day in existing_by_day and not set(projects) >= set(existing_by_day[day])
+    }
+    replace_days = set(new_by_day) - skip_days
+    kept: List[dict] = [row for row in existing_rows if row["date"] not in replace_days]
+    for day in sorted(replace_days):
+        for project, hours in sorted(new_by_day[day].items()):
+            kept.append(
+                {
+                    "project": project,
+                    "date": day,
+                    "hours": round(float(hours), 2),
+                    "captured_at": stamp,
+                }
+            )
+    fd, temp_path = tempfile.mkstemp(dir=base, prefix=".tmp_split_", suffix=".jsonl")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            for row in sorted(kept, key=lambda r: (r["date"], r["project"])):
+                fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp_path, path)
+    except Exception as exc:  # noqa: BLE001 - advisory sidecar; never block keep-max
+        _LOGGER.debug("observed cache: could not write last report split: %s", exc)
+        if os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
 def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None) -> int:
     """Persist per-``(project, day)`` observed hours from a report.
 
@@ -78,16 +341,26 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
     a run can only raise or hold a stored observed value, never lower it, so evidence
     decay on closed months cannot silently degrade the record (see
     ``docs/incidents/2026-07-01-observed-cache-overwrite-degrades-closed-months.md``).
-    """
-    from core.reported_sync import build_reported_proposals
 
-    proposals = build_reported_proposals(report)  # one per (project, day)
-    if not proposals:
+    Before the keep-max write, compares this run's split to the prior coherent
+    ``last_report_split`` and attaches any re-attribution findings on
+    ``report.reattribution_vs_observed`` (GH-544 scenario 3). Detection is
+    read-only against that sidecar; keep-max behaviour is unchanged. After a
+    successful keep-max write, the sidecar is updated for days this report
+    covered (days whose project set does not equal or supersede the prior
+    sidecar set — filtered or sideways coverage — are left unchanged).
+    """
+    # Detect before keep-max / sidecar write: after those writes the baseline
+    # would already match this run and the gainer side of a shuffle would hide.
+    findings = detect_reattribution_for_report(report, home=home)
+    try:
+        report.reattribution_vs_observed = findings  # type: ignore[attr-defined]
+    except Exception as exc:  # noqa: BLE001 - advisory only; never block the cache write
+        _LOGGER.debug("observed cache: could not attach re-attribution findings: %s", exc)
+
+    totals = report_project_day_hours(report)
+    if not totals:
         return 0
-    totals: Dict[Tuple[str, str], float] = {}
-    for proposal in proposals:
-        key = (proposal.project, proposal.date)
-        totals[key] = totals.get(key, 0.0) + float(proposal.hours)
 
     base = observed_base_dir(home)
     base.mkdir(parents=True, exist_ok=True)
@@ -155,6 +428,7 @@ def write_observed_summary(report: "ReportPayload", home: Optional[Path] = None)
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
             raise
+    write_last_report_split(totals, home=home, captured_at=captured_at)
     return written
 
 
@@ -167,7 +441,7 @@ def observed_hours_by_project_day(home: Optional[Path] = None) -> Dict[Tuple[str
     if not base.is_dir():
         return {}
     latest: Dict[Tuple[str, str], float] = {}
-    for path in sorted(base.glob("*.jsonl")):
+    for path in sorted(base.glob("????-??.jsonl")):
         try:
             with path.open(encoding="utf-8") as fh:
                 for line in fh:
@@ -233,7 +507,7 @@ def observed_last_capture_date(home: Optional[Path] = None) -> Optional[str]:
     if not base.is_dir():
         return None
     latest: Optional[datetime] = None
-    for path in sorted(base.glob("*.jsonl")):
+    for path in sorted(base.glob("????-??.jsonl")):
         try:
             with path.open(encoding="utf-8") as fh:
                 for line in fh:

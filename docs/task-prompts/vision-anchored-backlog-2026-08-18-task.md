@@ -106,8 +106,13 @@ Feature: Admin-overhead measurement
 ```
 
 - acceptance:
-  - metrics 2.1 and 2.2 produce a real number for at least four past periods
-    (backfillable from the shadow log and observed cache where possible);
+  - metrics 2.1 and 2.2 produce a real number for at least four periods **after
+    instrumentation lands**. The gap section says these metrics have never
+    produced a number because nothing generates the input, so a new recorder
+    cannot measure a past it did not observe. Backfill is in scope only for what
+    the shadow log and observed cache already carry, and only where a stated
+    derivation is validated against one hand-checked run — otherwise the figure
+    is a reconstruction wearing a measurement's name;
   - the numbers appear in a form the weekly review ritual can read;
   - nothing is transmitted; the measurement is local and inspectable.
 - validation: computed values for four periods, checked by hand against one
@@ -161,7 +166,14 @@ Feature: Persona-measured admin overhead
 
 - acceptance:
   - at least four personas materialize and run end to end in CI;
-  - metrics 2.1, 2.2 and 2.3 produce numbers per persona per period;
+  - metrics 2.1 and 2.3 produce numbers per persona per period;
+  - **intervention count is its own proxy, not metric 2.2.** Metric 2.2 is
+    operator-tracked minutes; a persona has no minutes and no opinion about
+    them. Personas report how many manual interventions an output would require,
+    which is a property of the data, and 2.2 stays dependent on real operator
+    runs. This is the same boundary as level 3 below, one metric earlier: a
+    synthetic number under a human metric's name makes the scoreboard green
+    while measuring something else;
   - baselines are recorded so a later change can be compared against them;
   - **no persona emits a level-3 number** (see the boundary below).
 - validation: `bash scripts/run_autotests.sh` green with personas wired in; one persona's

@@ -115,9 +115,17 @@ class RefusesPromotionTests(unittest.TestCase):
     only to be proposed on every run.
     """
 
-    def test_explicit_promote_no_is_honoured(self):
-        block = "- story_id: `pending`\n- promote: no\n- spec_status: `draft`\n"
-        self.assertTrue(refuses_promotion(block))
+    def test_every_explicit_refusal_value_is_honoured(self):
+        for value in ("no", "false", "never", "No", "NEVER"):
+            with self.subTest(value=value):
+                block = f"- story_id: `pending`\n- promote: {value}\n- spec_status: `draft`\n"
+                self.assertTrue(refuses_promotion(block))
+
+    def test_an_affirmative_promote_value_does_not_refuse(self):
+        for value in ("yes", "true", "when ready"):
+            with self.subTest(value=value):
+                block = f"- story_id: `GH-7`\n- promote: {value}\n"
+                self.assertFalse(refuses_promotion(block))
 
     def test_prose_refusal_is_honoured(self):
         block = (

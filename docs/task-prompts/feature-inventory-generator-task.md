@@ -58,7 +58,7 @@ dev tooling lives in `scripts/` (alongside `check_file_lengths.py`,
 - non-goals: lifecycle/priority/QA status (that comes from specs, Phase 2).
 
 ### Phase 2 — traceability coupling
-- priority: **next**
+- priority: ~~next~~ **built** (#395)
 - scope: parse the `## Traceability` blocks in `docs/task-prompts/*.md` and
   `docs/specs/*.md`; link each feature (command/collector) to its spec +
   `implementation_status`. Curated capability notes (hand-written) sit above the
@@ -152,7 +152,9 @@ delivery phases. This is what the generator's `--check` would have demanded.
   hard only under `--strict`, which CI does not pass
 - created_at: 2026-06-25
 - last_updated_at: 2026-08-21
-- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/188 (Phase 1)
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/188
+  (Phase 1), https://github.com/mbjorke/timelog-extract/pull/395 (Phases 2-3,
+  commit `a21b737`)
 - implementation.branch: task/feature-inventory-generator
 - implementation.commits: []
 - validation.evidence: `scripts/generate_feature_inventory.py`,
@@ -165,7 +167,7 @@ delivery phases. This is what the generator's `--check` would have demanded.
   - policy: `AGENTS.md` §223 (task spec traceability); `docs/task-prompts/task-traceability-template.md`
   - surfaced by: reported-time layer PRs #186 / #187 shipping without a linked spec
 - changelog:
-  - 2026-08-21: Status corrected `in progress` -> `built`: GH-199 closed and all 6 named evidence files are present; the generator runs in run_autotests.sh.
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-199 closed and every file named in `validation.evidence` is present; the generator runs in `bash scripts/run_autotests.sh`.
   - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-25: Initial draft. Shaped from the docs/backlog-freshness discussion
     after #186/#187 shipped without a traceable spec link; modeled on client-b's

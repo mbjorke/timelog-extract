@@ -261,7 +261,7 @@ Feature: Framer presence capture
     active, the item is re-scoped rather than shipped with idle counted as work.
 - validation: fixture tests covering capture → mutate source → replay from
   ledger; idempotency test; a billable-total assertion; a fixture derived from the
-  **idle control** proving an untouched app yields no span. `run_autotests.sh` green.
+  **idle control** proving an untouched app yields no span. `bash scripts/run_autotests.sh` green.
 - dependencies:
   - **Open decision — capture cadence.** `gittan capture` is invoked manually or
     by a timer/hook (`--if-enabled` exists for exactly this). There is no daemon.

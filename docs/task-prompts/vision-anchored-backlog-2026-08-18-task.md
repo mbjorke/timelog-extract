@@ -5,8 +5,10 @@ into one kind of work, measured below rather than asserted.
 
 ## Traceability
 
-- story_id: `none — opened when work starts` (per the `gittan-product-owner`
-  issue-lifecycle rule changed 2026-08-18; this pass deliberately opens nothing)
+- story_id: `pending`
+- story_id.note: no issue exists by design — the `gittan-product-owner`
+  issue-lifecycle rule changed 2026-08-18, so an issue is opened when someone
+  starts the work, not when a pass prioritises it
 - spec_status: `draft`
 - implementation_status: `not built (planning artifact — no code)`
 - created_at: `2026-08-18`

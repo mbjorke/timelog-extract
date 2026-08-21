@@ -146,8 +146,10 @@ delivery phases. This is what the generator's `--check` would have demanded.
 
 - story_id: GH-199
 - spec_status: draft
-- implementation_status: built`--check`
-  staleness) built this PR; Phases 2-3 (spec linkage + un-specced gate) not built
+- implementation_status: built
+- implementation.phases: Phase 1 (code-derived inventory + `--check` staleness)
+  and Phase 2 (spec linkage) built; Phase 3 (un-specced gate) ships advisory —
+  hard only under `--strict`, which CI does not pass
 - created_at: 2026-06-25
 - last_updated_at: 2026-08-21
 - implementation.pr: this PR (Phase 1)

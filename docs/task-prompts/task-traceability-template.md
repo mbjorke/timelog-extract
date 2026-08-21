@@ -6,15 +6,16 @@ Use this block in every task spec/prompt under `docs/task-prompts/`.
 
 - story_id: `GH-123` (or `JIRA-123`)
 - spec_status: `draft | approved | superseded`
-- implementation_status: `not built | in progress | built | verified`
+- implementation_status: `n/a (template, not an implementation task)`
 - created_at: `YYYY-MM-DD`
-- last_updated_at: `YYYY-MM-DD`
+- last_updated_at: `2026-08-21`
 - implementation.pr: `<url-or-pr-ref>`
 - implementation.branch: `<branch-name>`
 - implementation.commits: `[<sha1>, <sha2>]`
 - validation.evidence: `<path-or-url>`
 - validation.decision: `GO | conditional GO | NO-GO`
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `n/a`: this file is the traceability template itself, not a task. It has no implementation to track.
   - `YYYY-MM-DD: Initial draft created.`
   - `YYYY-MM-DD: <requirement/gate/threshold change note>.`
 

@@ -146,10 +146,10 @@ delivery phases. This is what the generator's `--check` would have demanded.
 
 - story_id: GH-199
 - spec_status: draft
-- implementation_status: in progress — Phase 1 (code-derived inventory + `--check`
+- implementation_status: built`--check`
   staleness) built this PR; Phases 2-3 (spec linkage + un-specced gate) not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-08-06
+- last_updated_at: 2026-08-21
 - implementation.pr: this PR (Phase 1)
 - implementation.branch: task/feature-inventory-generator
 - implementation.commits: []
@@ -161,6 +161,7 @@ delivery phases. This is what the generator's `--check` would have demanded.
   - policy: `AGENTS.md` §223 (task spec traceability); `docs/task-prompts/task-traceability-template.md`
   - surfaced by: reported-time layer PRs #186 / #187 shipping without a linked spec
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-199 closed and all 6 named evidence files are present; the generator runs in run_autotests.sh.
   - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-25: Initial draft. Shaped from the docs/backlog-freshness discussion
     after #186/#187 shipped without a traceable spec link; modeled on client-b's

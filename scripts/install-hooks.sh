@@ -34,11 +34,14 @@ install_hook() {
 
 install_hook "pre-push" '#!/bin/sh
 # Auto-installed by scripts/install-hooks.sh
-# Guarded by a repo-file check: this machine may set a *global* core.hooksPath,
-# so the hook also runs for unrelated repositories. Without the guard, a repo
+# Guarded by a repo-identity check: this machine may set a *global* core.hooksPath,
+# so the hook also runs for unrelated repositories. Without any guard, a repo
 # with no run_autotests.sh makes bash exit 127 and blocks every push there.
+# A path-only check is still too broad: other projects also ship
+# scripts/run_autotests.sh. Require the timelog-extract entry module too,
+# so the suite runs only inside this repo and no-ops everywhere else.
 root="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-if [ -f "$root/scripts/run_autotests.sh" ]; then
+if [ -f "$root/scripts/run_autotests.sh" ] && [ -f "$root/timelog_extract.py" ]; then
   echo "[pre-push] Running test suite..."
   # git exports GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE into hook environments.
   # The suite shells out to git in temporary repositories, so those inherited

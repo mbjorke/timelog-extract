@@ -40,6 +40,11 @@ install_hook "pre-push" '#!/bin/sh
 root="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 if [ -f "$root/scripts/run_autotests.sh" ]; then
   echo "[pre-push] Running test suite..."
+  # git exports GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE into hook environments.
+  # The suite shells out to git in temporary repositories, so those inherited
+  # values point every child git call at the pushing repository and the run
+  # fails with dozens of unrelated errors. Clear them before running.
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_QUARANTINE_PATH
   bash "$root/scripts/run_autotests.sh" || { echo "[pre-push] Tests failed — push blocked."; exit 1; }
 fi
 '

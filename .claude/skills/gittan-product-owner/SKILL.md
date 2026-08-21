@@ -12,10 +12,14 @@ This is a planning pass — produce an ordered backlog (`now`/`next`/`later`/`do
 not build yet`) with acceptance criteria and Gherkin where useful; do **not**
 write code. Start product framing from `docs/product/vision-documents.md`.
 
-It also **prioritizes the issue backlog**: specs become issues via
-`/docs-to-issues` (idempotent), then this skill sets each issue's priority
-(`priority:now|next|later|do-not-build` label) and reflects it on the project
-board (needs the `project` gh scope for board fields). Flow: fuzzy ask → spec →
-issue → prioritized on the board.
+It also **prioritizes the backlog**, but it does **not open issues**. Priority
+lives in the committed spec, and in `priority:*` labels on issues that already
+exist. An issue is a work record: it is opened when someone starts the work, by
+whoever starts it. Flow: fuzzy ask → spec → prioritized → issue at work start.
+
+Measured 2026-08-18: 14 of 55 open issues (25%) were planning artifacts, the
+median age across all open issues was 41 days, and 49 of 80 closed issues closed
+the same day they were opened. See the *Issue lifecycle* section of the
+canonical doc.
 
 Policy (branches, safety, tests, PR language): **`AGENTS.md`**.

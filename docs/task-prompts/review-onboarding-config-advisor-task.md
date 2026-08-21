@@ -15,7 +15,7 @@ direction lives under work-unit v2).
 
 - story_id: GH-419
 - spec_status: approved
-- implementation_status: in progress
+- implementation_status: built
 - created_at: 2026-07-23
 - last_updated_at: 2026-08-21
 - implementation.pr: >-
@@ -32,6 +32,12 @@ direction lives under work-unit v2).
 - validation.decision: conditional GO
 - changelog:
   - 2026-08-21: Anonymized the hyphen-vs-space suggestion example (privacy; no requirement change).
+  - 2026-08-18: Status corrected `in progress` -> `built`. PRs #449, #450, #451,
+    #452 all merged 2026-07-23/24 and GH-419 closed COMPLETED 2026-07-23; the
+    code is present (`core/cli_review_create_project.py`, `core/cli_url_mapping.py`)
+    with tests (`tests/test_cli_review_create_project.py`,
+    `tests/test_cli_review_remotes.py`). The spec had simply never been updated
+    after the merge stack landed.
   - 2026-07-23: PO pass — ordered 1–2 week backlog from live review/setup pain;
     ships vs gaps for PRs #449–#452; Park-only Lovable stance; customer-first = next.
 

@@ -209,12 +209,12 @@ Python file over 500 lines.
 
 - story_id: GH-186 (reported/approved time layer epic; lead PR, PR-tracked)
 - spec_status: draft
-- implementation_status: in progress — Phase 1 built (#186), Phase 2 built (#187),
-  Phase 2b (auto-reporting) built (#190), Phase 3 (sync reads confirmed) built
-  (#194), Phase 3b (per-issue mapping) built (this PR, stacked on #194);
-  Phases 4–5 + Calendar not built
+- implementation_status: in progress
+- implementation.phases: Phase 1 built (#186), Phase 2 built (#187), Phase 2b
+  (auto-reporting) built (#190), Phase 3 (sync reads confirmed) built (#194),
+  Phase 3b (per-issue mapping) built; Phases 4–5 + Calendar not built
 - created_at: 2026-06-25
-- last_updated_at: 2026-08-06
+- last_updated_at: 2026-08-21
 - implementation.pr: #186 (merged), #187 (merged), #190 (merged, Phase 2b),
   #194 (Phase 3), this PR (#196, Phase 3b — stacked on #194)
 - implementation.branch: task/reported-time-record, task/reported-confirm-cli,
@@ -230,6 +230,7 @@ Python file over 500 lines.
   - policy: [`../specs/source-evidence-policy.md`](../specs/source-evidence-policy.md)
   - invoice reality: gittan undercount (see Context)
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `built`: shipped in #186/#187 and all 9 named evidence files are present.
   - 2026-08-06: Anonymised client identifiers in examples per #431; no requirement change.
   - 2026-06-25: Backfilled from a local plan-mode file into a committed task-prompt
     after Phases 1–2 had already shipped (#186/#187) without a traceable spec —

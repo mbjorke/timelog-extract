@@ -11,10 +11,10 @@ No code in this pass.
 - story_id: `GH-537`
 - superseded_item: `GH-536` (closed, not built — see the backlog section)
 - spec_status: approved
-- implementation_status: not built (planning artifact — no code)
+- implementation_status: built (rendering landed in #541; see changelog)
 - created_at: 2026-08-08
-- last_updated_at: 2026-08-08
-- implementation.pr: pending
+- last_updated_at: 2026-08-18
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/541
 - implementation.branch: `task/project-lifetime-totals`
 - implementation.commits: []
 - validation.evidence:
@@ -34,6 +34,15 @@ No code in this pass.
   cost measurements, and the priority ordering. It asserts nothing about an
   implementation that does not exist yet.
 - changelog:
+  - 2026-08-18: Status corrected `not built` -> `built`. PR #541
+    (`feat(report): lifetime hours per project, from the observed cache`) merged
+    2026-08-08 and GH-537 closed COMPLETED the same day; `core/observed_cache.py`,
+    the `outputs/terminal_report_sections.py` rendering path and
+    `tests/test_lifetime_column_wiring.py` are present, so the "not covered"
+    caveat in `validation.evidence` above is now stale — the lifetime rendering
+    path exists. Note it ships with a known defect tracked separately in GH-543
+    (lifetime totals behave as a keep-max high-water mark rather than hours
+    worked), which is why this is `built` and not `verified`.
   - 2026-08-08: Review pass. Split the combined `story_id` (the live story is
     GH-537 now that GH-536 is closed), scoped `validation.decision` to the
     planning claims since nothing here verifies an unbuilt rendering path,

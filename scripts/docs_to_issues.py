@@ -32,6 +32,26 @@ _DONE_WORDS = ("shipped", "done", "implemented", "complete", "landed", "merged",
 # task-prompt files that are meta, not actionable tasks → never ticket.
 _SKIP_STEMS = {"implementation-status", "task-traceability-template"}
 
+# A spec can refuse promotion. Two forms are honoured, both read from the
+# Traceability block:
+#
+#   - promote: no
+#   - story_id: `pending` (do **not** promote via /docs-to-issues until ...)
+#
+# The second already existed as prose and was silently ignored, which is how a
+# spec that says "do not promote" ended up proposed anyway. Since 2026-08-18 an
+# issue is opened when work starts, not when a pass prioritises it, so a planning
+# artifact that has not been picked up has no issue by design — creating one
+# would produce a ticket with no story id and no owner.
+_NO_PROMOTE_RE = re.compile(r"do\s+\*{0,2}not\*{0,2}\s+promote", re.I)
+
+
+def refuses_promotion(trace_block: str) -> bool:
+    """True when the spec declares it must not be turned into an issue."""
+    if _field(trace_block, "promote").lower() in {"no", "false", "never"}:
+        return True
+    return bool(_NO_PROMOTE_RE.search(trace_block))
+
 
 def _field(block: str, key: str) -> str:
     """Read ``- key: value`` from a Traceability block.
@@ -62,6 +82,7 @@ def parse_task_prompt(text: str, stem: str = "") -> Dict[str, Any]:
         "story_id": story_m.group(0) if story_m else "",
         "spec_status": _field(trace, "spec_status"),
         "impl_status": _field(trace, "implementation_status"),
+        "no_promote": refuses_promotion(trace),
         "gherkin": _gherkin_blocks(text),
     }
 
@@ -120,11 +141,19 @@ def main() -> int:
     if not args.include_done:
         items = [it for it in items if not is_done(it["impl_status"])]
 
+    refused = [it for it in items if it["no_promote"]]
+    items = [it for it in items if not it["no_promote"]]
+
     have = _existing_marked_paths()
     todo = [it for it in items if it["rel"] not in have]
 
     print(f"task-prompts: {len(prompts)} | candidates: {len(items)} | "
+          f"refused promotion: {len(refused)} | "
           f"already ticketed: {len(items) - len(todo)} | to create: {len(todo)}\n")
+    for it in refused:
+        print(f"  - {it['rel']} declares it must not be promoted")
+    if refused:
+        print()
     for it in todo:
         tag = f" [{it['story_id']}]" if it["story_id"] else ""
         print(f"  + {it['title']}{tag}  ({it['rel']}, {len(it['gherkin'])} gherkin)")

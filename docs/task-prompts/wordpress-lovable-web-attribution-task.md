@@ -16,15 +16,20 @@ Presence bracketing remains the follow-up for total hours.
 
 - story_id: `GH-338`
 - spec_status: `draft`
-- implementation_status: `in progress`
+- implementation_status: `built`
 - created_at: `2026-07-09`
-- last_updated_at: `2026-07-09`
+- last_updated_at: `2026-08-21`
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/337
 - implementation.branch: `task/wordpress-lovable-web-attribution`
 - implementation.commits: `[008680f, 70bcafd, 4f5d598, 49fdd4e, 45cd80d]`
-- validation.evidence: operator report on a WordPress-heavy day — WordPress in legend; WordPress client hours rise materially; idle Lovable client hours collapse; observed total still below presence tracker (gap → GH-332)
+- validation.evidence: `collectors/chrome.py`, `core/project_hours.py`,
+  `core/sources.py`; plus an operator report on a WordPress-heavy day — WordPress in legend; WordPress client hours rise materially; idle Lovable client hours collapse; observed total still below presence tracker (gap → GH-332)
 - validation.decision: `conditional GO` — attribution slice verified locally; presence undercount out of scope
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-338 closed and the
+    three files the spec names are present. Those paths are now listed in
+    `validation.evidence`, which previously held only the operator summary, so
+    the changelog no longer refers to evidence the field does not carry.
   - `2026-07-09: Initial draft from unplanned WordPress-day incident + Timely comparison.`
   - `2026-07-09: PR #337 opened; implementation.branch + commits recorded.`
   - `2026-07-09: Issue #338 created with priority:now; story_id set.`

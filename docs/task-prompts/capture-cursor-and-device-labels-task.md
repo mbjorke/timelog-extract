@@ -18,15 +18,16 @@ This task is the visible half of "a phone is a machine too."
 
 - story_id: `GH-474` (https://github.com/mbjorke/timelog-extract/issues/474)
 - spec_status: approved
-- implementation_status: in progress
+- implementation_status: built
 - created_at: 2026-07-26
-- last_updated_at: 2026-07-26
+- last_updated_at: 2026-08-21
 - implementation.pr: pending
 - implementation.branch: task/capture-cursor-and-device-labels
 - implementation.commits: []
 - validation.evidence: pending
 - validation.decision: NO-GO
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-474 closed and the named evidence file is present. Spec was never updated after the work landed.
   - 2026-07-26: Drafted from the earlier maintainer walkthrough — capture today is
     Claude-shaped; device is stored but not shown; Cursor asked for next.
     Issued with `priority:next`.

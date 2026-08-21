@@ -60,7 +60,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Triage onboarding timestamp spike spec (S1)** → [`specs/triage-onboarding-timestamp-spike-spec.md`](specs/triage-onboarding-timestamp-spike-spec.md)
 - **Classification integrity TDD spec** → [`specs/classification-integrity-tdd-spec.md`](specs/classification-integrity-tdd-spec.md)
 - **Implementation checklist / agent prompt** → `task-prompts/`
-- **Which task-prompts are actually built** → [`task-prompts/implementation-status.md`](task-prompts/implementation-status.md)
+- **Which task-prompts are actually built** → each spec's own `## Traceability` block (`implementation_status`), plus [`generated/feature-inventory.md`](generated/feature-inventory.md) for the code-derived view
 - **Release 1.0 — CLI polish backlog (current focus)** → [`runbooks/cli-polish-backlog-release-1-0.md`](runbooks/cli-polish-backlog-release-1-0.md)
 - **How to run CI, release, or QA** → `runbooks/` (optional **Homebrew tap** sketch for `brew install gittan`: [`runbooks/homebrew-tap.md`](runbooks/homebrew-tap.md))
 - **Canonical worklog model (per-project `~/.gittan/worklogs/<project-id>.md`)** → [`runbooks/global-timelog-setup.md`](runbooks/global-timelog-setup.md) (repo `TIMELOG.md` is legacy fallback only)

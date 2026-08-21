@@ -259,15 +259,16 @@ yields data to choose the engine, without establishing any durable store early.
 
 - story_id: `GH-151` (https://github.com/mbjorke/timelog-extract/issues/151)
 - spec_status: `draft`
-- implementation_status: `in progress`
+- implementation_status: `built`
 - created_at: 2026-06-18
-- last_updated_at: 2026-06-22
+- last_updated_at: 2026-08-21
 - implementation.pr: https://github.com/mbjorke/timelog-extract/pull/153
 - implementation.branch: claude/gitbutler-inspiration-4nkcrm
 - implementation.commits: []
 - validation.evidence: `tests/test_evidence_record.py`, `tests/test_evidence_volume.py`; full autotest suite 849 green; real 6-month spike on maintainer workstation (5,505 records, ~453 B/record, ~4.9 MB/yr) → decision `JSONL-first`; no `~/.gittan/evidence/` created
 - validation.decision: conditional GO
 - changelog:
+  - 2026-08-21: Status corrected `in progress` -> `built`: GH-151 closed and 9 of 10 named evidence files are present. The tenth, tests/test_evidence_shadow_log.py, no longer exists under that name; the store/record/volume tests beside it do.
   - 2026-06-18: Initial product-owner pass. Measure-first slice for the local
     evidence shadow log, prompted by GitButler architecture inspiration. Locked
     the engine-agnostic record contract, fingerprint-excludes-project decision,

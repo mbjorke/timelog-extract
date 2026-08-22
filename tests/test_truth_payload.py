@@ -3,6 +3,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
+from core import truth_payload
 from core.presence_estimated import compute_presence_estimated
 from core.truth_payload import TRUTH_PAYLOAD_VERSION, build_truth_payload
 from timelog_extract import estimate_hours_by_day, group_by_day
@@ -305,3 +306,91 @@ class TruthPayloadTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SessionProjectHoursTests(unittest.TestCase):
+    """A session spans every project touched between two 15-minute gaps.
+
+    Consumers that read ``projects[0]`` as *the* project put the whole block on
+    one row, which is the GH-544 failure: hours land on another project and
+    often another customer. The payload now carries the split the report's own
+    totals are built from.
+    """
+
+    def _payload(self, events):
+        from core.domain import session_duration_hours
+        from core.sources import AI_SOURCES
+
+        return truth_payload._serialize_session(
+            events[0]["local_ts"],
+            events[-1]["local_ts"],
+            events,
+            session_duration_hours_fn=(
+                lambda se, st, en, mn, mp: session_duration_hours(se, st, en, mn, mp, AI_SOURCES)
+            ),
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            session_index=0,
+            day="2026-08-21",
+        )
+
+    def _event(self, minute, project, source="Cursor", detail="work"):
+        return {
+            "local_ts": datetime(2026, 8, 21, 9, minute, tzinfo=timezone.utc),
+            "timestamp": datetime(2026, 8, 21, 9, minute, tzinfo=timezone.utc),
+            "source": source,
+            "detail": detail,
+            "project": project,
+        }
+
+    def test_a_single_project_session_puts_all_hours_on_it(self):
+        events = [self._event(0, "alpha"), self._event(20, "alpha")]
+        out = self._payload(events)
+        self.assertEqual(list(out["project_hours"]), ["alpha"])
+        self.assertAlmostEqual(out["project_hours"]["alpha"], out["hours_estimated"], places=6)
+
+    def test_a_mixed_session_splits_rather_than_naming_one_project(self):
+        events = [self._event(0, "alpha"), self._event(10, "beta"), self._event(20, "beta")]
+        out = self._payload(events)
+        self.assertEqual(sorted(out["project_hours"]), ["alpha", "beta"])
+        self.assertGreater(out["project_hours"]["beta"], 0)
+
+    def test_the_split_never_exceeds_the_session_total(self):
+        events = [self._event(0, "alpha"), self._event(10, "beta"), self._event(20, "gamma")]
+        out = self._payload(events)
+        self.assertLessEqual(
+            round(sum(out["project_hours"].values()), 6),
+            round(out["hours_estimated"], 6) + 1e-6,
+        )
+
+    def test_projects_list_and_split_name_the_same_projects(self):
+        events = [self._event(0, "alpha"), self._event(10, "beta")]
+        out = self._payload(events)
+        self.assertEqual(set(out["project_hours"]), set(out["projects"]))
+
+    def test_the_split_matches_what_the_report_credits(self):
+        """The payload must not carry a second, disagreeing number.
+
+        Allocation is sensitive to its inputs: omitting the duration function
+        let the allocator fall back to its own default, and the split stopped
+        summing to the report -- 7.98 h against a reported 5.50 h on one
+        project. The two must be built from the same call.
+        """
+        from core.domain import session_duration_hours
+        from core.project_hours import allocate_session_hours_by_project
+
+        events = [self._event(0, "alpha"), self._event(10, "beta"), self._event(20, "beta")]
+        out = self._payload(events)
+
+        expected = allocate_session_hours_by_project(
+            events,
+            out["hours_estimated"],
+            session_duration_hours_fn=session_duration_hours,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            gap_minutes=15,
+        )
+        self.assertEqual(
+            {k: round(v, 6) for k, v in sorted(expected.items())},
+            out["project_hours"],
+        )

@@ -69,8 +69,14 @@ def _serialize_event(
     # the question a customer asks. They are normalised, short (no absolute
     # paths), and strictly less revealing than `detail`, which is already here.
     anchors = event.get("anchors")
-    if isinstance(anchors, dict) and anchors:
-        out["anchors"] = {str(k): str(v) for k, v in anchors.items() if k and v}
+    if isinstance(anchors, dict):
+        # Filter first, then decide. Testing the input map instead meant a map
+        # whose every value was empty emitted `anchors: {}` — the one shape this
+        # field must never take, since absent means "nothing anchored this" and
+        # empty would read as "anchored to nothing".
+        kept = {str(k): str(v) for k, v in anchors.items() if k and v}
+        if kept:
+            out["anchors"] = kept
     if local_ts is not None:
         out["local_time"] = local_ts.isoformat()
     return out

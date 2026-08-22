@@ -126,14 +126,50 @@ class DerivedAttributionTests(unittest.TestCase):
 class PayloadContractTests(unittest.TestCase):
     """The payload must make derived rows impossible to mistake for declared."""
 
-    def test_the_payload_version_covers_the_new_block(self):
-        # `project_attribution` arrived in v3. The exact current version is
-        # pinned once, in tests/test_truth_payload.py where the payload lives —
-        # pinning it here too would mean two edits for every future bump, and
-        # what matters to this feature is only that the payload is new enough.
-        from core.truth_payload import TRUTH_PAYLOAD_VERSION
+    def test_the_payload_carries_the_attribution_block(self):
+        # Asserts the contract this feature owns — the block is present and
+        # shaped — rather than a version number. A version assertion here was
+        # either brittle (two edits per bump) or weak (>= 3 passes on any later
+        # version); the exact version is pinned once, in the payload's own test
+        # file, where the payload contract lives.
+        from datetime import datetime, timedelta, timezone
 
-        self.assertGreaterEqual(int(TRUTH_PAYLOAD_VERSION), 3)
+        from core.truth_payload import build_truth_payload
+        from timelog_extract import estimate_hours_by_day, group_by_day
+
+        base = datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc)
+        row = {
+            "source": "TIMELOG.md",
+            "timestamp": base,
+            "detail": "declared work",
+            "project": "project-alpha",
+        }
+        overall_days = estimate_hours_by_day(
+            group_by_day([row]),
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+        )
+        payload = build_truth_payload(
+            overall_days=overall_days,
+            project_reports={"project-alpha": overall_days},
+            included_events=[row],
+            collector_status={"TIMELOG.md": {"enabled": True, "reason": "", "events": 1}},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=base + timedelta(hours=1),
+            worklog_path="/tmp/TIMELOG.md",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            session_duration_hours_fn=(
+                lambda ev, start, end, mn, mp: (end - start).total_seconds() / 3600.0
+            ),
+        )
+        block = payload["project_attribution"]
+        self.assertIsInstance(block["derived"], list)
+        self.assertIn("note", block)
 
     def test_derived_names_reach_the_payload_block(self):
         rows = apply_derived_attribution(

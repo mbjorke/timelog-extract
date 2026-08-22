@@ -428,5 +428,10 @@ class EventAnchorsTests(unittest.TestCase):
         out = self._event({"repo": "owner-example/widgets", "dir": "", "branch": None})
         self.assertEqual(out["anchors"], {"repo": "owner-example/widgets"})
 
+    def test_a_map_of_only_empty_values_carries_no_key(self):
+        # Not `anchors: {}`. Absent means nothing anchored this event; an empty
+        # map would read as anchored to nothing, which is a different claim.
+        self.assertNotIn("anchors", self._event({"dir": "", "branch": None}))
+
     def test_the_version_names_the_new_field(self):
         self.assertEqual(TRUTH_PAYLOAD_VERSION, "4")

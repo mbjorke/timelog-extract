@@ -62,6 +62,59 @@ def _serialize_event(
     return out
 
 
+def _session_project_hours(
+    session_events: List[Dict[str, Any]],
+    raw_hours: float,
+    *,
+    session_duration_hours_fn,
+    min_session_minutes: int,
+    min_session_passive_minutes: int,
+    gap_minutes: int,
+    projects: List[str],
+) -> Dict[str, float]:
+    """The session's hours split across the projects it touched.
+
+    Allocation needs a ``local_ts`` on every event, which the serializer itself
+    does not require — a caller may hand it rows without one. A payload that
+    raises because one row lacks a timestamp is worse than one without a split,
+    so this degrades instead: a single-project session is trivially all of its
+    own hours, and anything else returns nothing rather than a guess. An empty
+    map says "no split available", which a consumer can act on; a fabricated one
+    cannot be told from a real one.
+    """
+    if raw_hours <= 0 or not session_events:
+        return {}
+    try:
+        from core.project_hours import allocate_session_hours_by_project
+
+        # Same inputs as ``build_project_reports_from_sessions``, which is what
+        # the report's per-project totals are built from. Anything else produces
+        # a *different* number for the same thing: omitting the duration
+        # function let the allocator fall back to its own default and the split
+        # stopped summing to the report (7.98 h against a reported 5.50 h on one
+        # project, 1.55 against 4.97 on another).
+        #
+        # The two call sites disagree on arity — the allocator passes
+        # ``ai_sources`` as a sixth positional argument where this serializer's
+        # function takes five and already closes over it — so the shape is
+        # adapted rather than the argument dropped.
+        return allocate_session_hours_by_project(
+            session_events,
+            raw_hours,
+            session_duration_hours_fn=(
+                lambda se, st, en, mn, mp, _ai: session_duration_hours_fn(se, st, en, mn, mp)
+            ),
+            min_session_minutes=min_session_minutes,
+            min_session_passive_minutes=min_session_passive_minutes,
+            gap_minutes=gap_minutes,
+        )
+    except KeyError:
+        # Only the missing-``local_ts`` case, which this serializer tolerates by
+        # design. Anything else is a real defect and must not be swallowed — a
+        # broad catch here hid the arity mismatch above until a test caught it.
+        return {projects[0]: raw_hours} if len(projects) == 1 else {}
+
+
 def _serialize_session(
     start_ts: datetime,
     end_ts: datetime,
@@ -72,6 +125,7 @@ def _serialize_session(
     min_session_passive_minutes: int,
     session_index: int,
     day: str,
+    gap_minutes: int = 15,
     redact_chrome_raw_json: bool = False,
     attendance: str | None = None,
 ) -> Dict[str, Any]:
@@ -83,6 +137,25 @@ def _serialize_session(
         min_session_passive_minutes,
     )
     projects = session_project_labels(session_events)
+    # A session is grouped by time, not by project, so a working day with no
+    # 15-minute gap is one session spanning everything touched in it. Consumers
+    # that treat `projects[0]` as *the* project put the whole block on one row —
+    # the failure GH-544 describes, where hours land on another project and
+    # often another customer.
+    #
+    # The split already exists: allocate_session_hours_by_project is what the
+    # report's own per-project totals are built from. Carrying it here means a
+    # consumer reads the same number the CLI stands behind instead of deriving
+    # its own from event counts, which weight browser pings like commits.
+    project_hours = _session_project_hours(
+        session_events,
+        raw_hours,
+        session_duration_hours_fn=session_duration_hours_fn,
+        min_session_minutes=min_session_minutes,
+        min_session_passive_minutes=min_session_passive_minutes,
+        gap_minutes=gap_minutes,
+        projects=projects,
+    )
     sources = sorted({e.get("source", "") for e in session_events})
     if attendance is None:
         attendance = session_events[0].get("attendance") if session_events and "attendance" in session_events[0] else None
@@ -108,6 +181,7 @@ def _serialize_session(
         "hours_estimated": round(raw_hours, 6),
         "event_count": len(session_events),
         "projects": projects,
+        "project_hours": {k: round(v, 6) for k, v in sorted(project_hours.items())},
         "sources": sources,
         "attendance": attendance,
         "events": events_out,
@@ -158,6 +232,7 @@ def build_truth_payload(
                     min_session_passive_minutes=min_session_passive_minutes,
                     session_index=idx,
                     day=day,
+                    gap_minutes=gap_minutes,
                     redact_chrome_raw_json=redact,
                     attendance=attendance,
                 )

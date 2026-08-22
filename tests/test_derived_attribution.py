@@ -147,10 +147,11 @@ class PayloadContractTests(unittest.TestCase):
 class ReviewFindingTests(unittest.TestCase):
     """Regressions for defects found in review of GH-527."""
 
-    def test_a_declared_row_keeps_its_billing_when_a_derived_row_shares_its_name(self):
-        # A profile named for a slug, or an intent bound to one, can collide
-        # with a derived row. Marking the merged row derived strips the billable
-        # total from hours the operator declared — silently, and downward.
+    def test_a_name_collision_is_refused_rather_than_merged(self):
+        # Review found the merge wrong in both directions: treat the row as
+        # derived and declared hours lose their billable total; treat it as
+        # declared and hours nobody configured get billed. The collision is
+        # refused instead, so no row is ever part declared and part derived.
         rows = apply_derived_attribution(
             [
                 event("owner-example/widgets", repo="owner-example/widgets"),
@@ -158,8 +159,46 @@ class ReviewFindingTests(unittest.TestCase):
             ],
             uncategorized=UNCATEGORIZED,
         )
-        self.assertEqual([r["project"] for r in rows], ["owner-example/widgets"] * 2)
+        self.assertEqual(
+            [r["project"] for r in rows], ["owner-example/widgets", UNCATEGORIZED]
+        )
+        # Direction one: the declared row is not marked derived, so it keeps
+        # its billable total.
         self.assertEqual(derived_projects(rows), set())
+        # Direction two: the unclaimed event did not join the billed row.
+        self.assertNotIn(DERIVED_KEY, rows[1])
+
+    def test_a_collision_does_not_stop_other_repositories_deriving(self):
+        rows = apply_derived_attribution(
+            [
+                event("owner-example/widgets", repo="owner-example/widgets"),
+                event(UNCATEGORIZED, repo="owner-example/widgets"),
+                event(UNCATEGORIZED, repo="owner-example/other"),
+            ],
+            uncategorized=UNCATEGORIZED,
+        )
+        self.assertEqual(derived_projects(rows), {"owner-example/other"})
+
+    def test_a_relative_path_never_becomes_a_repository_identity(self):
+        # `git clone ../work/clone` leaves an origin shaped exactly like
+        # owner/repo, so only the absence of a host can tell them apart.
+        from core.repo_slug import slug_from_remote_url
+
+        for path in ("work/clone", "some/dir", "../sibling/repo"):
+            self.assertEqual(slug_from_remote_url(path), "", path)
+
+    def test_published_remotes_still_resolve(self):
+        # The host rule must not cost any real remote.
+        from core.repo_slug import slug_from_remote_url
+
+        for url, expected in (
+            ("https://github.com/owner/repo", "owner/repo"),
+            ("git@github.com:owner/repo.git", "owner/repo"),
+            ("git@gitlab.com:team/tool.git", "team/tool"),
+            ("ssh://git@host.example/team/tool.git", "team/tool"),
+            ("https://gitlab.example.com/team/tool.git", "team/tool"),
+        ):
+            self.assertEqual(slug_from_remote_url(url), expected, url)
 
     def test_a_local_path_never_becomes_a_repository_identity(self):
         # A repository whose origin points at a directory has published nothing.

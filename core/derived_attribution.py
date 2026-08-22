@@ -71,6 +71,20 @@ def apply_derived_attribution(
     keeps the raw events can still see what classification alone produced.
     """
     fallback = str(uncategorized or "").strip()
+
+    # Names anything declared already uses. A derived row must never merge into
+    # one: review found the merge wrong in both directions — treat the row as
+    # derived and declared hours lose their billable total, treat it as declared
+    # and hours nobody configured get billed. Neither is a side worth picking,
+    # so the collision is refused instead. Those events stay uncategorized,
+    # which is visible and fixable, rather than quietly joining a billed row.
+    claimed = {
+        str(event.get("project") or "").strip()
+        for event in events
+        if isinstance(event, dict)
+        and str(event.get("project") or "").strip() not in ("", fallback)
+    }
+
     out: List[Dict[str, Any]] = []
     for event in events:
         if not isinstance(event, dict):
@@ -80,7 +94,7 @@ def apply_derived_attribution(
             out.append(event)
             continue
         slug = derived_slug(event)
-        if not slug:
+        if not slug or slug in claimed:
             out.append(event)
             continue
         attributed = dict(event)

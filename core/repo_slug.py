@@ -39,6 +39,15 @@ def _is_local_path_remote(url: str) -> bool:
         return True
     if text.startswith(("/", "~", ".")):
         return True
+    # A published remote names a host, via a scheme or scp-style `host:path`.
+    # Without one this is a relative path — `work/clone` from `git clone
+    # ../work/clone` — and it is shaped exactly like `owner/repo`, so nothing
+    # downstream can tell the two apart. Requiring a host is the only check
+    # that can: identity has to come from something that was published.
+    if "://" not in text:
+        host, sep, path = text.partition(":")
+        if not (sep and host and path):
+            return True
     # scp-style ``host:owner/repo`` has a host before the colon; a Windows path
     # (``C:\src\repo``) has a single drive letter.
     return len(text) > 1 and text[1] == ":" and text[0].isalpha()

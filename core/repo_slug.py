@@ -32,7 +32,12 @@ def _is_local_path_remote(url: str) -> bool:
     text = url.strip()
     if not text:
         return False
-    if text.startswith(("/", "~", ".")) or text.startswith("file://"):
+    # Every spelling of the file scheme, not just the three-slash one: `file:/`
+    # and `FILE:///` are the same local path, and either would otherwise reach
+    # the path-segment fallback and surface a directory name as an identity.
+    if text.lower().startswith("file:"):
+        return True
+    if text.startswith(("/", "~", ".")):
         return True
     # scp-style ``host:owner/repo`` has a host before the colon; a Windows path
     # (``C:\src\repo``) has a single drive letter.

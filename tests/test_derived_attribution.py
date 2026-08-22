@@ -171,6 +171,9 @@ class ReviewFindingTests(unittest.TestCase):
             "/home/user/project",
             "/Users/someone/Work/customer-a",
             "file:///home/user/project",
+            "file:/home/user/project",
+            "FILE:///home/user/project",
+            "FiLe://localhost/home/user/project",
             "~/work/thing",
             "C:\\src\\repo",
         ):
@@ -208,17 +211,55 @@ class ReviewFindingTests(unittest.TestCase):
 
     def test_every_derived_name_is_a_row_a_consumer_can_look_up(self):
         # An event can be included and still contribute no hours, which left a
-        # name in the block that resolves to nothing in `projects`.
-        import inspect
+        # name in the block that resolves to nothing in `projects`. Asserted
+        # against a built payload rather than the source text, so a rewrite that
+        # keeps the behaviour passes and one that loses it does not.
+        from datetime import datetime, timedelta, timezone
 
         from core.truth_payload import build_truth_payload
+        from timelog_extract import estimate_hours_by_day, group_by_day
 
-        source = inspect.getsource(build_truth_payload)
-        self.assertIn(
-            "derived_project_names & set(project_totals)",
-            source,
-            "the derived list must be scoped to names that are rows in projects",
+        base = datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc)
+        billed = {
+            "source": "TIMELOG.md",
+            "timestamp": base,
+            "detail": "declared work",
+            "project": "project-alpha",
+        }
+        # Derived, and deliberately absent from project_reports: this is the
+        # event that produced a name with no row behind it.
+        stray = {
+            "source": "Claude Code CLI",
+            "timestamp": base,
+            "detail": "unclaimed work",
+            "project": "owner-example/stray",
+            DERIVED_KEY: True,
+        }
+        grouped = group_by_day([billed])
+        overall_days = estimate_hours_by_day(
+            grouped, gap_minutes=15, min_session_minutes=15, min_session_passive_minutes=5
         )
+        payload = build_truth_payload(
+            overall_days=overall_days,
+            project_reports={"project-alpha": overall_days},
+            included_events=[billed, stray],
+            collector_status={"TIMELOG.md": {"enabled": True, "reason": "", "events": 1}},
+            screen_time_days=None,
+            dt_from=base,
+            dt_to=base + timedelta(hours=1),
+            worklog_path="/tmp/TIMELOG.md",
+            config_path="/tmp/cfg.json",
+            gap_minutes=15,
+            min_session_minutes=15,
+            min_session_passive_minutes=5,
+            session_duration_hours_fn=(
+                lambda ev, start, end, mn, mp: (end - start).total_seconds() / 3600.0
+            ),
+        )
+        derived = payload["project_attribution"]["derived"]
+        self.assertNotIn("owner-example/stray", derived)
+        for name in derived:
+            self.assertIn(name, payload["projects"], name)
 
 
 if __name__ == "__main__":

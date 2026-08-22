@@ -169,6 +169,23 @@ class ReviewFindingTests(unittest.TestCase):
         # Direction two: the unclaimed event did not join the billed row.
         self.assertNotIn(DERIVED_KEY, rows[1])
 
+    def test_the_collision_guard_ignores_case(self):
+        # A derived slug is lowercased; a profile name is whatever the operator
+        # typed. Owner/Repo and owner/repo are one repository, and two rows for
+        # it would show the same work twice with different billing on each.
+        for declared in ("Owner-Example/Widgets", "OWNER-EXAMPLE/WIDGETS"):
+            rows = apply_derived_attribution(
+                [
+                    event(declared, repo="Owner-Example/Widgets"),
+                    event(UNCATEGORIZED, repo="Owner-Example/Widgets"),
+                ],
+                uncategorized=UNCATEGORIZED,
+            )
+            self.assertEqual(derived_projects(rows), set(), declared)
+            self.assertEqual(
+                [r["project"] for r in rows], [declared, UNCATEGORIZED], declared
+            )
+
     def test_a_collision_does_not_stop_other_repositories_deriving(self):
         rows = apply_derived_attribution(
             [

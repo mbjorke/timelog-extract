@@ -78,8 +78,12 @@ def apply_derived_attribution(
     # and hours nobody configured get billed. Neither is a side worth picking,
     # so the collision is refused instead. Those events stay uncategorized,
     # which is visible and fixable, rather than quietly joining a billed row.
+    # Casefolded, because a derived slug is lowercased and a profile name is
+    # whatever the operator typed. `Owner/Repo` and `owner/repo` are one
+    # repository, and letting them past as two rows would show the same work
+    # twice with different billing on each.
     claimed = {
-        str(event.get("project") or "").strip()
+        str(event.get("project") or "").strip().casefold()
         for event in events
         if isinstance(event, dict)
         and str(event.get("project") or "").strip() not in ("", fallback)
@@ -94,7 +98,7 @@ def apply_derived_attribution(
             out.append(event)
             continue
         slug = derived_slug(event)
-        if not slug or slug in claimed:
+        if not slug or slug.casefold() in claimed:
             out.append(event)
             continue
         attributed = dict(event)

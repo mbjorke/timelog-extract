@@ -341,6 +341,14 @@ def print_project_hour_review_section(
         name: devices_for_events(rows) for name, rows in events_by_project.items()
     }
 
+    # Rows nobody declared: attributed from a git remote so the work is visible
+    # at all, but not something to bill until a human says what it is worth.
+    from core.derived_attribution import derived_projects
+
+    derived_names: set[str] = set()
+    for rows in events_by_project.values():
+        derived_names |= derived_projects(rows)
+
     heading = f"Project-hour review{period_heading_suffix(args)}"
     if additive_summary:
         heading += " (additive: primary project per session)"
@@ -412,16 +420,27 @@ def print_project_hour_review_section(
 
         cust_b_text = "-"
         if args.billable_unit and args.billable_unit > 0:
-            cust_b = sum(
-                billable_total_hours_fn(
-                    additive_project_hours.get(p, 0.0)
-                    if additive_summary
-                    else sum(day_payload["hours"] for day_payload in project_reports.get(p, {}).values()),
-                    args.billable_unit,
+            # Derived projects are excluded from the group total as well as
+            # their own row. A group whose members are all derived shows no
+            # billable figure at all: summing them here would put back, one
+            # line higher, exactly the number the detail row refuses to state.
+            billable_projects = [p for p in customer_projects if p not in derived_names]
+            if not billable_projects:
+                cust_b_text = "—"
+            else:
+                cust_b = sum(
+                    billable_total_hours_fn(
+                        additive_project_hours.get(p, 0.0)
+                        if additive_summary
+                        else sum(
+                            day_payload["hours"]
+                            for day_payload in project_reports.get(p, {}).values()
+                        ),
+                        args.billable_unit,
+                    )
+                    for p in billable_projects
                 )
-                for p in customer_projects
-            )
-            cust_b_text = f"{cust_b:.2f}h"
+                cust_b_text = f"{cust_b:.2f}h"
 
         cust_hours_text = Text.assemble(
             (f"{customer_hours:.1f}h", f"bold {CLR_VALUE_ORANGE}")
@@ -485,6 +504,13 @@ def print_project_hour_review_section(
             display_name = display_project_label(
                 project_name, devices=project_devices.get(project_name, [])
             )
+            if project_name in derived_names:
+                # Named as derived rather than styled as it, so the distinction
+                # survives a pipe, a screenshot and a colourless terminal.
+                display_name += " (derived)"
+                # Observed hours stand; a billable total would imply someone
+                # agreed a rate for a repository they have never declared.
+                proj_b_text = "—"
             proj_row = [
                 f"[{STYLE_META}]  · {display_name}[/{STYLE_META}]",
                 f"[{STYLE_BODY}]{hours:.1f}h[/{STYLE_BODY}]",

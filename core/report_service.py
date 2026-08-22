@@ -331,6 +331,15 @@ def run_timelog_report(
 
     all_events, _intent_changed = apply_intents(all_events)  # data dir, not read-home (GH-549)
 
+    # Work in a repository no profile claims still has an identity: collectors
+    # already resolved the git remote to owner/repo before classification ran.
+    # Applied last, so a declared profile and an explicit intent both keep their
+    # answer and only what would have been Uncategorized is derived. Nothing is
+    # written — config gains no new writer (GH-527, guarded by #406).
+    from core.derived_attribution import apply_derived_attribution
+
+    all_events = apply_derived_attribution(all_events, uncategorized=UNCATEGORIZED)
+
     screen_time_days, timely_memory_spans = collect_presence_comparators(
         args=args,
         dt_from=dt_from,

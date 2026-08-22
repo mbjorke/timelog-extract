@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Tuple
 from core.cli import package_version
 from core.sources import session_project_labels
 
-TRUTH_PAYLOAD_VERSION = "2"
+# v3 adds `project_attribution`: which project rows were derived from a git
+# remote rather than declared in config (GH-527). `projects` keeps its shape and
+# meaning, so consumers reading per-project hours need no change.
+TRUTH_PAYLOAD_VERSION = "3"
 
 _URL_SCHEME_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
@@ -185,6 +188,9 @@ def build_truth_payload(
             "events": events_flat,
         }
 
+    from core.derived_attribution import derived_projects
+
+    derived_project_names = derived_projects(included_events)
     project_totals: Dict[str, float] = {}
     for pname, days in project_reports.items():
         project_totals[pname] = round(sum(d["hours"] for d in days.values()), 6)
@@ -264,6 +270,19 @@ def build_truth_payload(
             "event_count": len(included_events),
         },
         "projects": project_totals,
+        # Which of those rows nobody declared. A consumer must never present a
+        # derived row as a configured one: the hours are observed and real, but
+        # no human has said what the repository is worth, or to whom. Listing
+        # the names rather than reshaping `projects` keeps every existing
+        # reader of per-project hours working unchanged.
+        "project_attribution": {
+            "derived": sorted(derived_project_names),
+            "note": (
+                "Derived rows are attributed from a git remote, not a declared "
+                "profile. They carry observed hours and no billable total. "
+                "Declare the project to bill it."
+            ),
+        },
         "days": days_out,
     }
     if presence_block is not None:

@@ -343,11 +343,14 @@ def print_project_hour_review_section(
 
     # Rows nobody declared: attributed from a git remote so the work is visible
     # at all, but not something to bill until a human says what it is worth.
-    from core.derived_attribution import derived_projects
+    from core.derived_attribution import billing_classes
 
-    derived_names: set[str] = set()
-    for rows in events_by_project.values():
-        derived_names |= derived_projects(rows)
+    # Rows nobody declared carry no billable total; rows that merely absorbed
+    # derived hours in additive mode carry none either, and say which they are.
+    derived_names, mixed_names = billing_classes(
+        events_by_project, additive_summary=additive_summary
+    )
+    unbillable_names = derived_names | mixed_names
 
     heading = f"Project-hour review{period_heading_suffix(args)}"
     if additive_summary:
@@ -424,7 +427,7 @@ def print_project_hour_review_section(
             # their own row. A group whose members are all derived shows no
             # billable figure at all: summing them here would put back, one
             # line higher, exactly the number the detail row refuses to state.
-            billable_projects = [p for p in customer_projects if p not in derived_names]
+            billable_projects = [p for p in customer_projects if p not in unbillable_names]
             if not billable_projects:
                 cust_b_text = "—"
             else:
@@ -510,6 +513,10 @@ def print_project_hour_review_section(
                 display_name += " (derived)"
                 # Observed hours stand; a billable total would imply someone
                 # agreed a rate for a repository they have never declared.
+                proj_b_text = "—"
+            elif project_name in mixed_names:
+                # Declared, but carrying hours from a repository that is not.
+                display_name += " (includes derived)"
                 proj_b_text = "—"
             proj_row = [
                 f"[{STYLE_META}]  · {display_name}[/{STYLE_META}]",

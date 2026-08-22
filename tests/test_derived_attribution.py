@@ -9,6 +9,7 @@ import unittest
 from core.derived_attribution import (
     DERIVED_KEY,
     apply_derived_attribution,
+    billing_classes,
     derived_projects,
     derived_slug,
 )
@@ -299,6 +300,47 @@ class ReviewFindingTests(unittest.TestCase):
         self.assertNotIn("owner-example/stray", derived)
         for name in derived:
             self.assertIn(name, payload["projects"], name)
+
+
+class AdditiveBillingTests(unittest.TestCase):
+    """Additive mode folds a whole session into its primary project, so one row
+    can hold declared and derived hours at once."""
+
+    def _rows(self):
+        declared = {"project": "project-alpha", "detail": "a"}
+        derived = {"project": "owner-example/widgets", "detail": "b", DERIVED_KEY: True}
+        return declared, derived
+
+    def test_a_declared_row_that_absorbed_derived_hours_is_not_billed(self):
+        declared, derived = self._rows()
+        # Additive puts every event of the session under the primary project.
+        by_project = {"project-alpha": [declared, declared, derived]}
+        d, mixed = billing_classes(by_project, additive_summary=True)
+        self.assertEqual(mixed, {"project-alpha"})
+        # It is not called derived, because it is not: the project is declared.
+        self.assertNotIn("project-alpha", d)
+
+    def test_a_derived_primary_absorbing_declared_hours_stays_derived(self):
+        declared, derived = self._rows()
+        by_project = {"owner-example/widgets": [derived, derived, declared]}
+        d, mixed = billing_classes(by_project, additive_summary=True)
+        self.assertEqual(d, {"owner-example/widgets"})
+        self.assertEqual(mixed, set())
+
+    def test_a_clean_additive_row_is_billable(self):
+        declared, _ = self._rows()
+        d, mixed = billing_classes({"project-alpha": [declared]}, additive_summary=True)
+        self.assertEqual((d, mixed), (set(), set()))
+
+    def test_outside_additive_mode_no_row_is_ever_mixed(self):
+        declared, derived = self._rows()
+        by_project = {
+            "project-alpha": [declared],
+            "owner-example/widgets": [derived],
+        }
+        d, mixed = billing_classes(by_project, additive_summary=False)
+        self.assertEqual(d, {"owner-example/widgets"})
+        self.assertEqual(mixed, set())
 
 
 if __name__ == "__main__":

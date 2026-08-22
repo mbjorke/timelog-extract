@@ -127,3 +127,32 @@ def derived_projects(events: Sequence[Dict[str, Any]]) -> set[str]:
     # from hours the operator did declare — silently, and in the direction that
     # loses money.
     return derived - declared
+
+
+def billing_classes(
+    events_by_project: Dict[str, Sequence[Dict[str, Any]]],
+    *,
+    additive_summary: bool = False,
+) -> tuple[set[str], set[str]]:
+    """Split display rows into ``(derived, mixed)``.
+
+    ``derived`` rows were attributed from a git remote and carry no billable
+    total. ``mixed`` rows are declared but absorbed derived hours: additive mode
+    folds a whole session into its primary project, so one row can hold both at
+    once. The two cannot be separated at display time, and billing the row would
+    charge for a repository nobody configured, so a mixed row states no billable
+    total either — but it is not called derived, because it is not.
+
+    Outside additive mode a row holds one project's own events, so ``mixed`` is
+    always empty.
+    """
+    derived: set[str] = set()
+    mixed: set[str] = set()
+    for name, rows in (events_by_project or {}).items():
+        row_derived = derived_projects(rows)
+        derived |= row_derived
+        if not additive_summary or name in row_derived:
+            continue
+        if any(isinstance(row, dict) and row.get(DERIVED_KEY) for row in rows):
+            mixed.add(name)
+    return derived, mixed

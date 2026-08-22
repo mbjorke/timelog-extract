@@ -12,7 +12,10 @@ from core.sources import session_project_labels
 # v3 adds `project_attribution`: which project rows were derived from a git
 # remote rather than declared in config (GH-527). `projects` keeps its shape and
 # meaning, so consumers reading per-project hours need no change.
-TRUTH_PAYLOAD_VERSION = "3"
+# v4 carries each event's `anchors` — the repo slug, directory leaf, branch and
+# session title classification already used — so a consumer can show why an hour
+# was attributed, not only that it was. Additive and optional per event.
+TRUTH_PAYLOAD_VERSION = "4"
 
 _URL_SCHEME_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
@@ -60,6 +63,14 @@ def _serialize_event(
         "project": event.get("project", ""),
     }
     out["derived_session_label"] = bool(event.get("derived_session_label", False))
+    # The anchors classification already used: the repo slug, the directory
+    # leaf, the branch, the session title. Dropping them left every consumer
+    # able to show that an hour belongs to a project but not *why*, which is
+    # the question a customer asks. They are normalised, short (no absolute
+    # paths), and strictly less revealing than `detail`, which is already here.
+    anchors = event.get("anchors")
+    if isinstance(anchors, dict) and anchors:
+        out["anchors"] = {str(k): str(v) for k, v in anchors.items() if k and v}
     if local_ts is not None:
         out["local_time"] = local_ts.isoformat()
     return out

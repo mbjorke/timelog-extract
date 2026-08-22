@@ -126,10 +126,14 @@ class DerivedAttributionTests(unittest.TestCase):
 class PayloadContractTests(unittest.TestCase):
     """The payload must make derived rows impossible to mistake for declared."""
 
-    def test_the_payload_version_names_the_new_block(self):
+    def test_the_payload_version_covers_the_new_block(self):
+        # `project_attribution` arrived in v3. The exact current version is
+        # pinned once, in tests/test_truth_payload.py where the payload lives —
+        # pinning it here too would mean two edits for every future bump, and
+        # what matters to this feature is only that the payload is new enough.
         from core.truth_payload import TRUTH_PAYLOAD_VERSION
 
-        self.assertEqual(TRUTH_PAYLOAD_VERSION, "3")
+        self.assertGreaterEqual(int(TRUTH_PAYLOAD_VERSION), 3)
 
     def test_derived_names_reach_the_payload_block(self):
         rows = apply_derived_attribution(

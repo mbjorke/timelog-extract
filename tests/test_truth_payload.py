@@ -394,3 +394,39 @@ class SessionProjectHoursTests(unittest.TestCase):
             {k: round(v, 6) for k, v in sorted(expected.items())},
             out["project_hours"],
         )
+
+
+class EventAnchorsTests(unittest.TestCase):
+    """The payload must carry why an hour was attributed, not only that it was."""
+
+    def _event(self, anchors=None):
+        from core.truth_payload import _serialize_event
+
+        ev = {
+            "source": "Cursor",
+            "timestamp": datetime(2026, 8, 21, 10, 0, tzinfo=timezone.utc),
+            "detail": "work",
+            "project": "project-alpha",
+        }
+        if anchors is not None:
+            ev["anchors"] = anchors
+        return _serialize_event(ev)
+
+    def test_anchors_reach_the_payload(self):
+        out = self._event({"repo": "owner-example/widgets", "branch": "main"})
+        self.assertEqual(
+            out["anchors"], {"repo": "owner-example/widgets", "branch": "main"}
+        )
+
+    def test_an_event_without_anchors_carries_no_key(self):
+        # Absent rather than an empty map: a consumer must be able to tell
+        # "nothing anchored this" from "anchored to nothing".
+        self.assertNotIn("anchors", self._event())
+        self.assertNotIn("anchors", self._event({}))
+
+    def test_empty_anchor_values_are_dropped(self):
+        out = self._event({"repo": "owner-example/widgets", "dir": "", "branch": None})
+        self.assertEqual(out["anchors"], {"repo": "owner-example/widgets"})
+
+    def test_the_version_names_the_new_field(self):
+        self.assertEqual(TRUTH_PAYLOAD_VERSION, "4")

@@ -276,7 +276,10 @@ def build_truth_payload(
         # the names rather than reshaping `projects` keeps every existing
         # reader of per-project hours working unchanged.
         "project_attribution": {
-            "derived": sorted(derived_project_names),
+            # Scoped to names that are actually rows in `projects`. An event
+            # can be included and still contribute no hours, which would leave
+            # a name here that a consumer cannot look up anywhere.
+            "derived": sorted(derived_project_names & set(project_totals)),
             "note": (
                 "Derived rows are attributed from a git remote, not a declared "
                 "profile. They carry observed hours and no billable total. "

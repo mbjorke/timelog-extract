@@ -44,7 +44,7 @@ class DerivedAttributionTests(unittest.TestCase):
         rows = [
             event(UNCATEGORIZED, branch="feature/x"),
             event(UNCATEGORIZED, session="abc123"),
-            event(UNCATEGORIZED, dir="briox-buddy"),
+            event(UNCATEGORIZED, dir="project-alpha"),
             event(UNCATEGORIZED, label="Some session title"),
         ]
         out = apply_derived_attribution(rows, uncategorized=UNCATEGORIZED)
@@ -61,20 +61,20 @@ class DerivedAttributionTests(unittest.TestCase):
         self.assertEqual(out[0]["project"], UNCATEGORIZED)
 
     def test_a_worktree_path_never_becomes_a_project(self):
-        # The cold-start run surfaced 'framer-gittan-source-f9f98e' as a project.
-        # A worktree directory is a branch of one repo, never a repo of its own.
+        # A cold-start run surfaced a worktree directory as its own project row.
+        # A worktree is a branch of one repository, never a repository of its own.
         out = apply_derived_attribution(
-            [event(UNCATEGORIZED, dir="framer-gittan-source-f9f98e")],
+            [event(UNCATEGORIZED, dir="project-alpha--task-something-a1b2c3")],
             uncategorized=UNCATEGORIZED,
         )
         self.assertEqual(out[0]["project"], UNCATEGORIZED)
 
     def test_slugs_are_normalised_to_lowercase(self):
         out = apply_derived_attribution(
-            [event(UNCATEGORIZED, repo="MBjorke/Timelog-Extract")],
+            [event(UNCATEGORIZED, repo="Owner-Example/Project-Alpha")],
             uncategorized=UNCATEGORIZED,
         )
-        self.assertEqual(out[0]["project"], "mbjorke/timelog-extract")
+        self.assertEqual(out[0]["project"], "owner-example/project-alpha")
 
     def test_a_nested_path_shaped_anchor_is_rejected(self):
         out = apply_derived_attribution(
@@ -121,9 +121,6 @@ class DerivedAttributionTests(unittest.TestCase):
         self.assertEqual(derived_slug(None), "")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class PayloadContractTests(unittest.TestCase):
     """The payload must make derived rows impossible to mistake for declared."""
@@ -145,3 +142,84 @@ class PayloadContractTests(unittest.TestCase):
         # The declared row must not appear, or a consumer would refuse to bill
         # hours the operator did declare.
         self.assertNotIn("Declared", derived_projects(rows))
+
+
+class ReviewFindingTests(unittest.TestCase):
+    """Regressions for defects found in review of GH-527."""
+
+    def test_a_declared_row_keeps_its_billing_when_a_derived_row_shares_its_name(self):
+        # A profile named for a slug, or an intent bound to one, can collide
+        # with a derived row. Marking the merged row derived strips the billable
+        # total from hours the operator declared — silently, and downward.
+        rows = apply_derived_attribution(
+            [
+                event("owner-example/widgets", repo="owner-example/widgets"),
+                event(UNCATEGORIZED, repo="owner-example/widgets"),
+            ],
+            uncategorized=UNCATEGORIZED,
+        )
+        self.assertEqual([r["project"] for r in rows], ["owner-example/widgets"] * 2)
+        self.assertEqual(derived_projects(rows), set())
+
+    def test_a_local_path_never_becomes_a_repository_identity(self):
+        # A repository whose origin points at a directory has published nothing.
+        # A fabricated slug can collide with a real remote, and lifts a folder
+        # name — sometimes a customer's — into a visible project row.
+        from core.repo_slug import slug_from_remote_url
+
+        for path in (
+            "/home/user/project",
+            "/Users/someone/Work/customer-a",
+            "file:///home/user/project",
+            "~/work/thing",
+            "C:\\src\\repo",
+        ):
+            self.assertEqual(slug_from_remote_url(path), "", path)
+
+    def test_scp_style_remotes_reduce_to_owner_repo(self):
+        # Without this the owner is "git@host:team", which would become the
+        # visible name of a project row.
+        from core.repo_slug import slug_from_remote_url
+
+        self.assertEqual(slug_from_remote_url("git@gitlab.com:team/tool.git"), "team/tool")
+        self.assertEqual(slug_from_remote_url("git@bitbucket.org:team/tool.git"), "team/tool")
+        self.assertEqual(slug_from_remote_url("git@github.com:owner/repo.git"), "owner/repo")
+        self.assertEqual(
+            slug_from_remote_url("https://gitlab.example.com/team/tool.git"), "team/tool"
+        )
+
+    def test_an_anchor_carrying_host_syntax_is_rejected(self):
+        out = apply_derived_attribution(
+            [event(UNCATEGORIZED, repo="git@gitlab.com:team/tool")],
+            uncategorized=UNCATEGORIZED,
+        )
+        self.assertEqual(out[0]["project"], UNCATEGORIZED)
+
+    def test_every_test_class_runs_on_direct_execution(self):
+        # The runner block sat above two classes, so running the file directly
+        # skipped them.
+        import tests.test_derived_attribution as module
+
+        source = open(module.__file__).read()
+        self.assertTrue(
+            source.rstrip().endswith("unittest.main()"),
+            "the __main__ block must stay last or later classes never run",
+        )
+
+    def test_every_derived_name_is_a_row_a_consumer_can_look_up(self):
+        # An event can be included and still contribute no hours, which left a
+        # name in the block that resolves to nothing in `projects`.
+        import inspect
+
+        from core.truth_payload import build_truth_payload
+
+        source = inspect.getsource(build_truth_payload)
+        self.assertIn(
+            "derived_project_names & set(project_totals)",
+            source,
+            "the derived list must be scoped to names that are rows in projects",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

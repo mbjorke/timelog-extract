@@ -52,6 +52,11 @@ def derived_slug(event: Dict[str, Any] | None) -> str:
     owner, _, repo = slug.partition("/")
     if not owner.strip() or not repo.strip():
         return ""
+    # Host syntax means the anchor was never reduced to an identity upstream.
+    # Rejected rather than trimmed here: repairing it would put this module in
+    # the business of parsing remotes, which is repo_slug's job.
+    if any(ch in owner for ch in "@:") or any(ch in repo for ch in "@:"):
+        return ""
     return slug
 
 
@@ -92,8 +97,19 @@ def derived_projects(events: Sequence[Dict[str, Any]]) -> set[str]:
     declared one, and by the payload, where ``billable_hours`` is null for these
     rows because nobody has declared what they are worth.
     """
-    return {
-        str(event.get("project") or "")
-        for event in events
-        if isinstance(event, dict) and event.get(DERIVED_KEY) is True
-    }
+    derived: set[str] = set()
+    declared: set[str] = set()
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        name = str(event.get("project") or "")
+        if event.get(DERIVED_KEY) is True:
+            derived.add(name)
+        else:
+            declared.add(name)
+    # A name is derived only when *nothing* declared claims it. A profile named
+    # for a slug, or an intent bound to one, can share a name with a derived
+    # row; treating the merged row as derived would strip the billable total
+    # from hours the operator did declare — silently, and in the direction that
+    # loses money.
+    return derived - declared

@@ -19,9 +19,67 @@ from pathlib import Path
 from core.git_project_bootstrap import _parse_remote
 
 
+def _is_local_path_remote(url: str) -> bool:
+    """True when the "remote" is really a filesystem path.
+
+    A clone of a clone, or a repository with no remote at all, can leave origin
+    pointing at a directory. ``_parse_remote`` falls back to the last two path
+    segments for self-hosted forges, which is right there and wrong here: it
+    turns ``/Users/me/Work/acme-client`` into ``work/acme-client``, an identity
+    that was never published, can collide with a real remote of the same name,
+    and lifts a directory name — sometimes a customer's — into a project row.
+    """
+    text = url.strip()
+    if not text:
+        return False
+    # Every spelling of the file scheme, not just the three-slash one: `file:/`
+    # and `FILE:///` are the same local path, and either would otherwise reach
+    # the path-segment fallback and surface a directory name as an identity.
+    if text.lower().startswith("file:"):
+        return True
+    if text.startswith(("/", "~", ".")):
+        return True
+    # A published remote names a host, via a scheme or scp-style `host:path`.
+    # Without one this is a relative path — `work/clone` from `git clone
+    # ../work/clone` — and it is shaped exactly like `owner/repo`, so nothing
+    # downstream can tell the two apart. Requiring a host is the only check
+    # that can: identity has to come from something that was published.
+    if "://" not in text:
+        host, sep, path = text.partition(":")
+        if not (sep and host and path):
+            return True
+    # scp-style ``host:owner/repo`` has a host before the colon; a Windows path
+    # (``C:\src\repo``) has a single drive letter.
+    return len(text) > 1 and text[1] == ":" and text[0].isalpha()
+
+
+def _strip_scp_host(url: str) -> str:
+    """Drop the ``[user@]host:`` prefix from an scp-style remote.
+
+    ``_parse_remote`` special-cases github.com and otherwise takes the last two
+    path segments, so ``git@gitlab.com:team/tool`` yields an owner of
+    ``git@gitlab.com:team``. Harmless where the result is only a search term;
+    not harmless here, where it would become the visible name of a project row.
+    """
+    text = url.strip()
+    if "://" in text:
+        return text
+    host, sep, path = text.partition(":")
+    if sep and path and "/" in path and "/" not in host:
+        return path
+    return text
+
+
 def slug_from_remote_url(url) -> str:
-    """``owner/repo`` (lowercase) from an https/ssh remote URL, or ``""``."""
-    owner, repo = _parse_remote(str(url or ""))
+    """``owner/repo`` (lowercase) from an https/ssh remote URL, or ``""``.
+
+    A local filesystem path is not a remote and yields ``""``: identity must
+    come from something that was actually published.
+    """
+    text = str(url or "")
+    if _is_local_path_remote(text):
+        return ""
+    owner, repo = _parse_remote(_strip_scp_host(text))
     owner = owner.strip().lower()
     repo = repo.strip().lower()
     if not owner or not repo:

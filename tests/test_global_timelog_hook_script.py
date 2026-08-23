@@ -106,7 +106,15 @@ class GlobalTimelogHookScriptTests(unittest.TestCase):
         return subprocess.run(
             [zsh, "-c", snippet, "zsh", str(repo.resolve())],
             capture_output=True, text=True,
-            env={**os.environ, "GITTAN_HOME": str(data_dir.resolve())},
+            env={
+                **os.environ,
+                "GITTAN_HOME": str(data_dir.resolve()),
+                # These cases exercise the *data-directory* guard, using
+                # throwaway repos to do it. The temp guard that now shares this
+                # block would exit first and hide what they are testing, so they
+                # opt in explicitly — which is what the escape hatch is for.
+                "GITTAN_HOOK_ALLOW_TEMP": "1",
+            },
         )
 
     def test_hook_skips_the_gittan_data_directory(self):

@@ -182,6 +182,56 @@ def _configure_timelog_scope_and_name(console, *, yes: bool, dry_run: bool) -> N
         gittan_scope_file().unlink()
 
 
+
+def _display_path(value) -> str:
+    """A path a human can read in a narrow terminal.
+
+    Home is written as ``~``, which is both shorter and the form the operator
+    would type. Only an exact home prefix is replaced, so a sibling directory
+    like ``/Users/me-old`` is left alone.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    home = str(Path.home())
+    if text == home:
+        return "~"
+    if text.startswith(home + os.sep):
+        return "~" + text[len(home):]
+    return text
+
+
+def _current_status_table(
+    *,
+    hooks_path: str,
+    excludes_file: str,
+    hook_file: str,
+    global_ignore: str,
+    filename_config: str,
+    scope_file: str,
+) -> Table:
+    """Status table for `setup-global-timelog`.
+
+    Setting labels stay on one line; values fold. ``Timelog filename config``
+    is the widest label and is what makes a 40-column terminal tight.
+    """
+    table = Table(title="Current global git status", box=box.ROUNDED)
+    table.border_style = STYLE_BORDER
+    table.header_style = f"bold {STYLE_LABEL}"
+    table.add_column("Setting", style=STYLE_LABEL, no_wrap=True)
+    # Fold rather than truncate: this table exists so the operator can check
+    # where their hooks actually live before agreeing to change them, and in a
+    # narrow terminal every value read "/Users/me…", which answers nothing.
+    table.add_column("Current value", style=STYLE_MUTED, overflow="fold")
+    table.add_row("core.hooksPath", hooks_path)
+    table.add_row("core.excludesFile", excludes_file)
+    table.add_row("Hook file", hook_file)
+    table.add_row("Global ignore", global_ignore)
+    table.add_row("Timelog filename config", filename_config)
+    table.add_row("Repo scope file", scope_file)
+    return table
+
+
 def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     """
     Configure global git hooks and global gitignore to enable repository-level timelogging.
@@ -208,17 +258,20 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
         "This will configure global git hooks for commit-to-worklog automation. "
         "Recommended model: per-project files in `~/.gittan/worklogs/<project-id>.md` via project profile `worklog` paths."
     )
-    table = Table(title="Current global git status", box=box.ROUNDED)
-    table.border_style = STYLE_BORDER
-    table.header_style = f"bold {STYLE_LABEL}"
-    table.add_column("Setting", style=STYLE_LABEL)
-    table.add_column("Current value", style=STYLE_MUTED)
-    table.add_row("core.hooksPath", current_hooks_path or "(not set)")
-    table.add_row("core.excludesFile", current_excludes_file or "(not set)")
-    table.add_row("Hook file", str(hook_path) if hook_path.exists() else "(missing)")
-    table.add_row("Global ignore", str(ignore_path) if ignore_path.exists() else "(missing)")
-    table.add_row("Timelog filename config", str(gittan_filename_file()) if gittan_filename_file().exists() else "(missing)")
-    table.add_row("Repo scope file", str(gittan_scope_file()) if gittan_scope_file().exists() else "(missing)")
+    table = _current_status_table(
+        hooks_path=_display_path(current_hooks_path) or "(not set)",
+        excludes_file=_display_path(current_excludes_file) or "(not set)",
+        hook_file=_display_path(hook_path) if hook_path.exists() else "(missing)",
+        global_ignore=_display_path(ignore_path) if ignore_path.exists() else "(missing)",
+        filename_config=(
+            _display_path(gittan_filename_file())
+            if gittan_filename_file().exists()
+            else "(missing)"
+        ),
+        scope_file=(
+            _display_path(gittan_scope_file()) if gittan_scope_file().exists() else "(missing)"
+        ),
+    )
     console.print(table)
     if dry_run:
         console.print("[yellow]Dry run mode:[/yellow] no changes will be made.")

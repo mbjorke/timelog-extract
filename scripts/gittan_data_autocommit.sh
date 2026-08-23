@@ -28,7 +28,12 @@ if [ "${GITTAN_AUTOCOMMIT_CAPTURE:-1}" = "1" ]; then
   GITTAN_CMD="${GITTAN_BIN:-$(command -v gittan 2>/dev/null || true)}"
   if [ -n "$GITTAN_CMD" ] && [ -x "$GITTAN_CMD" ]; then
     # Same data dir capture + commit: evidence_base_dir honours GITTAN_HOME.
-    GITTAN_HOME="$DATA_DIR" "$GITTAN_CMD" capture --if-enabled >/dev/null 2>&1 || true
+    # Same silence rule as the push below: never block the commit, always say
+    # so. A capture that fails every run is evidence quietly not being kept.
+    if ! capture_output="$(GITTAN_HOME="$DATA_DIR" "$GITTAN_CMD" capture --if-enabled 2>&1)"; then
+      printf '%s autocommit: capture failed, continuing to commit\n%s\n' \
+        "$(date '+%Y-%m-%d %H:%M')" "$capture_output" >&2
+    fi
   fi
 fi
 
@@ -42,5 +47,14 @@ git add -A 2>/dev/null || exit 0
 git commit -q -m "auto: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || exit 0
 
 if [ "${GITTAN_AUTOCOMMIT_PUSH:-0}" = "1" ]; then
-  git push -q 2>/dev/null || true  # best-effort backup to a PRIVATE remote
+  # Best-effort backup to a PRIVATE remote: a failed push must never undo or
+  # block the commit, which is the durable part. But it must not be *silent*.
+  # `-q 2>/dev/null || true` reported success by saying nothing, so a diverged
+  # history failed here every ten minutes from June to August and left no trace
+  # anywhere — the operator believed their evidence was backed up when the last
+  # push that reached the remote was two months old.
+  if ! push_output="$(git push 2>&1)"; then
+    printf '%s autocommit: push failed, commit is safe locally\n%s\n' \
+      "$(date '+%Y-%m-%d %H:%M')" "$push_output" >&2
+  fi
 fi

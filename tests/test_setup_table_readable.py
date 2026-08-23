@@ -2,7 +2,7 @@
 
 `setup-global-timelog` shows where the machine's hooks currently live, then
 asks permission to change them. In a narrow terminal every value read
-"/Users/mbjork…", so the operator was agreeing to a change to a path the table
+"/Users/me…", so the operator was agreeing to a change to a path the table
 declined to show.
 """
 

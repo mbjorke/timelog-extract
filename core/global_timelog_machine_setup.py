@@ -188,7 +188,7 @@ def _display_path(value) -> str:
 
     Home is written as ``~``, which is both shorter and the form the operator
     would type. Only an exact home prefix is replaced, so a sibling directory
-    like ``/Users/mbjorke-old`` is left alone.
+    like ``/Users/me-old`` is left alone.
     """
     text = str(value or "").strip()
     if not text:
@@ -233,7 +233,7 @@ def run_global_timelog_setup(console, *, yes: bool, dry_run: bool) -> None:
     table.add_column("Setting", style=STYLE_LABEL, no_wrap=True)
     # Fold rather than truncate: this table exists so the operator can check
     # where their hooks actually live before agreeing to change them, and in a
-    # narrow terminal every value read "/Users/mbjork…", which answers nothing.
+    # narrow terminal every value read "/Users/me…", which answers nothing.
     table.add_column("Current value", style=STYLE_MUTED, overflow="fold")
     table.add_row("core.hooksPath", _display_path(current_hooks_path) or "(not set)")
     table.add_row("core.excludesFile", _display_path(current_excludes_file) or "(not set)")

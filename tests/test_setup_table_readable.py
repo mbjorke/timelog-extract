@@ -9,11 +9,9 @@ declined to show.
 import unittest
 from pathlib import Path
 
-from rich import box
 from rich.console import Console
-from rich.table import Table
 
-from core.global_timelog_machine_setup import _display_path
+from core.global_timelog_machine_setup import _current_status_table, _display_path
 
 
 class DisplayPathTests(unittest.TestCase):
@@ -37,17 +35,23 @@ class DisplayPathTests(unittest.TestCase):
 
     def test_a_path_survives_a_narrow_terminal_intact(self):
         # Folded, not truncated: the whole path must still be readable at 40
-        # columns, because that is where the elision was hiding it.
+        # columns next to the production table's longest no-wrap label.
         home = str(Path.home())
+        path = _display_path(home + "/.githooks/post-commit")
         console = Console(width=40, no_color=True, legacy_windows=False)
-        table = Table(title="Current global git status", box=box.ROUNDED)
-        table.add_column("Setting", no_wrap=True)
-        table.add_column("Current value", overflow="fold")
-        table.add_row("Hook file", _display_path(home + "/.githooks/post-commit"))
+        table = _current_status_table(
+            hooks_path="~/.githooks",
+            excludes_file="(not set)",
+            hook_file=path,
+            global_ignore="(missing)",
+            filename_config=path,
+            scope_file="(missing)",
+        )
         with console.capture() as capture:
             console.print(table)
         rendered = capture.get()
         self.assertNotIn("…", rendered)
+        self.assertIn("Timelog filename config", rendered)
         # The path may wrap across lines; stripping the frame must restore it.
         flat = "".join(
             line.strip("│ ").replace(" ", "") for line in rendered.splitlines()

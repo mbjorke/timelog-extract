@@ -203,6 +203,29 @@ HOOK_BODY = dedent(
       exit 0
     fi
 
+    # A repository under a temporary directory is a test fixture, not work.
+    # A test suite creates throwaway repos and commits in them; with this hook
+    # installed globally, every one of those commits was recorded as evidence.
+    # On a developer machine that can dominate the git-commit source entirely.
+    # The commits are real, the work is not, and hash-chained evidence is the
+    # wrong place to learn that difference afterwards.
+    #
+    # Placed *after* the GITTAN_HOME validation on purpose: a misconfigured data
+    # dir is something the operator must hear about from any repository, and an
+    # earlier version of this guard swallowed that warning by exiting first.
+    #
+    # Escape hatch, because this is the hook deciding what counts as work and
+    # that decision should belong to the person whose hours they are.
+    if [[ "${GITTAN_HOOK_ALLOW_TEMP:-0}" != "1" ]]; then
+      for _tmp_root in "${TMPDIR:-}" /tmp /var/folders /private/tmp /private/var/folders; do
+        [[ -n "$_tmp_root" ]] || continue
+        _tmp_canon="${_tmp_root:A}"
+        if [[ "$root_dir_canon" == "$_tmp_canon" || "$root_dir_canon" == "$_tmp_canon"/* ]]; then
+          exit 0
+        fi
+      done
+    fi
+
     # One data dir for the whole hook: scope file, filename override and the
     # unknown-repo worklog fallback all live under $GITTAN_DATA_DIR (GH-549).
     # Splitting them across $HOME/.gittan meant a run with $GITTAN_HOME set read

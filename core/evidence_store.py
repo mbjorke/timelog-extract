@@ -493,17 +493,25 @@ def maybe_replay(
     base_dir: Optional[Path] = None,
     local_tz: Any = None,
 ) -> List[Dict[str, Any]]:
-    """Opt-in replay for CLOSED windows; records the restored count on ``args``.
+    """Opt-in replay of stored evidence; records the restored count on ``args``.
 
-    Open windows (those including today) return live events unchanged — live
-    sources are authoritative there. Never raises into the report.
+    Today is replayed too. The rule used to be closed windows only, on the
+    grounds that live sources are authoritative for today — true for Cursor or
+    Chrome, and false for the case the shadow log exists for. A commit made by a
+    cloud agent, or on another device, has no live source on this machine at
+    all: the ledger is the only place that evidence exists, so refusing to
+    replay it meant a day's work appeared a day late or not at all.
+
+    Double counting is prevented by fingerprint, not by the calendar: a live
+    event and its stored record share ``(source, timestamp, detail)`` and
+    collapse to one. Replay can therefore only add evidence the live pass did
+    not produce, which is precisely the point.
+
+    Never raises into the report.
     """
     setattr(args, "shadow_replay_restored", 0)
     if str(getattr(args, "shadow_replay", "off") or "off").strip().lower() != "on":
         return live_events
-    tz = local_tz or timezone.utc
-    if dt_to.astimezone(tz).date() >= datetime.now(tz).date():
-        return live_events  # open window: do not replay
     try:
         events, restored = replay_into_events(live_events, dt_from, dt_to, home=home, base_dir=base_dir)
         setattr(args, "shadow_replay_restored", restored)

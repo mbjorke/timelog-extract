@@ -310,13 +310,39 @@ class TestEvidenceReplay(unittest.TestCase):
         self.assertEqual(events, [])
         self.assertEqual(args.shadow_replay_restored, 0)
 
-    def test_maybe_replay_skips_open_window(self):
-        # A window whose end is today/future must not replay.
+    def test_maybe_replay_covers_an_open_window(self):
+        # Today is replayed too. The old rule skipped any window ending today,
+        # on the grounds that live sources are authoritative — which is false
+        # for the case the shadow log exists for. A commit made by a cloud agent
+        # has no live source on this machine at all, so refusing to replay it
+        # meant the day's work appeared a day late or never.
         args = SimpleNamespace(shadow_replay="on")
         future_to = datetime.now(timezone.utc) + timedelta(days=1)
         events = maybe_replay([], args=args, dt_from=self.win_from, dt_to=future_to, local_tz=timezone.utc, base_dir=self.base)
-        self.assertEqual(events, [])
-        self.assertEqual(args.shadow_replay_restored, 0)
+        self.assertEqual(args.shadow_replay_restored, 2)
+        self.assertEqual(len(events), 2)
+
+    def test_an_open_window_does_not_double_count_live_events(self):
+        # The guard against double counting is the fingerprint, not the
+        # calendar: a live event and its stored record share
+        # (source, timestamp, detail) and must collapse to one.
+        args = SimpleNamespace(shadow_replay="on")
+        live = [
+            {
+                "source": "Cursor",
+                "timestamp": datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc),
+                "detail": "stored-a",
+                "project": "project-alpha",
+            }
+        ]
+        future_to = datetime.now(timezone.utc) + timedelta(days=1)
+        events = maybe_replay(
+            live, args=args, dt_from=self.win_from, dt_to=future_to,
+            local_tz=timezone.utc, base_dir=self.base,
+        )
+        details = [e.get("detail") for e in events]
+        self.assertEqual(details.count("stored-a"), 1)
+        self.assertEqual(args.shadow_replay_restored, 1)
 
     def test_maybe_replay_closed_window_restores(self):
         args = SimpleNamespace(shadow_replay="on")

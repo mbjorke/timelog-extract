@@ -78,11 +78,17 @@ Feature: Operational data does not leave the machine through review surfaces
     Given a commit message contains a figure derived from the local ledger
     When the pre-push guard runs
     Then the push is refused, naming the line and the figure
-    And the guard covers commit messages and PR bodies, not only docs/
+
+  Scenario: A PR body carries a measured count from the operator's data
+    Given a PR body contains a figure derived from the local ledger
+    When the CI or API-triggered check runs
+    Then the check blocks publication or merge, naming the line and the figure
 ```
 
-**Acceptance:** the guard runs on commit messages and PR bodies; a message
-carrying a figure traceable to local data fails; the failure names the text.
+**Acceptance:** the pre-push guard rejects commit messages carrying figures
+traceable to local data, naming the offending text; a separate CI or
+API-triggered check blocks PR publication or merge when PR bodies contain such
+figures.
 
 ### #524 — `git_repo` unset leaves commit evidence silently dark
 
@@ -112,7 +118,7 @@ hand-typed `git tag`, which is the step most likely to be forgotten and the
 reason a version can exist in `pyproject.toml` and nowhere else.
 
 **Acceptance:** merging a version bump to `main` produces the tag; the existing
-`pypi.yml` workflow takes it from there. Close one of the two as a duplicate.
+`.github/workflows/pypi.yml` workflow takes it from there. Close one of the two as a duplicate.
 
 ### #550 / #562 — hook follow-ups
 

@@ -2,6 +2,61 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-08-23
+
+Attribution stops requiring configuration, and the payload starts carrying the
+evidence behind a number rather than only the number.
+
+### Attribution without configuration
+
+- Feat (GH-527): work in a repository no profile claims is attributed to its git
+  remote (`owner/repo`) instead of landing as `Uncategorized`. Derived and
+  in-memory only — `timelog_projects.json` gains no new writer. A declared
+  profile always wins, and a derived slug that collides with a declared name is
+  refused rather than merged, in either direction. Derived rows are marked as
+  such and carry no billable total, on the group row as well as the detail row.
+- Fix: identity now requires a **published host**. A local path, a relative
+  remote (`work/clone`), every spelling of the `file:` scheme, and scp-style
+  remotes for hosts other than github.com previously produced fabricated slugs
+  such as `work/acme-client` — a directory name, sometimes a customer's, as a
+  visible project row.
+
+### The payload carries its evidence
+
+- Feat: each event carries its `anchors` (repo slug, directory leaf, branch,
+  session title). Consumers could show *that* an hour belonged to a project and
+  never *why*. Absent, never empty, when an event anchors to nothing.
+- Feat: each session carries `project_hours`, the split the report itself
+  credited, so a consumer no longer has to guess how a mixed session divides.
+- Payload version is now `4`. Both additions are optional and `projects` keeps
+  its shape, so existing readers of per-project hours need no change.
+
+### Evidence that was being kept but not shown
+
+- Feat: shadow-log replay now covers today, not only closed windows. Live
+  sources are authoritative for today only where a live source exists — a commit
+  made by a cloud agent or another device has none on this machine, so its
+  evidence was withheld for a day or lost. Double counting is prevented by
+  fingerprint, not by the calendar.
+- Fix: the global post-commit hook no longer records commits made in temporary
+  directories. Test-suite fixtures were being written into the real ledger as
+  evidence. `GITTAN_HOOK_ALLOW_TEMP=1` overrides.
+
+### Failures that reported success by saying nothing
+
+- Fix: the autocommit timer's push and capture steps no longer fail silently.
+  `git push -q 2>/dev/null || true` reported success by printing nothing, so a
+  diverged history could fail on every run indefinitely with no trace. The
+  failure is now logged; it still never blocks the commit.
+- Fix: `setup-global-timelog` shows readable paths. In a narrow terminal every
+  value rendered `/Users/…`, so the table could not answer the question it was
+  asking before requesting permission to change those paths.
+
+
+
+
+### Sources
+
 - Fix (GH-448): Lovable Desktop no longer treats idle open-app Chromium
   cache/network mtimes as authorship-looking rows — ambient host heat stays
   presence-only without a map-UUID nudge, while project-page / chat / edit /
@@ -16,7 +71,6 @@
   first-visit per calendar day, so sustained same-URL work keeps session span
   without reopening the passive-web noise floodgate
   ([#414](https://github.com/mbjorke/timelog-extract/issues/414)).
-
 
 ## 0.4.2 - 2026-08-10
 

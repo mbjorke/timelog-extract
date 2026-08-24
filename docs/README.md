@@ -52,6 +52,7 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 - **Freelance Bridge PR #140 execution log** → [`ideas/freelance-bridge-planning-arc.md`](ideas/freelance-bridge-planning-arc.md)
 - **Conversational UI / modal wall stack direction** → [`ideas/conversational-ui-stack.md`](ideas/conversational-ui-stack.md)
 - **Agent-runtime integration + distribution (Hermes example)** → [`ideas/hermes-agent-distribution.md`](ideas/hermes-agent-distribution.md)
+- **Public changelog + downloadable beta (draft, Comms-style)** → [`ideas/changelog-and-beta-distribution-plan.md`](ideas/changelog-and-beta-distribution-plan.md)
 - **Triage UX design session learnings (paused)** → [`ideas/triage-design-session-learnings.md`](ideas/triage-design-session-learnings.md)
 - **Real signal examples for triage grounding (Document A)** → [`ideas/triage-signal-examples.md`](ideas/triage-signal-examples.md)
 - **Candidate repo agent skills** → [`specs/repo-agent-skills.md`](specs/repo-agent-skills.md)

@@ -11,7 +11,7 @@ No code in this pass.
 
 - story_id: `GH-576`
 - spec_status: approved
-- implementation_status: not built (planning artifact — no code)
+- implementation_status: not built
 - promote: no
 - created_at: 2026-08-23
 - last_updated_at: 2026-08-24
@@ -29,7 +29,9 @@ No code in this pass.
   - 2026-08-24: Greptile review — `promote: no`; #262 is five
     `core.repo_slug` importers, not twelve; #408 is partial (keep open for
     worklog-as-view, list on 0.6); #524 must surface the dark `git_repo`
-    gap in both the report and `--source-summary`.
+    gap in both the report and `--source-summary`. Canonical
+    `implementation_status: not built` (planning artifact; no code in this
+    pass).
 
 Labels remain the priority source of truth
 (`docs/decisions/backlog-priority-surfaces.md`). This spec proposes label and

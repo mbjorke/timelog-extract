@@ -15,14 +15,10 @@ No code in this pass.
 - promote: no
 - created_at: 2026-08-23
 - last_updated_at: 2026-08-24
-- implementation.pr: pending
+- implementation.pr: https://github.com/mbjorke/timelog-extract/pull/576
 - implementation.branch: `task/gittan-0-5-scope-triage`
 - implementation.commits: []
-- validation.evidence:
-  - board read via `gh project item-list 3` (314 items: 276 Done, 38 open)
-  - three "open" items cross-checked against the code rather than their status
-  - `git_repo` coverage measured against a live profiles config (counts
-    deliberately not quoted here — see #515)
+- validation.evidence: board read via `gh project item-list 3` (314 items: 276 Done, 38 open); three open items cross-checked against the code rather than their status; `git_repo` coverage measured against a live profiles config (counts deliberately not quoted here — see the client-data guard item below)
 - validation.decision: GO
 - changelog:
   - 2026-08-23: Initial pass, cut while `release/0.5.0` was open.
@@ -32,8 +28,10 @@ No code in this pass.
     gap in both the report and `--source-summary`. Canonical
     `implementation_status: not built` (planning artifact; no code in this
     pass).
-  - 2026-08-24: CodeRabbit — #515 acceptance names a `commit-msg` guard;
+  - 2026-08-24: Client-data acceptance names a `commit-msg` guard;
     installed pre-push only runs autotests and does not scan messages.
+  - 2026-08-24: Neutralize changelog wording; keep `promote: no` (docs-to-issues
+    opt-out); represent `validation.evidence` as one string.
 
 Labels remain the priority source of truth
 (`docs/decisions/backlog-priority-surfaces.md`). This spec proposes label and

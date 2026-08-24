@@ -32,6 +32,8 @@ No code in this pass.
     gap in both the report and `--source-summary`. Canonical
     `implementation_status: not built` (planning artifact; no code in this
     pass).
+  - 2026-08-24: CodeRabbit — #515 acceptance names a `commit-msg` guard;
+    installed pre-push only runs autotests and does not scan messages.
 
 Labels remain the priority source of truth
 (`docs/decisions/backlog-priority-surfaces.md`). This spec proposes label and
@@ -85,8 +87,8 @@ Feature: Operational data does not leave the machine through review surfaces
 
   Scenario: A commit message carries a measured count from the operator's data
     Given a commit message contains a figure derived from the local ledger
-    When the pre-push guard runs
-    Then the push is refused, naming the line and the figure
+    When the commit-msg guard runs
+    Then the commit is refused, naming the line and the figure
 
   Scenario: A PR body carries a measured count from the operator's data
     Given a PR body contains a figure derived from the local ledger
@@ -94,7 +96,8 @@ Feature: Operational data does not leave the machine through review surfaces
     Then the check blocks publication or merge, naming the line and the figure
 ```
 
-**Acceptance:** the pre-push guard rejects commit messages carrying figures
+**Acceptance:** a `commit-msg` guard (not the existing pre-push autotest hook
+or the pre-commit staged-docs scan) rejects commit messages carrying figures
 traceable to local data, naming the offending text; a separate CI or
 API-triggered check blocks PR publication or merge when PR bodies contain such
 figures.

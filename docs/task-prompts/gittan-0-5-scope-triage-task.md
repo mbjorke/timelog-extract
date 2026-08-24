@@ -12,8 +12,9 @@ No code in this pass.
 - story_id: `GH-576`
 - spec_status: approved
 - implementation_status: not built (planning artifact — no code)
+- promote: no
 - created_at: 2026-08-23
-- last_updated_at: 2026-08-23
+- last_updated_at: 2026-08-24
 - implementation.pr: pending
 - implementation.branch: `task/gittan-0-5-scope-triage`
 - implementation.commits: []
@@ -25,6 +26,10 @@ No code in this pass.
 - validation.decision: GO
 - changelog:
   - 2026-08-23: Initial pass, cut while `release/0.5.0` was open.
+  - 2026-08-24: Greptile review — `promote: no`; #262 is five
+    `core.repo_slug` importers, not twelve; #408 is partial (keep open for
+    worklog-as-view, list on 0.6); #524 must surface the dark `git_repo`
+    gap in both the report and `--source-summary`.
 
 Labels remain the priority source of truth
 (`docs/decisions/backlog-priority-surfaces.md`). This spec proposes label and
@@ -40,12 +45,14 @@ status field:
 
 | Item | Board says | The code says |
 | --- | --- | --- |
-| #262 worktree-invariant attribution via repo slug | Backlog | `core/repo_slug.py` exists and **12 collectors** use it. Built. |
-| #408 commit events land in the shadow log | Ready | The ledger holds `git-commit` records in bulk. Built. |
+| #262 worktree-invariant attribution via repo slug | Backlog | `core/repo_slug.py` exists and **five collectors import it directly**. Built. |
+| #408 commit events land in the shadow log | Ready | The ledger holds `git-commit` records in bulk. **Partial** — worklog-as-view (render Markdown from the ledger) is unbuilt. Keep open. |
 | #524 `git_repo` unset leaves commit evidence dark | Backlog | **No profile** sets `git_repo`. Still true, and it bit us. |
 
-The first two should be verified and closed rather than carried into another
-release. The third is the opposite: an issue that predicted a failure, was not
+#262 should be verified and closed rather than carried into another release.
+#408 is only partial: storing `git-commit` records completes the ledger write,
+not the remaining worklog-as-view scenario, so it stays open and moves to 0.6.
+The third is the opposite: an issue that predicted a failure, was not
 built, and then produced exactly the failure it predicted.
 
 ## The shape of what is left
@@ -104,12 +111,13 @@ Feature: A dark source says so where the operator will look
   Scenario: No profile configures a git repository
     Given no profile in the config sets git_repo
     When the operator runs a report
-    Then the source summary states that commit evidence is unavailable
-    And it names the one change that would enable it
+    Then the report surfaces that commit evidence is unavailable
+    And `--source-summary` also surfaces that gap
+    And both name the one change that would enable it
 ```
 
-**Acceptance:** a run with zero `git_repo` profiles surfaces the gap in the
-report, not only in `--source-summary`; the message says what to set.
+**Acceptance:** a run with zero `git_repo` profiles surfaces the gap in both the
+report and `--source-summary`; the message says what to set.
 
 ### #533 / #534 — auto-tag the release when the version bumps on main
 
@@ -147,6 +155,10 @@ end to end. Everything in 0.5 was measured on one machine, whose configuration
 is nine months of accumulated exceptions. Until someone else runs it, the
 zero-config claim is a claim.
 
+**#408 stays open on 0.6** for the remaining worklog-as-view scenario: Gittan
+still cannot generate or append the Markdown worklog from the ledger. Storing
+`git-commit` records in bulk is done; that is not enough to close the issue.
+
 ## later — off the 0.5 board
 
 Real work, no evidence it belongs to this release:
@@ -168,9 +180,10 @@ Real work, no evidence it belongs to this release:
 
 ## Close as built
 
-- **#262** and **#408**, after a verification run. Both are carried as open work
-  that the code already does, which is the drift
+- **#262**, after a verification run. It is carried as open work that the code
+  already does, which is the drift
   `docs/decisions/backlog-priority-surfaces.md` warns about.
+  Do not close **#408** from this pass — worklog-as-view remains unbuilt.
 
 ---
 

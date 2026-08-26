@@ -46,6 +46,38 @@ def _is_path_like_term(term: str) -> bool:
 
 _URL_TOKEN_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 
+#: An issue key as ``core/config.py`` validates it for ``jira_issue_key``
+#: (``ABC-123``, underscores allowed for instances that use them) — matched
+#: case-insensitively here, because a branch name usually lowercases the key it
+#: carries (``feature/gh-527-foo``) and a branch key is rank 3 of the ladder just
+#: as much as the commit subject is.
+#:
+#: Deliberately a third pattern rather than an import: ``core/jira_sync.py``
+#: reaches the network stack, and this runs on the hot classification path.
+#: The three in-tree spellings disagree (jira_sync rejects underscores that
+#: config accepts) — noted as a cleanup in the D3 section of
+#: ``docs/specs/project-field-detection-signals.md``, not fixed here, because
+#: widening jira_sync would change what gets *posted*.
+_ISSUE_KEY_RE = re.compile(r"\b([A-Za-z][A-Za-z0-9_]+-\d+)\b")
+
+
+@functools.lru_cache(maxsize=1024)
+def _issue_keys_in(text: str) -> frozenset[str]:
+    """Upper-cased issue keys appearing in ``text`` (original case, not the haystack).
+
+    Runs on the raw text because the haystack is lower-cased before matching and
+    a key is written in upper case wherever it is declared.
+    """
+    if "-" not in text:
+        return frozenset()
+    return frozenset(match.upper() for match in _ISSUE_KEY_RE.findall(text))
+
+
+def _issue_key_prefix(key: str) -> str:
+    """``ABC`` from ``ABC-123`` — the Jira project the issue belongs to."""
+    head, _, _tail = str(key or "").rpartition("-")
+    return head.strip().upper()
+
 
 @functools.lru_cache(maxsize=2048)
 def _normalize_lovable_url_token(url: str) -> str:
@@ -98,6 +130,7 @@ def _compile_profiles_index(
     dict[str, list[tuple[int, int]]],
     list[tuple[str, list[tuple[int, int]]]],
     dict[str, list[tuple[int, int]]],
+    dict[str, dict[str, Any]],
 ]:
     """Index profiles by term for fast lookup.
 
@@ -105,6 +138,11 @@ def _compile_profiles_index(
         fast_terms: Map of alphanumeric terms to (profile_index, impact_type)
         slow_terms: List of (term, impacts) for non-alphanumeric or path-like terms
         all_impacts: Combined map for all terms
+        issue_index: ``{"exact": {KEY: [idx]}, "prefix": {PFX: idx | None}}`` from
+            declared ``jira_issue_key`` values. A prefix owned by more than one
+            profile maps to ``None``: two profiles billing into the same Jira
+            project cannot be told apart by the prefix, and guessing between them
+            would move hours between customers, so the signal is dropped instead.
     """
     term_to_impacts: dict[str, list[tuple[int, int]]] = {}
 
@@ -145,7 +183,23 @@ def _compile_profiles_index(
         else:
             slow_terms.append((term, impacts))
 
-    return fast_terms, slow_terms, term_to_impacts
+    exact_keys: dict[str, list[int]] = {}
+    prefix_owner: dict[str, Any] = {}
+    for i, profile in enumerate(profiles):
+        key = str(profile.get("jira_issue_key") or "").strip().upper()
+        if not key:
+            continue
+        exact_keys.setdefault(key, []).append(i)
+        prefix = _issue_key_prefix(key)
+        if not prefix:
+            continue
+        if prefix in prefix_owner and prefix_owner[prefix] != i:
+            prefix_owner[prefix] = None  # ambiguous — see the docstring
+        else:
+            prefix_owner.setdefault(prefix, i)
+
+    issue_index = {"exact": exact_keys, "prefix": prefix_owner}
+    return fast_terms, slow_terms, term_to_impacts, issue_index
 
 
 _LAST_PROFILES_DATA: tuple[Any, Any, Any] | None = None
@@ -206,7 +260,7 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     if not text:
         return fallback
 
-    fast_terms, slow_terms, all_impacts = _get_compiled_index(profiles)
+    fast_terms, slow_terms, all_impacts, issue_index = _get_compiled_index(profiles)
     haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
 
     matched_terms = set()
@@ -221,10 +275,22 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
             if _matches_term(term, haystack_with_variants, word_set=word_set):
                 matched_terms.add(term)
 
-    if not matched_terms:
+    num_profs = len(profiles)
+    issue_exact = [0] * num_profs
+    issue_prefix = [0] * num_profs
+    # Rank 3 of the ladder. Skipped entirely when no profile declares a
+    # jira_issue_key, which is the common config — the regex never runs.
+    if issue_index["exact"]:
+        for key in _issue_keys_in(text):
+            for idx in issue_index["exact"].get(key, ()):
+                issue_exact[idx] += 1
+            owner = issue_index["prefix"].get(_issue_key_prefix(key))
+            if owner is not None and not issue_index["exact"].get(key):
+                issue_prefix[owner] += 1
+
+    if not matched_terms and not any(issue_exact) and not any(issue_prefix):
         return fallback
 
-    num_profs = len(profiles)
     scores = [0.0] * num_profs
     specifics = [0] * num_profs
     generics = [0] * num_profs
@@ -232,6 +298,18 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     counts = [0] * num_profs
     bindings = [0] * num_profs
     binding_lens = [0] * num_profs
+
+    # Issue-key evidence also has to clear the floor below, or a profile matched
+    # only by its key would be dropped before ranking ever sees the tier.
+    #
+    # An exact hit is a declaration and takes the tier. A prefix hit is an
+    # *inference* — a key the operator never declared, whose Jira project exactly
+    # one profile does — so it only competes on points, weighted like a repo path:
+    # enough to classify on its own, not enough to overrule real term evidence.
+    for i in range(num_profs):
+        if issue_exact[i] or issue_prefix[i]:
+            scores[i] += 2.0
+            specifics[i] += 1
 
     # 3. Single-pass scoring: accumulate rank components for all matching profiles.
     for term in matched_terms:
@@ -264,16 +342,18 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
 
     best_name = fallback
     # Rank, most significant first:
-    #   1. bound        — 1 when a specific tracked_urls entry matched
+    #   1. bound        — 1 when a specific tracked_urls entry matched (ladder rank 1)
     #   2. binding_len  — among bound profiles, the longest URL match
-    #   3. weighted_score, specific_hits, total_match_len, -generic_hits, total_matches
-    best_rank = (0, 0, 0.0, 0, 0, 0, 0)
+    #   3. issue_exact  — an issue key this profile declares (ladder rank 3)
+    #   4. weighted_score, specific_hits, total_match_len, -generic_hits, total_matches
+    best_rank = (0, 0, 0, 0.0, 0, 0, 0, 0)
 
     for i in range(num_profs):
         if specifics[i] > 0 or scores[i] >= 1.0:
             rank = (
                 1 if bindings[i] else 0,
                 binding_lens[i],
+                1 if issue_exact[i] else 0,
                 scores[i],
                 specifics[i],
                 lens[i],

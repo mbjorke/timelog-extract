@@ -11,7 +11,7 @@ worked example.
 - spec_status: `draft`
 - implementation_status: `not built` (survey only — no code changed)
 - created_at: `2026-08-25`
-- last_updated_at: `2026-08-25`
+- last_updated_at: `2026-08-26`
 - implementation.pr: pending
 - implementation.branch: `claude/project-field-detection-1txdx2`
 - implementation.commits: []
@@ -19,6 +19,7 @@ worked example.
 - validation.decision: `pending`
 - changelog:
   - `2026-08-25: Initial survey; findings F1–F7, recommendation R1–R3.`
+  - `2026-08-26: Added §9 vocabulary alignment (source note kept in private gittan-home) and §10 idea bank I1–I9.`
 
 ## Scope and anti-goals
 
@@ -405,3 +406,166 @@ binding is only authoritative while it carries a human's words.
   added above.
 - **Risk — F6 blocks the obvious name.** Any `app_project` work must first deal
   with Zed writing arbitrary text into `anchors["project"]`.
+
+---
+
+## 9. Vocabulary alignment
+
+Checked against the maintainer's vocabulary/direction note (aug 2026), which is
+kept in the private `gittan-home` repo rather than here — it carries positioning
+and third-party process notes that do not belong in a public repository. Its own
+stated priority is *"viktigast att låsa: vokabulär"*. Where the locked
+term and the code term disagree, the code is what an operator debugs — so the
+drift is worth naming before more is built on top.
+
+| Locked term | What the code calls it today | Drift | Action |
+| --- | --- | --- | --- |
+| **Binding** — "stabil koppling thread/url/title → projekt" | `intent` — `core/intent_store.py`, `~/.gittan/intent-capture.jsonl`, `gittan intent` | **direct collision**: the vocabulary's `Binding` *is* the intent record | Decide one: rename the store to `binding`, or define in the vocabulary that an intent record is the binding's storage form. Do it before R1 adds a second `key_kind`, not after. |
+| **Ledger** — "din sammanhållna tidssanning (events → block → godkända rader)" | three layers, none named ledger: `core/evidence_store.py` (events), `core/report_aggregate.py` (block), `core/reported_time.py` (approved rows) | naming gap, not a design gap — the three layers *are* the ledger | Map the term onto the three modules in the vocabulary table; do not rename code. |
+| **Propose → approve → post** | already implemented as `reported_time` states `proposed \| confirmed \| edited \| dismissed`, with `REPORTED_STATES = {confirmed, edited}` gating billability | **none — the model exists** | Reuse these state names for *attribution* proposals too (I3/I4) instead of inventing a parallel vocabulary. |
+| **Evidence_id** — "stabilt id för idempotent post" | not present (`grep evidence_id` → 0 hits); `core/evidence_record.py` fingerprints exist | missing | See I6 — cheapest as a field on the binding log first. |
+| **Enhetssfär / device sphere** | `core/device_labels.py`, `core/session_capture.py::device_name` — device *labels* exist, no sphere model | partial | Fine for now; the binding log is the first thing that needs to cross devices (I6). |
+| **Pollen / Pollinerare / Butler** | absent from code | correct — these are pitch metaphors | Keep them out of identifiers. |
+| **Cloud session** | not modelled | absent | No action; a Grok/web row is already just an event with a passive-context role. |
+
+One substantive consequence: the direction note already rules on this
+survey's core question — *"Grok **Project**-namn svagt ensamt; **chat title**
+starkare; MCP skriver samma bindings"*. R1 and R3 match that ruling; §6's
+`bindings[]` config block does not (it would fork truth away from the binding
+log) and stays a documented non-choice.
+
+---
+
+## 10. Idea bank — further deterministic signals
+
+Ranked by (value ÷ cost). Everything here is local, deterministic, and
+debuggable; nothing classifies chat *content*.
+
+### I1 — Key the binding on the thread id, show the title
+
+Every chat host puts an immutable conversation id in the path: `claude.ai/chat/<id>`,
+`chatgpt.com/c/<id>`, `grok.com/c/<id>`. Extract it once into an `anchors.thread`
+value and bind on **that**; the title is display and first-guess only.
+
+Solves Q2 outright: a re-titled thread keeps its binding, because the key never
+changed. Also makes `tracked_urls` redundant for the chat case — a thread id is a
+`tracked_urls` entry with the volatile parts already stripped, and it cannot be
+over-broad the way `is_over_broad_tracked_url` guards against.
+
+Cost: one URL→id extractor + one `key_kind: "thread"`. **Do this instead of R1's
+title key where an id exists; keep the title key for surfaces that expose no id
+(Codex thread names, Cursor conversation titles).**
+
+### I2 — Issue keys as a classification signal (Jira → Gittan, the prioritized direction)
+
+`core/jira_sync.py` already has `extract_issue_key()` (`[A-Z][A-Z0-9_]+-\d+`) and
+`build_issue_key_map(profiles)` — but they only serve *worklog posting*. Nothing
+classifies on an issue key.
+
+An issue key is the single highest-precision deterministic token in the whole
+system: it is unique, human-authored, and it already appears in branch names,
+commit subjects, PR titles and chat titles ("GH-527 zero-config attribution").
+
+Idea: build `issue_key → project` and consult it in the classification chain
+above `match_terms`. Two stages:
+
+1. **Now, zero new config:** invert `build_issue_key_map` (profiles that declare
+   `jira_issue_key`), plus `GH-\d+` → the repo's own profile via the existing
+   `repo` anchor.
+2. **When Jira pull lands** (the direction note ranks Jira→Gittan as the
+   prioritized direction):
+   the pulled issue list gives `KEY → jira project → gittan profile` for *every*
+   issue, not just the declared one. That single adapter turns every branch,
+   commit and PR title into a precise attribution key — and it is the same data
+   CFO scenario 1 ("plan vs verklighet per issue/epic") needs anyway.
+
+This is the highest-leverage item on the list: it serves detection, the
+prioritized integration direction, and the invoice-defence story with one pull.
+
+### I3 — Neighbour proposal, never silent
+
+An `Uncategorized` chat row sitting inside a session that is otherwise
+confidently attributed (repo anchor, issue key) is almost always the same work.
+Propose that project in `gittan review`; never assign it.
+
+Precedent to copy, not invent: `core/worklog_enrich.py::_nearest_session_label`
+already does the ordered-scan + lookback + safety-filter shape — it borrows
+*labels within a project*. This borrows *a project across a time gap*, which is
+strictly weaker evidence, hence proposal-only. Reuse the `proposed` state name
+from `reported_time`.
+
+Guardrail: never propose across a customer boundary without showing both.
+
+### I4 — Worklog as backup truth (answers the original brief's open question)
+
+`TIMELOG.md` is `PRIMARY_CLAIM` in `core/sources.py` — the strongest role in the
+policy — yet it only produces events. A worklog line carries *a human's own
+statement of project and time*, which is exactly the ground truth every other
+signal is approximating.
+
+Idea: a worklog entry's project + its time bracket becomes a **proposal** for
+uncategorized rows inside that bracket. Not an assignment: the worklog says what
+the operator *claims*, the evidence says what was *observed*, and the whole point
+of the review gate is that those two are compared rather than merged. Where they
+agree, the row is answered with no question asked; where they disagree, the
+disagreement is the useful output.
+
+### I5 — Negative bindings
+
+Bind a thread to "not billable" (a reserved project name, e.g. `__noise__`), so
+review stops re-asking about the same personal thread every week. Same store,
+same precedence rules, ~10 lines. Without it, R2.3's new grey rows turn the
+review queue into a chore, and a chore stops being run.
+
+### I6 — `record_id` on the binding log, now
+
+Intent records have no id. A multi-device union today would have to dedupe on
+whole-record equality — fragile the moment a field is added. Adding
+`record_id = hash(key_kind, key, project, captured_at, via)` costs ~5 lines
+*now* and makes the log's union idempotent, which is precisely §6 step 2–3 of the
+direction note (approve layer + idempotent post via a stable evidence id, then
+append-only → possibly CRDT).
+
+The binding log is also the *right first thing to sync*: it is small, it is
+decisions rather than raw logs (per §3: "synka ledger/beslut först; råloggar
+sekundärt"), and append-only + latest-wins-per-key is already a working CRDT for
+this shape — a `(key_kind, key)` register with LWW, no HLC needed until two
+devices bind the same thread in the same second.
+
+### I7 — Binding usage audit
+
+`core/projects_audit.py` counts which `match_terms` and `tracked_urls` actually
+fired. Bindings need the same: which fired, which are dead, which thread was
+bound but never observed again (an open question already raised in
+`docs/specs/intent-capture.md`). Otherwise the binding layer rots exactly the way
+a stale `match_terms` list does, only invisibly.
+
+### I8 — Lint generic profile names
+
+`normalize_profile` auto-indexes the profile `name` as a 1.0-weight term. A name
+like `gittan`, `app` or `web` is a common word that will match unrelated text
+forever. `core/projects_lint.py` should warn on a single-token name below a
+length/commonness floor — the same instinct as `is_over_broad_tracked_url`, one
+field over. Cheap, and it is the "undvik generiska termer som enda nyckel" rule
+made mechanical.
+
+### I9 — Freeze the title at first sighting
+
+Related to spike #354 (point-in-time capture): store the title as observed the
+first time a thread is seen, in the evidence store, and treat later re-titling as
+display-only. With I1 (id as key) this is a nicety; without I1 it is what keeps a
+title binding from silently detaching. Do I1 first.
+
+### Ranking
+
+| Idea | Value | Cost | Do when |
+| --- | --- | --- | --- |
+| I2 stage 1 (issue keys from profiles) | high | low | now |
+| I1 (thread id as key) | high | low | with R1 |
+| I6 (`record_id`) | medium (high later) | trivial | now — it gets expensive as a migration |
+| I8 (generic-name lint) | medium | trivial | now |
+| I5 (negative bindings) | medium | low | with R2.3, or the queue rots |
+| I3 / I4 (neighbour + worklog proposals) | high | medium | after the review surface exists |
+| I2 stage 2 (Jira pull) | very high | high | the Jira context-in track |
+| I7 (binding audit) | medium | low | once bindings are in real use |
+| I9 (freeze title) | low, given I1 | medium | only if I1 is skipped |

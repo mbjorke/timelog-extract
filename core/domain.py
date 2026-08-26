@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse, urlunparse
 
 from core.sources import AGENT_SOURCES, ATTENDED_SOURCES, canonical_source_name
+from core.tracked_url_policy import is_over_broad_tracked_url
 
 GENERIC_TOOL_TERMS = {
     "cloudflare",
@@ -24,7 +25,17 @@ _IMPACT_GENERIC = 0
 _IMPACT_PATH = 1
 _IMPACT_NORMAL = 2
 _IMPACT_NAME = 3
+#: A specific ``tracked_urls`` entry — one conversation, one page. This is the
+#: "explicit binding" at the top of the documented matching ladder
+#: (``docs/product/agent-context.md``), so it wins outright rather than being
+#: added to a score. See ``classify_project``.
 _IMPACT_URL = 4
+#: A ``tracked_urls`` entry that would match unrelated chats on a shared host
+#: (a bare ``claude.ai``, or one generic route segment). It is a host hint, not a
+#: binding to *this* conversation, so it keeps the old additive weight and never
+#: reaches the binding tier — otherwise one over-broad entry would capture every
+#: chat on that host and outrank every other profile.
+_IMPACT_URL_BROAD = 5
 
 
 @functools.lru_cache(maxsize=1024)
@@ -123,7 +134,8 @@ def _compile_profiles_index(
             add_term(name_lower, i, _IMPACT_NAME)
 
         for url in profile.get("tracked_urls") or []:
-            add_term(url, i, _IMPACT_URL)
+            impact = _IMPACT_URL_BROAD if is_over_broad_tracked_url(url) else _IMPACT_URL
+            add_term(url, i, impact)
 
     fast_terms: dict[str, list[tuple[int, int]]] = {}
     slow_terms: list[tuple[str, list[tuple[int, int]]]] = []
@@ -173,6 +185,24 @@ def _matches_term(term: str, haystack: str, word_set: Optional[Set[str]] = None)
 
 
 def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -> str:
+    """The profile ``text`` belongs to, or ``fallback``.
+
+    Matching is a **ladder, not a score** (``docs/product/agent-context.md`` →
+    *Project matching*). An explicit binding — a specific ``tracked_urls`` entry —
+    is rank 1 and wins outright; everything below it is still resolved by the
+    additive score it always used.
+
+    That distinction matters because the score is a *sum*: before the binding tier
+    existed, three ordinary ``match_terms`` (3.0) outranked one ``tracked_urls``
+    hit (2.0), so the most deliberate signal in the config lost to three casual
+    ones and hours moved to the wrong customer. Adding weight to the URL would not
+    have fixed it — any weight is eventually out-summed by enough weak terms.
+    Recorded as D1 in ``docs/specs/project-field-detection-signals.md`` §11.
+
+    Two profiles that both match a URL are separated by the longest URL match, so
+    a per-conversation entry beats a broader one on the same host. An entry that
+    ``is_over_broad_tracked_url`` rejects never reaches the tier at all.
+    """
     if not text:
         return fallback
 
@@ -200,6 +230,8 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     generics = [0] * num_profs
     lens = [0] * num_profs
     counts = [0] * num_profs
+    bindings = [0] * num_profs
+    binding_lens = [0] * num_profs
 
     # 3. Single-pass scoring: accumulate rank components for all matching profiles.
     for term in matched_terms:
@@ -222,16 +254,32 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
                 scores[idx] += 1.0
                 specifics[idx] += 1
             elif impact == _IMPACT_URL:
+                bindings[idx] += 1
+                binding_lens[idx] += t_len
+                scores[idx] += 2.0
+                specifics[idx] += 1
+            elif impact == _IMPACT_URL_BROAD:
                 scores[idx] += 2.0
                 specifics[idx] += 1
 
     best_name = fallback
-    # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
-    best_rank = (0.0, 0, 0, 0, 0)
+    # Rank, most significant first:
+    #   1. bound        — 1 when a specific tracked_urls entry matched
+    #   2. binding_len  — among bound profiles, the longest URL match
+    #   3. weighted_score, specific_hits, total_match_len, -generic_hits, total_matches
+    best_rank = (0, 0, 0.0, 0, 0, 0, 0)
 
     for i in range(num_profs):
         if specifics[i] > 0 or scores[i] >= 1.0:
-            rank = (scores[i], specifics[i], lens[i], -generics[i], counts[i])
+            rank = (
+                1 if bindings[i] else 0,
+                binding_lens[i],
+                scores[i],
+                specifics[i],
+                lens[i],
+                -generics[i],
+                counts[i],
+            )
             if rank > best_rank:
                 best_rank = rank
                 best_name = profiles[i]["name"]

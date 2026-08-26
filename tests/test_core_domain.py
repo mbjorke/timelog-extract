@@ -147,6 +147,59 @@ class CoreDomainTests(unittest.TestCase):
         text = "https://dash.cloudflare.com/accounts/alpha overview"
         self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
 
+    def test_classify_project_binding_outranks_many_match_terms(self):
+        """D1: a specific tracked_urls entry wins outright, not on points.
+
+        Before the binding tier, the score was a sum: four ordinary terms (4.0)
+        beat one tracked_urls hit (2.0), so the most deliberate signal in the
+        config lost to four casual ones.
+        """
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"], "tracked_urls": []},
+        ]
+        text = "https://claude.ai/chat/abc123 - alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Bound")
+        # Profile order must not decide it either.
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Bound"
+        )
+
+    def test_classify_project_over_broad_tracked_url_stays_additive(self):
+        """A bare multi-tenant host is a hint, not a binding, so it never dominates.
+
+        Without this, one ``claude.ai`` entry would capture every Claude chat and
+        outrank every other profile in the config.
+        """
+        profiles = [
+            {"name": "Broad", "match_terms": [], "tracked_urls": ["https://claude.ai"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"], "tracked_urls": []},
+        ]
+        text = "https://claude.ai/chat/xyz - alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Loud")
+
+    def test_classify_project_prefers_longest_tracked_url_match(self):
+        """Two bound profiles are separated by the most specific URL, not by order."""
+        profiles = [
+            {"name": "Short", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc"]},
+            {"name": "Long", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123def"]},
+        ]
+        text = "resumed https://claude.ai/chat/abc123def this morning"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Long")
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Long"
+        )
+
+    def test_classify_project_binding_does_not_rescue_an_unmatched_profile(self):
+        """The tier only applies to a profile whose URL actually matched."""
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123"]},
+            {"name": "Named", "match_terms": ["gamma"], "tracked_urls": []},
+        ]
+        self.assertEqual(
+            domain.classify_project("gamma work, no url here", profiles, "Uncategorized"), "Named"
+        )
+
     def test_classify_project_normalizes_lovableproject_host_variants_for_tracked_urls(self):
         profiles = [
             {

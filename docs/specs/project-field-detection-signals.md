@@ -9,7 +9,7 @@ worked example.
 
 - story_id: `pending` (investigation; file issues from §6)
 - spec_status: `draft`
-- implementation_status: `not built` (survey only — no code changed)
+- implementation_status: `in progress` — D1 built (§11); D2–D5 open
 - created_at: `2026-08-25`
 - last_updated_at: `2026-08-26`
 - implementation.pr: pending
@@ -21,6 +21,7 @@ worked example.
   - `2026-08-25: Initial survey; findings F1–F7, recommendation R1–R3.`
   - `2026-08-26: Added §9 vocabulary alignment (source note kept in private gittan-home) and §10 idea bank I1–I9.`
   - `2026-08-26: Added §11 reconciliation against the documented matching order in docs/product/agent-context.md; Q5 reclassified as defect D1.`
+  - `2026-08-26: D1 built — classify_project ranks bindings as a tier; over-broad tracked_urls stay additive.`
 
 ## Scope and anti-goals
 
@@ -589,7 +590,7 @@ customer an hour is billed to. Five concrete divergences:
 
 | # | Documented | Implemented | Effect |
 | --- | --- | --- | --- |
-| **D1** | `tracked_urls` / binding outranks everything | `tracked_urls` scores 2.0 and is **summed** with everything else | Three ordinary `match_terms` (3.0) beat the explicit URL binding (2.0). The most deliberate signal in the config loses to three casual ones. |
+| **D1** | `tracked_urls` / binding outranks everything | ~~scores 2.0 and is **summed**~~ → **fixed**: a specific `tracked_urls` hit is now the first rank element, so it wins outright | Was: three ordinary `match_terms` (3.0) beat the explicit URL binding (2.0), and the most deliberate signal in the config lost to three casual ones. |
 | **D2** | *Specific* terms — long unique strings — rank above ordinary ones | Every `match_terms` entry scores 1.0 regardless of length; length only breaks ties (rank element 3) | A full chat title and a three-letter term carry identical weight. The word "specific" has no mechanical meaning today. |
 | **D3** | Git issue keys / branch keys rank 3 | **Not a classification signal at all** — `extract_issue_key` / `build_issue_key_map` exist but serve only worklog posting | The highest-precision token in the system is unused for attribution (see I2). |
 | **D4** | Short names are *weak alone* | The profile `name` scores a full 1.0, same as any term; `GENERIC_TOOL_TERMS` is a hardcoded list of tool names (jira, toggl, cloudflare), not a shortness or weakness rule | A profile called `gittan` matches every mention of the word at full strength — the exact failure the ladder's rank 4 exists to prevent (see I8). |
@@ -624,3 +625,30 @@ D1 first: it is the smallest change (a comparison rule in
 is required before D2–D5 mean anything — adding a high-precision signal to a
 summed score just adds another addend. Then D3 (I2 stage 1), then D4 (I8), then
 D5 (I4), which needs the review surface.
+
+### D1 — built
+
+`classify_project` now ranks by `(bound, binding_len, score, …)`. A profile with
+a specific `tracked_urls` match beats one without, whatever the other side's
+score; two bound profiles are separated by the longest URL match, so a
+per-conversation entry beats a broader one on the same host and profile order
+never decides it.
+
+Weighting the URL higher would not have worked: any finite weight is eventually
+out-summed by enough weak terms. The tier is the only shape that makes rank 1
+mean rank 1.
+
+One hazard came with it and is handled. Making URL hits dominate would have made
+an over-broad entry — a bare `claude.ai`, or one generic route segment — capture
+every chat on that host and outrank every other profile. Those entries are
+classified as `_IMPACT_URL_BROAD` and keep the old additive weight, reusing
+`core/tracked_url_policy.py::is_over_broad_tracked_url`, which `projects_lint`
+already warns about. A host hint is not a binding to *this* conversation.
+
+Covered by four tests in `tests/test_core_domain.py`: the tier itself, the
+over-broad guard, longest-URL tiebreak (both profile orders), and that the tier
+never rescues a profile whose URL did not match. Full gate green (1970 tests).
+
+**Still open: D2–D5.** Next is D3 — issue keys as a classification signal
+(I2 stage 1), which is now worth doing precisely because a ladder can seat it at
+rank 3 instead of adding another addend to a sum.

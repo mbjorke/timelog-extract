@@ -200,6 +200,85 @@ class CoreDomainTests(unittest.TestCase):
             domain.classify_project("gamma work, no url here", profiles, "Uncategorized"), "Named"
         )
 
+    def test_classify_project_declared_issue_key_outranks_many_match_terms(self):
+        """D3: an issue key the profile declares is ladder rank 3, above the score."""
+        profiles = [
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        text = "OPS-42 alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Ops")
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_binding_still_outranks_issue_key(self):
+        """Rank 1 stays above rank 3 when both match."""
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc"]},
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+        ]
+        text = "https://claude.ai/chat/abc while closing OPS-42"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Bound")
+
+    def test_classify_project_issue_key_classifies_without_other_signals(self):
+        """A declared key is evidence on its own, with no term or name hit."""
+        profiles = [{"name": "Zeta", "match_terms": ["unrelated"], "jira_issue_key": "ACME-5"}]
+        self.assertEqual(
+            domain.classify_project("ACME-5 done", profiles, "Uncategorized"), "Zeta"
+        )
+
+    def test_classify_project_undeclared_key_maps_via_unique_project_prefix(self):
+        """One declared key covers its Jira project — the operator lists one, not all."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("worked on OPS-77 today", profiles, "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_matches_lowercased_branch_issue_key(self):
+        """Branch names lowercase the key they carry; a branch key is still rank 3."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("feature/ops-77-refactor", profiles, "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_prefix_inference_loses_to_term_evidence(self):
+        """An undeclared key is an inference, so it competes on points, not as a tier."""
+        profiles = [
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "OPS-77 alpha beta gamma delta", profiles, "Uncategorized"
+            ),
+            "Loud",
+        )
+
+    def test_classify_project_ambiguous_issue_prefix_is_dropped(self):
+        """Two profiles in one Jira project cannot be told apart by the prefix.
+
+        Guessing between them would move hours between customers, so an
+        undeclared key in a shared project classifies nothing — while an exactly
+        declared key in the same project still resolves.
+        """
+        profiles = [
+            {"name": "A", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "B", "match_terms": [], "jira_issue_key": "OPS-99"},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-77 work", profiles, "Uncategorized"), "Uncategorized"
+        )
+        self.assertEqual(domain.classify_project("OPS-99 work", profiles, "Uncategorized"), "B")
+
+    def test_classify_project_issue_key_shape_does_not_match_ordinary_text(self):
+        """`utf-8` has the shape but no declared prefix, so it stays uncategorized."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("utf-8 encoding notes", profiles, "Uncategorized"),
+            "Uncategorized",
+        )
+
     def test_classify_project_normalizes_lovableproject_host_variants_for_tracked_urls(self):
         profiles = [
             {

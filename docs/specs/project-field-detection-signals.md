@@ -20,6 +20,7 @@ worked example.
 - changelog:
   - `2026-08-25: Initial survey; findings F1–F7, recommendation R1–R3.`
   - `2026-08-26: Added §9 vocabulary alignment (source note kept in private gittan-home) and §10 idea bank I1–I9.`
+  - `2026-08-26: Added §11 reconciliation against the documented matching order in docs/product/agent-context.md; Q5 reclassified as defect D1.`
 
 ## Scope and anti-goals
 
@@ -399,11 +400,10 @@ binding is only authoritative while it carries a human's words.
   match reads more browser history than today. It must respect the existing
   consent surface and `docs/decisions/private-not-local.md`; titles are already
   stored as anchors, so the delta is *which* rows, not *what* is retained.
-- **Q5 — scoring, not just signals.** Even with better signals, §1.2's summed
-  score means many weak terms beat one strong one. A separate decision is owed on
-  whether `tracked_urls` / repo hits should *dominate* rather than *outweigh*.
-  Out of scope here; flagged because it silently caps the value of every signal
-  added above.
+- **Q5 — resolved, and reclassified.** The decision this asked for is on record
+  in `docs/product/agent-context.md`: matching is a priority ladder, so
+  `tracked_urls` / bindings must *dominate*, not merely outweigh. What was an
+  open question is now **D1** in §11 — a defect against documented intent.
 - **Risk — F6 blocks the obvious name.** Any `app_project` work must first deal
   with Zed writing arbitrary text into `anchors["project"]`.
 
@@ -569,3 +569,58 @@ title binding from silently detaching. Do I1 first.
 | I2 stage 2 (Jira pull) | very high | high | the Jira context-in track |
 | I7 (binding audit) | medium | low | once bindings are in real use |
 | I9 (freeze title) | low, given I1 | medium | only if I1 is skipped |
+
+---
+
+## 11. Reconciliation with the documented matching order
+
+`docs/product/agent-context.md` states the intended priority order:
+
+1. `tracked_urls` / explicit binding
+2. Specific `match_terms` — long unique strings, e.g. a full chat title
+3. Git issue keys / branch keys
+4. Weak alone: short names, e.g. a Grok **Project** folder called "Gittan"
+5. Worklog manual line as backup truth
+
+That is a **ladder**: rank 1 wins over rank 2 regardless of how much rank-2
+evidence there is. The shipped matcher is a **summed score** (§1.2). The two are
+not the same algorithm, and the difference is not cosmetic — it changes which
+customer an hour is billed to. Five concrete divergences:
+
+| # | Documented | Implemented | Effect |
+| --- | --- | --- | --- |
+| **D1** | `tracked_urls` / binding outranks everything | `tracked_urls` scores 2.0 and is **summed** with everything else | Three ordinary `match_terms` (3.0) beat the explicit URL binding (2.0). The most deliberate signal in the config loses to three casual ones. |
+| **D2** | *Specific* terms — long unique strings — rank above ordinary ones | Every `match_terms` entry scores 1.0 regardless of length; length only breaks ties (rank element 3) | A full chat title and a three-letter term carry identical weight. The word "specific" has no mechanical meaning today. |
+| **D3** | Git issue keys / branch keys rank 3 | **Not a classification signal at all** — `extract_issue_key` / `build_issue_key_map` exist but serve only worklog posting | The highest-precision token in the system is unused for attribution (see I2). |
+| **D4** | Short names are *weak alone* | The profile `name` scores a full 1.0, same as any term; `GENERIC_TOOL_TERMS` is a hardcoded list of tool names (jira, toggl, cloudflare), not a shortness or weakness rule | A profile called `gittan` matches every mention of the word at full strength — the exact failure the ladder's rank 4 exists to prevent (see I8). |
+| **D5** | Worklog manual line is backup truth | `TIMELOG.md` is `PRIMARY_CLAIM` by *role*, but its events go through the same matcher as everything else; there is no backup-truth layer | The one source carrying a human's own statement of project and time cannot rescue anything (see I4). |
+
+### What this changes in this survey
+
+- **Q5 is no longer an open question.** It was filed as "a separate decision is
+  owed on whether `tracked_urls` should dominate rather than outweigh". The
+  decision is on record: it should dominate. Q5 becomes **D1**, a defect against
+  documented intent, not a design question. It is now the most valuable single
+  fix here, because it silently caps the value of every signal added on top.
+- **I2 and I4 are promoted from ideas to requirements.** Issue keys (rank 3) and
+  worklog backup truth (rank 5) are documented positions in the intended order,
+  not proposals. Their ranking in §10 stands; their status does not.
+- **I8 gains a documented mandate** — rank 4 says short names are weak alone, and
+  nothing in the code says so.
+- **§9's vocabulary collision is settled.** The agent-context table names the
+  concept **`binding`** and says a future MCP surface must write the same binding
+  store. The code's `intent` is that store. Rename or alias it; do not add a
+  second one.
+- **R1 is consistent with the ladder.** Rank 2 endorses a full chat title as a
+  `match_terms` entry, which works but is a permanent text rule. Rank 1 —
+  binding — is the same answer with reversal and provenance, so R1 puts the title
+  case one rung higher than the minimum the ladder allows. Where a thread id
+  exists, I1 makes that rung exact.
+
+### Suggested order of work
+
+D1 first: it is the smallest change (a comparison rule in
+`core/domain.py::classify_project`) with the largest correctness effect, and it
+is required before D2–D5 mean anything — adding a high-precision signal to a
+summed score just adds another addend. Then D3 (I2 stage 1), then D4 (I8), then
+D5 (I4), which needs the review surface.

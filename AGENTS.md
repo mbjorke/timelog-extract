@@ -39,6 +39,8 @@ If this section conflicts with any policy below, the detailed policy below wins.
 
 **Product doc hierarchy** (vision, scope, metrics, how root `VISION.md` relates): `docs/product/vision-documents.md` — check before substantive product or marketing doc edits.
 
+**Product vocabulary and product rules** (one page, read before product-shaped work): `docs/product/agent-context.md` — locked terms, the hard do/do-not list, the project-matching priority order, and build order. Process rules in *this* file win on conflict.
+
 ## Maintainer workflow preferences (low copy-paste)
 
 - The maintainer prefers **as little copy-paste of shell commands as possible** in chat and handoffs. Agents should **run** `git`, `gh`, tests, and similar steps in the environment when possible, and report **outcomes and links** in plain language instead of long runnable command dumps.

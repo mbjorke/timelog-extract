@@ -37,7 +37,8 @@ For **code and script layout** (not doc taxonomy), see [`meta/structure.md`](met
 
 - **Defines a current rule** → `decisions/`
 - **Approved work to build** → `specs/`
-- **Which specs are implemented right now** → [`specs/implementation-status.md`](specs/implementation-status.md)
+- **What shipped in which version** → [`generated/release-ledger.md`](generated/release-ledger.md) (code-derived; run `python scripts/generate_release_ledger.py`)
+- **Which specs are implemented right now** → [`specs/implementation-status.md`](specs/implementation-status.md) — hand-maintained and currently stale; prefer the release ledger for release-scoped questions
 - **Behavior-contract format for new specs** → [`specs/behavior-contract-standard.md`](specs/behavior-contract-standard.md)
 - **Source evidence roles and weighting** → [`specs/source-evidence-policy.md`](specs/source-evidence-policy.md)
 - **Cursor honest evidence ceiling (no per-turn local store)** → [`specs/cursor-evidence-ceiling.md`](specs/cursor-evidence-ceiling.md)

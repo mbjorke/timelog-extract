@@ -9,7 +9,7 @@ worked example.
 
 - story_id: `pending` (investigation; file issues from §6)
 - spec_status: `draft`
-- implementation_status: `not built` (survey only — no code changed)
+- implementation_status: `in progress` — survey + measurement tooling; no behaviour change (D1–D5 open)
 - created_at: `2026-08-25`
 - last_updated_at: `2026-08-26`
 - implementation.pr: pending
@@ -21,6 +21,7 @@ worked example.
   - `2026-08-25: Initial survey; findings F1–F7, recommendation R1–R3.`
   - `2026-08-26: Added §9 vocabulary alignment (source note kept in private gittan-home) and §10 idea bank I1–I9.`
   - `2026-08-26: Added §11 reconciliation against the documented matching order in docs/product/agent-context.md; Q5 reclassified as defect D1.`
+  - `2026-08-26: Q1 measurement tooling built (scripts/measure_grok_surface.py); the question itself is still unanswered until it runs on the operator's machine.`
 
 ## Scope and anti-goals
 
@@ -387,6 +388,22 @@ binding is only authoritative while it carries a human's words.
   title, or neither? Does a Grok desktop/Electron app write anything under
   `~/Library/Application Support/`? Until this is answered, treat the Project
   field as unavailable, not as pending.
+
+  **Tooling: built.** `python scripts/measure_grok_surface.py` answers it from
+  Chromium-family history across nine browsers, read-only, and prints one of
+  five verdicts — a project route in the URL, a title segment that groups
+  conversations, an ambiguous thin sample, no observable project, or one of the
+  two null results (`INCONCLUSIVE` when no browser was readable versus `NO DATA`
+  when browsers were readable and held no Grok visits). Those two must not be
+  confused: only the second says anything about Grok.
+
+  Output is safe to paste — conversation ids, URLs and title text never leave
+  the process. The report is path *shapes* and counts, and `--json` strips
+  segment text unless `--show-samples` asks for it, because a title segment is
+  exactly where a customer name would sit.
+
+  The measurement also reports how many threads appeared under more than one
+  title, which is the direct evidence for or against Q2.
 - **Q2 — title stability.** Chat tools rename threads (auto-titling on first
   turn, later re-titling). A title binding keyed on a string that changes silently
   re-orphans the thread. Mitigation: bind on first sighting, and treat a changed

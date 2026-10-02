@@ -8,7 +8,7 @@ What shipped in which version, derived from `CHANGELOG.md` headings, git tags, a
 
 | Version | Date | Tag | Commits | PRs | Specs |
 | --- | --- | --- | --- | --- | --- |
-| `0.5.0` | 2026-08-23 | **none** | 18 | 18 | 3 |
+| `0.5.0` | 2026-08-23 | `v0.5.0` | 18 | 18 | 3 |
 | `0.4.2` | 2026-08-10 | `v0.4.2` | 15 | 15 | 2 |
 | `0.4.1` | 2026-08-07 | `v0.4.1` | 2 | 1 | 0 |
 | `0.4.0` | 2026-08-07 | `v0.4.0` | 194 | 115 | 6 |
@@ -39,17 +39,14 @@ What shipped in which version, derived from `CHANGELOG.md` headings, git tags, a
 
 ## Needs attention
 
-- **`0.5.0` is written but never released.** `CHANGELOG.md` has a dated section and `pyproject.toml` declares `0.5.0`, but no `v0.5.0` tag exists. `.github/workflows/pypi.yml` publishes on tag push, so PyPI never received it.
 - 9 older version(s) were never tagged either (`0.2.20`, `0.2.19`, `0.2.18`, `0.2.13`, `0.2.9`, `0.2.7`, `0.2.4`, `0.2.2`, `0.1.0`). Historical — listed in the table above, not worth cutting now.
 - 1 tag(s) do not match `vX.Y.Z` and are ignored here (`v0.2.5rc1-Claude-version`). The PyPI workflow keys on the strict form, so these never published.
 
 ## Releases
 
-### 0.5.0 — 2026-08-23  ⚠ not tagged
+### 0.5.0 — 2026-08-23
 
-> No `v0.5.0` tag exists, so nothing was published for this version. The range below runs to `origin/main` and may include commits merged after the release notes were written.
-
-Range: `v0.4.2..origin/main` — 18 commit(s), 18 pull request(s).
+Range: `v0.4.2..v0.5.0` — 18 commit(s), 18 pull request(s).
 
 | Spec | Status |
 | --- | --- |

@@ -36,6 +36,26 @@ multi-device workflows that the actual promise never required.
   user-synced `~/.gittan/` folder is the supported pattern before any sync
   backend is designed.
 
+## What this rules out for distribution
+
+Applying the decision to how Gittan reaches a user settles one question that
+keeps coming back: **the default is downloadable, not a Gittan-operated cloud
+product.** The CLI already ships that way (PyPI, and a shell installer), and a
+GUI consumes the local `gittan report --format json` payload rather than a
+server.
+
+A hosted product — accounts, synced evidence, the web as source of truth —
+conflicts with this decision directly, because it would make a Gittan-operated
+service the system of record for someone's hours. It is worth revisiting only as
+an **optional push** (a draft export to Toggl, Jira or an invoicing system the
+user already pays for), never as the reporting engine.
+
+The cost argument points the same way, which is why this is not a close call:
+the engine already runs on-device, so downloadable needs packaging. A hosted
+engine would need authentication, storage, sync and a second classifier to keep
+in step with the local one — high cost against a promise this decision already
+made.
+
 ## Follow-ups (not yet done)
 
 - Update wording in `docs/product/gittan-vision.md`, `docs/product/v1-scope.md`,

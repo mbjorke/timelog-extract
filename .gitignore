@@ -58,3 +58,6 @@ cursor-extension/node_modules/
 
 # Local review metrics ledger (scripts/review_stats.py)
 .reviews/
+
+# Claude Code lays this build's plugin API typings beside a loaded mod
+claude-code-plugin/.claude-plugin/types/

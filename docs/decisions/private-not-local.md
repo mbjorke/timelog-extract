@@ -41,8 +41,10 @@ multi-device workflows that the actual promise never required.
 Applying the decision to how Gittan reaches a user settles one question that
 keeps coming back: **the default is downloadable, not a Gittan-operated cloud
 product.** The CLI already ships that way (PyPI, and a shell installer), and a
-GUI consumes the local `gittan report --format json` payload rather than a
-server.
+local consumer reads the same payload in-process through
+`core/engine_api.py::run_report_with_optional_pdf` — the path the Cursor
+extension already takes — or off `gittan report --format json`. Both run on the
+operator's machine; neither needs a server.
 
 A hosted product — accounts, synced evidence, the web as source of truth —
 conflicts with this decision directly, because it would make a Gittan-operated

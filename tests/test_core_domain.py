@@ -147,6 +147,201 @@ class CoreDomainTests(unittest.TestCase):
         text = "https://dash.cloudflare.com/accounts/alpha overview"
         self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Project Alpha")
 
+    def test_classify_project_binding_outranks_many_match_terms(self):
+        """D1: a specific tracked_urls entry wins outright, not on points.
+
+        Before the binding tier, the score was a sum: four ordinary terms (4.0)
+        beat one tracked_urls hit (2.0), so the most deliberate signal in the
+        config lost to four casual ones.
+        """
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"], "tracked_urls": []},
+        ]
+        text = "https://claude.ai/chat/abc123 - alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Bound")
+        # Profile order must not decide it either.
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Bound"
+        )
+
+    def test_classify_project_over_broad_tracked_url_stays_additive(self):
+        """A bare multi-tenant host is a hint, not a binding, so it never dominates.
+
+        Without this, one ``claude.ai`` entry would capture every Claude chat and
+        outrank every other profile in the config.
+        """
+        profiles = [
+            {"name": "Broad", "match_terms": [], "tracked_urls": ["https://claude.ai"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"], "tracked_urls": []},
+        ]
+        text = "https://claude.ai/chat/xyz - alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Loud")
+
+    def test_classify_project_prefers_longest_tracked_url_match(self):
+        """Two bound profiles are separated by the most specific URL, not by order."""
+        profiles = [
+            {"name": "Short", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc"]},
+            {"name": "Long", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123def"]},
+        ]
+        text = "resumed https://claude.ai/chat/abc123def this morning"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Long")
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Long"
+        )
+
+    def test_classify_project_binding_does_not_rescue_an_unmatched_profile(self):
+        """The tier only applies to a profile whose URL actually matched."""
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc123"]},
+            {"name": "Named", "match_terms": ["gamma"], "tracked_urls": []},
+        ]
+        self.assertEqual(
+            domain.classify_project("gamma work, no url here", profiles, "Uncategorized"), "Named"
+        )
+
+    def test_classify_project_declared_issue_key_outranks_many_match_terms(self):
+        """D3: an issue key the profile declares is ladder rank 3, above the score."""
+        profiles = [
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        text = "OPS-42 alpha beta gamma delta"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Ops")
+        self.assertEqual(
+            domain.classify_project(text, list(reversed(profiles)), "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_binding_still_outranks_issue_key(self):
+        """Rank 1 stays above rank 3 when both match."""
+        profiles = [
+            {"name": "Bound", "match_terms": [], "tracked_urls": ["https://claude.ai/chat/abc"]},
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+        ]
+        text = "https://claude.ai/chat/abc while closing OPS-42"
+        self.assertEqual(domain.classify_project(text, profiles, "Uncategorized"), "Bound")
+
+    def test_classify_project_issue_key_classifies_without_other_signals(self):
+        """A declared key is evidence on its own, with no term or name hit."""
+        profiles = [{"name": "Zeta", "match_terms": ["unrelated"], "jira_issue_key": "ACME-5"}]
+        self.assertEqual(
+            domain.classify_project("ACME-5 done", profiles, "Uncategorized"), "Zeta"
+        )
+
+    def test_classify_project_undeclared_key_maps_via_unique_project_prefix(self):
+        """One declared key covers its Jira project — the operator lists one, not all."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("worked on OPS-77 today", profiles, "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_matches_lowercased_branch_issue_key(self):
+        """Branch names lowercase the key they carry; a branch key is still rank 3."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("feature/ops-77-refactor", profiles, "Uncategorized"), "Ops"
+        )
+
+    def test_classify_project_prefix_inference_loses_to_term_evidence(self):
+        """An undeclared key is an inference, so it competes on points, not as a tier."""
+        profiles = [
+            {"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "OPS-77 alpha beta gamma delta", profiles, "Uncategorized"
+            ),
+            "Loud",
+        )
+
+    def test_classify_project_ambiguous_issue_prefix_is_dropped(self):
+        """Two profiles in one Jira project cannot be told apart by the prefix.
+
+        Guessing between them would move hours between customers, so an
+        undeclared key in a shared project classifies nothing — while an exactly
+        declared key in the same project still resolves.
+        """
+        profiles = [
+            {"name": "A", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "B", "match_terms": [], "jira_issue_key": "OPS-99"},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-77 work", profiles, "Uncategorized"), "Uncategorized"
+        )
+        self.assertEqual(domain.classify_project("OPS-99 work", profiles, "Uncategorized"), "B")
+
+    def test_classify_project_issue_key_shape_does_not_match_ordinary_text(self):
+        """`utf-8` has the shape but no declared prefix, so it stays uncategorized."""
+        profiles = [{"name": "Ops", "match_terms": [], "jira_issue_key": "OPS-42"}]
+        self.assertEqual(
+            domain.classify_project("utf-8 encoding notes", profiles, "Uncategorized"),
+            "Uncategorized",
+        )
+
+    def test_classify_project_prefix_inference_loses_to_a_single_term(self):
+        """An inference must lose to one declared term, not just to four.
+
+        At repo-path weight (2.0) the prefix beat a single `match_terms` hit
+        (1.0) — the opposite of what the code's own comment promised.
+        """
+        profiles = [
+            {"name": "Zeta", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Named", "match_terms": ["gamma"]},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-77 gamma", profiles, "Uncategorized"), "Named"
+        )
+        # A *declared* key is not an inference and still outranks the term.
+        self.assertEqual(
+            domain.classify_project("OPS-42 gamma", profiles, "Uncategorized"), "Zeta"
+        )
+
+    def test_classify_project_duplicate_declared_key_is_ambiguous(self):
+        """Two profiles declaring one key must not resolve by config order."""
+        profiles = [
+            {"name": "A", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "B", "match_terms": [], "jira_issue_key": "OPS-42"},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-42 work", profiles, "Uncategorized"),
+            "Uncategorized",
+        )
+
+    def test_classify_project_binding_uses_longest_url_not_the_sum_of_lengths(self):
+        """Two overlapping URLs on one profile must not add up to beat a longer one."""
+        profiles = [
+            {
+                "name": "Two",
+                "match_terms": [],
+                "tracked_urls": ["https://claude.ai/chat/abc", "https://claude.ai/chat/abcdef"],
+            },
+            {
+                "name": "OneLong",
+                "match_terms": [],
+                "tracked_urls": ["https://claude.ai/chat/abcdefghijkl"],
+            },
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "resumed https://claude.ai/chat/abcdefghijkl today", profiles, "Uncategorized"
+            ),
+            "OneLong",
+        )
+
+    def test_classify_project_shared_host_route_does_not_win_the_binding_tier(self):
+        """`chatgpt.com/gpts` is a listing page, not a binding to one chat."""
+        profiles = [
+            {"name": "Broad", "match_terms": [], "tracked_urls": ["https://chatgpt.com/gpts"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "https://chatgpt.com/gpts - alpha beta gamma delta", profiles, "Uncategorized"
+            ),
+            "Loud",
+        )
+
     def test_classify_project_normalizes_lovableproject_host_variants_for_tracked_urls(self):
         profiles = [
             {

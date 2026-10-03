@@ -17,7 +17,18 @@ MULTI_TENANT_APP_HOSTS = frozenset(
     }
 )
 
-_GENERIC_CHAT_ROUTE_SEGMENTS = frozenset({"app", "c", "chat", "g", "new", "share"})
+# A single path segment that names a *route* on a shared host rather than one
+# conversation. Since a specific tracked_urls entry now wins its profile the
+# binding tier outright (D1), a listing or gallery route left out of this set
+# would beat stronger evidence for another customer — so the set covers the
+# shared surfaces these hosts expose, not only their chat routes.
+_GENERIC_CHAT_ROUTE_SEGMENTS = frozenset(
+    {
+        "app", "c", "chat", "g", "new", "share",
+        "gpts", "explore", "discover", "library", "gallery",
+        "project", "projects", "settings", "pricing", "login", "auth",
+    }
+)
 
 
 def tracked_url_host_and_segments(raw: str) -> tuple[str, list[str]]:

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -40,7 +41,14 @@ from collectors.chrome import query_chrome  # noqa: E402
 
 #: Hosts that serve a Grok conversation. ``x.com`` is included because Grok is
 #: also reachable inside X, and that surface may carry a different URL shape.
+#: These are SQL prefilters only — a ``LIKE`` matches the string anywhere, so
+#: ``notgrok.com.example`` or a URL carrying one as a query parameter would
+#: otherwise enter the sample and could even trigger the project-route verdict.
+#: :func:`is_grok_url` checks the parsed host and route afterwards.
 GROK_HOSTS = ("grok.com", "x.com/i/grok", "twitter.com/i/grok")
+
+#: Hosts where Grok lives under a route rather than owning the whole domain.
+_GROK_ROUTE_HOSTS = {"x.com": "/i/grok", "twitter.com": "/i/grok"}
 
 #: Chromium-family browsers share the History schema, so one query covers them
 #: all. Listing them separately matters for a null result: "no Grok visits" and
@@ -70,12 +78,40 @@ _ID_RE = re.compile(
     r"|\d{6,})$"                                                          # numeric
 )
 
+#: Route words a chat host uses. Anything else in a path is redacted, so this
+#: list is the whole vocabulary the reported shapes can contain.
+_KNOWN_ROUTES = frozenset(
+    {
+        "c", "chat", "chats", "conversation", "thread", "threads",
+        "project", "projects", "p", "workspace", "folder",
+        "i", "grok", "share", "new", "app", "home",
+    }
+)
+#: Routes whose following id names *this conversation* rather than its container.
+_CONVERSATION_ROUTES = frozenset({"c", "chat", "chats", "conversation", "thread"})
+
 _TITLE_SEPARATORS = (" — ", " – ", " | ", " · ", " - ")
 
 #: Below this many conversations, a segment present on every one of them cannot
 #: be told apart from a Project label that happens to cover the whole sample.
 #: Claiming "branding" there would turn a thin sample into a false negative.
 _AMBIGUITY_FLOOR = 5
+
+
+def is_grok_url(url: str) -> bool:
+    """True only when the *parsed* host (and route, where shared) is Grok's."""
+    from urllib.parse import urlparse
+
+    try:
+        parsed = urlparse(url or "")
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    if host == "grok.com" or host.endswith(".grok.com"):
+        return True
+    route = _GROK_ROUTE_HOSTS.get(host)
+    path = (parsed.path or "").lower()
+    return bool(route and (path == route or path.startswith(route + "/")))
 
 
 def profile_history_paths(home: Path) -> List[Tuple[str, Path]]:
@@ -99,8 +135,41 @@ def profile_history_paths(home: Path) -> List[Tuple[str, Path]]:
     return found
 
 
-def fetch_rows(home: Path, days: int | None) -> Tuple[List[Tuple[int, str, str]], List[str], List[str]]:
-    """``(rows, browsers_seen, browsers_with_hits)`` for Grok visits."""
+def profile_readable(history_path: Path) -> bool:
+    """True when this History database can actually be copied and queried.
+
+    ``query_chrome`` swallows copy and SQL errors and returns ``[]``, which is
+    indistinguishable from a history holding no Grok visits. Counting an
+    unreadable profile as readable turned ``INCONCLUSIVE`` into ``NO DATA`` —
+    the one distinction this script exists to keep.
+    """
+    import shutil
+    import sqlite3
+    import tempfile
+
+    handle = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    handle.close()
+    try:
+        shutil.copy2(history_path, handle.name)
+        conn = sqlite3.connect(handle.name)
+        try:
+            conn.execute("SELECT 1 FROM urls LIMIT 1").fetchone()
+        finally:
+            conn.close()
+        return True
+    except (OSError, sqlite3.Error):
+        return False
+    finally:
+        try:
+            os.unlink(handle.name)
+        except OSError:
+            pass
+
+
+def fetch_rows(
+    home: Path, days: int | None
+) -> Tuple[List[Tuple[int, str, str]], List[str], List[str], List[str]]:
+    """``(rows, browsers_readable, browsers_with_hits, browsers_unreadable)``."""
     if days:
         start = datetime.now(timezone.utc) - timedelta(days=days)
     else:
@@ -114,35 +183,72 @@ def fetch_rows(home: Path, days: int | None) -> Tuple[List[Tuple[int, str, str]]
     params = tuple(f"%{host}%" for host in GROK_HOSTS)
 
     rows: List[Tuple[int, str, str]] = []
-    seen: List[str] = []
+    readable: List[str] = []
+    unreadable: List[str] = []
     with_hits: List[str] = []
     for browser, path in profile_history_paths(home):
-        if browser not in seen:
-            seen.append(browser)
-        got = query_chrome(path, where, start_cu, end_cu, params)
+        if not profile_readable(path):
+            if browser not in unreadable:
+                unreadable.append(browser)
+            continue
+        if browser not in readable:
+            readable.append(browser)
+        # The SQL LIKE is a prefilter; the parsed host is the actual test.
+        got = [row for row in query_chrome(path, where, start_cu, end_cu, params)
+               if is_grok_url(row[1] or "")]
         if got:
             rows.extend(got)
             if browser not in with_hits:
                 with_hits.append(browser)
-    return rows, seen, with_hits
+    return rows, readable, with_hits, unreadable
 
 
 def path_shape(url: str) -> Tuple[str, str | None]:
-    """``(templated path, conversation id)`` — ``/c/<id>`` from ``/c/abc123``."""
+    """``(templated path, conversation id)`` — ``grok.com/c/<id>`` from a chat URL.
+
+    Every segment that is not a **known route word** is replaced, not kept. A
+    short segment that no id pattern matches is exactly where a project or
+    customer name sits (``/project/Acme/c/…``), and both output formats print the
+    shape — so keeping it verbatim would leak the name this script exists to
+    avoid printing. Known routes survive because the shape is worthless without
+    them.
+
+    The conversation id is the one that follows a **conversation** route, not the
+    first id in the path. For ``/project/<pid>/c/<cid>`` the first id is the
+    project's; using it collapsed every chat in a project into one conversation
+    and made their differing titles look like one renamed thread, which is the
+    measurement this script is for.
+    """
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower().removeprefix("www.")
     segments = [s for s in (parsed.path or "").split("/") if s]
     shaped: List[str] = []
-    conversation_id: str | None = None
+    ids: List[Tuple[str, str | None]] = []  # (id, preceding route word)
+    previous_route: str | None = None
     for segment in segments:
         if _ID_RE.match(segment):
             shaped.append("<id>")
-            if conversation_id is None:
-                conversation_id = segment
+            ids.append((segment, previous_route))
+            previous_route = None
+            continue
+        lowered = segment.lower()
+        if lowered in _KNOWN_ROUTES:
+            shaped.append(lowered)
+            previous_route = lowered
         else:
-            shaped.append(segment)
+            shaped.append("<seg>")
+            previous_route = None
+
+    conversation_id: str | None = None
+    for value, route in ids:
+        if route in _CONVERSATION_ROUTES:
+            conversation_id = value
+    if conversation_id is None and len(ids) == 1 and ids[0][1] is None:
+        # A bare ``/<id>`` with no route word: the only id, and nothing says it
+        # belongs to a project, so it is this conversation.
+        conversation_id = ids[0][0]
     return f"{host}/{'/'.join(shaped)}" if shaped else host, conversation_id
 
 
@@ -196,7 +302,6 @@ def analyse(rows: List[Tuple[int, str, str]]) -> Dict[str, Any]:
         for segment, keys in segment_ids.items()
         if total_conversations > 1 and len(keys) == total_conversations
     )
-    renamed = sum(1 for names in titles_by_id.values() if len(names) > 1)
 
     return {
         "visits": len(rows),
@@ -208,11 +313,11 @@ def analyse(rows: List[Tuple[int, str, str]]) -> Dict[str, Any]:
             {"shape": shape, "visits": count, "distinct_ids": len(ids_per_shape[shape])}
             for shape, count in shapes.most_common()
         ],
+        "titled_conversations": len([k for k, v in titles_by_id.items() if v]),
         "project_like_title_segments": sorted(
             grouping.items(), key=lambda kv: (-kv[1], kv[0])
         )[:10],
         "constant_title_segments": branding,
-        "conversations_seen_under_more_than_one_title": renamed,
     }
 
 
@@ -239,14 +344,24 @@ def find_app_dirs(home: Path) -> List[Dict[str, Any]]:
             continue
         for child in children:
             name = child.name.lower()
-            if any(hint in name for hint in APP_DIR_HINTS):
-                out.append({"path": str(child).replace(str(home), "~"), "is_dir": child.is_dir()})
+            hit = next((hint for hint in APP_DIR_HINTS if hint in name), None)
+            if hit:
+                # The directory *name* is reported as the hint it matched and the
+                # library it sits in — never verbatim. `grok-Acme` matching here
+                # would otherwise print a customer name in the default report.
+                out.append({"library": base.name, "hint": hit, "is_dir": child.is_dir()})
     return out
 
 
 def verdict(report: Dict[str, Any]) -> str:
     """The answer Q1 asks for, in one line."""
     if not report["browsers_seen"]:
+        if report.get("browsers_unreadable"):
+            return (
+                "INCONCLUSIVE — %d browser(s) were found but their history could "
+                "not be read, so this says nothing about Grok."
+                % len(report["browsers_unreadable"])
+            )
         return (
             "INCONCLUSIVE — no Chromium-family browser data was readable, so "
             "this says nothing about Grok."
@@ -280,6 +395,13 @@ def verdict(report: Dict[str, Any]) -> str:
             "separate them; re-run with a wider history or read them with "
             "--show-samples." % report["conversations"]
         )
+    if report["titled_conversations"] < _AMBIGUITY_FLOOR and not report["project_like_title_segments"]:
+        return (
+            "INSUFFICIENT TITLES — only %d conversation(s) carry a title, which "
+            "cannot support ruling the title out as a Project signal. Widen the "
+            "history window (--days) or use Grok more before trusting a negative."
+            % report["titled_conversations"]
+        )
     if report["constant_title_segments"]:
         return (
             "PROJECT NOT OBSERVABLE — no project route in the URL, and the only "
@@ -297,6 +419,11 @@ def verdict(report: Dict[str, Any]) -> str:
 def render(report: Dict[str, Any]) -> str:
     lines = ["Grok local surface — measurement", ""]
     lines.append(f"Browsers readable : {', '.join(report['browsers_seen']) or 'none'}")
+    if report.get("browsers_unreadable"):
+        lines.append(
+            f"Found but UNREADABLE: {', '.join(report['browsers_unreadable'])} "
+            "— these say nothing either way"
+        )
     lines.append(f"With Grok visits  : {', '.join(report['browsers_with_hits']) or 'none'}")
     lines.append(f"Visits            : {report['visits']} ({report['visits_with_title']} with a title)")
     lines.append(f"Conversations     : {report['conversations']}")
@@ -331,17 +458,21 @@ def render(report: Dict[str, Any]) -> str:
             f"On every title    : {len(report['constant_title_segments'])} segment(s) "
             f"({lengths}) — branding, or a project covering the whole sample"
         )
-    if report["conversations_seen_under_more_than_one_title"]:
-        lines.append(
-            "Retitled threads  : %d conversation(s) appeared under more than one "
-            "title — a title binding would have detached (survey Q2)."
-            % report["conversations_seen_under_more_than_one_title"]
-        )
+    lines.append(
+        "Retitled threads  : not measurable here. Chromium stores the title on "
+        "the URL row, so every visit to one URL reports that URL's *current* "
+        "title and a rename leaves no trace. Q2 needs a source that keeps "
+        "per-visit titles."
+    )
     lines.append("")
     lines.append("Local app data")
     if report["app_dirs"]:
         for entry in report["app_dirs"]:
-            lines.append(f"  {entry['path']}")
+            lines.append(
+                f"  1 entry matching {entry['hint']!r} under "
+                f"~/Library/{entry['library']}"
+                + ("/" if entry["is_dir"] else " (file)")
+            )
     else:
         lines.append("  none found — no Grok desktop build writes here")
     lines.append("")
@@ -357,7 +488,14 @@ def _json_payload(report: Dict[str, Any], show_samples: int) -> Dict[str, Any]:
     the operator asks for it.
     """
     if show_samples:
-        return report
+        # The flag is an opt-in to *samples*, not to everything: N bounds both
+        # lists here exactly as it bounds the printed ones.
+        payload = dict(report)
+        payload["project_like_title_segments"] = report["project_like_title_segments"][:show_samples]
+        payload["constant_title_segments"] = report["constant_title_segments"][:show_samples]
+        payload["segments_redacted"] = False
+        payload["contains_samples"] = True
+        return payload
     payload = dict(report)
     payload["project_like_title_segments"] = [
         [len(segment), count] for segment, count in report["project_like_title_segments"]
@@ -384,10 +522,11 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     home = Path(args.home).expanduser() if args.home else Path.home()
-    rows, seen, with_hits = fetch_rows(home, args.days or None)
+    rows, readable, with_hits, unreadable = fetch_rows(home, args.days or None)
     report = analyse(rows)
-    report["browsers_seen"] = seen
+    report["browsers_seen"] = readable
     report["browsers_with_hits"] = with_hits
+    report["browsers_unreadable"] = unreadable
     report["app_dirs"] = find_app_dirs(home)
     report["verdict"] = verdict(report)
 

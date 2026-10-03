@@ -11,7 +11,7 @@ worked example.
 - spec_status: `draft`
 - implementation_status: `in progress` — D1 + D3 built (§11); D2, D4, D5 open
 - created_at: `2026-08-25`
-- last_updated_at: `2026-10-02`
+- last_updated_at: `2026-10-03`
 - implementation.pr: pending
 - implementation.branch: `claude/detection-survey-and-tooling` (docs + tooling), `claude/matching-ladder-d1-d3` (matcher)
 - implementation.commits: []
@@ -25,6 +25,7 @@ worked example.
   - `2026-08-26: D1 built — classify_project ranks bindings as a tier; over-broad tracked_urls stay additive.`
   - `2026-08-26: D3 built — declared jira_issue_key is a rank-3 tier; undeclared keys resolve via a unique project prefix.`
   - `2026-10-02: Split into two branches after #578 closed unmerged; matcher changes reviewed separately from docs and tooling.`
+  - `2026-10-03: Q1 tooling hardened after review — path segments and app-dir names redacted, conversation id read from the chat route, unreadable history kept distinct from empty, host validated after the SQL prefilter. The Q2 claim is withdrawn: Chrome History cannot observe a rename.`
 
 ## Scope and anti-goals
 
@@ -405,8 +406,12 @@ binding is only authoritative while it carries a human's words.
   segment text unless `--show-samples` asks for it, because a title segment is
   exactly where a customer name would sit.
 
-  The measurement also reports how many threads appeared under more than one
-  title, which is the direct evidence for or against Q2.
+  **Q2 cannot be answered from this source, and the script says so.** A first
+  version counted threads "seen under more than one title" and called it
+  evidence. Chromium stores the title on the *URL* row, so every visit to one URL
+  reports that URL's current title and a rename leaves no trace — the metric
+  could only have fired if the URL changed too. Answering Q2 needs a source that
+  keeps per-visit titles.
 - **Q2 — title stability.** Chat tools rename threads (auto-titling on first
   turn, later re-titling). A title binding keyed on a string that changes silently
   re-orphans the thread. Mitigation: bind on first sighting, and treat a changed

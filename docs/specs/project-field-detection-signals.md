@@ -13,7 +13,7 @@ worked example.
 - created_at: `2026-08-25`
 - last_updated_at: `2026-10-03`
 - implementation.pr: pending
-- implementation.branch: `claude/detection-survey-and-tooling` (docs + tooling), `claude/matching-ladder-d1-d3` (matcher)
+- implementation.branch: `claude/matching-ladder-d1-d3` (matcher); docs + tooling landed via #579
 - implementation.commits: []
 - validation.evidence: code references in §1–§3 (read at commit `fca62c4`)
 - validation.decision: `pending`
@@ -25,6 +25,7 @@ worked example.
   - `2026-08-26: D1 built — classify_project ranks bindings as a tier; over-broad tracked_urls stay additive.`
   - `2026-08-26: D3 built — declared jira_issue_key is a rank-3 tier; undeclared keys resolve via a unique project prefix.`
   - `2026-10-02: Split into two branches after #578 closed unmerged; matcher changes reviewed separately from docs and tooling.`
+  - `2026-10-03: Docs and tooling merged as #579; this branch retargeted to main and the squash conflict resolved in favour of the matcher-side text.`
   - `2026-10-03: Q1 tooling hardened after review — path segments and app-dir names redacted, conversation id read from the chat route, unreadable history kept distinct from empty, host validated after the SQL prefilter. The Q2 claim is withdrawn: Chrome History cannot observe a rename.`
 
 ## Scope and anti-goals

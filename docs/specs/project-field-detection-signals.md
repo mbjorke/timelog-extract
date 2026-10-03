@@ -9,11 +9,11 @@ worked example.
 
 - story_id: `pending` (investigation; file issues from §6)
 - spec_status: `draft`
-- implementation_status: `in progress` — survey + measurement tooling; no behaviour change (D1–D5 open)
+- implementation_status: `in progress` — D1 + D3 built (§11); D2, D4, D5 open
 - created_at: `2026-08-25`
 - last_updated_at: `2026-10-03`
 - implementation.pr: pending
-- implementation.branch: `claude/project-field-detection-1txdx2`
+- implementation.branch: `claude/matching-ladder-d1-d3` (matcher); docs + tooling landed via #579
 - implementation.commits: []
 - validation.evidence: code references in §1–§3 (read at commit `fca62c4`)
 - validation.decision: `pending`
@@ -22,6 +22,10 @@ worked example.
   - `2026-08-26: Added §9 vocabulary alignment (source note kept in private gittan-home) and §10 idea bank I1–I9.`
   - `2026-08-26: Added §11 reconciliation against the documented matching order in docs/product/agent-context.md; Q5 reclassified as defect D1.`
   - `2026-08-26: Q1 measurement tooling built (scripts/measure_grok_surface.py); the question itself is still unanswered until it runs on the operator's machine.`
+  - `2026-08-26: D1 built — classify_project ranks bindings as a tier; over-broad tracked_urls stay additive.`
+  - `2026-08-26: D3 built — declared jira_issue_key is a rank-3 tier; undeclared keys resolve via a unique project prefix.`
+  - `2026-10-02: Split into two branches after #578 closed unmerged; matcher changes reviewed separately from docs and tooling.`
+  - `2026-10-03: Docs and tooling merged as #579; this branch retargeted to main and the squash conflict resolved in favour of the matcher-side text.`
   - `2026-10-03: Q1 tooling hardened after review — path segments and app-dir names redacted, conversation id read from the chat route, unreadable history kept distinct from empty, host validated after the SQL prefilter. The Q2 claim is withdrawn: Chrome History cannot observe a rename.`
 
 ## Scope and anti-goals
@@ -611,9 +615,9 @@ customer an hour is billed to. Five concrete divergences:
 
 | # | Documented | Implemented | Effect |
 | --- | --- | --- | --- |
-| **D1** | `tracked_urls` / binding outranks everything | `tracked_urls` scores 2.0 and is **summed** with everything else | Three ordinary `match_terms` (3.0) beat the explicit URL binding (2.0). The most deliberate signal in the config loses to three casual ones. |
+| **D1** | `tracked_urls` / binding outranks everything | ~~scores 2.0 and is **summed**~~ → **fixed**: a specific `tracked_urls` hit is now the first rank element, so it wins outright | Was: three ordinary `match_terms` (3.0) beat the explicit URL binding (2.0), and the most deliberate signal in the config lost to three casual ones. |
 | **D2** | *Specific* terms — long unique strings — rank above ordinary ones | Every `match_terms` entry scores 1.0 regardless of length; length only breaks ties (rank element 3) | A full chat title and a three-letter term carry identical weight. The word "specific" has no mechanical meaning today. |
-| **D3** | Git issue keys / branch keys rank 3 | **Not a classification signal at all** — `extract_issue_key` / `build_issue_key_map` exist but serve only worklog posting | The highest-precision token in the system is unused for attribution (see I2). |
+| **D3** | Git issue keys / branch keys rank 3 | ~~not a classification signal at all~~ → **fixed**: a declared `jira_issue_key` is a rank-3 tier; an undeclared key resolves through its Jira project prefix when exactly one profile owns it | Was: the highest-precision token in the system was unused for attribution. |
 | **D4** | Short names are *weak alone* | The profile `name` scores a full 1.0, same as any term; `GENERIC_TOOL_TERMS` is a hardcoded list of tool names (jira, toggl, cloudflare), not a shortness or weakness rule | A profile called `gittan` matches every mention of the word at full strength — the exact failure the ladder's rank 4 exists to prevent (see I8). |
 | **D5** | Worklog manual line is backup truth | `TIMELOG.md` is `PRIMARY_CLAIM` by *role*, but its events go through the same matcher as everything else; there is no backup-truth layer | The one source carrying a human's own statement of project and time cannot rescue anything (see I4). |
 
@@ -646,3 +650,73 @@ D1 first: it is the smallest change (a comparison rule in
 is required before D2–D5 mean anything — adding a high-precision signal to a
 summed score just adds another addend. Then D3 (I2 stage 1), then D4 (I8), then
 D5 (I4), which needs the review surface.
+
+### D1 — built
+
+`classify_project` now ranks by `(bound, binding_len, score, …)`. A profile with
+a specific `tracked_urls` match beats one without, whatever the other side's
+score; two bound profiles are separated by the longest URL match, so a
+per-conversation entry beats a broader one on the same host and profile order
+never decides it.
+
+Weighting the URL higher would not have worked: any finite weight is eventually
+out-summed by enough weak terms. The tier is the only shape that makes rank 1
+mean rank 1.
+
+One hazard came with it and is handled. Making URL hits dominate would have made
+an over-broad entry — a bare `claude.ai`, or one generic route segment — capture
+every chat on that host and outrank every other profile. Those entries are
+classified as `_IMPACT_URL_BROAD` and keep the old additive weight, reusing
+`core/tracked_url_policy.py::is_over_broad_tracked_url`, which `projects_lint`
+already warns about. A host hint is not a binding to *this* conversation.
+
+Covered by four tests in `tests/test_core_domain.py`: the tier itself, the
+over-broad guard, longest-URL tiebreak (both profile orders), and that the tier
+never rescues a profile whose URL did not match. Full gate green (1970 tests).
+
+### D3 — built
+
+Rank 3 seats issue keys between the binding tier and the score:
+`(bound, binding_len, issue_exact, score, …)`.
+
+**Exact vs inferred.** A key the profile *declares* in `jira_issue_key` takes the
+tier — it is a declaration, as deliberate as a `tracked_urls` entry. A key the
+operator never declared, whose Jira project prefix exactly one profile owns
+(`OPS-77` against a declared `OPS-42`), is an *inference*: it scores **below a
+single ordinary term**, so it can classify an event nothing else claims but
+loses to one declared `match_terms` hit for another customer. It first shipped at
+repo-path weight, which beat a single term and so did the opposite of what it
+promised — caught in review on #580. That split is what makes rank 3 useful at all — nobody
+declares every issue, and `jira_issue_key` is a single catch-all issue, not a
+list.
+
+**Ambiguity is dropped, not guessed.** When two profiles bill into the same Jira
+project, the prefix cannot tell them apart, and guessing would move hours between
+customers. Such a prefix maps to nothing; an exactly declared key in that same
+project still resolves — unless *both* profiles declare the same key, which is
+the same ambiguity one level down and is refused the same way rather than
+resolved by config order.
+
+**Branch keys come along.** Extraction runs on the raw text rather than the
+lower-cased haystack and matches case-insensitively, so `feature/ops-77-refactor`
+carries rank-3 evidence exactly as a commit subject does.
+
+Cost is zero for configs that declare no `jira_issue_key`: the index is empty and
+the regex never runs. Measured at 20k calls against 60 profiles, both shapes land
+within noise of each other (0.82s vs 0.84s).
+
+Eight tests in `tests/test_core_domain.py`. Full gate green (1978 tests).
+
+**Known approximation.** Until D2 exists, "specific `match_terms`" has no
+mechanical meaning, so the rank-3 tier also sits above ladder rank 2. Practical
+disagreement needs a text carrying both a long unique term of one project and a
+declared key of another — rare, and visible in review when it happens.
+
+**Cleanup noted, not taken.** Three in-tree spellings of the issue-key pattern
+disagree: `core/jira_sync.py` rejects the underscores `core/config.py` accepts,
+and `core/cli_reported.py` has a third. D3 adds a fourth in `core/domain.py`
+rather than importing `jira_sync` (which reaches the network stack) into the hot
+path. Unifying them would change what gets *posted*, so it belongs in its own
+change.
+
+**Still open: D2, D4, D5.**

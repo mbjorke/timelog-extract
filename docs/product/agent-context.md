@@ -84,12 +84,14 @@ same object. See `docs/specs/project-field-detection-signals.md` §9.
 A future MCP surface must **write the same binding store**, not a parallel
 AI-guess layer.
 
-> **This is a ladder, not a score.** The shipped matcher
-> (`core/domain.py::classify_project`) ranks by a *summed* score, so several weak
-> terms can outrank one `tracked_urls` hit, and ranks 3 and 5 are not implemented
-> as classification signals at all. The gap is inventoried as D1–D5 in
-> `docs/specs/project-field-detection-signals.md` §11. Treat the ladder above as
-> the intent and the survey as the current truth.
+> **This is a ladder, not a score.** Ranks 1 and 3 are built as tiers in
+> `classify_project`: a specific `tracked_urls` match wins outright, then a
+> declared `jira_issue_key`. Two things stay additive on purpose — an over-broad
+> URL on a shared host (a host hint, not a binding) and an issue key resolved
+> only through its project prefix (an inference, not a declaration). Ranks 2 and
+> 4 are still the older summed score, and rank 5 is not implemented at all. The
+> remaining gap is inventoried as D2, D4 and D5 in
+> `docs/specs/project-field-detection-signals.md` §11.
 
 ---
 

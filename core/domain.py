@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse, urlunparse
 
 from core.sources import AGENT_SOURCES, ATTENDED_SOURCES, canonical_source_name
+from core.tracked_url_policy import is_over_broad_tracked_url
 
 GENERIC_TOOL_TERMS = {
     "cloudflare",
@@ -24,7 +25,22 @@ _IMPACT_GENERIC = 0
 _IMPACT_PATH = 1
 _IMPACT_NORMAL = 2
 _IMPACT_NAME = 3
+#: A specific ``tracked_urls`` entry — one conversation, one page. This is the
+#: "explicit binding" at the top of the documented matching ladder
+#: (``docs/product/agent-context.md``), so it wins outright rather than being
+#: added to a score. See ``classify_project``.
 _IMPACT_URL = 4
+#: A ``tracked_urls`` entry that would match unrelated chats on a shared host
+#: (a bare ``claude.ai``, or one generic route segment). It is a host hint, not a
+#: binding to *this* conversation, so it keeps the old additive weight and never
+#: reaches the binding tier — otherwise one over-broad entry would capture every
+#: chat on that host and outrank every other profile.
+_IMPACT_URL_BROAD = 5
+
+#: Score for an issue key resolved only through its Jira project prefix. Below
+#: an ordinary ``match_terms`` hit (1.0) on purpose: an inference must lose to
+#: declared term evidence for another customer.
+_ISSUE_PREFIX_WEIGHT = 0.5
 
 
 @functools.lru_cache(maxsize=1024)
@@ -34,6 +50,38 @@ def _is_path_like_term(term: str) -> bool:
 
 
 _URL_TOKEN_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+
+#: An issue key as ``core/config.py`` validates it for ``jira_issue_key``
+#: (``ABC-123``, underscores allowed for instances that use them) — matched
+#: case-insensitively here, because a branch name usually lowercases the key it
+#: carries (``feature/gh-527-foo``) and a branch key is rank 3 of the ladder just
+#: as much as the commit subject is.
+#:
+#: Deliberately a third pattern rather than an import: ``core/jira_sync.py``
+#: reaches the network stack, and this runs on the hot classification path.
+#: The three in-tree spellings disagree (jira_sync rejects underscores that
+#: config accepts) — noted as a cleanup in the D3 section of
+#: ``docs/specs/project-field-detection-signals.md``, not fixed here, because
+#: widening jira_sync would change what gets *posted*.
+_ISSUE_KEY_RE = re.compile(r"\b([A-Za-z][A-Za-z0-9_]+-\d+)\b")
+
+
+@functools.lru_cache(maxsize=1024)
+def _issue_keys_in(text: str) -> frozenset[str]:
+    """Upper-cased issue keys appearing in ``text`` (original case, not the haystack).
+
+    Runs on the raw text because the haystack is lower-cased before matching and
+    a key is written in upper case wherever it is declared.
+    """
+    if "-" not in text:
+        return frozenset()
+    return frozenset(match.upper() for match in _ISSUE_KEY_RE.findall(text))
+
+
+def _issue_key_prefix(key: str) -> str:
+    """``ABC`` from ``ABC-123`` — the Jira project the issue belongs to."""
+    head, _, _tail = str(key or "").rpartition("-")
+    return head.strip().upper()
 
 
 @functools.lru_cache(maxsize=2048)
@@ -87,6 +135,7 @@ def _compile_profiles_index(
     dict[str, list[tuple[int, int]]],
     list[tuple[str, list[tuple[int, int]]]],
     dict[str, list[tuple[int, int]]],
+    dict[str, dict[str, Any]],
 ]:
     """Index profiles by term for fast lookup.
 
@@ -94,6 +143,11 @@ def _compile_profiles_index(
         fast_terms: Map of alphanumeric terms to (profile_index, impact_type)
         slow_terms: List of (term, impacts) for non-alphanumeric or path-like terms
         all_impacts: Combined map for all terms
+        issue_index: ``{"exact": {KEY: [idx]}, "prefix": {PFX: idx | None}}`` from
+            declared ``jira_issue_key`` values. A prefix owned by more than one
+            profile maps to ``None``: two profiles billing into the same Jira
+            project cannot be told apart by the prefix, and guessing between them
+            would move hours between customers, so the signal is dropped instead.
     """
     term_to_impacts: dict[str, list[tuple[int, int]]] = {}
 
@@ -123,7 +177,8 @@ def _compile_profiles_index(
             add_term(name_lower, i, _IMPACT_NAME)
 
         for url in profile.get("tracked_urls") or []:
-            add_term(url, i, _IMPACT_URL)
+            impact = _IMPACT_URL_BROAD if is_over_broad_tracked_url(url) else _IMPACT_URL
+            add_term(url, i, impact)
 
     fast_terms: dict[str, list[tuple[int, int]]] = {}
     slow_terms: list[tuple[str, list[tuple[int, int]]]] = []
@@ -133,7 +188,29 @@ def _compile_profiles_index(
         else:
             slow_terms.append((term, impacts))
 
-    return fast_terms, slow_terms, term_to_impacts
+    exact_keys: dict[str, list[int]] = {}
+    prefix_owner: dict[str, Any] = {}
+    for i, profile in enumerate(profiles):
+        key = str(profile.get("jira_issue_key") or "").strip().upper()
+        if not key:
+            continue
+        exact_keys.setdefault(key, []).append(i)
+        prefix = _issue_key_prefix(key)
+        if not prefix:
+            continue
+        if prefix in prefix_owner and prefix_owner[prefix] != i:
+            prefix_owner[prefix] = None  # ambiguous — see the docstring
+        else:
+            prefix_owner.setdefault(prefix, i)
+
+    # A key two profiles both declare is as ambiguous as a shared prefix, and
+    # ranking it would hand the hours to whichever profile the config lists
+    # first. Refused for the same reason the prefix case is: picking between two
+    # customers by list order is not a decision this code gets to make.
+    exact_keys = {key: idxs for key, idxs in exact_keys.items() if len(idxs) == 1}
+
+    issue_index = {"exact": exact_keys, "prefix": prefix_owner}
+    return fast_terms, slow_terms, term_to_impacts, issue_index
 
 
 _LAST_PROFILES_DATA: tuple[Any, Any, Any] | None = None
@@ -173,10 +250,28 @@ def _matches_term(term: str, haystack: str, word_set: Optional[Set[str]] = None)
 
 
 def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -> str:
+    """The profile ``text`` belongs to, or ``fallback``.
+
+    Matching is a **ladder, not a score** (``docs/product/agent-context.md`` →
+    *Project matching*). An explicit binding — a specific ``tracked_urls`` entry —
+    is rank 1 and wins outright; everything below it is still resolved by the
+    additive score it always used.
+
+    That distinction matters because the score is a *sum*: before the binding tier
+    existed, three ordinary ``match_terms`` (3.0) outranked one ``tracked_urls``
+    hit (2.0), so the most deliberate signal in the config lost to three casual
+    ones and hours moved to the wrong customer. Adding weight to the URL would not
+    have fixed it — any weight is eventually out-summed by enough weak terms.
+    Recorded as D1 in ``docs/specs/project-field-detection-signals.md`` §11.
+
+    Two profiles that both match a URL are separated by the longest URL match, so
+    a per-conversation entry beats a broader one on the same host. An entry that
+    ``is_over_broad_tracked_url`` rejects never reaches the tier at all.
+    """
     if not text:
         return fallback
 
-    fast_terms, slow_terms, all_impacts = _get_compiled_index(profiles)
+    fast_terms, slow_terms, all_impacts, issue_index = _get_compiled_index(profiles)
     haystack_with_variants, word_set = _prepare_haystack_and_word_set(text.lower())
 
     matched_terms = set()
@@ -191,15 +286,49 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
             if _matches_term(term, haystack_with_variants, word_set=word_set):
                 matched_terms.add(term)
 
-    if not matched_terms:
+    num_profs = len(profiles)
+    issue_exact = [0] * num_profs
+    issue_prefix = [0] * num_profs
+    # Rank 3 of the ladder. Skipped entirely when no profile declares a
+    # jira_issue_key, which is the common config — the regex never runs.
+    if issue_index["exact"]:
+        for key in _issue_keys_in(text):
+            for idx in issue_index["exact"].get(key, ()):
+                issue_exact[idx] += 1
+            owner = issue_index["prefix"].get(_issue_key_prefix(key))
+            if owner is not None and not issue_index["exact"].get(key):
+                issue_prefix[owner] += 1
+
+    if not matched_terms and not any(issue_exact) and not any(issue_prefix):
         return fallback
 
-    num_profs = len(profiles)
     scores = [0.0] * num_profs
     specifics = [0] * num_profs
     generics = [0] * num_profs
     lens = [0] * num_profs
     counts = [0] * num_profs
+    bindings = [0] * num_profs
+    binding_lens = [0] * num_profs
+
+    # Issue-key evidence also has to clear the floor below, or a profile matched
+    # only by its key would be dropped before ranking ever sees the tier.
+    #
+    # An exact hit is a declaration and takes the tier below. A prefix hit is an
+    # *inference* — a key the operator never declared, whose Jira project exactly
+    # one profile does.
+    #
+    # The inference is weighted **below one ordinary term**, not at repo-path
+    # weight. It still clears the floor on its own, because it sets a specific
+    # hit, so it can classify an event nothing else claims; but a single genuine
+    # match_term or profile-name hit for another customer now outranks it. At
+    # 2.0 it did the opposite of what this comment promised.
+    for i in range(num_profs):
+        if issue_exact[i]:
+            scores[i] += 2.0
+            specifics[i] += 1
+        elif issue_prefix[i]:
+            scores[i] += _ISSUE_PREFIX_WEIGHT
+            specifics[i] += 1
 
     # 3. Single-pass scoring: accumulate rank components for all matching profiles.
     for term in matched_terms:
@@ -222,16 +351,38 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
                 scores[idx] += 1.0
                 specifics[idx] += 1
             elif impact == _IMPACT_URL:
+                bindings[idx] += 1
+                # Longest match, not the sum of matched lengths. One profile
+                # listing two overlapping tracked_urls would otherwise add them
+                # together and beat another profile's single, longer, more
+                # specific URL — the opposite of the documented rule.
+                binding_lens[idx] = max(binding_lens[idx], t_len)
+                scores[idx] += 2.0
+                specifics[idx] += 1
+            elif impact == _IMPACT_URL_BROAD:
                 scores[idx] += 2.0
                 specifics[idx] += 1
 
     best_name = fallback
-    # Rank: (weighted_score, specific_hits, total_match_len, -generic_hits, total_matches)
-    best_rank = (0.0, 0, 0, 0, 0)
+    # Rank, most significant first:
+    #   1. bound        — 1 when a specific tracked_urls entry matched (ladder rank 1)
+    #   2. binding_len  — among bound profiles, the longest URL match
+    #   3. issue_exact  — an issue key this profile declares (ladder rank 3)
+    #   4. weighted_score, specific_hits, total_match_len, -generic_hits, total_matches
+    best_rank = (0, 0, 0, 0.0, 0, 0, 0, 0)
 
     for i in range(num_profs):
         if specifics[i] > 0 or scores[i] >= 1.0:
-            rank = (scores[i], specifics[i], lens[i], -generics[i], counts[i])
+            rank = (
+                1 if bindings[i] else 0,
+                binding_lens[i],
+                1 if issue_exact[i] else 0,
+                scores[i],
+                specifics[i],
+                lens[i],
+                -generics[i],
+                counts[i],
+            )
             if rank > best_rank:
                 best_rank = rank
                 best_name = profiles[i]["name"]

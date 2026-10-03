@@ -129,15 +129,24 @@ def _load_profiles(cwd: str) -> list:
     ]
 
 
-def main() -> int:
+def line_for(cwd: str) -> str:
+    """The statusline for ``cwd``; blank on any error (never disrupts a prompt)."""
     try:
         from core.repo_slug import resolve_path_repo_slug
 
-        cwd = _resolve_cwd()
         slug = resolve_path_repo_slug(cwd)
-        print(statusline_text(slug, _load_profiles(cwd), date.today().isoformat()))
+        return statusline_text(slug, _load_profiles(cwd), date.today().isoformat())
+    except Exception:  # noqa: BLE001 - a statusline must never disrupt the prompt
+        return ""
+
+
+def main() -> int:
+    try:
+        cwd = _resolve_cwd()
     except Exception:  # noqa: BLE001 - a statusline must never disrupt the prompt
         print("")
+        return 0
+    print(line_for(cwd))
     return 0
 
 

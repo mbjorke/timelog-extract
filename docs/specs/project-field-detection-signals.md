@@ -681,16 +681,20 @@ Rank 3 seats issue keys between the binding tier and the score:
 **Exact vs inferred.** A key the profile *declares* in `jira_issue_key` takes the
 tier — it is a declaration, as deliberate as a `tracked_urls` entry. A key the
 operator never declared, whose Jira project prefix exactly one profile owns
-(`OPS-77` against a declared `OPS-42`), is an *inference*: it gets repo-path
-weight in the score instead, so it can classify on its own but cannot overrule
-real term evidence. That split is what makes rank 3 useful at all — nobody
+(`OPS-77` against a declared `OPS-42`), is an *inference*: it scores **below a
+single ordinary term**, so it can classify an event nothing else claims but
+loses to one declared `match_terms` hit for another customer. It first shipped at
+repo-path weight, which beat a single term and so did the opposite of what it
+promised — caught in review on #580. That split is what makes rank 3 useful at all — nobody
 declares every issue, and `jira_issue_key` is a single catch-all issue, not a
 list.
 
 **Ambiguity is dropped, not guessed.** When two profiles bill into the same Jira
 project, the prefix cannot tell them apart, and guessing would move hours between
 customers. Such a prefix maps to nothing; an exactly declared key in that same
-project still resolves.
+project still resolves — unless *both* profiles declare the same key, which is
+the same ambiguity one level down and is refused the same way rather than
+resolved by config order.
 
 **Branch keys come along.** Extraction runs on the raw text rather than the
 lower-cased haystack and matches case-insensitively, so `feature/ops-77-refactor`

@@ -37,6 +37,11 @@ _IMPACT_URL = 4
 #: chat on that host and outrank every other profile.
 _IMPACT_URL_BROAD = 5
 
+#: Score for an issue key resolved only through its Jira project prefix. Below
+#: an ordinary ``match_terms`` hit (1.0) on purpose: an inference must lose to
+#: declared term evidence for another customer.
+_ISSUE_PREFIX_WEIGHT = 0.5
+
 
 @functools.lru_cache(maxsize=1024)
 def _is_path_like_term(term: str) -> bool:
@@ -198,6 +203,12 @@ def _compile_profiles_index(
         else:
             prefix_owner.setdefault(prefix, i)
 
+    # A key two profiles both declare is as ambiguous as a shared prefix, and
+    # ranking it would hand the hours to whichever profile the config lists
+    # first. Refused for the same reason the prefix case is: picking between two
+    # customers by list order is not a decision this code gets to make.
+    exact_keys = {key: idxs for key, idxs in exact_keys.items() if len(idxs) == 1}
+
     issue_index = {"exact": exact_keys, "prefix": prefix_owner}
     return fast_terms, slow_terms, term_to_impacts, issue_index
 
@@ -302,13 +313,21 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
     # Issue-key evidence also has to clear the floor below, or a profile matched
     # only by its key would be dropped before ranking ever sees the tier.
     #
-    # An exact hit is a declaration and takes the tier. A prefix hit is an
+    # An exact hit is a declaration and takes the tier below. A prefix hit is an
     # *inference* — a key the operator never declared, whose Jira project exactly
-    # one profile does — so it only competes on points, weighted like a repo path:
-    # enough to classify on its own, not enough to overrule real term evidence.
+    # one profile does.
+    #
+    # The inference is weighted **below one ordinary term**, not at repo-path
+    # weight. It still clears the floor on its own, because it sets a specific
+    # hit, so it can classify an event nothing else claims; but a single genuine
+    # match_term or profile-name hit for another customer now outranks it. At
+    # 2.0 it did the opposite of what this comment promised.
     for i in range(num_profs):
-        if issue_exact[i] or issue_prefix[i]:
+        if issue_exact[i]:
             scores[i] += 2.0
+            specifics[i] += 1
+        elif issue_prefix[i]:
+            scores[i] += _ISSUE_PREFIX_WEIGHT
             specifics[i] += 1
 
     # 3. Single-pass scoring: accumulate rank components for all matching profiles.
@@ -333,7 +352,11 @@ def classify_project(text: str, profiles: List[Dict[str, Any]], fallback: str) -
                 specifics[idx] += 1
             elif impact == _IMPACT_URL:
                 bindings[idx] += 1
-                binding_lens[idx] += t_len
+                # Longest match, not the sum of matched lengths. One profile
+                # listing two overlapping tracked_urls would otherwise add them
+                # together and beat another profile's single, longer, more
+                # specific URL — the opposite of the documented rule.
+                binding_lens[idx] = max(binding_lens[idx], t_len)
                 scores[idx] += 2.0
                 specifics[idx] += 1
             elif impact == _IMPACT_URL_BROAD:

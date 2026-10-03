@@ -279,6 +279,69 @@ class CoreDomainTests(unittest.TestCase):
             "Uncategorized",
         )
 
+    def test_classify_project_prefix_inference_loses_to_a_single_term(self):
+        """An inference must lose to one declared term, not just to four.
+
+        At repo-path weight (2.0) the prefix beat a single `match_terms` hit
+        (1.0) — the opposite of what the code's own comment promised.
+        """
+        profiles = [
+            {"name": "Zeta", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "Named", "match_terms": ["gamma"]},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-77 gamma", profiles, "Uncategorized"), "Named"
+        )
+        # A *declared* key is not an inference and still outranks the term.
+        self.assertEqual(
+            domain.classify_project("OPS-42 gamma", profiles, "Uncategorized"), "Zeta"
+        )
+
+    def test_classify_project_duplicate_declared_key_is_ambiguous(self):
+        """Two profiles declaring one key must not resolve by config order."""
+        profiles = [
+            {"name": "A", "match_terms": [], "jira_issue_key": "OPS-42"},
+            {"name": "B", "match_terms": [], "jira_issue_key": "OPS-42"},
+        ]
+        self.assertEqual(
+            domain.classify_project("OPS-42 work", profiles, "Uncategorized"),
+            "Uncategorized",
+        )
+
+    def test_classify_project_binding_uses_longest_url_not_the_sum_of_lengths(self):
+        """Two overlapping URLs on one profile must not add up to beat a longer one."""
+        profiles = [
+            {
+                "name": "Two",
+                "match_terms": [],
+                "tracked_urls": ["https://claude.ai/chat/abc", "https://claude.ai/chat/abcdef"],
+            },
+            {
+                "name": "OneLong",
+                "match_terms": [],
+                "tracked_urls": ["https://claude.ai/chat/abcdefghijkl"],
+            },
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "resumed https://claude.ai/chat/abcdefghijkl today", profiles, "Uncategorized"
+            ),
+            "OneLong",
+        )
+
+    def test_classify_project_shared_host_route_does_not_win_the_binding_tier(self):
+        """`chatgpt.com/gpts` is a listing page, not a binding to one chat."""
+        profiles = [
+            {"name": "Broad", "match_terms": [], "tracked_urls": ["https://chatgpt.com/gpts"]},
+            {"name": "Loud", "match_terms": ["alpha", "beta", "gamma", "delta"]},
+        ]
+        self.assertEqual(
+            domain.classify_project(
+                "https://chatgpt.com/gpts - alpha beta gamma delta", profiles, "Uncategorized"
+            ),
+            "Loud",
+        )
+
     def test_classify_project_normalizes_lovableproject_host_variants_for_tracked_urls(self):
         profiles = [
             {

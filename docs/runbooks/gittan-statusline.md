@@ -21,6 +21,11 @@ Use the absolute path to your clone. The script reads the current directory from
 the statusline's stdin JSON (`workspace.current_dir`), falling back to the
 process cwd.
 
+Or, with gittan installed, skip the path: `"command": "gittan statusline"`
+prints the same line (`--cwd PATH` describes another directory). The Claude Code
+plugin in `claude-code-plugin/` uses that command and refreshes it after every
+turn — see its README.
+
 ## What it shows
 
 | Situation | Statusline |

@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 28 |
+| Commands | 29 |
 | Command groups | 2 |
 | Collectors | 22 |
 | Per-project config fields | 18 |
@@ -38,6 +38,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `setup-global-timelog` | Interactive guide to configure machine-wide TIMELOG automation. | (no spec) |
 | — | `sources` | Analyze which data sources are contributing the most to your reports. | (no spec) |
 | — | `status` | Quick hours snapshot with project totals and session counts. | (no spec) |
+| — | `statusline` | Print the agent statusline: project match and today's unreported hours. | [claude-code-plugin-task](../task-prompts/claude-code-plugin-task.md) · `built` |
 | — | `toggl-sync` | Post Gittan-derived hours to Toggl as time entries (one per project + day). | [toggl-posting-task](../task-prompts/toggl-posting-task.md) · built |
 | — | `ux-heroes` | Preview hero sections only for key CLI commands. | (no spec) |
 | **config** | _(group)_ | Inspect active config paths. | |

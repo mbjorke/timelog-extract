@@ -1,0 +1,16 @@
+{
+  "name": "gittan",
+  "version": "0.1.0",
+  "description": "Gittan in Claude Code: the gittan statusline (project match, unreported hours) kept fresh after every turn, /gittan for an hours summary, a nudge when the repo matches no project profile.",
+  "userConfig": {
+    "command": {
+      "type": "string",
+      "title": "gittan executable",
+      "description": "Path or name of the gittan CLI (for example gittan, or a venv's bin/gittan).",
+      "default": "gittan"
+    }
+  },
+  "author": {
+    "name": "Gittan maintainers"
+  }
+}

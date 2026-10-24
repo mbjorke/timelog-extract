@@ -31,6 +31,12 @@ jobs:
       - name: Enforce Python file line limit
         run: |
           python scripts/check_file_lengths.py --max-lines 500
+      - name: Install zsh
+        # The global post-commit hook runs under zsh; without it the hook and
+        # Claude Code plugin fixture tests skip instead of checking anything.
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q zsh
       - name: Run unit tests
         run: |
           bash scripts/run_autotests.sh

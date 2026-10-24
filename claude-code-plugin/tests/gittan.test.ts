@@ -16,8 +16,14 @@ type World = {
 
 // The engine beneath the plugin: a host whose `gittan` answers with what the
 // real CLI printed in the generated mock home, for a session sitting in `repo`.
-function host(on: On, repo: string, gittan: 'ok' | 'missing' | 'fails' = 'ok'): World {
+function host(
+  on: On,
+  repo: string,
+  gittan: 'ok' | 'missing' | 'fails' = 'ok',
+  holdFirstStatusline?: Promise<void>,
+): World {
   const world: World = { argvs: [], statuses: [], toasts: [] }
+  let statuslineRuns = 0
   const cwd = `/mock/home/code/${repo}`
   const ok = (stdout: string, exitCode = 0) => ({
     value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
@@ -25,11 +31,18 @@ function host(on: On, repo: string, gittan: 'ok' | 'missing' | 'fails' = 'ok'): 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
-  on('process.run', ($, e) => {
+  on('process.run', async ($, e) => {
     world.argvs.push([...e.argv])
     if (gittan === 'missing') throw new Error('spawn gittan ENOENT')
     if (gittan === 'fails') return ok('', 2)
-    if (e.argv[1] === 'statusline') return ok(`${STATUSLINES[repo] ?? ''}\n`)
+    if (e.argv[1] === 'statusline') {
+      statuslineRuns += 1
+      if (statuslineRuns === 1 && holdFirstStatusline) {
+        await holdFirstStatusline
+        return ok('stale line\n')
+      }
+      return ok(`${STATUSLINES[repo] ?? ''}\n`)
+    }
     return ok(PAYLOAD_TEXT)
   })
   on('ui.status', ($, e) => {
@@ -109,6 +122,26 @@ describe('the plugin in a session', () => {
     expect(statuslineCalls(world)).toHaveLength(3)
     expect(world.statuses[world.statuses.length - 1]).toBe(UNMATCHED_LINE)
     expect(world.toasts).toHaveLength(1)
+  })
+
+  test('a slow older refresh never overwrites a newer line', async ($, on) => {
+    const clock = mock.clock(on)
+    let release = () => {}
+    const held = new Promise<void>(resolve => {
+      release = resolve
+    })
+    const world = host(on, 'project-alpha', 'ok', held)
+    on('turn.complete', () => ({ text: '' }))
+    await $.session.start(start)
+    await clock.advance(1)
+    await $.turn.complete(turn())
+    await clock.advance(1)
+    expect(world.statuses).toEqual([ALPHA_LINE])
+
+    release()
+    for (let i = 0; i < 20; i += 1) await clock.advance(1)
+    expect(statuslineCalls(world)).toHaveLength(2)
+    expect(world.statuses).toEqual([ALPHA_LINE])
   })
 
   test('a subagent finishing does not refresh the line', async ($, on) => {

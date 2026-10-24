@@ -14,10 +14,14 @@ const REPORT_TIMEOUT_MS = 180_000
 
 // Once per load: an unconfigured repo is worth one nudge, not one per turn.
 let hasWarnedUnconfigured = false
+// Refreshes overlap (session start, back-to-back turns); only the newest may
+// draw, so a slow older run never overwrites a fresher line.
+let latestRefresh = 0
 
 // The status line is `gittan statusline`: config, git remote and the observed
 // cache only, no collectors, so it is cheap enough to run after every turn.
 async function refreshStatus($: EngineInterface, command: string): Promise<void> {
+  const refresh = ++latestRefresh
   const cwd = await $.session.cwd()
   let line = ''
   try {
@@ -26,6 +30,7 @@ async function refreshStatus($: EngineInterface, command: string): Promise<void>
   } catch {
     line = `gittan: could not run "${command}" (set the plugin's gittan executable in /config)`
   }
+  if (refresh !== latestRefresh) return
   $.ui.status(line || undefined)
   if (isUnconfiguredLine(line) && !hasWarnedUnconfigured) {
     hasWarnedUnconfigured = true
@@ -50,6 +55,7 @@ async function runReport($: EngineInterface, command: string, flag: string): Pro
 export const register: Register = (on, options) => {
   const command = String(options.command ?? 'gittan') || 'gittan'
   hasWarnedUnconfigured = false
+  latestRefresh = 0
 
   on('session.start', async ($, e, next) => {
     await $.command.register({

@@ -70,7 +70,8 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'gittan' }, async ($, e) => {
     const word = e.args.trim().toLowerCase() || 'today'
-    const range = RANGES[word]
+    // Own keys only: `constructor` and friends are not ranges.
+    const range = Object.hasOwn(RANGES, word) ? RANGES[word] : undefined
     if (!range) return { text: `Usage: /gittan [${Object.keys(RANGES).join('|')}]` }
     const payload = await runReport($, command, range.flag)
     if (typeof payload === 'string') return { text: `gittan: ${payload}` }

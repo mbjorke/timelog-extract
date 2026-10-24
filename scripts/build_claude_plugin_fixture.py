@@ -40,6 +40,9 @@ MOCK_ROOT = "/mock"
 PROJECTS = {"project-alpha": 3, "project-beta": 1}
 UNMATCHED_REPO = "scratch-notes"
 
+# The only variables taken from the caller: what locates tools and decodes text.
+INHERITED_ENV = ("PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TMPDIR", "SYSTEMROOT")
+
 # Fields that change on every run without saying anything about behaviour.
 VOLATILE_KEYS = ("generator", "range")
 
@@ -74,8 +77,11 @@ def build_home(root: Path) -> dict[str, str]:
     hook.write_text(HOOK_BODY, encoding="utf-8")
     hook.chmod(0o755)
 
+    # An allowlist, not the caller's environment: GITHUB_USER, TOGGL_API_TOKEN
+    # and friends would switch on network sources and pull real activity into
+    # the fixture, and GITTAN_PROJECTS_CONFIG would override the mock config.
     env = {
-        **os.environ,
+        **{key: os.environ[key] for key in INHERITED_ENV if key in os.environ},
         "HOME": str(home),
         "GITTAN_HOME": str(data),
         # The hook ignores repos under temp dirs unless told this is deliberate.

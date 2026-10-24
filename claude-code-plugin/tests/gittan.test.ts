@@ -162,8 +162,10 @@ describe('the plugin in a session', () => {
     const world = host(on, 'project-alpha')
     await $.session.start({ ...start, isInteractive: false })
 
-    const answer = await $.command.run(run('fortnight'))
-    expect(answer.text).toContain('Usage: /gittan')
+    for (const word of ['fortnight', 'constructor', 'toString', '__proto__']) {
+      const answer = await $.command.run(run(word))
+      expect(answer.text).toContain('Usage: /gittan')
+    }
     expect(world.argvs).toHaveLength(0)
   })
 

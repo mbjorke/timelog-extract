@@ -228,6 +228,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual(create.call_count, 2)
         self.assertIn("draft 903 already created", third.output)
 
+    def test_rejected_force_new_does_not_settle_earlier_unknown_outcome(self):
+        unauthorized = nocfo_client.NocfoHttpError("HTTP 401", 401)
+        with patch.object(cli_mod, "create_draft_invoice",
+                          side_effect=[TimeoutError("read timed out"), unauthorized]) as create:
+            self._run(input="y\n")
+            self._run("--force-new", input="y\n")
+            third = self._run(input="y\n")
+        self.assertEqual(create.call_count, 2)
+        self.assertIn("did not finish", third.output)
+
     def test_blocked_draft_does_not_read_its_product(self):
         with patch.object(cli_mod, "create_draft_invoice", return_value={"id": 904}):
             self._run(input="y\n")

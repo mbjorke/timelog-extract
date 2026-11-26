@@ -115,3 +115,5 @@ against a live account" above), hence `conditional GO`.
     op-log writes `pending` before each POST so an unknown outcome blocks a repeat.
   - 2026-11-26: 5xx/408/409 count as unknown outcomes; `Idempotency-Key` header
     added (NoCFO developer docs, using-the-api/idempotency).
+  - 2026-11-26: Each `pending` attempt is settled only by its own outcome row, so
+    a rejected `--force-new` retry never unblocks an earlier unknown outcome.

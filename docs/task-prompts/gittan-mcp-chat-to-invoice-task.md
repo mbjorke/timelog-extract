@@ -67,7 +67,9 @@ assistant ──stdio──► gittan mcp (local, no network)
 ```
 
 - Gittan's server holds **no accounting credentials**. Private-first holds: local
-  stdio, reads and writes only `~/.gittan` (or `GITTAN_HOME`).
+  stdio, stores state only in `~/.gittan` (or `GITTAN_HOME`), and reads activity
+  from the same configured local sources `gittan report` reads (outside that
+  directory). It reads nothing the CLI does not already read.
 - The invoice basis is **confirmed/edited `reported_time` only**. Observed time
   never reaches an invoice without a human confirmation.
 - The accounting step creates a **draft**. Accepting and sending stay with the

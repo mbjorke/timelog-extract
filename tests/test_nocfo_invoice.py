@@ -219,6 +219,24 @@ class CliTests(unittest.TestCase):
         self.assertEqual(len(keys), 2)
         self.assertEqual(keys[0], keys[1])
 
+    def test_rejected_force_new_does_not_hide_earlier_draft(self):
+        rejected = nocfo_client.NocfoHttpError("HTTP 400", 400)
+        with patch.object(cli_mod, "create_draft_invoice", side_effect=[{"id": 903}, rejected]) as create:
+            self._run(input="y\n")
+            self._run("--force-new", input="y\n")
+            third = self._run(input="y\n")
+        self.assertEqual(create.call_count, 2)
+        self.assertIn("draft 903 already created", third.output)
+
+    def test_blocked_draft_does_not_read_its_product(self):
+        with patch.object(cli_mod, "create_draft_invoice", return_value={"id": 904}):
+            self._run(input="y\n")
+        with patch.object(cli_mod, "get_product", side_effect=RuntimeError("product deleted")) as get:
+            result = self._run(input="y\n")
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        get.assert_not_called()
+        self.assertIn("already created", result.output)
+
     def test_definite_rejection_allows_retry(self):
         rejected = nocfo_client.NocfoHttpError("HTTP 400 bad row", 400)
         with patch.object(cli_mod, "create_draft_invoice", side_effect=[rejected, {"id": 901}]) as create:

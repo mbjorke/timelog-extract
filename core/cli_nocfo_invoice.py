@@ -121,8 +121,11 @@ def nocfo_invoice(
         raise typer.BadParameter(f"Missing NoCFO credentials: set {ENV_TOKEN} and {ENV_BUSINESS}")
 
     seen = _blocking_or_exit(creds.business)
+    # Only read products for drafts that can still be created, so a deleted
+    # product behind an already-invoiced period cannot block the others.
+    to_create = [d for d in drafts if force_new or d.marker not in seen]
     products = {}
-    for pid in sorted({pid for d in drafts for pid in d.product_ids}):
+    for pid in sorted({pid for d in to_create for pid in d.product_ids}):
         try:
             products[pid] = get_product(creds, pid)
         except Exception as exc:  # noqa: BLE001 - read failure: nothing was written

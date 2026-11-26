@@ -230,12 +230,27 @@ OP_STATUSES = {"pending", "created", "rejected"}
 
 
 def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, NocfoOpRow]:
-    """Latest op per marker that blocks a new POST (``created`` or ``pending``)."""
+    """Op per marker that blocks a new POST.
+
+    The latest attempt blocks when it is ``created`` or ``pending``. A later
+    ``rejected`` attempt (e.g. a failed ``--force-new``) never hides an earlier
+    ``created`` draft: that draft still blocks.
+    """
     latest: Dict[str, NocfoOpRow] = {}
+    last_created: Dict[str, NocfoOpRow] = {}
     for row in load_ops(home):
-        if row.business == business:
-            latest[row.marker] = row
-    return {m: r for m, r in latest.items() if r.status in ("created", "pending")}
+        if row.business != business:
+            continue
+        latest[row.marker] = row
+        if row.status == "created":
+            last_created[row.marker] = row
+    blocking: Dict[str, NocfoOpRow] = {}
+    for marker, row in latest.items():
+        if row.status in ("created", "pending"):
+            blocking[marker] = row
+        elif marker in last_created:
+            blocking[marker] = last_created[marker]
+    return blocking
 
 
 def record_op(row: NocfoOpRow, home: Optional[Path] = None) -> Path:

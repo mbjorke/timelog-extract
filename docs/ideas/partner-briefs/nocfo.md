@@ -65,6 +65,13 @@ Shipped as `gittan nocfo-invoice` — see
 
 **Not proposing:** Gittan reading or writing bookkeeping, or sending invoices.
 
+**License boundary:** Gittan is GPL-3.0-or-later ([`LICENSE`](../../../LICENSE),
+[license goals](../../security/license-goals.md)). Shapes 1–2 need no license
+change: NoCFO lists or links Gittan, and Gittan only calls NoCFO's API.
+Embedding Gittan code in NoCFO's own product (shape 3) would need a separate
+commercial license from the copyright holder. Not legal advice; the `LICENSE`
+text governs.
+
 ---
 
 ## Proof plan (if NoCFO says yes)

@@ -26,6 +26,10 @@ document describing the commands needs no protocol layer. MCP can be
 revisited if a concrete consumer demands it; nothing in this direction
 requires it.
 
+> 2026-11-26: the concrete consumer is named — chat-only assistants used by
+> freelancers who never open a terminal. See
+> `docs/task-prompts/gittan-mcp-chat-to-invoice-task.md` (`next`).
+
 ## The modal wall
 
 The boundary between terminal UI and web UI is not a feature decision —

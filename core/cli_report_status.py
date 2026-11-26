@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 import typer
 
@@ -20,14 +19,6 @@ from core.cli_report_status_helpers import (
 from core.config import default_projects_config_option
 from core.noise_profiles import DEFAULT_LOVABLE_NOISE_PROFILE, DEFAULT_NOISE_PROFILE
 from core.report_nudges import build_unexplained_gap_nudge
-
-
-class InvoiceMode(str, Enum):
-    """Choices for --invoice-mode (an Enum works on every Typer version; the
-    removed ``click_type=`` keyword broke CLI import on Typer >= 0.26)."""
-
-    baseline = "baseline"
-    calibrated_a = "calibrated-a"
 
 
 @app.command()
@@ -140,12 +131,12 @@ def report(
         ),
     ] = True,
     invoice_mode: Annotated[
-        InvoiceMode,
+        Literal["baseline", "calibrated-a"],
         typer.Option(
             "--invoice-mode",
             help="Invoice reconciliation mode: baseline or calibrated-a.",
         ),
-    ] = InvoiceMode.baseline,
+    ] = "baseline",
     invoice_ground_truth: Annotated[
         Optional[str],
         typer.Option(
@@ -220,7 +211,7 @@ def report(
             "noise_profile": noise_profile,
             "lovable_noise_profile": lovable_noise_profile,
             "additive_summary": additive_summary,
-            "invoice_mode": InvoiceMode(invoice_mode).value,
+            "invoice_mode": invoice_mode,
             "invoice_ground_truth": invoice_ground_truth,
             "map_prompt": map_prompt,
             "git_source": git_source,

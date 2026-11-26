@@ -35,11 +35,21 @@ _TIMEOUT_SECONDS = 20
 
 
 class NocfoHttpError(RuntimeError):
-    """NoCFO answered with an HTTP error: the request definitely did not succeed."""
+    """NoCFO answered with an HTTP error status."""
 
     def __init__(self, message: str, status: int) -> None:
         super().__init__(message)
         self.status = status
+
+    @property
+    def definitely_not_created(self) -> bool:
+        """True only for a 4xx that means the request was refused as sent.
+
+        5xx (the server may have created the draft before failing), 408
+        (timeout) and 409 (the same Idempotency-Key is still processing) leave
+        the outcome unknown.
+        """
+        return 400 <= self.status < 500 and self.status not in (408, 409)
 
 
 @dataclass(frozen=True)
@@ -70,19 +80,22 @@ def draft_invoice_path(business: str) -> str:
     return f"/v1/invoicing/{quote(business, safe='')}/invoice/"
 
 
-def _request(creds: NocfoCredentials, method: str, path: str, body: Optional[Dict[str, Any]] = None) -> Any:
+def _request(
+    creds: NocfoCredentials,
+    method: str,
+    path: str,
+    body: Optional[Dict[str, Any]] = None,
+    extra_headers: Optional[Dict[str, str]] = None,
+) -> Any:
     data = json.dumps(body).encode("utf-8") if body is not None else None
-    req = Request(
-        f"{creds.base_url}{path}",
-        data=data,
-        method=method,
-        headers={
-            "Authorization": f"Token {creds.api_token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "gittan-nocfo-draft",
-        },
-    )
+    headers = {
+        "Authorization": f"Token {creds.api_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "gittan-nocfo-draft",
+    }
+    headers.update(extra_headers or {})
+    req = Request(f"{creds.base_url}{path}", data=data, method=method, headers=headers)
     opener = build_https_opener("NoCFO")
     try:
         with opener.open(req, timeout=_TIMEOUT_SECONDS) as resp:
@@ -116,14 +129,22 @@ def get_product(creds: NocfoCredentials, product_id: int) -> Dict[str, Any]:
     return parsed
 
 
-def create_draft_invoice(creds: NocfoCredentials, payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_draft_invoice(
+    creds: NocfoCredentials,
+    payload: Dict[str, Any],
+    idempotency_key: Optional[str] = None,
+) -> Dict[str, Any]:
     """Create one sales invoice in DRAFT status and return NoCFO's response.
 
-    Refuses a payload that tries to set a status: drafts only.
+    Refuses a payload that tries to set a status: drafts only. With an
+    ``idempotency_key`` (NoCFO's optional ``Idempotency-Key`` header, kept 24 h
+    for 2xx responses), a retry of the same body replays the first response
+    instead of creating a second draft.
     """
     if "status" in payload:
         raise ValueError("Gittan only creates NoCFO drafts; payload must not set 'status'")
-    parsed = _request(creds, "POST", draft_invoice_path(creds.business), payload)
+    headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
+    parsed = _request(creds, "POST", draft_invoice_path(creds.business), payload, headers)
     if not isinstance(parsed, dict) or parsed.get("id") in (None, ""):
         raise RuntimeError("NoCFO response missing invoice id")
     return parsed

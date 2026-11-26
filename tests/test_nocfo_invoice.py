@@ -110,7 +110,18 @@ class ClientTests(unittest.TestCase):
         with patch.object(nocfo_client, "_request", return_value={"id": 55, "status": "DRAFT"}) as req:
             out = nocfo_client.create_draft_invoice(creds, {"receiver": 1, "rows": []})
         self.assertEqual(out["id"], 55)
-        req.assert_called_once_with(creds, "POST", "/v1/invoicing/demo-oy/invoice/", {"receiver": 1, "rows": []})
+        req.assert_called_once_with(creds, "POST", "/v1/invoicing/demo-oy/invoice/", {"receiver": 1, "rows": []}, None)
+
+    def test_create_sends_idempotency_key_header(self):
+        creds = nocfo_client.NocfoCredentials("t0k", "demo-oy")
+        with patch.object(nocfo_client, "_request", return_value={"id": 55}) as req:
+            nocfo_client.create_draft_invoice(creds, {"receiver": 1}, idempotency_key="k-1")
+        self.assertEqual(req.call_args.args[4], {"Idempotency-Key": "k-1"})
+
+    def test_only_refusing_4xx_counts_as_not_created(self):
+        verdict = {code: nocfo_client.NocfoHttpError("x", code).definitely_not_created
+                   for code in (400, 401, 403, 404, 408, 409, 422, 429, 500, 502, 504)}
+        self.assertEqual({c for c, v in verdict.items() if v}, {400, 401, 403, 404, 422, 429})
 
     def test_client_has_no_accept_or_send_calls(self):
         public = {name for name in dir(nocfo_client) if not name.startswith("_")}
@@ -189,6 +200,24 @@ class CliTests(unittest.TestCase):
         self.assertIn("unknown outcome", first.output)
         self.assertEqual(create.call_count, 1)
         self.assertIn("did not finish", second.output)
+
+    def test_server_error_stays_pending_and_blocks_repeat(self):
+        gateway = nocfo_client.NocfoHttpError("HTTP 502 bad gateway", 502)
+        with patch.object(cli_mod, "create_draft_invoice", side_effect=gateway) as create:
+            first = self._run(input="y\n")
+            second = self._run(input="y\n")
+        self.assertIn("unknown outcome", first.output)
+        self.assertEqual(create.call_count, 1)
+        self.assertIn("did not finish", second.output)
+
+    def test_force_new_after_unknown_outcome_reuses_idempotency_key(self):
+        with patch.object(cli_mod, "create_draft_invoice", side_effect=[TimeoutError("t"), {"id": 902}]) as create:
+            self._run(input="y\n")
+            retry = self._run("--force-new", input="y\n")
+        self.assertIn("draft invoice id=902", retry.output)
+        keys = [c.kwargs["idempotency_key"] for c in create.call_args_list]
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(keys[0], keys[1])
 
     def test_definite_rejection_allows_retry(self):
         rejected = nocfo_client.NocfoHttpError("HTTP 400 bad row", 400)

@@ -195,6 +195,7 @@ class NocfoOpRow:
     status: str  # pending | created | rejected
     total_hours: float
     payload_hash: str
+    idempotency_key: str = ""
     created_at: str = ""
 
     def __post_init__(self) -> None:

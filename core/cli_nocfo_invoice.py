@@ -13,6 +13,7 @@ Gittan proposes, the user approves, NoCFO does the accounting:
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -149,11 +150,19 @@ def nocfo_invoice(
             skipped += 1
             continue
 
+        body_hash = payload_hash(body)
+        # Retrying an unfinished attempt with the same body reuses its key, so
+        # NoCFO replays the first draft (within 24 h) instead of creating another.
+        if prior and prior.status == "pending" and prior.payload_hash == body_hash and prior.idempotency_key:
+            key = prior.idempotency_key
+        else:
+            key = str(uuid.uuid4())
+
         def op(status: str, invoice_id: str = "") -> NocfoOpRow:
             return NocfoOpRow(
                 marker=draft.marker, business=creds.business, invoice_id=invoice_id,
                 contact_id=draft.contact_id, status=status,
-                total_hours=draft.total_hours, payload_hash=payload_hash(body),
+                total_hours=draft.total_hours, payload_hash=body_hash, idempotency_key=key,
             )
 
         try:
@@ -161,11 +170,15 @@ def nocfo_invoice(
         except OSError as exc:
             raise typer.BadParameter(f"Could not write the local NoCFO op-log ({exc}); nothing was sent.")
         try:
-            response = create_draft_invoice(creds, body)
+            response = create_draft_invoice(creds, body, idempotency_key=key)
         except NocfoHttpError as exc:
             failed += 1
-            record_op(op("rejected"))
-            typer.echo(f"Failed (NoCFO rejected it, nothing created): {exc}")
+            if exc.definitely_not_created:
+                record_op(op("rejected"))
+                typer.echo(f"Failed (NoCFO rejected it, nothing created): {exc}")
+            else:
+                typer.echo(f"Failed with an unknown outcome: {exc}. A draft may exist in NoCFO; "
+                           "check there before re-running (then use --force-new if there is none).")
             continue
         except Exception as exc:  # noqa: BLE001 - outcome unknown: keep it pending
             failed += 1

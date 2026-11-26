@@ -87,7 +87,8 @@ The first accounting push, and draft-only by construction.
 - **Guardrails:** `--dry-run` previews rows offline (no network call); a real
   run prints the exact payload before an interactive confirm per draft (default No); local op-log
   `nocfo_oplog.jsonl` (`pending` before the POST, `created`/`rejected` after)
-  blocks a second draft for the same contact + period, including after a timeout.
+  blocks a second draft for the same contact + period, including after a timeout
+  or 5xx; each POST carries NoCFO's `Idempotency-Key` header.
 - **Open:** not yet run against a live account
   ([`nocfo-draft-invoice-task.md`](../task-prompts/nocfo-draft-invoice-task.md)).
 

@@ -26,9 +26,11 @@ draft-first*). Partner shape: [`partner-briefs/nocfo.md`](../ideas/partner-brief
   `do not build yet`.
 - **D5 — Idempotency.** Local op-log (`<gittan data dir>/nocfo_oplog.jsonl`)
   keyed by contact + period. A `pending` row is written before each POST and
-  `created` / `rejected` after it. `created` and `pending` (unknown outcome,
-  e.g. a timeout) block a repeat until `--force-new`; an HTTP rejection allows
-  a retry.
+  `created` / `rejected` after it. `created` and `pending` (unknown outcome:
+  timeout, 5xx, 408, 409) block a repeat until `--force-new`; only a refusing
+  4xx allows a retry. Each POST also carries NoCFO's `Idempotency-Key`; a
+  `--force-new` retry of an unfinished attempt with the same body reuses its
+  key, so NoCFO replays the first draft (within 24 h) instead of creating another.
 - **D6 — Draft only.** The client has a create call and a read call. No accept,
   send, paid or delete call exists in Gittan, and a payload that sets `status`
   is refused.
@@ -111,3 +113,5 @@ against a live account" above), hence `conditional GO`.
   - 2026-11-26: Rows follow NoCFO's OpenAPI schema (hours in `product_count`,
     price/unit/VAT copied from the product); `payment_condition_days` added;
     op-log writes `pending` before each POST so an unknown outcome blocks a repeat.
+  - 2026-11-26: 5xx/408/409 count as unknown outcomes; `Idempotency-Key` header
+    added (NoCFO developer docs, using-the-api/idempotency).

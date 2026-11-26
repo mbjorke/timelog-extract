@@ -164,6 +164,10 @@ def payload_hash(payload: Dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
+class NocfoOplogError(RuntimeError):
+    """The local NoCFO op-log cannot be read completely."""
+
+
 @dataclass
 class NocfoOpRow:
     marker: str
@@ -189,8 +193,13 @@ def load_ops(home: Optional[Path] = None) -> List[NocfoOpRow]:
             continue
         try:
             rows.append(NocfoOpRow(**json.loads(line)))
-        except (TypeError, ValueError, json.JSONDecodeError):
-            _LOGGER.warning("Skipping unreadable NoCFO op-log line")
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            # Fail closed: this log is the only duplicate-draft guard, so a
+            # damaged line must stop creation rather than be skipped.
+            raise NocfoOplogError(
+                f"NoCFO op-log {path} has an unreadable line ({exc}). Check NoCFO for "
+                "drafts already created, then fix or remove that line before re-running."
+            ) from None
     return rows
 
 

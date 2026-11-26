@@ -79,19 +79,25 @@ Feature: NoCFO draft invoice from approved hours
 
 ## Traceability
 
-- story_id: none yet (no GitHub issue)
+Live verification against a real NoCFO account is still open (see "Verify row
+field names" above), hence `conditional GO`.
+
+- story_id: GH-585
 - spec_status: draft
-- implementation_status: built (MVP); live field verification pending
+- implementation_status: built
 - created_at: 2026-11-26
 - last_updated_at: 2026-11-26
+- implementation.pr: #585
 - implementation.branch: task/nocfo-draft-invoice
-- implementation.pr: pending
 - implementation.commits: []
-- validation.evidence: unit tests with synthetic data, all network calls mocked
-  (`tests/test_nocfo_invoice.py`); no live NoCFO call made yet
-- validation.decision: pending
+- validation.evidence: tests/test_nocfo_invoice.py (synthetic data, all network calls mocked); no live NoCFO call yet
+- validation.decision: conditional GO
 - covers: nocfo-invoice
 - related:
   - `core/nocfo_client.py`, `core/nocfo_invoice.py`, `core/cli_nocfo_invoice.py`
   - mirrors `gittan toggl-sync` ([`toggl-posting-task.md`](toggl-posting-task.md))
   - API source: NoCFO's MIT `nocfo-cli` toolkit on PyPI (v1.10.0)
+- changelog:
+  - 2026-11-26: Initial spec and MVP built (PR #585).
+  - 2026-11-26: Review fixes — op-log fails closed on a damaged line; re-check
+    before each POST; NoCFO ids kept by `normalize_profile`.

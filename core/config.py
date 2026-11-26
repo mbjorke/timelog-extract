@@ -276,6 +276,18 @@ def normalize_profile(raw):
             profile["toggl_project_id"] = int(toggl_project_id)
         except (TypeError, ValueError):
             raise ValueError("toggl_project_id must be an integer (Toggl numeric project id)")
+    # NoCFO draft-invoice mapping (`gittan nocfo-invoice`): receiver contact +
+    # hourly product. Kept here so project edits that re-normalize keep them.
+    for nocfo_key in ("nocfo_contact_id", "nocfo_product_id"):
+        nocfo_value = raw.get(nocfo_key)
+        if nocfo_value in (None, ""):
+            continue
+        if isinstance(nocfo_value, bool):
+            raise ValueError(f"{nocfo_key} must be an integer, not a boolean")
+        try:
+            profile[nocfo_key] = int(nocfo_value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{nocfo_key} must be an integer (NoCFO numeric id)")
     # Optional explicit Jira issue this project posts to (mirrors toggl_project_id).
     jira_issue_key = raw.get("jira_issue_key")
     if jira_issue_key not in (None, ""):

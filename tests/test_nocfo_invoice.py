@@ -172,6 +172,42 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("NOCFO_API_TOKEN", result.output)
 
+    def test_damaged_oplog_stops_creation(self):
+        ni.oplog_path().write_text("{not json\n", encoding="utf-8")
+        with patch.object(cli_mod, "create_draft_invoice") as create:
+            result = self._run(input="y\n")
+        self.assertNotEqual(result.exit_code, 0)
+        create.assert_not_called()
+        self.assertIn("unreadable line", result.output)
+
+    def test_draft_created_by_another_run_during_prompt_is_skipped(self):
+        def other_run_logs_first(*_args, **_kwargs):
+            ni.record_draft(ni.NocfoOpRow(
+                marker="gittan:101:2026-11-16:2026-11-22", business="demo-oy",
+                invoice_id="1", contact_id=101, total_hours=3.5, payload_hash="x",
+            ))
+            return True
+
+        with patch.object(cli_mod.typer, "confirm", side_effect=other_run_logs_first), \
+                patch.object(cli_mod, "create_draft_invoice") as create:
+            result = self._run()
+        create.assert_not_called()
+        self.assertIn("another run created this draft", result.output)
+
+
+class ProfileNormalizationTests(unittest.TestCase):
+    def test_normalize_profile_keeps_nocfo_ids(self):
+        from core.config import normalize_profile
+
+        profile = normalize_profile({"name": "Kettu", "nocfo_contact_id": "101", "nocfo_product_id": 7})
+        self.assertEqual((profile["nocfo_contact_id"], profile["nocfo_product_id"]), (101, 7))
+
+    def test_normalize_profile_rejects_bad_nocfo_id(self):
+        from core.config import normalize_profile
+
+        with self.assertRaises(ValueError):
+            normalize_profile({"name": "Kettu", "nocfo_contact_id": True})
+
 
 if __name__ == "__main__":
     unittest.main()

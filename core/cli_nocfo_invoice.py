@@ -27,6 +27,7 @@ from core.nocfo_client import (
     resolve_nocfo_credentials,
 )
 from core.nocfo_invoice import (
+    NocfoOplogError,
     NocfoOpRow,
     build_drafts,
     build_mapping,
@@ -86,7 +87,10 @@ def nocfo_invoice(
     if creds is None:
         raise typer.BadParameter(f"Missing NoCFO credentials: set {ENV_TOKEN} and {ENV_BUSINESS}")
 
-    seen = existing_markers(creds.business)
+    try:
+        seen = existing_markers(creds.business)
+    except NocfoOplogError as exc:
+        raise typer.BadParameter(str(exc))
     created = skipped = failed = 0
     for draft in drafts:
         _print_draft(draft)
@@ -97,6 +101,13 @@ def nocfo_invoice(
             skipped += 1
             continue
         if not typer.confirm("Create this invoice as a DRAFT in NoCFO?", default=False):
+            skipped += 1
+            continue
+        # Re-read after the (possibly long) prompt: another run may have created
+        # this draft meanwhile. Gittan is a single-user CLI, so a re-check right
+        # before the POST is the guard; no cross-process lock.
+        if not force_new and draft.marker in existing_markers(creds.business):
+            typer.echo("Skipped: another run created this draft while you were confirming.")
             skipped += 1
             continue
         body = draft.payload()

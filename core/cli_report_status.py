@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Optional
 
+import click
 import typer
 
 from core.cli_app import app
@@ -131,10 +132,11 @@ def report(
         ),
     ] = True,
     invoice_mode: Annotated[
-        Literal["baseline", "calibrated-a"],
+        str,
         typer.Option(
             "--invoice-mode",
             help="Invoice reconciliation mode: baseline or calibrated-a.",
+            click_type=click.Choice(["baseline", "calibrated-a"]),
         ),
     ] = "baseline",
     invoice_ground_truth: Annotated[

@@ -23,7 +23,7 @@ This doc answers two questions:
 | **Toggl** (Track v9) | push (time entries) + read (dedup window) | API token, Basic auth | **shipped** (#175/#178/#179/#194); op-log slice is `now` (#265) | `gittan toggl-sync` |
 | **Jira** (Cloud REST v3) | push (worklogs) + read (dedup, verify) | email + API token, Basic auth | **shipped** | `gittan jira-sync` |
 | **GitHub** (REST) | read-only (public events → evidence) | optional token; GHE via `api/v3` base | **shipped** (collector) | source in `gittan report` |
-| **NoCFO** (invoicing) | push (sales-invoice **draft**) | personal API token, `Token` header | **MVP** (row fields not yet live-verified) | `gittan nocfo-invoice` |
+| **NoCFO** (invoicing) | push (sales-invoice **draft**) | personal API token, `Token` header | **MVP** (not yet run against a live account) | `gittan nocfo-invoice` |
 | **Briox** (invoicing) | none — manual handoff | n/a | **not built**; deliverable is email text + Briox line via the personal `/gittan-invoice` skill | none |
 | Toggl *pull* (import time) | read | — | **placeholder only**, deliberately unbuilt (push-only principle) | none |
 | Calendar (macOS), Timely Memory, Lovable, WordPress, Claude.ai, … | local evidence collectors | n/a | shipped, but **not external APIs** — they read local files/DBs | sources in `gittan report` |
@@ -82,11 +82,13 @@ The first accounting push, and draft-only by construction.
   has no accept/send call (`core/nocfo_client.py`).
 - **Input:** confirmed/edited `reported_time` only. One draft per
   `nocfo_contact_id`, one row per project + day referencing the profile's
-  `nocfo_product_id` (price, unit and VAT live on the NoCFO product).
-- **Guardrails:** `--dry-run` prints the exact payload with no network call;
-  interactive confirm per draft (default No); local op-log
-  `nocfo_oplog.jsonl` skips a second draft for the same contact + period.
-- **Open:** row field names are unverified against a live account
+  `nocfo_product_id`; hours go in `product_count`, and name, unit, price and
+  VAT are copied from the NoCFO product read just before the POST.
+- **Guardrails:** `--dry-run` previews rows offline (no network call); a real
+  run prints the exact payload before an interactive confirm per draft (default No); local op-log
+  `nocfo_oplog.jsonl` (`pending` before the POST, `created`/`rejected` after)
+  blocks a second draft for the same contact + period, including after a timeout.
+- **Open:** not yet run against a live account
   ([`nocfo-draft-invoice-task.md`](../task-prompts/nocfo-draft-invoice-task.md)).
 
 ### Briox — manual handoff, no API yet

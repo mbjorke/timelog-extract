@@ -5,13 +5,15 @@ add`` becomes an invoice row — raw observed sessions never do. One draft per
 NoCFO customer contact; one row per project + day, so the customer sees the
 same hour basis the user approved.
 
-Pricing, unit and VAT live on the NoCFO **product** the row references
-(``nocfo_product_id`` per profile): Gittan sends hours, not money, and does not
-do VAT. The receiver is the profile's ``nocfo_contact_id``.
+Pricing, unit and VAT live on the NoCFO **product** (``nocfo_product_id`` per
+profile): the row copies them from the product read just before the draft is
+created, and Gittan supplies only the hour count. Gittan does not do VAT. The receiver is the profile's ``nocfo_contact_id``.
 
-A local append-only op-log (``<gittan data dir>/nocfo_oplog.jsonl``) records
-every draft created, so re-running the same period does not create a duplicate
-draft by accident.
+A local append-only op-log (``<gittan data dir>/nocfo_oplog.jsonl``) records a
+``pending`` row before each POST and ``created`` / ``rejected`` after it. The
+latest row per contact + period decides: ``created`` and ``pending`` (an
+uncertain outcome, e.g. a timeout) both block another POST until the user checks
+NoCFO; only a definite HTTP rejection allows a retry.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -29,13 +32,12 @@ _LOGGER = logging.getLogger(__name__)
 OPLOG_FILENAME = "nocfo_oplog.jsonl"
 UNCATEGORIZED = "Uncategorized"
 
-# NoCFO's public toolkit passes invoice rows through without a fixed schema, so
-# the row keys below are a best reading of the product model (``product`` id,
-# quantity, free-text description) and are **not yet verified against a live
-# account**. They are kept in one place so a first real run can correct them.
-ROW_PRODUCT_FIELD = "product"
-ROW_QUANTITY_FIELD = "amount"
-ROW_DESCRIPTION_FIELD = "description"
+# Required InvoiceRowRequest fields per NoCFO's OpenAPI schema: name, unit,
+# amount (unit price), vat_rate, vat_code, product_count (quantity). They are
+# copied from the referenced NoCFO product, so price and VAT stay owned by NoCFO;
+# Gittan only supplies product_count (the approved hours) and a description.
+PRODUCT_ROW_FIELDS = ("name", "unit", "vat_rate", "vat_code")
+DEFAULT_PAYMENT_DAYS = 14
 
 
 @dataclass(frozen=True)
@@ -68,20 +70,36 @@ class DraftInvoice:
         """Idempotency key for the local op-log: one draft per contact + period."""
         return f"gittan:{self.contact_id}:{self.date_from}:{self.date_to}"
 
-    def payload(self) -> Dict[str, Any]:
-        """The exact JSON body sent to ``POST /v1/invoicing/{business}/invoice/``."""
+    @property
+    def product_ids(self) -> List[int]:
+        return sorted({product_id for _, product_id in self.rows})
+
+    def payload(
+        self,
+        products: Dict[int, Dict[str, Any]],
+        payment_condition_days: int = DEFAULT_PAYMENT_DAYS,
+    ) -> Dict[str, Any]:
+        """The exact JSON body sent to ``POST /v1/invoicing/{business}/invoice/``.
+
+        ``products`` maps product id -> the NoCFO product record; name, unit,
+        VAT-exclusive unit price and VAT come from there, never from Gittan.
+        """
+        rows = []
+        for row, product_id in self.rows:
+            product = products[product_id]
+            entry = {key: product.get(key) for key in PRODUCT_ROW_FIELDS}
+            unit_price = product.get("vat_exclusive_amount")
+            entry["amount"] = unit_price if unit_price is not None else product.get("amount")
+            entry["product"] = product_id
+            entry["product_count"] = row.hours
+            entry["description"] = f"{row.day} · {row.project}"
+            rows.append(entry)
         return {
             "receiver": self.contact_id,
             "invoicing_date": self.invoicing_date,
+            "payment_condition_days": int(payment_condition_days),
             "description": f"Hours {self.date_from} – {self.date_to}",
-            "rows": [
-                {
-                    ROW_PRODUCT_FIELD: product_id,
-                    ROW_QUANTITY_FIELD: row.hours,
-                    ROW_DESCRIPTION_FIELD: f"{row.day} · {row.project}",
-                }
-                for row, product_id in self.rows
-            ],
+            "rows": rows,
         }
 
 
@@ -174,6 +192,7 @@ class NocfoOpRow:
     business: str
     invoice_id: str
     contact_id: int
+    status: str  # pending | created | rejected
     total_hours: float
     payload_hash: str
     created_at: str = ""
@@ -192,7 +211,10 @@ def load_ops(home: Optional[Path] = None) -> List[NocfoOpRow]:
         if not line.strip():
             continue
         try:
-            rows.append(NocfoOpRow(**json.loads(line)))
+            row = NocfoOpRow(**json.loads(line))
+            if row.status not in OP_STATUSES:
+                raise ValueError(f"unknown status {row.status!r}")
+            rows.append(row)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             # Fail closed: this log is the only duplicate-draft guard, so a
             # damaged line must stop creation rather than be skipped.
@@ -203,13 +225,24 @@ def load_ops(home: Optional[Path] = None) -> List[NocfoOpRow]:
     return rows
 
 
-def existing_markers(business: str, home: Optional[Path] = None) -> Dict[str, NocfoOpRow]:
-    return {row.marker: row for row in load_ops(home) if row.business == business}
+OP_STATUSES = {"pending", "created", "rejected"}
 
 
-def record_draft(row: NocfoOpRow, home: Optional[Path] = None) -> Path:
+def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, NocfoOpRow]:
+    """Latest op per marker that blocks a new POST (``created`` or ``pending``)."""
+    latest: Dict[str, NocfoOpRow] = {}
+    for row in load_ops(home):
+        if row.business == business:
+            latest[row.marker] = row
+    return {m: r for m, r in latest.items() if r.status in ("created", "pending")}
+
+
+def record_op(row: NocfoOpRow, home: Optional[Path] = None) -> Path:
+    """Append one op row and flush it to disk before returning."""
     path = oplog_path(home)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(asdict(row), sort_keys=True) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
     return path

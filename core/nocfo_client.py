@@ -6,7 +6,8 @@ which NoCFO creates in ``DRAFT`` status — plus a read used to verify the token
 It deliberately has **no** accept, send, mark-paid or delete call: a human
 accepts and sends the invoice inside NoCFO.
 
-Endpoint shapes follow NoCFO's own open-source toolkit (``nocfo-cli`` on PyPI):
+Endpoint shapes follow NoCFO's own open-source toolkit (``nocfo-cli`` on PyPI)
+and the request schemas in NoCFO's published OpenAPI document:
 base ``https://api-prd.nocfo.io``, header ``Authorization: Token <token>``, a
 personal token created at login.nocfo.io. Credentials come from the
 environment (``NOCFO_API_TOKEN``, ``NOCFO_BUSINESS``, optional
@@ -31,6 +32,14 @@ ENV_TOKEN = "NOCFO_API_TOKEN"
 ENV_BUSINESS = "NOCFO_BUSINESS"
 ENV_BASE_URL = "NOCFO_BASE_URL"
 _TIMEOUT_SECONDS = 20
+
+
+class NocfoHttpError(RuntimeError):
+    """NoCFO answered with an HTTP error: the request definitely did not succeed."""
+
+    def __init__(self, message: str, status: int) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 @dataclass(frozen=True)
@@ -84,7 +93,7 @@ def _request(creds: NocfoCredentials, method: str, path: str, body: Optional[Dic
             detail = exc.read().decode("utf-8")[:500]
         except Exception:  # noqa: BLE001 - best-effort error detail
             pass
-        raise RuntimeError(f"NoCFO {method} {path} failed: HTTP {exc.code} {detail}".strip()) from None
+        raise NocfoHttpError(f"NoCFO {method} {path} failed: HTTP {exc.code} {detail}".strip(), exc.code) from None
     except URLError as exc:
         raise RuntimeError(f"NoCFO {method} {path} failed: {exc.reason}") from None
     return json.loads(raw)
@@ -95,6 +104,15 @@ def verify_business_access(creds: NocfoCredentials) -> Dict[str, Any]:
     parsed = _request(creds, "GET", f"/v1/business/{quote(creds.business, safe='')}/")
     if not isinstance(parsed, dict):
         raise RuntimeError("NoCFO returned an unexpected response for the business lookup")
+    return parsed
+
+
+def get_product(creds: NocfoCredentials, product_id: int) -> Dict[str, Any]:
+    """Read one invoicing product (name, unit, price, VAT) — read-only."""
+    path = f"/v1/invoicing/{quote(creds.business, safe='')}/product/{int(product_id)}/"
+    parsed = _request(creds, "GET", path)
+    if not isinstance(parsed, dict):
+        raise RuntimeError(f"NoCFO returned an unexpected response for product {product_id}")
     return parsed
 
 

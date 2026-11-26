@@ -83,7 +83,7 @@ Shipped as `gittan nocfo-invoice` — see
 - OAuth app registration instead of personal tokens?
 - Can a token be limited to draft sales invoices + reading contacts and products?
 - Rate limits per token and per business?
-- Minimal row payload for a time row (quantity, unit, product)?
+- Is the row `amount` read as VAT-exclusive when the product is VAT-inclusive?
 - Can a draft carry an attachment, such as the approved hours report?
 
 ---

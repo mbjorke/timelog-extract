@@ -25,7 +25,10 @@ draft-first*). Partner shape: [`partner-briefs/nocfo.md`](../ideas/partner-brief
   `nocfo-cli` reads. Gittan never stores the token. Partner OAuth is
   `do not build yet`.
 - **D5 — Idempotency.** Local op-log (`<gittan data dir>/nocfo_oplog.jsonl`)
-  keyed by contact + period; a second run skips unless `--force-new`.
+  keyed by contact + period. A `pending` row is written before each POST and
+  `created` / `rejected` after it. `created` and `pending` (unknown outcome,
+  e.g. a timeout) block a repeat until `--force-new`; an HTTP rejection allows
+  a retry.
 - **D6 — Draft only.** The client has a create call and a read call. No accept,
   send, paid or delete call exists in Gittan, and a payload that sets `status`
   is refused.
@@ -36,7 +39,8 @@ draft-first*). Partner shape: [`partner-briefs/nocfo.md`](../ideas/partner-brief
 
 - priority: **now**
 - acceptance:
-  - `--dry-run` prints the draft payload per contact and makes no network call.
+  - `--dry-run` previews the draft rows per contact and makes no network call.
+  - A real run prints the exact payload (with product price and VAT) before asking.
   - Without `--dry-run`, each draft needs an interactive yes (default No).
   - Created drafts are logged locally; a re-run for the same contact and period
     is skipped with the earlier draft id.
@@ -61,14 +65,17 @@ Feature: NoCFO draft invoice from approved hours
     Then exactly one draft is created and the second run reports it was skipped
 ```
 
-### Verify row field names against a live account
+### Verify against a live account
 
 - priority: **next** (blocks a real customer invoice)
-- NoCFO's public toolkit passes invoice rows through without a fixed schema.
-  The row keys (`product`, `amount` as quantity, `description`) are a best
-  reading and live in one place (`core/nocfo_invoice.py`, `ROW_*_FIELD`).
-  First live run: create one draft for a test contact, open it in NoCFO, fix
-  the constants if a field was ignored.
+- Row and invoice fields follow NoCFO's published OpenAPI schema
+  (`InvoiceRequest`: `receiver`, `invoicing_date`, `payment_condition_days`;
+  `InvoiceRowRequest`: `name`, `unit`, `amount` = unit price, `vat_rate`,
+  `vat_code`, `product_count` = quantity, optional `product`, `description`).
+  Name, unit, VAT-exclusive price and VAT are copied from the NoCFO product
+  read just before the draft; Gittan only supplies `product_count`.
+- Still unchecked on a real account: whether the row `amount` is read as
+  VAT-exclusive. First live run: one draft for a test contact, open it in NoCFO.
 
 ### Later
 
@@ -79,8 +86,8 @@ Feature: NoCFO draft invoice from approved hours
 
 ## Traceability
 
-Live verification against a real NoCFO account is still open (see "Verify row
-field names" above), hence `conditional GO`.
+Live verification against a real NoCFO account is still open (see "Verify
+against a live account" above), hence `conditional GO`.
 
 - story_id: GH-585
 - spec_status: draft
@@ -101,3 +108,6 @@ field names" above), hence `conditional GO`.
   - 2026-11-26: Initial spec and MVP built (PR #585).
   - 2026-11-26: Review fixes — op-log fails closed on a damaged line; re-check
     before each POST; NoCFO ids kept by `normalize_profile`.
+  - 2026-11-26: Rows follow NoCFO's OpenAPI schema (hours in `product_count`,
+    price/unit/VAT copied from the product); `payment_condition_days` added;
+    op-log writes `pending` before each POST so an unknown outcome blocks a repeat.

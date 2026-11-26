@@ -22,6 +22,12 @@ from core import (
 )
 from core.cli import app
 
+# Synthetic NoCFO product record (shape from NoCFO's OpenAPI Product schema).
+PRODUCT = {
+    "id": 7, "name": "Consulting", "unit": "h", "amount": 119.23, "is_vat_inclusive": True,
+    "vat_exclusive_amount": 95.0, "vat_inclusive_amount": 119.23, "vat_rate": 25.5, "vat_code": 1,
+}
+
 PROJECTS = [
     {"name": "Kettu Logistics", "nocfo_contact_id": 101, "nocfo_product_id": 7},
     {"name": "Saimaa Studio", "nocfo_contact_id": "202", "nocfo_product_id": "8"},
@@ -55,19 +61,22 @@ class BuildDraftsTests(unittest.TestCase):
         self.assertEqual([r.day for r, _ in kettu.rows], ["2026-11-19", "2026-11-20"])
         self.assertEqual(unmapped, {"Side project": 4.0, "Uncategorized": 0.5})
 
-    def test_payload_is_draft_shaped_and_has_no_status_or_money(self):
+    def test_payload_hours_are_quantity_and_price_comes_from_product(self):
         drafts, _ = ni.build_drafts(
             {("Kettu Logistics", "2026-11-20"): 3.5}, self.mapping,
             "2026-11-20", "2026-11-20", invoicing_date="2026-11-23",
         )
-        body = drafts[0].payload()
+        body = drafts[0].payload({7: PRODUCT}, payment_condition_days=21)
         self.assertEqual(body["receiver"], 101)
         self.assertEqual(body["invoicing_date"], "2026-11-23")
+        self.assertEqual(body["payment_condition_days"], 21)
         self.assertNotIn("status", body)
         self.assertEqual(body["rows"], [{
-            ni.ROW_PRODUCT_FIELD: 7,
-            ni.ROW_QUANTITY_FIELD: 3.5,
-            ni.ROW_DESCRIPTION_FIELD: "2026-11-20 · Kettu Logistics",
+            "name": "Consulting", "unit": "h", "vat_rate": 25.5, "vat_code": 1,
+            "amount": 95.0,  # VAT-exclusive unit price from the product, not the hours
+            "product": 7,
+            "product_count": 3.5,
+            "description": "2026-11-20 · Kettu Logistics",
         }])
 
     def test_project_filter(self):
@@ -80,7 +89,8 @@ class BuildDraftsTests(unittest.TestCase):
 
 class ClientTests(unittest.TestCase):
     def test_credentials_from_env_and_repr_hides_token(self):
-        with patch.dict(os.environ, {"NOCFO_API_TOKEN": "secret-token", "NOCFO_BUSINESS": "demo-oy"}):
+        env = {"NOCFO_API_TOKEN": "secret-token", "NOCFO_BUSINESS": "demo-oy"}
+        with patch.dict(os.environ, env, clear=True):
             creds = nocfo_client.resolve_nocfo_credentials()
         self.assertEqual(creds.business, "demo-oy")
         self.assertEqual(creds.base_url, nocfo_client.DEFAULT_BASE_URL)
@@ -117,6 +127,7 @@ class CliTests(unittest.TestCase):
             patch.object(rt, "reported_base_dir", return_value=base / "reported"),
             patch.object(ni, "oplog_path", return_value=base / "nocfo_oplog.jsonl"),
             patch.dict(os.environ, {"NOCFO_API_TOKEN": "t", "NOCFO_BUSINESS": "demo-oy"}),
+            patch.object(cli_mod, "get_product", return_value=PRODUCT),
         ]
         for p in self.patches:
             p.start()
@@ -146,6 +157,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         create.assert_not_called()
         self.assertIn('"receiver": 101', result.output)
+        self.assertIn('"product_count": 3.5', result.output)
+        self.assertIn("<from NoCFO product 7>", result.output)
         self.assertIn("nothing was sent", result.output)
         # proposed (unapproved) time never reaches an invoice
         self.assertNotIn('"receiver": 202', result.output)
@@ -163,8 +176,28 @@ class CliTests(unittest.TestCase):
             second = self._run(input="y\n")
         self.assertEqual(first.exit_code, 0, msg=first.output)
         self.assertIn("draft invoice id=900", first.output)
+        self.assertIn('"amount": 95.0', first.output)  # exact payload shown before the prompt
         self.assertEqual(create.call_count, 1)
         self.assertIn("already created", second.output)
+        statuses = [op.status for op in ni.load_ops()]
+        self.assertEqual(statuses, ["pending", "created"])
+
+    def test_unknown_outcome_stays_pending_and_blocks_repeat(self):
+        with patch.object(cli_mod, "create_draft_invoice", side_effect=TimeoutError("read timed out")) as create:
+            first = self._run(input="y\n")
+            second = self._run(input="y\n")
+        self.assertIn("unknown outcome", first.output)
+        self.assertEqual(create.call_count, 1)
+        self.assertIn("did not finish", second.output)
+
+    def test_definite_rejection_allows_retry(self):
+        rejected = nocfo_client.NocfoHttpError("HTTP 400 bad row", 400)
+        with patch.object(cli_mod, "create_draft_invoice", side_effect=[rejected, {"id": 901}]) as create:
+            first = self._run(input="y\n")
+            second = self._run(input="y\n")
+        self.assertIn("rejected it", first.output)
+        self.assertEqual(create.call_count, 2)
+        self.assertIn("draft invoice id=901", second.output)
 
     def test_missing_credentials_fails_cleanly(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -182,9 +215,9 @@ class CliTests(unittest.TestCase):
 
     def test_draft_created_by_another_run_during_prompt_is_skipped(self):
         def other_run_logs_first(*_args, **_kwargs):
-            ni.record_draft(ni.NocfoOpRow(
+            ni.record_op(ni.NocfoOpRow(
                 marker="gittan:101:2026-11-16:2026-11-22", business="demo-oy",
-                invoice_id="1", contact_id=101, total_hours=3.5, payload_hash="x",
+                invoice_id="1", contact_id=101, status="created", total_hours=3.5, payload_hash="x",
             ))
             return True
 
@@ -192,7 +225,7 @@ class CliTests(unittest.TestCase):
                 patch.object(cli_mod, "create_draft_invoice") as create:
             result = self._run()
         create.assert_not_called()
-        self.assertIn("another run created this draft", result.output)
+        self.assertIn("already created", result.output)
 
 
 class ProfileNormalizationTests(unittest.TestCase):

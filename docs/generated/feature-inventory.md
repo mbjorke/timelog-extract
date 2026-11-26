@@ -8,7 +8,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 
 | Surface | Count |
 | --- | --- |
-| Commands | 29 |
+| Commands | 30 |
 | Command groups | 2 |
 | Collectors | 22 |
 | Per-project config fields | 18 |
@@ -26,6 +26,7 @@ Enumerated from the Typer app, the collector registry, and `normalize_profile`. 
 | — | `intent` | Ask which project each unattributed chat session belongs to. | [session-intent-binding-task](../task-prompts/session-intent-binding-task.md) · built |
 | — | `jira-sync` | Sync TIMELOG-derived hours to Jira worklogs. | (no spec) |
 | — | `map` | Map git remotes and new GitHub repos to projects — nothing saved without approval. | [map-customer-first-flow](../task-prompts/map-customer-first-flow.md) · `not built` |
+| — | `nocfo-invoice` | Create NoCFO sales-invoice DRAFTS from approved (confirmed) hours. Never accepts or sends. | [nocfo-draft-invoice-task](../task-prompts/nocfo-draft-invoice-task.md) · built (MVP); live field verification pending |
 | — | `projects` | Manage project profiles interactively. | (no spec) |
 | — | `projects-anchor` | Add rules from an anchor plan (stable signals: hosts, repos, dirs by default). | (no spec) |
 | — | `projects-audit` | Count match_terms / tracked_urls hits over deduped collector events (read-only). | (no spec) |

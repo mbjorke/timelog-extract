@@ -237,7 +237,8 @@ def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, No
     Idempotency-Key, so a failed ``--force-new`` retry settles only itself and
     never an earlier attempt whose outcome is still unknown. A marker blocks
     while it has any ``created`` draft (the latest one is returned) or any
-    unsettled ``pending`` attempt (the latest one is returned).
+    unsettled ``pending`` attempt. The latest unsettled attempt is returned
+    first, else the latest ``created`` draft.
     """
     last_created: Dict[str, NocfoOpRow] = {}
     unsettled: Dict[str, List[NocfoOpRow]] = {}
@@ -256,10 +257,12 @@ def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, No
             last_created[row.marker] = row
     blocking: Dict[str, NocfoOpRow] = {}
     for marker, open_attempts in unsettled.items():
-        if marker in last_created:
-            blocking[marker] = last_created[marker]
-        elif open_attempts:
+        # An unsettled attempt wins over an earlier draft, so a retry of it
+        # with the same body reuses its Idempotency-Key.
+        if open_attempts:
             blocking[marker] = open_attempts[-1]
+        elif marker in last_created:
+            blocking[marker] = last_created[marker]
     return blocking
 
 

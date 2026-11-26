@@ -117,3 +117,5 @@ against a live account" above), hence `conditional GO`.
     added (NoCFO developer docs, using-the-api/idempotency).
   - 2026-11-26: Each `pending` attempt is settled only by its own outcome row, so
     a rejected `--force-new` retry never unblocks an earlier unknown outcome.
+  - 2026-11-26: An unsettled attempt is reported before an earlier created
+    draft, so a `--force-new` retry after a lost response reuses its own key.

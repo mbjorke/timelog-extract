@@ -119,3 +119,5 @@ against a live account" above), hence `conditional GO`.
     a rejected `--force-new` retry never unblocks an earlier unknown outcome.
   - 2026-11-26: An unsettled attempt is reported before an earlier created
     draft, so a `--force-new` retry after a lost response reuses its own key.
+  - 2026-11-26: A `created` row settles every attempt that sent its key, so a
+    successful same-body retry clears the earlier unknown outcome.

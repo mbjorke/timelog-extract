@@ -232,10 +232,10 @@ OP_STATUSES = {"pending", "created", "rejected"}
 def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, NocfoOpRow]:
     """Op per marker that blocks a new POST.
 
-    Every ``pending`` row is one POST attempt. A later ``created`` or
-    ``rejected`` row settles the most recent unsettled attempt with the same
-    Idempotency-Key, so a failed ``--force-new`` retry settles only itself and
-    never an earlier attempt whose outcome is still unknown. A marker blocks
+    Every ``pending`` row is one POST attempt. A ``created`` row settles every
+    unsettled attempt with its Idempotency-Key (NoCFO keeps one draft per key);
+    a ``rejected`` row settles only the most recent one with that key, so a
+    failed ``--force-new`` retry never settles an earlier unknown outcome. A marker blocks
     while it has any ``created`` draft (the latest one is returned) or any
     unsettled ``pending`` attempt. The latest unsettled attempt is returned
     first, else the latest ``created`` draft.
@@ -249,10 +249,15 @@ def blocking_markers(business: str, home: Optional[Path] = None) -> Dict[str, No
         if row.status == "pending":
             open_attempts.append(row)
             continue
-        for i in range(len(open_attempts) - 1, -1, -1):
-            if open_attempts[i].idempotency_key == row.idempotency_key:
-                del open_attempts[i]
-                break
+        if row.status == "created" and row.idempotency_key:
+            # A 2xx for a key means NoCFO holds exactly one draft for it, so
+            # every attempt that sent that key is settled by it.
+            open_attempts[:] = [a for a in open_attempts if a.idempotency_key != row.idempotency_key]
+        else:
+            for i in range(len(open_attempts) - 1, -1, -1):
+                if open_attempts[i].idempotency_key == row.idempotency_key:
+                    del open_attempts[i]
+                    break
         if row.status == "created":
             last_created[row.marker] = row
     blocking: Dict[str, NocfoOpRow] = {}

@@ -248,6 +248,18 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(keys[0], keys[1])
         self.assertEqual(keys[1], keys[2])
 
+    def test_successful_same_key_retry_settles_the_unknown_attempt(self):
+        with patch.object(cli_mod, "create_draft_invoice",
+                          side_effect=[TimeoutError("read timed out"), {"id": 907}, {"id": 908}]) as create:
+            self._run(input="y\n")
+            self._run("--force-new", input="y\n")
+            normal = self._run(input="y\n")
+            self._run("--force-new", input="y\n")
+        self.assertIn("draft 907 already created", normal.output)
+        keys = [c.kwargs["idempotency_key"] for c in create.call_args_list]
+        self.assertEqual(keys[0], keys[1])
+        self.assertNotEqual(keys[1], keys[2])
+
     def test_blocked_draft_does_not_read_its_product(self):
         with patch.object(cli_mod, "create_draft_invoice", return_value={"id": 904}):
             self._run(input="y\n")

@@ -230,6 +230,8 @@ event containing that string — is also wrong, just less legibly.
 
 ## Related
 
+- `docs/task-prompts/gittan-mcp-chat-to-invoice-task.md` — prioritizes this surface
+  (`next`) and extends it with approval and invoice-basis tools.
 - `docs/specs/intent-capture.md` — the record contract this consumes.
 - `docs/task-prompts/session-intent-binding-task.md` — the shipped session-keyed
   half, and the two maintainer decisions this inherits.

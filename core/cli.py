@@ -18,6 +18,7 @@ from core import (
     cli_intent,  # noqa: F401
     cli_jira_sync,  # noqa: F401
     cli_map,  # noqa: F401
+    cli_nocfo_invoice,  # noqa: F401
     cli_projects,  # noqa: F401
     cli_projects_audit,  # noqa: F401
     cli_report_status,  # noqa: F401

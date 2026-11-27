@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Feat: `gittan nocfo-invoice` creates NoCFO sales-invoice **drafts** from approved
+  (confirmed/edited) reported time. Hours go in `product_count`; name, unit, price
+  and VAT come from the NoCFO product. Dry-run is offline; a real run shows the
+  exact payload and each draft needs an interactive yes; Gittan never accepts or sends an invoice. Map projects
+  with `nocfo_contact_id` + `nocfo_product_id`; token from `NOCFO_API_TOKEN`.
+
 ## 0.5.0 - 2026-08-23
 
 Attribution stops requiring configuration, and the payload starts carrying the

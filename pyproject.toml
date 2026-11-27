@@ -19,8 +19,8 @@ classifiers = [
 dependencies = [
   "reportlab>=4.0.0",
   "typer",
-  # core/cli_report_status.py imports click directly. Typer 0.26 dropped its
-  # hard click dependency, so we must declare it ourselves or CLI imports fail.
+  # Typer 0.26 dropped its hard click dependency, so we declare it ourselves.
+  # (Typer 0.29 removed Option(click_type=...); use Literal choices instead.)
   "click>=8.0",
   "rich",
   "questionary",

@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | [`timely.md`](timely.md) | Evidence-engine overlap / possible design partner or export contract | High |
 | [`harvest.md`](harvest.md) | Complement — evidence upstream of billing | High |
+| [`nocfo.md`](nocfo.md) | Complement — approved hours become a draft invoice in NoCFO (`gittan nocfo-invoice`) | High |
 
 **Before outreach:** run [`docs/runbooks/timely-gittan-event-ledger-benchmark.md`](../../runbooks/timely-gittan-event-ledger-benchmark.md) and keep the classified diff in `private/`.
 
